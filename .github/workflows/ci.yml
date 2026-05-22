@@ -36,4 +36,3 @@ jobs:
         run: npx prisma validate
         env:
           DATABASE_URL: postgresql://cadreos:cadreos@localhost:5432/cadreos
-          DIRECT_URL: postgresql://cadreos:cadreos@localhost:5432/cadreos
