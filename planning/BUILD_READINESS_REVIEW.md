@@ -398,7 +398,7 @@ Recommended operation surface:
 - Auth provider choice (Clerk vs Auth.js) and migration tolerance.
 - Single-org-only launch vs multi-org-ready from day one at data layer.
 - Parent/guardian visibility policy for notes (what is visible vs staff-only).
-- Whether inbox/communication routing is metadata-only in MVP or includes message threads.
+- Whether inbox/communication routing is metadata only in MVP or includes message threads.
 - Required legal/compliance constraints for youth athlete data in target market.
 
 ### Can decide during build
