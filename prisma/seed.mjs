@@ -11,7 +11,14 @@ async function findOrCreatePerson({ organizationId, firstName, lastName, email }
   });
 
   if (existing) {
-    return existing;
+    return db.person.update({
+      where: { id: existing.id },
+      data: {
+        firstName,
+        lastName,
+        email,
+      },
+    });
   }
 
   return db.person.create({
@@ -82,11 +89,32 @@ async function main() {
     },
   });
 
-  const coach = await findOrCreatePerson({
+  const generalManager = await findOrCreatePerson({
+    organizationId: organization.id,
+    firstName: "Sonny",
+    lastName: "Weaver",
+    email: "sonny.weaver.demo@cadreos.local",
+  });
+
+  const programManager = await findOrCreatePerson({
+    organizationId: organization.id,
+    firstName: "Richard",
+    lastName: "East",
+    email: "richard.east.demo@cadreos.local",
+  });
+
+  const headCoach = await findOrCreatePerson({
+    organizationId: organization.id,
+    firstName: "Ed",
+    lastName: "Davis",
+    email: "ed.davis.demo@cadreos.local",
+  });
+
+  const teamCoach = await findOrCreatePerson({
     organizationId: organization.id,
     firstName: "Casey",
     lastName: "Coach",
-    email: "coach.demo@cadreos.local",
+    email: "casey.coach.demo@cadreos.local",
   });
 
   const athlete = await findOrCreatePerson({
@@ -98,15 +126,81 @@ async function main() {
 
   const guardian = await findOrCreatePerson({
     organizationId: organization.id,
-    firstName: "Pat",
+    firstName: "Morgan",
     lastName: "Guardian",
-    email: "guardian.demo@cadreos.local",
+    email: "morgan.guardian.demo@cadreos.local",
+  });
+
+  const volunteer = await findOrCreatePerson({
+    organizationId: organization.id,
+    firstName: "Vicky",
+    lastName: "Vol",
+    email: "vicky.vol.demo@cadreos.local",
   });
 
   await db.roleAssignment.upsert({
     where: {
       personId_roleType_scopeType_programId_teamId: {
-        personId: coach.id,
+        personId: generalManager.id,
+        roleType: RoleType.ORGANIZATION_ADMIN,
+        scopeType: ScopeType.ORGANIZATION,
+        programId: null,
+        teamId: null,
+      },
+    },
+    update: {},
+    create: {
+      organizationId: organization.id,
+      personId: generalManager.id,
+      roleType: RoleType.ORGANIZATION_ADMIN,
+      scopeType: ScopeType.ORGANIZATION,
+    },
+  });
+
+  await db.roleAssignment.upsert({
+    where: {
+      personId_roleType_scopeType_programId_teamId: {
+        personId: programManager.id,
+        roleType: RoleType.PROGRAM_DIRECTOR,
+        scopeType: ScopeType.PROGRAM,
+        programId: program.id,
+        teamId: null,
+      },
+    },
+    update: {},
+    create: {
+      organizationId: organization.id,
+      personId: programManager.id,
+      roleType: RoleType.PROGRAM_DIRECTOR,
+      scopeType: ScopeType.PROGRAM,
+      programId: program.id,
+    },
+  });
+
+  await db.roleAssignment.upsert({
+    where: {
+      personId_roleType_scopeType_programId_teamId: {
+        personId: headCoach.id,
+        roleType: RoleType.COACH,
+        scopeType: ScopeType.PROGRAM,
+        programId: program.id,
+        teamId: null,
+      },
+    },
+    update: {},
+    create: {
+      organizationId: organization.id,
+      personId: headCoach.id,
+      roleType: RoleType.COACH,
+      scopeType: ScopeType.PROGRAM,
+      programId: program.id,
+    },
+  });
+
+  await db.roleAssignment.upsert({
+    where: {
+      personId_roleType_scopeType_programId_teamId: {
+        personId: teamCoach.id,
         roleType: RoleType.COACH,
         scopeType: ScopeType.TEAM,
         programId: null,
@@ -116,7 +210,7 @@ async function main() {
     update: {},
     create: {
       organizationId: organization.id,
-      personId: coach.id,
+      personId: teamCoach.id,
       roleType: RoleType.COACH,
       scopeType: ScopeType.TEAM,
       teamId: team.id,
@@ -138,6 +232,26 @@ async function main() {
       organizationId: organization.id,
       personId: athlete.id,
       roleType: RoleType.ATHLETE,
+      scopeType: ScopeType.TEAM,
+      teamId: team.id,
+    },
+  });
+
+  await db.roleAssignment.upsert({
+    where: {
+      personId_roleType_scopeType_programId_teamId: {
+        personId: volunteer.id,
+        roleType: RoleType.ASSISTANT_COACH,
+        scopeType: ScopeType.TEAM,
+        programId: null,
+        teamId: team.id,
+      },
+    },
+    update: {},
+    create: {
+      organizationId: organization.id,
+      personId: volunteer.id,
+      roleType: RoleType.ASSISTANT_COACH,
       scopeType: ScopeType.TEAM,
       teamId: team.id,
     },
