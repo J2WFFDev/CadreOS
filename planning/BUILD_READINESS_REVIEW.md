@@ -18,9 +18,9 @@ CadreOS is close to build-ready for an MVP kickoff, but not fully ready yet. Pro
 | `planning/PERMISSIONS_MATRIX.md` | Permission sensitivity callout + sample table | Incomplete | Critical but currently illustrative only; requires full action/resource matrix and scope rules. |
 | `planning/SCREEN_INVENTORY.md` | Initial screen list | Early draft | Missing navigation structure, role-specific entry points, and screen-level acceptance criteria. |
 | `planning/CHAT_TRANSCRIPT.md` | Discovery/session history and rationale context | Contextual | Keep for traceability; not a build-spec source. |
-| `planning/Some tech stack thoughts` | Early stack option notes | Useful but outdated | Replace SQLite/MySQL branch with canonical Postgres/Neon + Next.js stack decision record. |
-| `planning/Strengthen User Stories with Acceptance Criteria` | Example story with AC pattern | Useful seed | Convert into standardized template and apply to all MVP stories. |
-| `planning/planning/MILESTONE_1_FOUNDATION_OS.md` | Early milestone scratch notes | Useful seed | Move/merge into canonical roadmap/implementation-sequence docs; fix nested folder placement. |
+| `planning/Some tech stack thoughts` *(current non-standard filename)* | Early stack option notes | Useful but outdated | Replace SQLite/MySQL branch with canonical Postgres/Neon + Next.js stack decision record; rename to `planning/TECH_STACK_DECISIONS.md`. |
+| `planning/Strengthen User Stories with Acceptance Criteria` *(current non-standard filename)* | Example story with AC pattern | Useful seed | Convert into standardized template and apply to all MVP stories; rename to `planning/USER_STORY_AC_TEMPLATE.md`. |
+| `planning/planning/MILESTONE_1_FOUNDATION_OS.md` *(current nested location)* | Early milestone scratch notes | Useful seed | Move/merge into canonical roadmap/implementation-sequence docs and relocate to `planning/MILESTONE_1_FOUNDATION_OS.md` if retained. |
 
 ### Missing expected planning files
 - `planning/API_CONTRACT.md` (missing) — **create now**.
