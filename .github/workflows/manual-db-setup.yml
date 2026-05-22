@@ -2,17 +2,6 @@ name: Manual DB Setup
 
 on:
   workflow_dispatch:
-    inputs:
-      apply_schema:
-        description: "Apply the Prisma schema to the configured database"
-        required: true
-        type: boolean
-        default: true
-      run_seed:
-        description: "Run the Prisma seed after schema setup"
-        required: true
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -36,13 +25,11 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Prisma validate
-        run: npx prisma validate
+      - name: Generate Prisma client
+        run: npx prisma generate
 
       - name: Apply Prisma schema
-        if: ${{ inputs.apply_schema }}
         run: npx prisma db push
 
-      - name: Run Prisma seed
-        if: ${{ inputs.run_seed }}
+      - name: Run idempotent seed
         run: npm run prisma:seed
