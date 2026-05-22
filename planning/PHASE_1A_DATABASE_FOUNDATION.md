@@ -16,10 +16,10 @@ Phase 1A validates the CadreOS database foundation by proving the deployed app c
 
 ## GitHub Actions DB Setup Workflow
 
-A dedicated workflow (`.github/workflows/db-setup.yml`) is provided for early prototype database setup.
+A dedicated workflow (`.github/workflows/manual-db-setup.yml`) is provided for early prototype database setup.
 
 - **Trigger:** `workflow_dispatch` only — must be run manually from the GitHub Actions UI.
-- **Not triggered automatically** on push, deploy, or any other event.
+- **Not triggered automatically** on push, deploy, app startup, Vercel build, or any other event.
 - **Steps (run in order):**
   1. Checkout the repository.
   2. Set up Node 20.
