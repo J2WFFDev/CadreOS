@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -8,12 +9,30 @@ type Metric = {
 };
 
 export default async function DashboardPage() {
-  const [organizationCount, programCount, teamCount, peopleCount] = await Promise.all([
-    db.organization.count(),
-    db.program.count(),
-    db.team.count(),
-    db.person.count(),
-  ]);
+  let databaseReady = true;
+  let organizationCount = 0;
+  let programCount = 0;
+  let teamCount = 0;
+  let peopleCount = 0;
+
+  try {
+    [organizationCount, programCount, teamCount, peopleCount] = await Promise.all([
+      db.organization.count(),
+      db.program.count(),
+      db.team.count(),
+      db.person.count(),
+    ]);
+  } catch (error) {
+    const isMissingSchemaError =
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      (error.code === "P2021" || error.code === "P2022");
+
+    if (isMissingSchemaError) {
+      databaseReady = false;
+    } else {
+      throw error;
+    }
+  }
 
   const metrics: Metric[] = [
     { label: "Organizations", value: organizationCount },
@@ -42,6 +61,14 @@ export default async function DashboardPage() {
           Auth provider integration and real permission enforcement will be implemented in a later phase.
         </p>
       </div>
+      {!databaseReady ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
+          <p className="text-sm text-amber-900 dark:text-amber-200">
+            Database is reachable, but application tables are not available yet. Run Prisma migrations to
+            initialize the schema.
+          </p>
+        </div>
+      ) : null}
     </section>
   );
 }

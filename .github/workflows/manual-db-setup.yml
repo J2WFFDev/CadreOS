@@ -1,0 +1,48 @@
+name: Manual DB Setup
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_schema:
+        description: "Apply the Prisma schema to the configured database"
+        required: true
+        type: boolean
+        default: true
+      run_seed:
+        description: "Run the Prisma seed after schema setup"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  setup-database:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install
+        run: npm ci
+
+      - name: Prisma validate
+        run: npx prisma validate
+
+      - name: Apply Prisma schema
+        if: ${{ inputs.apply_schema }}
+        run: npx prisma db push
+
+      - name: Run Prisma seed
+        if: ${{ inputs.run_seed }}
+        run: npm run prisma:seed
