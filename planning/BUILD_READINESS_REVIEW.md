@@ -305,7 +305,7 @@ Recommended operation surface:
 ### Phase 0: Repo and App Foundation
 - Initialize Next.js app with TypeScript + Tailwind
 - Add Prisma + Neon Postgres connection
-- Select/authenticate provider integration
+- Select and integrate authentication provider (Clerk or Auth.js)
 - Add env management and baseline CI (lint/typecheck/test)
 - Establish design tokens and base layout shell
 
