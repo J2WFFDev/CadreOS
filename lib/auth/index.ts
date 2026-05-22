@@ -1,29 +1,19 @@
-import { auth } from "@clerk/nextjs/server";
-
 export type AuthContext = {
   userId: string;
   organizationId: string | null;
 };
 
+const PHASE_0_MOCK_AUTH_CONTEXT: AuthContext = {
+  userId: "phase0-mock-user",
+  organizationId: "phase0-mock-org",
+};
+
+// Phase 0 stub: real authentication and organization resolution are deferred.
 export async function requireAuthContext(): Promise<AuthContext> {
-  const { userId, orgId } = await auth();
-
-  if (!userId) {
-    throw new Error("UNAUTHORIZED");
-  }
-
-  return {
-    userId,
-    organizationId: orgId ?? null,
-  };
+  return PHASE_0_MOCK_AUTH_CONTEXT;
 }
 
+// Phase 0 stub: replace with real authorization checks in the auth phase.
 export async function requireOrganizationContext(): Promise<AuthContext> {
-  const context = await requireAuthContext();
-
-  if (!context.organizationId) {
-    throw new Error("FORBIDDEN");
-  }
-
-  return context;
+  return PHASE_0_MOCK_AUTH_CONTEXT;
 }
