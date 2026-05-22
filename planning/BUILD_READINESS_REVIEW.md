@@ -18,8 +18,8 @@ CadreOS is close to build-ready for an MVP kickoff, but not fully ready yet. Pro
 | `planning/PERMISSIONS_MATRIX.md` | Permission sensitivity callout + sample table | Incomplete | Critical but currently illustrative only; requires full action/resource matrix and scope rules. |
 | `planning/SCREEN_INVENTORY.md` | Initial screen list | Early draft | Missing navigation structure, role-specific entry points, and screen-level acceptance criteria. |
 | `planning/CHAT_TRANSCRIPT.md` | Discovery/session history and rationale context | Contextual | Keep for traceability; not a build-spec source. |
-| `planning/Some tech stack thoughts` *(current non-standard filename)* | Early stack option notes | Useful but outdated | Replace SQLite/MySQL branch with canonical Postgres/Neon + Next.js stack decision record; rename to `planning/TECH_STACK_DECISIONS.md`. |
-| `planning/Strengthen User Stories with Acceptance Criteria` *(current non-standard filename)* | Example story with AC pattern | Useful seed | Convert into standardized template and apply to all MVP stories; rename to `planning/USER_STORY_AC_TEMPLATE.md`. |
+| `planning/Some tech stack thoughts` *(verified current non-standard filename)* | Early stack option notes | Useful but outdated | Replace SQLite/MySQL branch with canonical Postgres/Neon + Next.js stack decision record; rename to `planning/TECH_STACK_DECISIONS.md`. |
+| `planning/Strengthen User Stories with Acceptance Criteria` *(verified current non-standard filename)* | Example story with AC pattern | Useful seed | Convert into standardized template and apply to all MVP stories; rename to `planning/USER_STORY_AC_TEMPLATE.md`. |
 | `planning/planning/MILESTONE_1_FOUNDATION_OS.md` *(current nested location)* | Early milestone scratch notes | Useful seed | Move/merge into canonical roadmap/implementation-sequence docs and relocate to `planning/MILESTONE_1_FOUNDATION_OS.md` if retained. |
 
 ### Missing expected planning files
@@ -412,4 +412,4 @@ Recommended operation surface:
 - External integrations (calendar sync, messaging platforms, etc.).
 
 ## 15. Recommended Next Copilot Prompt
-“Using `planning/BUILD_READINESS_REVIEW.md` as the source of truth, create/update the missing planning artifacts (`planning/API_CONTRACT.md`, `planning/ACCEPTANCE_CRITERIA.md`, `planning/PRISMA_MODEL_DRAFT.md`) and align existing docs to the standardized terminology and MVP boundaries. Do not write application code yet. Preserve coach-centered MVP focus, include explicit role/scope authorization rules, and produce issue-ready acceptance criteria for each MVP workflow.”
+“Using `planning/BUILD_READINESS_REVIEW.md` as the source of truth, create/update the missing planning artifacts (`planning/API_CONTRACT.md`, `planning/ACCEPTANCE_CRITERIA.md`, `planning/PRISMA_MODEL_DRAFT.md`) and align existing docs to the standardized terminology and MVP boundaries. Do not write application code yet. Preserve coach-centered MVP focus, include explicit role/scope authorization rules, and produce issue-ready acceptance criteria for each MVP workflow. Output must: (1) keep existing valid product thinking, (2) clearly mark MVP vs later scope, (3) include dependencies and acceptance criteria per workflow, and (4) end with a checklist confirming each file is implementation-ready.”
