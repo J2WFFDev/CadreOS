@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
 
 export default function MarketingPage() {
   return (
@@ -9,27 +8,15 @@ export default function MarketingPage() {
         Coach-centered operations system foundation. Phase 0 public landing page.
       </p>
 
-      <Show when="signed-out">
-        <div className="flex gap-3">
-          <SignInButton mode="modal">
-            <button className="rounded-md bg-black px-4 py-2 text-white dark:bg-white dark:text-black">
-              Sign in
-            </button>
-          </SignInButton>
-          <SignUpButton mode="modal">
-            <button className="rounded-md border px-4 py-2">Create account</button>
-          </SignUpButton>
-        </div>
-      </Show>
-
-      <Show when="signed-in">
-        <Link
-          href="/dashboard"
-          className="rounded-md bg-black px-4 py-2 text-white dark:bg-white dark:text-black"
-        >
-          Go to dashboard
-        </Link>
-      </Show>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        Authentication is intentionally deferred for Phase 0 foundation work.
+      </p>
+      <Link
+        href="/dashboard"
+        className="rounded-md bg-black px-4 py-2 text-white dark:bg-white dark:text-black"
+      >
+        Open dashboard shell
+      </Link>
     </main>
   );
 }

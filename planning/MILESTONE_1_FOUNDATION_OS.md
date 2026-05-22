@@ -14,7 +14,7 @@ Prepare and implement the first buildable CadreOS foundation for coach-centered 
 ## Phase 0: App Foundation
 - Initialize Next.js App Router project with TypeScript + Tailwind CSS
 - Configure Prisma with Neon Postgres
-- Configure Clerk auth integration baseline
+- Defer auth provider integration in Phase 0 while keeping auth as a required later implementation phase
 - Add environment variable structure for local/preview/prod
 - Add baseline CI checks in GitHub Actions (lint/typecheck/test placeholders aligned to repo state)
 - Set Vercel preview deployment assumptions
