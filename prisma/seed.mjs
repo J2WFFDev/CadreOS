@@ -1,4 +1,4 @@
-const { PrismaClient, RelationshipType, RoleType, ScopeType } = require("@prisma/client");
+import { PrismaClient, RelationshipType, RoleType, ScopeType } from "@prisma/client";
 
 const db = new PrismaClient();
 
