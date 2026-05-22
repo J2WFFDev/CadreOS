@@ -18,7 +18,7 @@ CadreOS is close to build-ready for an MVP kickoff, but not fully ready yet. Pro
 | `planning/PERMISSIONS_MATRIX.md` | Permission sensitivity callout + sample table | Incomplete | Critical but currently illustrative only; requires full action/resource matrix and scope rules. |
 | `planning/SCREEN_INVENTORY.md` | Initial screen list | Early draft | Missing navigation structure, role-specific entry points, and screen-level acceptance criteria. |
 | `planning/CHAT_TRANSCRIPT.md` | Discovery/session history and rationale context | Contextual | Keep for traceability; not a build-spec source. |
-| `planning/TECH_STACK_DECISIONS.md` | Early stack option notes | Useful but outdated | Keep as historical context, but align final technical direction to Next.js + TypeScript + Prisma + Postgres (Neon) + Vercel. |
+| `planning/TECH_STACK_DECISIONS.md` | Early stack option notes | Useful exploratory input | Keep as context, but treat this review as the canonical direction: Next.js + TypeScript + Prisma + Postgres (Neon) + Vercel. |
 | `planning/USER_STORY_AC_TEMPLATE.md` | Example story with AC pattern | Useful seed | Convert into standardized template and apply to all MVP stories. |
 | `planning/MILESTONE_1_FOUNDATION_OS.md` | Early milestone scratch notes | Useful seed | Merge relevant content into canonical roadmap/implementation-sequence docs; keep as working note until merged. |
 

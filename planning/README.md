@@ -15,7 +15,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Data Model Draft](./DATA_MODEL.md)
 - [Tech Stack Decisions](./TECH_STACK_DECISIONS.md)
 - [User Story AC Template](./USER_STORY_AC_TEMPLATE.md)
-- [Milestone 1 Foundation Notes](./MILESTONE_1_FOUNDATION_OS.md)
+- [Milestone 1 Foundation](./MILESTONE_1_FOUNDATION_OS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
 - [Chat Transcript](./CHAT_TRANSCRIPT.md)
 
