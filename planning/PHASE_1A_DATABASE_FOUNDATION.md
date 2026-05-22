@@ -14,9 +14,25 @@ Phase 1A validates the CadreOS database foundation by proving the deployed app c
 - Seed is **idempotent** and safe to re-run without creating duplicate demo organization, program, season,
   team, people, role assignments, guardian relationship, or athlete roster membership.
 
+## GitHub Actions DB Setup Workflow
+
+A dedicated workflow (`.github/workflows/db-setup.yml`) is provided for early prototype database setup.
+
+- **Trigger:** `workflow_dispatch` only — must be run manually from the GitHub Actions UI.
+- **Not triggered automatically** on push, deploy, or any other event.
+- **Steps (run in order):**
+  1. Checkout the repository.
+  2. Set up Node 20.
+  3. `npm ci` — install dependencies.
+  4. `npx prisma generate` — generate the Prisma client.
+  5. `npx prisma db push` — apply the Prisma schema to the Neon database.
+  6. `npm run prisma:seed` — run the idempotent seed script.
+- **Requires** the GitHub Actions secret `DATABASE_URL` to be configured in the repository settings.
+- **Intended use:** early prototype database setup only. Do not use as a replacement for a migration strategy in production.
+
 ## Required Environment Variable
 
-- `DATABASE_URL` (set in Vercel Project Settings → Environment Variables)
+- `DATABASE_URL` (set in Vercel Project Settings → Environment Variables and as a GitHub Actions secret for the DB setup workflow)
 
 ## Demo Seed Hierarchy and Role Mapping
 
