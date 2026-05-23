@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { href: "/programs", label: "Programs" },
   { href: "/teams", label: "Teams" },
   { href: "/events", label: "Events" },
+  { href: "/field-ops", label: "FieldOps" },
   { href: "/notes", label: "Notes" },
   { href: "/tasks", label: "Tasks" },
   { href: "/account", label: "Account" },
