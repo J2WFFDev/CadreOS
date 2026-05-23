@@ -31,6 +31,41 @@ async function findOrCreatePerson({ organizationId, firstName, lastName, email }
   });
 }
 
+async function findOrCreateRoleAssignment({
+  organizationId,
+  personId,
+  roleType,
+  scopeType,
+  programId = null,
+  teamId = null,
+}) {
+  const existing = await db.roleAssignment.findFirst({
+    where: {
+      organizationId,
+      personId,
+      roleType,
+      scopeType,
+      programId,
+      teamId,
+    },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  return db.roleAssignment.create({
+    data: {
+      organizationId,
+      personId,
+      roleType,
+      scopeType,
+      programId,
+      teamId,
+    },
+  });
+}
+
 async function main() {
   const organization = await db.organization.upsert({
     where: {
@@ -138,142 +173,58 @@ async function main() {
     email: "vicky.vol.demo@cadreos.local",
   });
 
-  await db.roleAssignment.upsert({
-    where: {
-      personId_roleType_scopeType_programId_teamId: {
-        personId: generalManager.id,
-        roleType: RoleType.ORGANIZATION_ADMIN,
-        scopeType: ScopeType.ORGANIZATION,
-        programId: null,
-        teamId: null,
-      },
-    },
-    update: {},
-    create: {
-      organizationId: organization.id,
-      personId: generalManager.id,
-      roleType: RoleType.ORGANIZATION_ADMIN,
-      scopeType: ScopeType.ORGANIZATION,
-    },
+  await findOrCreateRoleAssignment({
+    organizationId: organization.id,
+    personId: generalManager.id,
+    roleType: RoleType.ORGANIZATION_ADMIN,
+    scopeType: ScopeType.ORGANIZATION,
   });
 
-  await db.roleAssignment.upsert({
-    where: {
-      personId_roleType_scopeType_programId_teamId: {
-        personId: programManager.id,
-        roleType: RoleType.PROGRAM_DIRECTOR,
-        scopeType: ScopeType.PROGRAM,
-        programId: program.id,
-        teamId: null,
-      },
-    },
-    update: {},
-    create: {
-      organizationId: organization.id,
-      personId: programManager.id,
-      roleType: RoleType.PROGRAM_DIRECTOR,
-      scopeType: ScopeType.PROGRAM,
-      programId: program.id,
-    },
+  await findOrCreateRoleAssignment({
+    organizationId: organization.id,
+    personId: programManager.id,
+    roleType: RoleType.PROGRAM_DIRECTOR,
+    scopeType: ScopeType.PROGRAM,
+    programId: program.id,
   });
 
-  await db.roleAssignment.upsert({
-    where: {
-      personId_roleType_scopeType_programId_teamId: {
-        personId: headCoach.id,
-        roleType: RoleType.COACH,
-        scopeType: ScopeType.PROGRAM,
-        programId: program.id,
-        teamId: null,
-      },
-    },
-    update: {},
-    create: {
-      organizationId: organization.id,
-      personId: headCoach.id,
-      roleType: RoleType.COACH,
-      scopeType: ScopeType.PROGRAM,
-      programId: program.id,
-    },
+  await findOrCreateRoleAssignment({
+    organizationId: organization.id,
+    personId: headCoach.id,
+    roleType: RoleType.COACH,
+    scopeType: ScopeType.PROGRAM,
+    programId: program.id,
   });
 
-  await db.roleAssignment.upsert({
-    where: {
-      personId_roleType_scopeType_programId_teamId: {
-        personId: teamCoach.id,
-        roleType: RoleType.COACH,
-        scopeType: ScopeType.TEAM,
-        programId: null,
-        teamId: team.id,
-      },
-    },
-    update: {},
-    create: {
-      organizationId: organization.id,
-      personId: teamCoach.id,
-      roleType: RoleType.COACH,
-      scopeType: ScopeType.TEAM,
-      teamId: team.id,
-    },
+  await findOrCreateRoleAssignment({
+    organizationId: organization.id,
+    personId: teamCoach.id,
+    roleType: RoleType.COACH,
+    scopeType: ScopeType.TEAM,
+    teamId: team.id,
   });
 
-  await db.roleAssignment.upsert({
-    where: {
-      personId_roleType_scopeType_programId_teamId: {
-        personId: athlete.id,
-        roleType: RoleType.ATHLETE,
-        scopeType: ScopeType.TEAM,
-        programId: null,
-        teamId: team.id,
-      },
-    },
-    update: {},
-    create: {
-      organizationId: organization.id,
-      personId: athlete.id,
-      roleType: RoleType.ATHLETE,
-      scopeType: ScopeType.TEAM,
-      teamId: team.id,
-    },
+  await findOrCreateRoleAssignment({
+    organizationId: organization.id,
+    personId: athlete.id,
+    roleType: RoleType.ATHLETE,
+    scopeType: ScopeType.TEAM,
+    teamId: team.id,
   });
 
-  await db.roleAssignment.upsert({
-    where: {
-      personId_roleType_scopeType_programId_teamId: {
-        personId: volunteer.id,
-        roleType: RoleType.ASSISTANT_COACH,
-        scopeType: ScopeType.TEAM,
-        programId: null,
-        teamId: team.id,
-      },
-    },
-    update: {},
-    create: {
-      organizationId: organization.id,
-      personId: volunteer.id,
-      roleType: RoleType.ASSISTANT_COACH,
-      scopeType: ScopeType.TEAM,
-      teamId: team.id,
-    },
+  await findOrCreateRoleAssignment({
+    organizationId: organization.id,
+    personId: volunteer.id,
+    roleType: RoleType.ASSISTANT_COACH,
+    scopeType: ScopeType.TEAM,
+    teamId: team.id,
   });
 
-  await db.roleAssignment.upsert({
-    where: {
-      personId_roleType_scopeType_programId_teamId: {
-        personId: guardian.id,
-        roleType: RoleType.PARENT_GUARDIAN,
-        scopeType: ScopeType.ORGANIZATION,
-        programId: null,
-        teamId: null,
-      },
-    },
-    update: {},
-    create: {
-      organizationId: organization.id,
-      personId: guardian.id,
-      roleType: RoleType.PARENT_GUARDIAN,
-      scopeType: ScopeType.ORGANIZATION,
-    },
+  await findOrCreateRoleAssignment({
+    organizationId: organization.id,
+    personId: guardian.id,
+    roleType: RoleType.PARENT_GUARDIAN,
+    scopeType: ScopeType.ORGANIZATION,
   });
 
   await db.athleteGuardianRelationship.upsert({
