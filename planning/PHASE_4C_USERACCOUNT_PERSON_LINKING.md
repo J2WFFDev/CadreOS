@@ -37,11 +37,12 @@
 
 ## Parent/Guardian Access Model (Not Implemented Yet)
 
-**Model rule established in Phase 4C:**
+**Decided model rules:**
 - A `PARENT_GUARDIAN` role holder should exist as a `Person` record first (staff creates them in the People workflow).
 - A parent/guardian may **optionally** be linked to a `UserAccount` later — not all guardians require login access.
 - `UserAccount` linking already supports linking a Clerk user to a `Person` with any role, including `PARENT_GUARDIAN`. No schema changes are needed.
 - Staff-only `ObservationNote` records (`visibility: STAFF_ONLY`) must not be exposed to parent/guardian-linked users. This enforcement is deferred to the authorization phase.
+- Parent/guardian access is relationship-scoped via `AthleteGuardianRelationship` and must **not** automatically inherit staff access or team-wide access, even if a person holds both a staff role and a guardian role simultaneously.
 
 **What is deferred to a later authorization phase:**
 - Route-level authorization checks scoping parent/guardian users to only their linked athlete(s).
