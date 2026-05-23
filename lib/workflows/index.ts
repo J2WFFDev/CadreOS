@@ -500,6 +500,7 @@ export async function requirePhase1CMutationPermission(input: {
     | "booking.approve"
     | "booking.deny"
     | "rosterMembership.create"
+    | "rosterMembership.delete"
     | "roleAssignment.create"
     | "roleAssignment.delete";
   programId?: string | null;

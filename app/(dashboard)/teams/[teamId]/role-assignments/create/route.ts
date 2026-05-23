@@ -1,5 +1,6 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, RoleType, ScopeType } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -8,34 +9,39 @@ import {
   isPermissionDeniedError,
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
-  rosterMembershipWorkflowSchema,
 } from "@/lib/workflows";
 
-function buildErrorRedirectUrl(requestUrl: string, teamId: string, input: {
-  values: { personId: string; seasonId: string; rosterRole: string };
-  fieldErrors?: Partial<Record<"personId" | "seasonId" | "rosterRole", string>>;
-  error?: string;
-}) {
+const teamRoleAssignmentSchema = z.object({
+  personId: z.string().trim().min(1, "Person selection is required."),
+  roleType: z.nativeEnum(RoleType, {
+    message: "Role type must use an existing role value.",
+  }),
+});
+
+function buildErrorRedirectUrl(
+  requestUrl: string,
+  teamId: string,
+  input: {
+    values: { personId: string; roleType: string };
+    fieldErrors?: Partial<Record<"personId" | "roleType", string>>;
+    error?: string;
+  },
+) {
   const url = new URL(`/teams/${teamId}`, requestUrl);
 
-  url.searchParams.set("rosterPersonId", input.values.personId);
-  url.searchParams.set("seasonId", input.values.seasonId);
-  url.searchParams.set("rosterRole", input.values.rosterRole);
+  url.searchParams.set("teamRolePersonId", input.values.personId);
+  url.searchParams.set("teamRoleType", input.values.roleType);
 
   if (input.fieldErrors?.personId) {
-    url.searchParams.set("rosterPersonIdError", input.fieldErrors.personId);
+    url.searchParams.set("teamRolePersonIdError", input.fieldErrors.personId);
   }
 
-  if (input.fieldErrors?.seasonId) {
-    url.searchParams.set("seasonIdError", input.fieldErrors.seasonId);
-  }
-
-  if (input.fieldErrors?.rosterRole) {
-    url.searchParams.set("rosterRoleError", input.fieldErrors.rosterRole);
+  if (input.fieldErrors?.roleType) {
+    url.searchParams.set("teamRoleTypeError", input.fieldErrors.roleType);
   }
 
   if (input.error) {
-    url.searchParams.set("rosterError", input.error);
+    url.searchParams.set("teamRoleError", input.error);
   }
 
   return url;
@@ -51,15 +57,14 @@ export async function POST(
 
   const values = {
     personId: getStringField(formData, "personId"),
-    seasonId: getStringField(formData, "seasonId"),
-    rosterRole: getStringField(formData, "rosterRole"),
+    roleType: getStringField(formData, "roleType"),
   };
 
   if (!scope.databaseReady) {
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, teamId, {
         values,
-        error: scope.errorMessage ?? "Unable to add roster member right now.",
+        error: scope.errorMessage ?? "Unable to assign role right now.",
       }),
       303,
     );
@@ -75,7 +80,7 @@ export async function POST(
     );
   }
 
-  const parsed = rosterMembershipWorkflowSchema.safeParse(values);
+  const parsed = teamRoleAssignmentSchema.safeParse(values);
 
   if (!parsed.success) {
     const fieldErrors = parsed.error.flatten().fieldErrors;
@@ -85,8 +90,7 @@ export async function POST(
         values,
         fieldErrors: {
           personId: fieldErrors.personId?.[0],
-          seasonId: fieldErrors.seasonId?.[0],
-          rosterRole: fieldErrors.rosterRole?.[0],
+          roleType: fieldErrors.roleType?.[0],
         },
         error: "Please correct the highlighted fields.",
       }),
@@ -97,7 +101,7 @@ export async function POST(
   try {
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
-      action: "rosterMembership.create",
+      action: "roleAssignment.create",
       teamId,
     });
 
@@ -117,29 +121,6 @@ export async function POST(
         buildErrorRedirectUrl(request.url, teamId, {
           values,
           error: "Team not found in the selected organization.",
-        }),
-        303,
-      );
-    }
-
-    const seasons = await db.season.findMany({
-      where: {
-        organizationId: scope.organizationId,
-        programId: team.programId,
-      },
-      orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
-    });
-
-    const selectedSeason = seasons.find((season) => season.id === parsed.data.seasonId) ?? null;
-
-    if (!selectedSeason) {
-      return NextResponse.redirect(
-        buildErrorRedirectUrl(request.url, teamId, {
-          values,
-          fieldErrors: {
-            seasonId: "Select a valid season for this team's program.",
-          },
-          error: "Season selection is invalid.",
         }),
         303,
       );
@@ -168,42 +149,42 @@ export async function POST(
       );
     }
 
-    const existingMembership = await db.rosterMembership.findUnique({
+    const existing = await db.roleAssignment.findFirst({
       where: {
-        teamId_seasonId_personId: {
-          teamId: team.id,
-          seasonId: selectedSeason.id,
-          personId: person.id,
-        },
+        organizationId: scope.organizationId,
+        personId: person.id,
+        roleType: parsed.data.roleType,
+        scopeType: ScopeType.TEAM,
+        teamId: team.id,
       },
       select: {
         id: true,
       },
     });
 
-    if (existingMembership) {
+    if (existing) {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, teamId, {
           values,
-          error: `That person is already on this team's ${selectedSeason.name} roster.`,
+          error: "That person already has this role assignment on this team.",
         }),
         303,
       );
     }
 
-    await db.rosterMembership.create({
+    await db.roleAssignment.create({
       data: {
         organizationId: scope.organizationId,
-        teamId: team.id,
-        seasonId: selectedSeason.id,
         personId: person.id,
-        rosterRole: parsed.data.rosterRole,
+        roleType: parsed.data.roleType,
+        scopeType: ScopeType.TEAM,
+        programId: team.programId,
+        teamId: team.id,
       },
     });
 
     const successUrl = new URL(`/teams/${teamId}`, request.url);
-    successUrl.searchParams.set("seasonId", selectedSeason.id);
-    successUrl.searchParams.set("rosterSuccess", "Member added to roster.");
+    successUrl.searchParams.set("roleSuccess", "Role assigned.");
 
     return NextResponse.redirect(successUrl, 303);
   } catch (error) {
@@ -211,7 +192,7 @@ export async function POST(
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, teamId, {
           values,
-          error: "That roster membership already exists.",
+          error: "That role assignment already exists.",
         }),
         303,
       );
@@ -223,8 +204,8 @@ export async function POST(
         error: isPermissionDeniedError(error)
           ? error.message
           : isSchemaUnavailableError(error)
-            ? "Database schema is not available yet. Run database setup before adding roster members."
-            : "Unable to add roster member right now. Please try again.",
+            ? "Database schema is not available yet. Run database setup before assigning roles."
+            : "Unable to assign role right now. Please try again.",
       }),
       303,
     );

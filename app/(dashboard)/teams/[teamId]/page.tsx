@@ -280,6 +280,11 @@ export default async function TeamDetailsPage({
   const inactiveOrUnassignedRoleMembers = team.roles.filter((role) => !selectedSeasonRosterPersonIds.has(role.person.id));
 
   const rosterError = readSearchParam(resolvedSearchParams, "rosterError");
+  const rosterSuccess = readSearchParam(resolvedSearchParams, "rosterSuccess");
+  const roleSuccess = readSearchParam(resolvedSearchParams, "roleSuccess");
+  const teamRoleError = readSearchParam(resolvedSearchParams, "teamRoleError");
+  const teamRolePersonIdError = readSearchParam(resolvedSearchParams, "teamRolePersonIdError");
+  const teamRoleTypeError = readSearchParam(resolvedSearchParams, "teamRoleTypeError");
   const rosterPersonIdError = readSearchParam(resolvedSearchParams, "rosterPersonIdError");
   const rosterSeasonIdError = readSearchParam(resolvedSearchParams, "seasonIdError");
   const rosterRoleError = readSearchParam(resolvedSearchParams, "rosterRoleError");
@@ -289,6 +294,10 @@ export default async function TeamDetailsPage({
     readSearchParam(resolvedSearchParams, "rosterPersonId") || availablePeople[0]?.id || "";
   const selectedRosterRole =
     readSearchParam(resolvedSearchParams, "rosterRole") || RoleType.ATHLETE;
+  const selectedTeamRolePersonId =
+    readSearchParam(resolvedSearchParams, "teamRolePersonId") || organizationPeople[0]?.id || "";
+  const selectedTeamRoleType =
+    (readSearchParam(resolvedSearchParams, "teamRoleType") || RoleType.COACH) as RoleType;
 
   return (
     <section className="space-y-6">
@@ -309,6 +318,18 @@ export default async function TeamDetailsPage({
           Add roster member
         </Link>
       </div>
+
+      {rosterSuccess ? (
+        <div className="rounded-lg border border-green-300 bg-green-50 p-4 dark:border-green-700 dark:bg-green-950/40">
+          <p className="text-sm text-green-900 dark:text-green-200">{rosterSuccess}</p>
+        </div>
+      ) : null}
+
+      {roleSuccess ? (
+        <div className="rounded-lg border border-green-300 bg-green-50 p-4 dark:border-green-700 dark:bg-green-950/40">
+          <p className="text-sm text-green-900 dark:text-green-200">{roleSuccess}</p>
+        </div>
+      ) : null}
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Roster members</h3>
@@ -365,6 +386,7 @@ export default async function TeamDetailsPage({
                   <th className="px-3 py-2 font-medium">Role assignment status</th>
                   <th className="px-3 py-2 font-medium">Member status</th>
                   <th className="px-3 py-2 font-medium">Guardian / relationship status</th>
+                  <th className="px-3 py-2 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -404,6 +426,17 @@ export default async function TeamDetailsPage({
                       <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">{roleAssignmentStatus}</td>
                       <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">Active on selected season roster</td>
                       <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">{guardianStatus}</td>
+                      <td className="px-3 py-2">
+                        <form action={`/teams/${team.id}/roster/${membership.id}/remove`} method="post">
+                          <input type="hidden" name="seasonId" value={selectedSeasonForView?.id ?? ""} />
+                          <button
+                            type="submit"
+                            className="rounded-md border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950/40"
+                          >
+                            Remove
+                          </button>
+                        </form>
+                      </td>
                     </tr>
                   );
                 })}
@@ -444,6 +477,13 @@ export default async function TeamDetailsPage({
         <h3 className="mb-3 text-lg font-medium">Add roster member</h3>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
           Target season: {selectedSeasonForView?.name ?? "No season available"}
+        </p>
+        <p className="mb-3 text-sm text-zinc-500 dark:text-zinc-500">
+          Note: Only existing people can be added here. To create a new person, use the{" "}
+          <Link href="/people/new" className="underline">
+            People section
+          </Link>
+          . Guardian onboarding, member invitations, and bulk import are deferred.
         </p>
 
         {rosterError ? <p className="mb-3 text-sm text-red-600">{rosterError}</p> : null}
@@ -528,20 +568,96 @@ export default async function TeamDetailsPage({
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Team role assignments</h3>
+        {teamRoleError ? <p className="mb-3 text-sm text-red-600">{teamRoleError}</p> : null}
         {team.roles.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No role assignments on this team yet.</p>
         ) : (
           <ul className="space-y-2 text-sm">
             {team.roles.map((role) => (
-              <li key={role.id}>
-                <Link href={`/people/${role.person.id}`} className="underline">
-                  {role.person.firstName} {role.person.lastName}
-                </Link>{" "}
-                · {formatEnumLabel(role.roleType)}
+              <li key={role.id} className="flex flex-wrap items-start justify-between gap-2 border-b pb-2 last:border-b-0 last:pb-0">
+                <span>
+                  <Link href={`/people/${role.person.id}`} className="underline">
+                    {role.person.firstName} {role.person.lastName}
+                  </Link>{" "}
+                  · {formatEnumLabel(role.roleType)}
+                </span>
+                <form action={`/teams/${team.id}/role-assignments/${role.id}/delete`} method="post">
+                  <button
+                    type="submit"
+                    className="rounded-md border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950/40"
+                  >
+                    Remove role
+                  </button>
+                </form>
               </li>
             ))}
           </ul>
         )}
+      </div>
+
+      <div id="assign-team-role" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="mb-3 text-lg font-medium">Assign team role</h3>
+        <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+          Assign a role to an existing person on this team. This creates a team-scoped role assignment.
+        </p>
+        <p className="mb-3 text-sm text-zinc-500 dark:text-zinc-500">
+          Note: Only existing people can be assigned a role. Creating new people, guardian onboarding, and
+          member invitations are deferred.
+        </p>
+
+        {teamRoleError ? <p className="mb-3 text-sm text-red-600">{teamRoleError}</p> : null}
+
+        <form action={`/teams/${team.id}/role-assignments/create`} method="post" className="space-y-3">
+          <div className="space-y-1">
+            <label htmlFor="teamRolePersonId" className="text-sm font-medium">
+              Person
+            </label>
+            <select
+              id="teamRolePersonId"
+              name="personId"
+              defaultValue={selectedTeamRolePersonId}
+              className="w-full rounded-md border px-3 py-2 text-sm"
+            >
+              {organizationPeople.length === 0 ? (
+                <option value="">No people in organization</option>
+              ) : (
+                organizationPeople.map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.firstName} {person.lastName}
+                  </option>
+                ))
+              )}
+            </select>
+            {teamRolePersonIdError ? <p className="text-sm text-red-600">{teamRolePersonIdError}</p> : null}
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="teamRoleType" className="text-sm font-medium">
+              Role type
+            </label>
+            <select
+              id="teamRoleType"
+              name="roleType"
+              defaultValue={selectedTeamRoleType}
+              className="w-full rounded-md border px-3 py-2 text-sm"
+            >
+              {Object.values(RoleType).map((roleType) => (
+                <option key={roleType} value={roleType}>
+                  {formatEnumLabel(roleType)}
+                </option>
+              ))}
+            </select>
+            {teamRoleTypeError ? <p className="text-sm text-red-600">{teamRoleTypeError}</p> : null}
+          </div>
+
+          <button
+            type="submit"
+            disabled={organizationPeople.length === 0}
+            className="rounded-md bg-black px-4 py-2 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          >
+            Assign role
+          </button>
+        </form>
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
