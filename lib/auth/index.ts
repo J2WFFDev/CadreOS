@@ -20,13 +20,14 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
 export async function requireAuthContext(): Promise<AuthContext> {
   const authState = await auth();
+  const userId = authState.userId;
 
-  if (!authState.userId) {
-    authState.redirectToSignIn();
+  if (!userId) {
+    return authState.redirectToSignIn();
   }
 
   return {
-    userId: authState.userId,
+    userId,
     organizationId: authState.orgId ?? null,
   };
 }
