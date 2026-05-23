@@ -10,6 +10,7 @@ const MAX_EVENT_TITLE_LENGTH = 160;
 const MAX_EVENT_LOCATION_LENGTH = 200;
 const MAX_RSVP_REASON_LENGTH = 500;
 const MAX_ATTENDANCE_REASON_CODE_LENGTH = 120;
+const MAX_NOTE_BODY_LENGTH = 4000;
 const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DATETIME_LOCAL_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
 
@@ -281,6 +282,24 @@ export const attendanceWorkflowSchema = z
     reasonCode: value.reasonCode.length === 0 ? null : value.reasonCode,
   }));
 
+export const noteWorkflowSchema = z
+  .object({
+    body: z
+      .string()
+      .trim()
+      .min(1, "Note body is required.")
+      .max(MAX_NOTE_BODY_LENGTH, `Note body must be ${MAX_NOTE_BODY_LENGTH} characters or less.`),
+    athletePersonId: z.string().trim(),
+    teamId: z.string().trim(),
+    eventId: z.string().trim(),
+  })
+  .transform((value) => ({
+    body: value.body,
+    athletePersonId: value.athletePersonId.length === 0 ? null : value.athletePersonId,
+    teamId: value.teamId.length === 0 ? null : value.teamId,
+    eventId: value.eventId.length === 0 ? null : value.eventId,
+  }));
+
 export type PersonWorkflowInput = z.output<typeof personWorkflowSchema>;
 export type TeamWorkflowInput = z.output<typeof teamWorkflowSchema>;
 export type ProgramWorkflowInput = z.output<typeof programWorkflowSchema>;
@@ -290,6 +309,7 @@ export type RoleAssignmentWorkflowInput = z.output<typeof roleAssignmentWorkflow
 export type EventWorkflowInput = z.output<typeof eventWorkflowSchema>;
 export type RsvpWorkflowInput = z.output<typeof rsvpWorkflowSchema>;
 export type AttendanceWorkflowInput = z.output<typeof attendanceWorkflowSchema>;
+export type NoteWorkflowInput = z.output<typeof noteWorkflowSchema>;
 
 export function getStringField(formData: FormData, field: string): string {
   const rawValue = formData.get(field);
@@ -342,6 +362,8 @@ export async function requirePhase1CMutationPermission(input: {
     | "event.update"
     | "rsvp.upsert"
     | "attendance.upsert"
+    | "note.create"
+    | "note.update"
     | "rosterMembership.create"
     | "roleAssignment.create"
     | "roleAssignment.delete";
