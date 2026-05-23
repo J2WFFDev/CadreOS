@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
+import { ReviewFocusPanel } from "@/components/dashboard/review-focus-panel";
 import { db } from "@/lib/db";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -924,6 +925,55 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <>
+          <ReviewFocusPanel
+            title="Operational review at a glance"
+            description="Start here for a lighter review pass before opening the detailed sections below."
+            defaultScope="Dashboard summary uses current organization-scoped task, note, attendance, event, roster, assignment, and FieldOps approval data only."
+            stats={[
+              {
+                label: "Changed recently",
+                value: dashboardData.recentOperationalHistory.length,
+                href: "#recent-operational-history",
+                tone: dashboardData.recentOperationalHistory.length > 0 ? "info" : "neutral",
+                helper: `Last ${RECENT_OPERATIONAL_CHANGE_WINDOW_DAYS} days`,
+              },
+              {
+                label: "Requires attention",
+                value:
+                  dashboardData.counts.staleUnreviewedTasks +
+                  dashboardData.counts.missingResponsibleFollowUps +
+                  dashboardData.counts.teamsWithOperationalGaps,
+                href: "/tasks?resolution=unresolved&ownershipIndicator=stale_unresolved",
+                tone:
+                  dashboardData.counts.staleUnreviewedTasks +
+                    dashboardData.counts.missingResponsibleFollowUps +
+                    dashboardData.counts.teamsWithOperationalGaps >
+                  0
+                    ? "warning"
+                    : "success",
+              },
+              {
+                label: "Unresolved in review lane",
+                value: dashboardData.unresolvedOperationalHistory.length,
+                href: "#unresolved-operational-history",
+                tone: dashboardData.unresolvedOperationalHistory.length > 0 ? "warning" : "success",
+              },
+              {
+                label: "May impact upcoming operations",
+                value: dashboardData.unresolvedEventConcerns.length,
+                href: "/events?operationalIndicator=upcoming_operational_concern",
+                tone: dashboardData.unresolvedEventConcerns.length > 0 ? "danger" : "success",
+              },
+            ]}
+            links={[
+              { label: "Recent changes", href: "#recent-operational-history" },
+              { label: "Unresolved review lane", href: "#unresolved-operational-history" },
+              { label: "Upcoming readiness concerns", href: "/events?operationalIndicator=upcoming_operational_concern" },
+              { label: "Roster / assignment concerns", href: "/teams?readiness=needs_attention" },
+            ]}
+            guidance="These groupings are lightweight review aids. They summarize current workflow data and do not introduce workflow automation, notifications, or predictive prioritization."
+          />
+
           {/* Operational Priority Focus — lightweight triage view of what requires immediate review */}
           <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
             <h3 className="text-base font-medium">Operational priority focus</h3>
@@ -1533,6 +1583,7 @@ export default async function DashboardPage() {
             </div>
 
             <OperationalHistoryPanel
+              id="recent-operational-history"
               title="Recent operational history"
               description="Recent task, note, attendance, event, roster, and assignment changes using current workflow timestamps."
               emptyMessage={`No changes captured in the last ${RECENT_OPERATIONAL_CHANGE_WINDOW_DAYS} days.`}
@@ -1546,6 +1597,7 @@ export default async function DashboardPage() {
               }
             />
             <OperationalHistoryPanel
+              id="unresolved-operational-history"
               title="Unresolved operational history"
               description="Recent unresolved follow-up across existing task, note, attendance, and event workflows."
               emptyMessage="No unresolved recent operational activity is currently flagged."

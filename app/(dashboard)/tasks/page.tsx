@@ -4,6 +4,7 @@ import { Prisma, RoleType, TaskStatus } from "@prisma/client";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { ReviewFocusPanel } from "@/components/dashboard/review-focus-panel";
 import { db } from "@/lib/db";
 import {
   compareFollowUpTasks,
@@ -36,6 +37,19 @@ function readSearchParam(searchParams: SearchParams, key: string): string {
   return value ?? "";
 }
 
+function buildHref(pathname: string, filters: Record<string, string>) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
+
+  const query = params.toString();
+  return query ? `${pathname}?${query}` : pathname;
+}
+
 function deriveTaskTeams(task: {
   sourceEvent: { team: { id: string; name: string } | null } | null;
   sourceNote: {
@@ -62,6 +76,10 @@ function hasTaskResponsibleContext(task: {
   sourceInboxItem: { id: string; category: string; status: string } | null;
 }) {
   return Boolean(task.sourceEvent || task.sourceNote || task.sourceInboxItem);
+}
+
+function isUnresolvedTaskStatus(status: string) {
+  return status === TaskStatus.OPEN || status === TaskStatus.IN_PROGRESS || status === TaskStatus.BLOCKED;
 }
 
 function formatSource(task: {
@@ -407,6 +425,69 @@ export default async function TasksPage({
       return true;
     })
     .sort(compareFollowUpTasks);
+  const unresolvedTaskCount = filteredTasks.filter((task) => isUnresolvedTaskStatus(task.status)).length;
+  const urgentTaskCount = filteredTasks.filter(
+    (task) => isUnresolvedTaskStatus(task.status) && (isTaskOverdue(task, now) || task.status === TaskStatus.BLOCKED),
+  ).length;
+  const staleTaskCount = filteredTasks.filter(
+    (task) => isUnresolvedTaskStatus(task.status) && task.updatedAt.getTime() < staleUnresolvedCutoff.getTime(),
+  ).length;
+  const overdueTaskCount = filteredTasks.filter((task) => isTaskOverdue(task, now)).length;
+  const recentlyChangedTaskCount = filteredTasks.filter(
+    (task) => task.updatedAt.getTime() >= now.getTime() - 24 * 60 * 60 * 1000,
+  ).length;
+  const activeFilterLabels: string[] = [];
+
+  if (statusFilter) {
+    activeFilterLabels.push(`Status: ${formatEnumLabel(statusFilter)}`);
+  }
+  if (assigneePersonIdParam) {
+    const assignee = people.find((person) => person.id === assigneePersonIdParam);
+    if (assignee) {
+      activeFilterLabels.push(`Assignee: ${assignee.firstName} ${assignee.lastName}`);
+    }
+  }
+  if (teamIdParam) {
+    const team = teams.find((value) => value.id === teamIdParam);
+    if (team) {
+      activeFilterLabels.push(`Team: ${team.name}`);
+    }
+  }
+  if (eventIdParam) {
+    const event = events.find((value) => value.id === eventIdParam);
+    if (event) {
+      activeFilterLabels.push(`Event: ${event.title}`);
+    }
+  }
+  if (resolutionFilter !== "all") {
+    activeFilterLabels.push(`Resolution: ${resolutionFilter === "unresolved" ? "Unresolved only" : "Resolved only"}`);
+  }
+  if (dueWindowFilter !== "all") {
+    activeFilterLabels.push(`Due window: ${dueWindowFilter === "overdue" ? "Overdue" : "Upcoming"}`);
+  }
+  if (changedWindowFilter !== "all") {
+    activeFilterLabels.push(
+      `Recently changed: ${changedWindowFilter === "last_24h" ? "Last 24 hours" : "Last 7 days"}`,
+    );
+  }
+  if (ownershipIndicatorFilter) {
+    const labelByFilter: Record<string, string> = {
+      urgent: "Priority: urgent",
+      unresolved_owner_linked: "Priority: unresolved owner-linked",
+      overdue_owner_linked: "Priority: overdue owner-linked",
+      missing_responsible_context: "Priority: missing responsible context",
+      stale_unresolved: "Priority: stale unresolved",
+    };
+    activeFilterLabels.push(labelByFilter[ownershipIndicatorFilter] ?? ownershipIndicatorFilter);
+  }
+  if (canViewGuardianRelationshipDetails && guardianFollowUpFilter) {
+    const labelByFilter: Record<string, string> = {
+      involving_guardian: "Guardian follow-up: may involve guardian",
+      missing_guardian_linkage: "Guardian follow-up: missing linkage",
+    };
+    activeFilterLabels.push(labelByFilter[guardianFollowUpFilter] ?? guardianFollowUpFilter);
+  }
+
   const hasActiveFilters =
     Boolean(statusFilter) ||
     Boolean(assigneePersonIdParam) ||
@@ -417,6 +498,19 @@ export default async function TasksPage({
     changedWindowFilter !== "all" ||
     Boolean(ownershipIndicatorFilter) ||
     (canViewGuardianRelationshipDetails && Boolean(guardianFollowUpFilter));
+  const buildTaskHref = (overrides: Record<string, string>) =>
+    buildHref("/tasks", {
+      status: statusFilter,
+      assigneePersonId: assigneePersonIdParam,
+      teamId: teamIdParam,
+      eventId: eventIdParam,
+      resolution: resolutionFilter === "all" ? "" : resolutionFilter,
+      dueWindow: dueWindowFilter === "all" ? "" : dueWindowFilter,
+      changedWindow: changedWindowFilter === "all" ? "" : changedWindowFilter,
+      ownershipIndicator: ownershipIndicatorFilter,
+      guardianFollowUp: canViewGuardianRelationshipDetails ? guardianFollowUpFilter : "",
+      ...overrides,
+    });
 
   return (
     <section className="space-y-4">
@@ -428,6 +522,60 @@ export default async function TasksPage({
             New task
           </Link>
         }
+      />
+
+      <ReviewFocusPanel
+        title="Operational review focus"
+        description="Keep unresolved, stale, urgent, and recently changed follow-up in one review lane. Current scope is preserved when these quick links are used."
+        activeFilters={activeFilterLabels}
+        defaultScope="No filters are active. Review spans all follow-up tasks in the current organization."
+        stats={[
+          {
+            label: "Tasks in current scope",
+            value: filteredTasks.length,
+            href: hasActiveFilters ? buildTaskHref({}) : "/tasks",
+          },
+          {
+            label: "Unresolved",
+            value: unresolvedTaskCount,
+            href: buildTaskHref({ status: "", resolution: "unresolved" }),
+            tone: unresolvedTaskCount > 0 ? "warning" : "success",
+          },
+          {
+            label: "Urgent",
+            value: urgentTaskCount,
+            href: buildTaskHref({ status: "", resolution: "", ownershipIndicator: "urgent" }),
+            tone: urgentTaskCount > 0 ? "danger" : "success",
+          },
+          {
+            label: "Stale unresolved",
+            value: staleTaskCount,
+            href: buildTaskHref({ status: "", resolution: "unresolved", ownershipIndicator: "stale_unresolved" }),
+            tone: staleTaskCount > 0 ? "warning" : "success",
+          },
+          {
+            label: "Overdue",
+            value: overdueTaskCount,
+            href: buildTaskHref({ status: "", resolution: "", dueWindow: "overdue", ownershipIndicator: "" }),
+            tone: overdueTaskCount > 0 ? "danger" : "neutral",
+          },
+          {
+            label: "Updated in last 24h",
+            value: recentlyChangedTaskCount,
+            href: buildTaskHref({ changedWindow: "last_24h" }),
+            tone: recentlyChangedTaskCount > 0 ? "info" : "neutral",
+          },
+        ]}
+        links={[
+          { label: "Unresolved in current scope", href: buildTaskHref({ status: "", resolution: "unresolved" }) },
+          { label: "Urgent follow-up", href: buildTaskHref({ status: "", resolution: "", ownershipIndicator: "urgent" }) },
+          {
+            label: "Stale unresolved review",
+            href: buildTaskHref({ status: "", resolution: "unresolved", ownershipIndicator: "stale_unresolved" }),
+          },
+          { label: "Recent task changes", href: buildTaskHref({ changedWindow: "last_24h" }) },
+        ]}
+        guidance="Priority and stale indicators are derived from existing status, due date, and updated-at data only. No reminders or automation are introduced."
       />
 
       <form method="get" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">

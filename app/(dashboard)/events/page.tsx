@@ -3,6 +3,7 @@ import Link from "next/link";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { ReviewFocusPanel } from "@/components/dashboard/review-focus-panel";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -32,6 +33,19 @@ function readSearchParam(searchParams: SearchParams, key: string): string {
   }
 
   return value ?? "";
+}
+
+function buildHref(pathname: string, filters: Record<string, string>) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
+
+  const query = params.toString();
+  return query ? `${pathname}?${query}` : pathname;
 }
 
 function formatDateTime(value: Date | null) {
@@ -341,6 +355,104 @@ export default async function EventsPage({
       accountabilityFilter ||
       operationalIndicatorFilter,
   );
+  const activeFilterLabels: string[] = [];
+
+  if (statusFilter) {
+    activeFilterLabels.push(`Status: ${formatEnumLabel(statusFilter)}`);
+  }
+  if (teamIdFilter) {
+    const team = teams.find((value) => value.id === teamIdFilter);
+    if (team) {
+      activeFilterLabels.push(`Team: ${team.name}`);
+    }
+  }
+  if (ownerPersonIdFilter) {
+    const person = people.find((value) => value.id === ownerPersonIdFilter);
+    if (person) {
+      activeFilterLabels.push(`Responsible person: ${person.firstName} ${person.lastName}`);
+    }
+  }
+  if (attendanceFilter) {
+    activeFilterLabels.push(`Attendance: ${getCoverageLabel(attendanceFilter)}`);
+  }
+  if (linkFilter) {
+    const labelByFilter: Record<string, string> = {
+      notes: "Linked context: notes",
+      tasks: "Linked context: tasks",
+      notes_or_tasks: "Linked context: notes or tasks",
+      follow_up_required: "Linked context: follow-up required",
+    };
+    activeFilterLabels.push(labelByFilter[linkFilter] ?? linkFilter);
+  }
+  if (accountabilityFilter) {
+    const labelByFilter: Record<string, string> = {
+      unresolved_follow_up: "Accountability: unresolved follow-up",
+      missing_responsible_team: "Accountability: missing responsible team",
+    };
+    activeFilterLabels.push(labelByFilter[accountabilityFilter] ?? accountabilityFilter);
+  }
+  if (operationalIndicatorFilter) {
+    const labelByFilter: Record<string, string> = {
+      recently_active: "Operational indicator: recently active",
+      stale: "Operational indicator: stale",
+      needs_review: "Operational indicator: needs review",
+      unresolved_too_long: "Operational indicator: unresolved too long",
+      upcoming_operational_concern: "Operational indicator: upcoming concern",
+      upcoming_operational_risk: "Operational indicator: upcoming risk",
+      attendance_not_reviewed_recently: "Operational indicator: attendance not reviewed recently",
+    };
+    activeFilterLabels.push(labelByFilter[operationalIndicatorFilter] ?? operationalIndicatorFilter);
+  }
+
+  const eventReviewEntries = displayedEvents.map((event) => {
+    const now = new Date();
+    const staleConcernCutoff = new Date(now.getTime() - STALE_CONCERN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    const recentActivityCutoff = new Date(now.getTime() - RECENT_ACTIVITY_WINDOW_HOURS * 60 * 60 * 1000);
+    const upcomingConcernCutoff = new Date(now.getTime() + UPCOMING_CONCERN_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
+    const upcomingRiskCutoff = new Date(now.getTime() + UPCOMING_RISK_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
+    const attendanceReviewStaleCutoff = new Date(now.getTime() - ATTENDANCE_REVIEW_STALE_DAYS * 24 * 60 * 60 * 1000);
+    const expectedAttendanceCount = new Set(event.team?.roster.map((membership) => membership.personId) ?? []).size;
+    const capturedAttendanceCount = event._count.attendance;
+    const missingAttendanceCount = Math.max(expectedAttendanceCount - capturedAttendanceCount, 0);
+    const openTaskCount = event.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
+    const followUpRequired = missingAttendanceCount > 0 || openTaskCount > 0;
+    const attendanceNotReviewedRecently =
+      expectedAttendanceCount > 0 &&
+      missingAttendanceCount > 0 &&
+      event.startsAt.getTime() < attendanceReviewStaleCutoff.getTime();
+
+    return {
+      followUpRequired,
+      attendanceNotReviewedRecently,
+      recentlyActive: event.updatedAt.getTime() >= recentActivityCutoff.getTime(),
+      stale: followUpRequired && event.updatedAt.getTime() < staleConcernCutoff.getTime(),
+      upcomingOperationalConcern:
+        followUpRequired &&
+        event.startsAt.getTime() >= now.getTime() &&
+        event.startsAt.getTime() <= upcomingConcernCutoff.getTime(),
+      upcomingOperationalRisk:
+        followUpRequired &&
+        event.startsAt.getTime() >= now.getTime() &&
+        event.startsAt.getTime() <= upcomingRiskCutoff.getTime(),
+    };
+  });
+  const followUpRequiredCount = eventReviewEntries.filter((entry) => entry.followUpRequired).length;
+  const staleEventCount = eventReviewEntries.filter((entry) => entry.stale).length;
+  const recentEventCount = eventReviewEntries.filter((entry) => entry.recentlyActive).length;
+  const upcomingConcernCount = eventReviewEntries.filter((entry) => entry.upcomingOperationalConcern).length;
+  const upcomingRiskCount = eventReviewEntries.filter((entry) => entry.upcomingOperationalRisk).length;
+  const attendanceReviewCount = eventReviewEntries.filter((entry) => entry.attendanceNotReviewedRecently).length;
+  const buildEventsHref = (overrides: Record<string, string>) =>
+    buildHref("/events", {
+      status: statusFilter,
+      teamId: teamIdFilter,
+      ownerPersonId: ownerPersonIdFilter,
+      attendance: attendanceFilter,
+      links: linkFilter,
+      accountability: accountabilityFilter,
+      operationalIndicator: operationalIndicatorFilter,
+      ...overrides,
+    });
 
   return (
     <section className="space-y-4">
@@ -352,6 +464,66 @@ export default async function EventsPage({
             New event
           </Link>
         }
+      />
+
+      <ReviewFocusPanel
+        title="Operational review focus"
+        description="Review events by unresolved follow-up, attendance coverage, recent change, and upcoming readiness risk while preserving the current event scope."
+        activeFilters={activeFilterLabels}
+        defaultScope="No filters are active. Review spans all events in the current organization."
+        stats={[
+          {
+            label: "Events in current scope",
+            value: displayedEvents.length,
+            href: hasActiveFilters ? buildEventsHref({}) : "/events",
+          },
+          {
+            label: "Unresolved follow-up",
+            value: followUpRequiredCount,
+            href: buildEventsHref({ links: "follow_up_required", accountability: "unresolved_follow_up" }),
+            tone: followUpRequiredCount > 0 ? "warning" : "success",
+          },
+          {
+            label: "Attendance review",
+            value: attendanceReviewCount,
+            href: buildEventsHref({ operationalIndicator: "attendance_not_reviewed_recently" }),
+            tone: attendanceReviewCount > 0 ? "danger" : "success",
+          },
+          {
+            label: "Upcoming risk",
+            value: upcomingRiskCount,
+            href: buildEventsHref({ operationalIndicator: "upcoming_operational_risk" }),
+            tone: upcomingRiskCount > 0 ? "danger" : "success",
+          },
+          {
+            label: "Upcoming concern",
+            value: upcomingConcernCount,
+            href: buildEventsHref({ operationalIndicator: "upcoming_operational_concern" }),
+            tone: upcomingConcernCount > 0 ? "warning" : "neutral",
+          },
+          {
+            label: "Recently active",
+            value: recentEventCount,
+            href: buildEventsHref({ operationalIndicator: "recently_active" }),
+            tone: recentEventCount > 0 ? "info" : "neutral",
+          },
+          {
+            label: "Stale",
+            value: staleEventCount,
+            href: buildEventsHref({ operationalIndicator: "stale" }),
+            tone: staleEventCount > 0 ? "warning" : "neutral",
+          },
+        ]}
+        links={[
+          {
+            label: "Unresolved follow-up in current scope",
+            href: buildEventsHref({ links: "follow_up_required", accountability: "unresolved_follow_up" }),
+          },
+          { label: "Attendance review lane", href: buildEventsHref({ operationalIndicator: "attendance_not_reviewed_recently" }) },
+          { label: "Upcoming risk lane", href: buildEventsHref({ operationalIndicator: "upcoming_operational_risk" }) },
+          { label: "Recent event changes", href: buildEventsHref({ operationalIndicator: "recently_active" }) },
+        ]}
+        guidance="Event readiness cues are derived from existing event timing, attendance capture, and linked task data only. No orchestration, reminders, or notifications are added."
       />
 
       <form method="GET" className="rounded-lg border bg-white p-3 dark:bg-zinc-900">

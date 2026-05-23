@@ -4,6 +4,7 @@ import { ScopeType } from "@prisma/client";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { ReviewFocusPanel } from "@/components/dashboard/review-focus-panel";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { selectSeededOrCurrentSeason } from "@/lib/workflows";
@@ -22,6 +23,19 @@ function readSearchParam(searchParams: SearchParams, key: string): string {
   }
 
   return value ?? "";
+}
+
+function buildHref(pathname: string, filters: Record<string, string>) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
+
+  const query = params.toString();
+  return query ? `${pathname}?${query}` : pathname;
 }
 
 export default async function TeamsPage({
@@ -145,6 +159,93 @@ export default async function TeamsPage({
   const now = new Date();
   const staleGapCutoff = new Date(now.getTime() - STALE_TEAM_GAP_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const recentActivityCutoff = new Date(now.getTime() - RECENT_TEAM_ACTIVITY_WINDOW_HOURS * 60 * 60 * 1000);
+  const teamEntries = teams.map((team) => {
+    const selectedSeason = selectSeededOrCurrentSeason(team.program.seasons);
+    const seasonRoster = selectedSeason
+      ? team.roster.filter((membership) => membership.seasonId === selectedSeason.id)
+      : [];
+    const athleteRosterCount = seasonRoster.filter((membership) => membership.rosterRole === "ATHLETE").length;
+    const seasonRosterPersonIds = new Set(seasonRoster.map((membership) => membership.personId));
+    const roleAssignmentPersonIds = new Set(team.roles.map((role) => role.personId));
+    const roleAssignmentGapCount = [...seasonRosterPersonIds].filter(
+      (personId) => !roleAssignmentPersonIds.has(personId),
+    ).length;
+    const inactiveRoleAssignmentCount = team.roles.filter((role) => !seasonRosterPersonIds.has(role.personId)).length;
+    const hasRosterGap = seasonRoster.length === 0;
+    const needsAttention = hasRosterGap || roleAssignmentGapCount > 0 || inactiveRoleAssignmentCount > 0;
+    const stale = needsAttention && team.updatedAt.getTime() < staleGapCutoff.getTime();
+    const recentlyActive = team.updatedAt.getTime() >= recentActivityCutoff.getTime();
+    const unresolvedTooLong = needsAttention && stale;
+
+    return {
+      team,
+      selectedSeason,
+      seasonRoster,
+      athleteRosterCount,
+      roleAssignmentGapCount,
+      inactiveRoleAssignmentCount,
+      needsAttention,
+      hasRosterGap,
+      stale,
+      recentlyActive,
+      unresolvedTooLong,
+    };
+  });
+  const filteredTeamEntries = teamEntries.filter((entry) => {
+    if (readinessFilter === "needs_attention" && !entry.needsAttention) {
+      return false;
+    }
+    if (readinessFilter === "operationally_clear" && entry.needsAttention) {
+      return false;
+    }
+    if (assignmentSignalFilter === "role_assignment_gap" && entry.roleAssignmentGapCount === 0) {
+      return false;
+    }
+    if (
+      assignmentSignalFilter === "inactive_or_unassigned_roles" &&
+      entry.inactiveRoleAssignmentCount === 0
+    ) {
+      return false;
+    }
+    if (operationalIndicatorFilter === "recently_active" && !entry.recentlyActive) {
+      return false;
+    }
+    if (operationalIndicatorFilter === "stale" && !entry.stale) {
+      return false;
+    }
+    if (operationalIndicatorFilter === "needs_review" && !entry.needsAttention) {
+      return false;
+    }
+    if (operationalIndicatorFilter === "unresolved_too_long" && !entry.unresolvedTooLong) {
+      return false;
+    }
+    return true;
+  });
+  const activeFilterLabels: string[] = [];
+  if (readinessFilter !== "all") {
+    activeFilterLabels.push(
+      `Readiness: ${readinessFilter === "needs_attention" ? "Needs attention" : "Operationally clear"}`,
+    );
+  }
+  if (assignmentSignalFilter !== "all") {
+    activeFilterLabels.push(
+      `Assignment signal: ${
+        assignmentSignalFilter === "role_assignment_gap"
+          ? "Roster role-assignment gaps"
+          : "Inactive/unassigned role assignments"
+      }`,
+    );
+  }
+  if (operationalIndicatorFilter !== "all") {
+    activeFilterLabels.push(`Operational indicator: ${operationalIndicatorFilter.replaceAll("_", " ")}`);
+  }
+  const buildTeamsHref = (overrides: Record<string, string>) =>
+    buildHref("/teams", {
+      readiness: readinessFilter === "all" ? "" : readinessFilter,
+      assignmentSignal: assignmentSignalFilter === "all" ? "" : assignmentSignalFilter,
+      operationalIndicator: operationalIndicatorFilter === "all" ? "" : operationalIndicatorFilter,
+      ...overrides,
+    });
 
   return (
     <section className="space-y-4">
@@ -156,6 +257,57 @@ export default async function TeamsPage({
             New team
           </Link>
         }
+      />
+
+      <ReviewFocusPanel
+        title="Operational review focus"
+        description="Review team roster and assignment readiness in one place, with quick links that preserve the current team review scope."
+        activeFilters={activeFilterLabels}
+        defaultScope="No filters are active. Review spans all teams in the current organization."
+        stats={[
+          {
+            label: "Teams in current scope",
+            value: filteredTeamEntries.length,
+            href: activeFilterLabels.length > 0 ? buildTeamsHref({}) : "/teams",
+          },
+          {
+            label: "Need attention",
+            value: filteredTeamEntries.filter((entry) => entry.needsAttention).length,
+            href: buildTeamsHref({ readiness: "needs_attention" }),
+            tone: filteredTeamEntries.some((entry) => entry.needsAttention) ? "warning" : "success",
+          },
+          {
+            label: "Stale",
+            value: filteredTeamEntries.filter((entry) => entry.stale).length,
+            href: buildTeamsHref({ operationalIndicator: "stale" }),
+            tone: filteredTeamEntries.some((entry) => entry.stale) ? "warning" : "neutral",
+          },
+          {
+            label: "Unresolved too long",
+            value: filteredTeamEntries.filter((entry) => entry.unresolvedTooLong).length,
+            href: buildTeamsHref({ operationalIndicator: "unresolved_too_long" }),
+            tone: filteredTeamEntries.some((entry) => entry.unresolvedTooLong) ? "danger" : "success",
+          },
+          {
+            label: "Role-assignment gaps",
+            value: filteredTeamEntries.reduce((count, entry) => count + entry.roleAssignmentGapCount, 0),
+            href: buildTeamsHref({ assignmentSignal: "role_assignment_gap" }),
+            tone: filteredTeamEntries.some((entry) => entry.roleAssignmentGapCount > 0) ? "warning" : "success",
+          },
+          {
+            label: "Recently active",
+            value: filteredTeamEntries.filter((entry) => entry.recentlyActive).length,
+            href: buildTeamsHref({ operationalIndicator: "recently_active" }),
+            tone: filteredTeamEntries.some((entry) => entry.recentlyActive) ? "info" : "neutral",
+          },
+        ]}
+        links={[
+          { label: "Needs attention", href: buildTeamsHref({ readiness: "needs_attention" }) },
+          { label: "Role-assignment gaps", href: buildTeamsHref({ assignmentSignal: "role_assignment_gap" }) },
+          { label: "Stale readiness gaps", href: buildTeamsHref({ operationalIndicator: "stale" }) },
+          { label: "Recent team changes", href: buildTeamsHref({ operationalIndicator: "recently_active" }) },
+        ]}
+        guidance="Team readiness signals are derived from selected-season roster membership, existing role assignments, and team update timestamps. Automation and invitations remain deferred."
       />
 
       {teams.length === 0 ? (
@@ -219,71 +371,7 @@ export default async function TeamsPage({
             </div>
           </form>
           <div className="grid gap-3 sm:grid-cols-2">
-            {teams
-              .map((team) => {
-                const selectedSeason = selectSeededOrCurrentSeason(team.program.seasons);
-                const seasonRoster = selectedSeason
-                  ? team.roster.filter((membership) => membership.seasonId === selectedSeason.id)
-                  : [];
-                const athleteRosterCount = seasonRoster.filter((membership) => membership.rosterRole === "ATHLETE").length;
-                const seasonRosterPersonIds = new Set(seasonRoster.map((membership) => membership.personId));
-                const roleAssignmentPersonIds = new Set(team.roles.map((role) => role.personId));
-                const roleAssignmentGapCount = [...seasonRosterPersonIds].filter(
-                  (personId) => !roleAssignmentPersonIds.has(personId),
-                ).length;
-                const inactiveRoleAssignmentCount = team.roles.filter(
-                  (role) => !seasonRosterPersonIds.has(role.personId),
-                ).length;
-                const hasRosterGap = seasonRoster.length === 0;
-                const needsAttention = hasRosterGap || roleAssignmentGapCount > 0 || inactiveRoleAssignmentCount > 0;
-                const stale = needsAttention && team.updatedAt.getTime() < staleGapCutoff.getTime();
-                const recentlyActive = team.updatedAt.getTime() >= recentActivityCutoff.getTime();
-                const unresolvedTooLong = needsAttention && stale;
-                return {
-                  team,
-                  selectedSeason,
-                  seasonRoster,
-                  athleteRosterCount,
-                  roleAssignmentGapCount,
-                  inactiveRoleAssignmentCount,
-                  needsAttention,
-                  hasRosterGap,
-                  stale,
-                  recentlyActive,
-                  unresolvedTooLong,
-                };
-              })
-              .filter((entry) => {
-                if (readinessFilter === "needs_attention" && !entry.needsAttention) {
-                  return false;
-                }
-                if (readinessFilter === "operationally_clear" && entry.needsAttention) {
-                  return false;
-                }
-                if (assignmentSignalFilter === "role_assignment_gap" && entry.roleAssignmentGapCount === 0) {
-                  return false;
-                }
-                if (
-                  assignmentSignalFilter === "inactive_or_unassigned_roles" &&
-                  entry.inactiveRoleAssignmentCount === 0
-                ) {
-                  return false;
-                }
-                if (operationalIndicatorFilter === "recently_active" && !entry.recentlyActive) {
-                  return false;
-                }
-                if (operationalIndicatorFilter === "stale" && !entry.stale) {
-                  return false;
-                }
-                if (operationalIndicatorFilter === "needs_review" && !entry.needsAttention) {
-                  return false;
-                }
-                if (operationalIndicatorFilter === "unresolved_too_long" && !entry.unresolvedTooLong) {
-                  return false;
-                }
-                return true;
-              })
-              .map((entry) => (
+            {filteredTeamEntries.map((entry) => (
                 <div key={entry.team.id} className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <Link href={`/teams/${entry.team.id}`} className="text-base font-medium underline">

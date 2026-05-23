@@ -429,6 +429,9 @@ export default async function PersonDetailsPage({
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-lg font-medium">Operational relationship summary</h3>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Use this summary to see unresolved person-linked work, recent attendance context, and upcoming event impact in one place.
+        </p>
         <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
           <div>
             <dt className="font-medium">Related notes</dt>
@@ -465,14 +468,23 @@ export default async function PersonDetailsPage({
           <Link href={`/notes?athletePersonId=${person.id}`} className="rounded-full border px-2 py-1">
             Person notes
           </Link>
+          <Link href={`/notes?athletePersonId=${person.id}&readinessIndicator=needs_review`} className="rounded-full border px-2 py-1">
+            Notes needing review
+          </Link>
           <Link href={`/tasks?assigneePersonId=${person.id}&resolution=unresolved`} className="rounded-full border px-2 py-1">
             Unresolved person tasks
+          </Link>
+          <Link href={`/tasks?assigneePersonId=${person.id}&ownershipIndicator=stale_unresolved`} className="rounded-full border px-2 py-1">
+            Stale unresolved tasks
           </Link>
           <Link href={`/events?ownerPersonId=${person.id}`} className="rounded-full border px-2 py-1">
             Person-created events
           </Link>
           <Link href={`/tasks?assigneePersonId=${person.id}&changedWindow=last_7d`} className="rounded-full border px-2 py-1">
             Recent related activity
+          </Link>
+          <Link href="#operational-history" className="rounded-full border px-2 py-1">
+            Person change history
           </Link>
         </div>
         {relatedAttendance.length > 0 ? (
