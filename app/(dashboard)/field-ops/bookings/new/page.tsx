@@ -314,7 +314,7 @@ export default async function NewFieldOpsBookingRequestPage({
 
           <p className="text-xs text-zinc-600 dark:text-zinc-400">
             New requests run an immediate precheck for active facility/resource and booking conflicts. Approval/deny actions
-            are added in a later phase.
+            are available from booking details.
           </p>
 
           <FormActions submitLabel="Create booking request" cancelHref="/field-ops/bookings" />

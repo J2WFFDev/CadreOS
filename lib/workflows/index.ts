@@ -497,6 +497,8 @@ export async function requirePhase1CMutationPermission(input: {
     | "task.create"
     | "task.update"
     | "booking.create"
+    | "booking.approve"
+    | "booking.deny"
     | "rosterMembership.create"
     | "roleAssignment.create"
     | "roleAssignment.delete";

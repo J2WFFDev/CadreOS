@@ -21,7 +21,9 @@ type SupportedAction =
   | "note.update"
   | "task.create"
   | "task.update"
-  | "booking.create";
+  | "booking.create"
+  | "booking.approve"
+  | "booking.deny";
 
 type PermissionReason =
   | "UNAUTHENTICATED"
@@ -57,6 +59,8 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "task.create",
     "task.update",
     "booking.create",
+    "booking.approve",
+    "booking.deny",
   ]),
   [RoleType.PROGRAM_DIRECTOR]: new Set<SupportedAction>([
     "season.create",
@@ -72,6 +76,8 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "task.create",
     "task.update",
     "booking.create",
+    "booking.approve",
+    "booking.deny",
   ]),
   [RoleType.COACH]: new Set<SupportedAction>([
     "rosterMembership.create",
@@ -110,6 +116,8 @@ const SCOPED_ACTIONS = new Set<SupportedAction>([
   "task.create",
   "task.update",
   "booking.create",
+  "booking.approve",
+  "booking.deny",
 ]);
 
 const SUPPORTED_ACTIONS = new Set<SupportedAction>([
@@ -132,6 +140,8 @@ const SUPPORTED_ACTIONS = new Set<SupportedAction>([
   "task.create",
   "task.update",
   "booking.create",
+  "booking.approve",
+  "booking.deny",
 ]);
 
 export type PermissionCheckInput = {
@@ -354,7 +364,15 @@ async function resolvePermissionDecision(input: PermissionCheckInput): Promise<P
   const scope = await resolvePermissionScope(input);
   const requiresScope = SCOPED_ACTIONS.has(action);
 
-  if (requiresScope && !scope.programId && !scope.teamId) {
+  const hasOrganizationAdminOverride = assignments.some((assignment) => {
+    if (assignment.roleType !== RoleType.ORGANIZATION_ADMIN || assignment.scopeType !== ScopeType.ORGANIZATION) {
+      return false;
+    }
+
+    return STAFF_ACTIONS_BY_ROLE[assignment.roleType].has(action);
+  });
+
+  if (requiresScope && !scope.programId && !scope.teamId && !hasOrganizationAdminOverride) {
     return {
       allowed: false,
       reason: "INSUFFICIENT_ROLE",

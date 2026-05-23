@@ -20,6 +20,22 @@ type BookingCardProps = {
   };
 };
 
+function getApprovalBadgeClass(approvalStatus: string) {
+  if (approvalStatus === "APPROVED") {
+    return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200";
+  }
+
+  if (approvalStatus === "DENIED") {
+    return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200";
+  }
+
+  if (approvalStatus === "PENDING") {
+    return "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200";
+  }
+
+  return "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200";
+}
+
 function renderLinkedContext(booking: BookingCardProps["booking"]) {
   if (!booking.program && !booking.team && !booking.event) {
     return <span>—</span>;
@@ -68,9 +84,14 @@ export function BookingCard({ booking }: BookingCardProps) {
             </Link>
           </p>
         </div>
-        <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-          {formatFieldOpsEnum(booking.status)}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+            Status: {formatFieldOpsEnum(booking.status)}
+          </span>
+          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getApprovalBadgeClass(booking.approvalStatus)}`}>
+            Approval: {formatFieldOpsEnum(booking.approvalStatus)}
+          </span>
+        </div>
       </div>
 
       {hasConflictWarning ? (
