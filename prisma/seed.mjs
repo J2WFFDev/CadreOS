@@ -1,4 +1,4 @@
-import { PrismaClient, RelationshipType, RoleType, ScopeType } from "@prisma/client";
+import { PrismaClient, RelationshipType, RoleType, ScopeType, FacilityStatus, ResourceStatus, ResourceType } from "@prisma/client";
 
 const db = new PrismaClient();
 
@@ -262,6 +262,51 @@ async function main() {
       seasonId: season.id,
       personId: athlete.id,
       rosterRole: RoleType.ATHLETE,
+    },
+  });
+
+  // FieldOps demo data (Phase 6C)
+  const demoFacility = await db.facility.upsert({
+    where: { id: "cadreos-demo-facility" },
+    update: { name: "Demo Range Complex" },
+    create: {
+      id: "cadreos-demo-facility",
+      organizationId: organization.id,
+      name: "Demo Range Complex",
+      description: "Primary range facility for the demo organization",
+      city: "Demo City",
+      state: "TX",
+      status: FacilityStatus.ACTIVE,
+    },
+  });
+
+  await db.facilityResource.upsert({
+    where: { id: "cadreos-demo-resource-bay-a" },
+    update: { name: "Bay A" },
+    create: {
+      id: "cadreos-demo-resource-bay-a",
+      organizationId: organization.id,
+      facilityId: demoFacility.id,
+      name: "Bay A",
+      resourceType: ResourceType.BAY,
+      description: "Standard range bay — 25 yards",
+      capacity: 4,
+      status: ResourceStatus.ACTIVE,
+    },
+  });
+
+  await db.facilityResource.upsert({
+    where: { id: "cadreos-demo-resource-bay-b" },
+    update: { name: "Bay B" },
+    create: {
+      id: "cadreos-demo-resource-bay-b",
+      organizationId: organization.id,
+      facilityId: demoFacility.id,
+      name: "Bay B",
+      resourceType: ResourceType.BAY,
+      description: "Standard range bay — 50 yards",
+      capacity: 4,
+      status: ResourceStatus.ACTIVE,
     },
   });
 }
