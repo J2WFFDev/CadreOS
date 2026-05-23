@@ -1,8 +1,15 @@
 import Link from "next/link";
+import { RoleType } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
 import { formatDateTime, formatEnumLabel, getTaskStatusBadgeClassName, isTaskOverdue } from "@/lib/follow-up-tasks";
+import {
+  deriveGuardianOperationalContext,
+  formatGuardianFollowUpDependency,
+  formatGuardianOperationalIndicator,
+} from "@/lib/guardian-operational-context";
+import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -49,12 +56,34 @@ export default async function TaskDetailPage({
         dueAt: Date | null;
         assignee: { id: string; firstName: string; lastName: string };
         createdBy: { id: string; firstName: string; lastName: string };
-        sourceNote: { id: string; body: string } | null;
+        sourceNote:
+          | {
+              id: string;
+              body: string;
+              athlete: {
+                id: string;
+                firstName: string;
+                lastName: string;
+                athleteLinks?: Array<{
+                  id: string;
+                  guardian: {
+                    _count: { userAccounts: number };
+                    roles: Array<{ id: string }>;
+                  };
+                }>;
+              } | null;
+            }
+          | null;
         sourceEvent: { id: string; title: string } | null;
         sourceInboxItem: { id: string; category: string; status: string } | null;
       }
     | null = null;
   let queryErrorMessage = "Unable to load task details right now. Please try again later.";
+  const guardianAccess = await resolveGuardianRelationshipAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const canViewGuardianRelationshipDetails = guardianAccess.canViewGuardianRelationshipDetails;
 
   try {
     task = await db.followUpTask.findFirst({
@@ -70,7 +99,38 @@ export default async function TaskDetailPage({
         dueAt: true,
         assignee: { select: { id: true, firstName: true, lastName: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true } },
-        sourceNote: { select: { id: true, body: true } },
+        sourceNote: {
+          select: {
+            id: true,
+            body: true,
+            athlete: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                athleteLinks: {
+                  where: { organizationId: scope.organizationId },
+                  select: {
+                    id: true,
+                    guardian: {
+                      select: {
+                        _count: { select: { userAccounts: true } },
+                        roles: {
+                          where: {
+                            organizationId: scope.organizationId,
+                            roleType: RoleType.PARENT_GUARDIAN,
+                          },
+                          select: { id: true },
+                          take: 1,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         sourceEvent: { select: { id: true, title: true } },
         sourceInboxItem: { select: { id: true, category: true, status: true } },
       },
@@ -102,6 +162,10 @@ export default async function TaskDetailPage({
   }
 
   const isOverdue = isTaskOverdue(task);
+  const sourceAthleteGuardianContext =
+    canViewGuardianRelationshipDetails && task.sourceNote?.athlete
+      ? deriveGuardianOperationalContext(task.sourceNote.athlete.athleteLinks ?? [])
+      : null;
 
   return (
     <section className="space-y-6">
@@ -165,6 +229,33 @@ export default async function TaskDetailPage({
                 </Link>
               ) : (
                 "—"
+              )}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="font-medium">Source note athlete</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {task.sourceNote?.athlete ? (
+                <Link href={`/people/${task.sourceNote.athlete.id}`} className="underline">
+                  {task.sourceNote.athlete.firstName} {task.sourceNote.athlete.lastName}
+                </Link>
+              ) : (
+                "—"
+              )}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="font-medium">Guardian context</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {!task.sourceNote?.athlete ? (
+                "—"
+              ) : sourceAthleteGuardianContext ? (
+                <span>
+                  {formatGuardianOperationalIndicator(sourceAthleteGuardianContext)} ·{" "}
+                  {formatGuardianFollowUpDependency(sourceAthleteGuardianContext)}
+                </span>
+              ) : (
+                "Staff-only"
               )}
             </dd>
           </div>

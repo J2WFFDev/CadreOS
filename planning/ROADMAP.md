@@ -137,6 +137,24 @@ This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the
 - Unified Entry runtime migration.
 - FieldOps expansion.
 
+## Phase 8B output summary (implemented operational context slice)
+
+- Team/Member roster workflows now include additional low-risk staff-facing guardian-context filters for:
+  - athletes missing guardian linkage
+  - inactive guardian account signals
+  - pending/incomplete relationship support
+- Notes and FollowUpTask list/detail workflows now surface guardian-aware operational context for athlete-linked records while preserving staff-gated visibility controls.
+- Task creation now provides source-note guardian context signals to improve operational follow-up decisions without adding communication features.
+- Relationship visibility between ObservationNote, FollowUpTask, athlete/person records, and guardian relationship state is improved using existing models and organization-scoped reads.
+
+### Still deferred after 8B
+
+- Messaging/DM/notification workflows and guardian communication channels.
+- Parent/guardian portal runtime and onboarding/invitation flows.
+- Consent and attendance approval workflows.
+- Entry/Inbox/Feed runtime migration and unified Entry implementation.
+- FieldOps runtime expansion.
+
 ---
 
 ## PR Summary (directional)

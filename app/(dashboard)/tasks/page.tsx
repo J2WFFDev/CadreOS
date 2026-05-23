@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TaskStatus } from "@prisma/client";
+import { Prisma, RoleType, TaskStatus } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
@@ -12,6 +12,12 @@ import {
   getTaskStatusBadgeClassName,
   isTaskOverdue,
 } from "@/lib/follow-up-tasks";
+import {
+  deriveGuardianOperationalContext,
+  formatGuardianFollowUpDependency,
+  formatGuardianOperationalIndicator,
+} from "@/lib/guardian-operational-context";
+import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -87,6 +93,7 @@ export default async function TasksPage({
   const assigneePersonIdParam = readSearchParam(resolvedSearchParams, "assigneePersonId");
   const teamIdParam = readSearchParam(resolvedSearchParams, "teamId");
   const dueWindowParam = readSearchParam(resolvedSearchParams, "dueWindow");
+  const guardianFollowUpParam = readSearchParam(resolvedSearchParams, "guardianFollowUp");
   const statusFilter = Object.values(TaskStatus).includes(statusParam as TaskStatus)
     ? (statusParam as TaskStatus)
     : "";
@@ -94,6 +101,10 @@ export default async function TasksPage({
     dueWindowParam === "overdue" || dueWindowParam === "upcoming" || dueWindowParam === "all"
       ? dueWindowParam
       : "all";
+  const guardianFollowUpFilter =
+    guardianFollowUpParam === "involving_guardian" || guardianFollowUpParam === "missing_guardian_linkage"
+      ? guardianFollowUpParam
+      : "";
 
   if (!scope.databaseReady) {
     return (
@@ -115,6 +126,12 @@ export default async function TasksPage({
     );
   }
 
+  const guardianAccess = await resolveGuardianRelationshipAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const canViewGuardianRelationshipDetails = guardianAccess.canViewGuardianRelationshipDetails;
+
   let tasks:
     | Array<{
         id: string;
@@ -127,6 +144,20 @@ export default async function TasksPage({
           id: string;
           body: string;
           team: { id: string; name: string } | null;
+          athlete:
+            | {
+                id: string;
+                firstName: string;
+                lastName: string;
+                athleteLinks?: Array<{
+                  id: string;
+                  guardian: {
+                    _count: { userAccounts: number };
+                    roles: Array<{ id: string }>;
+                  };
+                }>;
+              }
+            | null;
           event: { team: { id: string; name: string } | null } | null;
         } | null;
         sourceEvent: { id: string; title: string; team: { id: string; name: string } | null } | null;
@@ -138,10 +169,42 @@ export default async function TasksPage({
   let queryErrorMessage = "Unable to load tasks right now. Please try again later.";
 
   try {
-    const where = {
+    const where: Prisma.FollowUpTaskWhereInput = {
       organizationId: scope.organizationId,
       ...(statusFilter ? { status: statusFilter } : {}),
       ...(assigneePersonIdParam ? { assigneePersonId: assigneePersonIdParam } : {}),
+      ...(canViewGuardianRelationshipDetails && guardianFollowUpFilter === "involving_guardian"
+        ? {
+            sourceNote: {
+              is: {
+                athletePersonId: { not: null },
+                athlete: {
+                  athleteLinks: {
+                    some: {
+                      organizationId: scope.organizationId,
+                    },
+                  },
+                },
+              },
+            },
+          }
+        : {}),
+      ...(canViewGuardianRelationshipDetails && guardianFollowUpFilter === "missing_guardian_linkage"
+        ? {
+            sourceNote: {
+              is: {
+                athletePersonId: { not: null },
+                athlete: {
+                  athleteLinks: {
+                    none: {
+                      organizationId: scope.organizationId,
+                    },
+                  },
+                },
+              },
+            },
+          }
+        : {}),
     };
 
     [tasks, people, teams] = await Promise.all([
@@ -159,6 +222,32 @@ export default async function TasksPage({
               id: true,
               body: true,
               team: { select: { id: true, name: true } },
+              athlete: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  athleteLinks: {
+                    where: { organizationId: scope.organizationId },
+                    select: {
+                      id: true,
+                      guardian: {
+                        select: {
+                          _count: { select: { userAccounts: true } },
+                          roles: {
+                            where: {
+                              organizationId: scope.organizationId,
+                              roleType: RoleType.PARENT_GUARDIAN,
+                            },
+                            select: { id: true },
+                            take: 1,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
               event: { select: { team: { select: { id: true, name: true } } } },
             },
           },
@@ -225,7 +314,11 @@ export default async function TasksPage({
     })
     .sort(compareFollowUpTasks);
   const hasActiveFilters =
-    Boolean(statusFilter) || Boolean(assigneePersonIdParam) || Boolean(teamIdParam) || dueWindowFilter !== "all";
+    Boolean(statusFilter) ||
+    Boolean(assigneePersonIdParam) ||
+    Boolean(teamIdParam) ||
+    dueWindowFilter !== "all" ||
+    (canViewGuardianRelationshipDetails && Boolean(guardianFollowUpFilter));
 
   return (
     <section className="space-y-4">
@@ -240,7 +333,7 @@ export default async function TasksPage({
       />
 
       <form method="get" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-5">
           <div className="space-y-1">
             <label htmlFor="status" className="text-sm font-medium">
               Status
@@ -295,6 +388,23 @@ export default async function TasksPage({
               <option value="upcoming">Upcoming (next 7 days)</option>
             </select>
           </div>
+          {canViewGuardianRelationshipDetails ? (
+            <div className="space-y-1">
+              <label htmlFor="guardianFollowUp" className="text-sm font-medium">
+                Guardian follow-up
+              </label>
+              <select
+                id="guardianFollowUp"
+                name="guardianFollowUp"
+                defaultValue={guardianFollowUpFilter}
+                className="w-full rounded-md border px-3 py-2 text-sm"
+              >
+                <option value="">All guardian contexts</option>
+                <option value="involving_guardian">Follow-up may require guardian involvement</option>
+                <option value="missing_guardian_linkage">Athlete missing guardian linkage</option>
+              </select>
+            </div>
+          ) : null}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
@@ -331,6 +441,7 @@ export default async function TasksPage({
                 <th className="px-4 py-3 font-medium">Creator</th>
                 <th className="px-4 py-3 font-medium">Due date</th>
                 <th className="px-4 py-3 font-medium">Team context</th>
+                <th className="px-4 py-3 font-medium">Guardian context</th>
                 <th className="px-4 py-3 font-medium">Source</th>
               </tr>
             </thead>
@@ -341,6 +452,10 @@ export default async function TasksPage({
                   sourceNote: task.sourceNote,
                 });
                 const overdue = isTaskOverdue(task, now);
+                const sourceAthleteGuardianContext =
+                  canViewGuardianRelationshipDetails && task.sourceNote?.athlete
+                    ? deriveGuardianOperationalContext(task.sourceNote.athlete.athleteLinks ?? [])
+                    : null;
 
                 return (
                   <tr key={task.id} className="border-b last:border-b-0">
@@ -379,6 +494,18 @@ export default async function TasksPage({
                     </td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                       {taskTeams.length === 0 ? "—" : taskTeams.map((team) => team.name).join(", ")}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                      {!task.sourceNote?.athlete ? (
+                        "—"
+                      ) : sourceAthleteGuardianContext ? (
+                        <span>
+                          {formatGuardianOperationalIndicator(sourceAthleteGuardianContext)} ·{" "}
+                          {formatGuardianFollowUpDependency(sourceAthleteGuardianContext)}
+                        </span>
+                      ) : (
+                        "Staff-only"
+                      )}
                     </td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{formatSource(task)}</td>
                   </tr>

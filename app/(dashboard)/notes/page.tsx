@@ -1,9 +1,15 @@
 import Link from "next/link";
+import { RoleType } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
+import {
+  deriveGuardianOperationalContext,
+  formatGuardianOperationalIndicator,
+} from "@/lib/guardian-operational-context";
+import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -68,7 +74,25 @@ export default async function NotesPage({
   const filterAthletePersonId = readParam(resolvedParams, "athletePersonId");
   const filterEventId = readParam(resolvedParams, "eventId");
   const filterAuthorPersonId = readParam(resolvedParams, "authorPersonId");
-  const hasActiveFilters = !!(filterTeamId || filterAthletePersonId || filterEventId || filterAuthorPersonId);
+  const guardianContextFilterParam = readParam(resolvedParams, "guardianContext");
+  const guardianContextFilter =
+    guardianContextFilterParam === "missing_guardian_linkage" ||
+    guardianContextFilterParam === "guardian_linked" ||
+    guardianContextFilterParam === "inactive_guardian_account"
+      ? guardianContextFilterParam
+      : "";
+  const guardianAccess = await resolveGuardianRelationshipAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const canViewGuardianRelationshipDetails = guardianAccess.canViewGuardianRelationshipDetails;
+  const hasActiveFilters = !!(
+    filterTeamId ||
+    filterAthletePersonId ||
+    filterEventId ||
+    filterAuthorPersonId ||
+    (canViewGuardianRelationshipDetails && guardianContextFilter)
+  );
 
   let notes:
     | Array<{
@@ -77,7 +101,20 @@ export default async function NotesPage({
         visibility: string;
         createdAt: Date;
         author: { id: string; firstName: string; lastName: string };
-        athlete: { id: string; firstName: string; lastName: string } | null;
+        athlete:
+          | {
+              id: string;
+              firstName: string;
+              lastName: string;
+              athleteLinks?: Array<{
+                id: string;
+                guardian: {
+                  _count: { userAccounts: number };
+                  roles: Array<{ id: string }>;
+                };
+              }>;
+            }
+          | null;
         team: { id: string; name: string } | null;
         event: { id: string; title: string } | null;
       }>
@@ -96,6 +133,49 @@ export default async function NotesPage({
           ...(filterAthletePersonId ? { athletePersonId: filterAthletePersonId } : {}),
           ...(filterEventId ? { eventId: filterEventId } : {}),
           ...(filterAuthorPersonId ? { authorPersonId: filterAuthorPersonId } : {}),
+          ...(canViewGuardianRelationshipDetails && guardianContextFilter === "missing_guardian_linkage"
+            ? {
+                athletePersonId: { not: null },
+                athlete: {
+                  athleteLinks: {
+                    none: {
+                      organizationId: scope.organizationId,
+                    },
+                  },
+                },
+              }
+            : {}),
+          ...(canViewGuardianRelationshipDetails && guardianContextFilter === "guardian_linked"
+            ? {
+                athlete: {
+                  athleteLinks: {
+                    some: {
+                      organizationId: scope.organizationId,
+                    },
+                  },
+                },
+              }
+            : {}),
+          ...(canViewGuardianRelationshipDetails && guardianContextFilter === "inactive_guardian_account"
+            ? {
+                athlete: {
+                  athleteLinks: {
+                    some: {
+                      organizationId: scope.organizationId,
+                      guardian: {
+                        userAccounts: { some: {} },
+                        roles: {
+                          none: {
+                            organizationId: scope.organizationId,
+                            roleType: RoleType.PARENT_GUARDIAN,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              }
+            : {}),
         },
         select: {
           id: true,
@@ -103,7 +183,32 @@ export default async function NotesPage({
           visibility: true,
           createdAt: true,
           author: { select: { id: true, firstName: true, lastName: true } },
-          athlete: { select: { id: true, firstName: true, lastName: true } },
+          athlete: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              athleteLinks: {
+                where: { organizationId: scope.organizationId },
+                select: {
+                  id: true,
+                  guardian: {
+                    select: {
+                      _count: { select: { userAccounts: true } },
+                      roles: {
+                        where: {
+                          organizationId: scope.organizationId,
+                          roleType: RoleType.PARENT_GUARDIAN,
+                        },
+                        select: { id: true },
+                        take: 1,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           team: { select: { id: true, name: true } },
           event: { select: { id: true, title: true } },
         },
@@ -162,6 +267,14 @@ export default async function NotesPage({
   if (filterAuthorPersonId) {
     const author = filterPeople.find((p) => p.id === filterAuthorPersonId);
     if (author) activeFilterLabels.push(`Author: ${author.firstName} ${author.lastName}`);
+  }
+  if (canViewGuardianRelationshipDetails && guardianContextFilter) {
+    const labelByFilter: Record<string, string> = {
+      missing_guardian_linkage: "Guardian context: athlete missing guardian linkage",
+      guardian_linked: "Guardian context: guardian-linked athlete",
+      inactive_guardian_account: "Guardian context: inactive guardian account signal",
+    };
+    activeFilterLabels.push(labelByFilter[guardianContextFilter] ?? guardianContextFilter);
   }
 
   return (
@@ -255,6 +368,25 @@ export default async function NotesPage({
             </select>
           </div>
 
+          {canViewGuardianRelationshipDetails ? (
+            <div className="space-y-1">
+              <label htmlFor="filter-guardianContext" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                Guardian context
+              </label>
+              <select
+                id="filter-guardianContext"
+                name="guardianContext"
+                defaultValue={guardianContextFilter}
+                className="w-52 rounded-md border px-2 py-1.5 text-sm"
+              >
+                <option value="">All guardian contexts</option>
+                <option value="guardian_linked">Guardian-linked athlete</option>
+                <option value="missing_guardian_linkage">Athlete missing guardian linkage</option>
+                <option value="inactive_guardian_account">Inactive guardian account signal</option>
+              </select>
+            </div>
+          ) : null}
+
           <div className="flex gap-2">
             <button
               type="submit"
@@ -297,6 +429,7 @@ export default async function NotesPage({
                 <th className="px-4 py-3 font-medium">Created</th>
                 <th className="px-4 py-3 font-medium">Visibility</th>
                 <th className="px-4 py-3 font-medium">Athlete / Person</th>
+                <th className="px-4 py-3 font-medium">Guardian context</th>
                 <th className="px-4 py-3 font-medium">Team</th>
                 <th className="px-4 py-3 font-medium">Event</th>
               </tr>
@@ -325,6 +458,19 @@ export default async function NotesPage({
                       </Link>
                     ) : (
                       <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {!note.athlete ? (
+                      <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                    ) : canViewGuardianRelationshipDetails ? (
+                      <span className="text-zinc-600 dark:text-zinc-400">
+                        {formatGuardianOperationalIndicator(
+                          deriveGuardianOperationalContext(note.athlete.athleteLinks ?? []),
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-zinc-400 dark:text-zinc-600">Staff-only</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
