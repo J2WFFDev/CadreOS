@@ -71,11 +71,16 @@ export default async function TeamsPage() {
 
   return (
     <section className="space-y-4">
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-2xl font-semibold tracking-tight">Teams</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Organization: {scope.organizationName ?? scope.organizationId}
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Organization: {scope.organizationName ?? scope.organizationId}
+          </p>
+          <Link href="/teams/new" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            New team
+          </Link>
+        </div>
       </div>
 
       {teams.length === 0 ? (

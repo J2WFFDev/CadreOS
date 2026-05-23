@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -51,6 +53,7 @@ export default async function PersonDetailsPage({
         firstName: string;
         lastName: string;
         email: string | null;
+        phone: string | null;
         roles: Array<{
           id: string;
           roleType: string;
@@ -185,9 +188,13 @@ export default async function PersonDetailsPage({
           {person.firstName} {person.lastName}
         </h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">{person.email ?? "No email on file"}</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">{person.phone ?? "No phone on file"}</p>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Organization: {scope.organizationName ?? scope.organizationId}
         </p>
+        <Link href={`/people/${person.id}/edit`} className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+          Edit person
+        </Link>
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
