@@ -1175,45 +1175,45 @@ export default async function DashboardPage() {
                           ) : null}
                         </div>
                       </div>
+                    ))}
+              </div>
+            </div>
 
-                      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-                        <div className="flex items-center justify-between gap-3">
-                          <h3 className="text-base font-medium">Recent notes needing attention</h3>
-                          <Link href="/notes" className="text-sm underline">
-                            Review notes
+            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-medium">Recent notes needing attention</h3>
+                <Link href="/notes" className="text-sm underline">
+                  Review notes
+                </Link>
+              </div>
+              <div className="mt-4 space-y-4">
+                {dashboardData.notesNeedingAttention.length === 0
+                  ? renderEmptyList("No recent notes currently have unresolved follow-up tasks.")
+                  : dashboardData.notesNeedingAttention.map((note) => (
+                      <div key={note.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                        <Link href={`/notes/${note.id}`} className="font-medium underline">
+                          {note.body.length > 80 ? `${note.body.slice(0, 80)}…` : note.body}
+                        </Link>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          Unresolved linked tasks: {note.unresolvedTaskCount}
+                        </p>
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                          Last changed: {formatDateTime(note.updatedAt)}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                          {note.team ? (
+                            <Link href={`/teams/${note.team.id}`} className="rounded-full border px-2 py-1">
+                              Team: {note.team.name}
+                            </Link>
+                          ) : null}
+                          {note.event ? (
+                            <Link href={`/events/${note.event.id}`} className="rounded-full border px-2 py-1">
+                              Event: {note.event.title}
+                            </Link>
+                          ) : null}
+                          <Link href={`/tasks?resolution=unresolved`} className="rounded-full border px-2 py-1">
+                            Open unresolved tasks
                           </Link>
-                        </div>
-                        <div className="mt-4 space-y-4">
-                          {dashboardData.notesNeedingAttention.length === 0
-                            ? renderEmptyList("No recent notes currently have unresolved follow-up tasks.")
-                            : dashboardData.notesNeedingAttention.map((note) => (
-                                <div key={note.id} className="border-b pb-4 last:border-b-0 last:pb-0">
-                                  <Link href={`/notes/${note.id}`} className="font-medium underline">
-                                    {note.body.length > 80 ? `${note.body.slice(0, 80)}…` : note.body}
-                                  </Link>
-                                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                                    Unresolved linked tasks: {note.unresolvedTaskCount}
-                                  </p>
-                                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                    Last changed: {formatDateTime(note.updatedAt)}
-                                  </p>
-                                  <div className="mt-2 flex flex-wrap gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                                    {note.team ? (
-                                      <Link href={`/teams/${note.team.id}`} className="rounded-full border px-2 py-1">
-                                        Team: {note.team.name}
-                                      </Link>
-                                    ) : null}
-                                    {note.event ? (
-                                      <Link href={`/events/${note.event.id}`} className="rounded-full border px-2 py-1">
-                                        Event: {note.event.title}
-                                      </Link>
-                                    ) : null}
-                                    <Link href={`/tasks?resolution=unresolved`} className="rounded-full border px-2 py-1">
-                                      Open unresolved tasks
-                                    </Link>
-                                  </div>
-                                </div>
-                              ))}
                         </div>
                       </div>
                     ))}
