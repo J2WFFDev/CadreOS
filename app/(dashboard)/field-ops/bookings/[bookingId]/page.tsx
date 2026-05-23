@@ -6,15 +6,35 @@ import { FieldOpsSubnav } from "@/components/field-ops/subnav";
 import { db } from "@/lib/db";
 import { formatFieldOpsDateTime, formatFieldOpsEnum } from "@/lib/field-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { canPerformAction } from "@/lib/permissions";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
+type SearchParams = Record<string, string | string[] | undefined>;
+
+function readSearchParam(searchParams: SearchParams, key: string) {
+  const value = searchParams[key];
+
+  if (Array.isArray(value)) {
+    return value[0] ?? "";
+  }
+
+  return value ?? "";
+}
+
+function hasSearchParam(searchParams: SearchParams, key: string) {
+  return readSearchParam(searchParams, key).length > 0;
+}
+
 export default async function BookingDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ bookingId: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const { bookingId } = await params;
   const scope = await getOrganizationScope();
 
@@ -48,6 +68,8 @@ export default async function BookingDetailsPage({
         status: string;
         precheckStatus: string;
         approvalStatus: string;
+        requestedBy: { id: string; firstName: string; lastName: string };
+        approvedBy: { id: string; firstName: string; lastName: string } | null;
         facility: { id: string; name: string };
         resource: { id: string; name: string };
         program: { id: string; name: string } | null;
@@ -81,6 +103,20 @@ export default async function BookingDetailsPage({
         status: true,
         precheckStatus: true,
         approvalStatus: true,
+        requestedBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        approvedBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
         facility: { select: { id: true, name: true } },
         resource: { select: { id: true, name: true } },
         program: { select: { id: true, name: true } },
@@ -133,6 +169,28 @@ export default async function BookingDetailsPage({
   }
 
   const hasConflictWarning = booking.conflicts.length > 0;
+  const hasBlockingConflict = booking.conflicts.some((conflict) => conflict.severity === "BLOCKING");
+  const isPendingApproval = booking.approvalStatus === "PENDING";
+  const canApproveOrDeny =
+    scope.auth.clerkUserId &&
+    (await Promise.all([
+      canPerformAction({
+        actorUserId: scope.auth.clerkUserId,
+        organizationId: scope.organizationId,
+        action: "booking.approve",
+        programId: booking.program?.id,
+        teamId: booking.team?.id,
+        eventId: booking.event?.id,
+      }),
+      canPerformAction({
+        actorUserId: scope.auth.clerkUserId,
+        organizationId: scope.organizationId,
+        action: "booking.deny",
+        programId: booking.program?.id,
+        teamId: booking.team?.id,
+        eventId: booking.event?.id,
+      }),
+    ])).some(Boolean);
 
   return (
     <section className="space-y-6">
@@ -164,6 +222,24 @@ export default async function BookingDetailsPage({
         </p>
       </div>
 
+      {readSearchParam(resolvedSearchParams, "decisionOutcome") === "approved" ? (
+        <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-700 dark:bg-emerald-950/40">
+          <p className="text-sm text-emerald-800 dark:text-emerald-200">Booking approved successfully.</p>
+        </div>
+      ) : null}
+
+      {readSearchParam(resolvedSearchParams, "decisionOutcome") === "denied" ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
+          <p className="text-sm text-amber-900 dark:text-amber-200">Booking denied successfully.</p>
+        </div>
+      ) : null}
+
+      {hasSearchParam(resolvedSearchParams, "decisionError") ? (
+        <div className="rounded-lg border border-red-300 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/40">
+          <p className="text-sm text-red-800 dark:text-red-200">{readSearchParam(resolvedSearchParams, "decisionError")}</p>
+        </div>
+      ) : null}
+
       {hasConflictWarning ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
           <p className="text-sm text-amber-900 dark:text-amber-200">
@@ -172,6 +248,50 @@ export default async function BookingDetailsPage({
           </p>
         </div>
       ) : null}
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="text-lg font-medium">Approval decision</h3>
+        {isPendingApproval ? (
+          canApproveOrDeny ? (
+            <div className="mt-3 space-y-3">
+              {hasBlockingConflict ? (
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  Blocking conflicts are present. This request cannot be approved unless policy adds override support.
+                </p>
+              ) : null}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <form action={`/field-ops/bookings/${booking.id}/decision`} method="post" className="contents">
+                  <input type="hidden" name="decision" value="approve" />
+                  <button
+                    type="submit"
+                    disabled={hasBlockingConflict}
+                    className="rounded-md bg-emerald-700 px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Approve booking
+                  </button>
+                </form>
+                <form action={`/field-ops/bookings/${booking.id}/decision`} method="post" className="contents">
+                  <input type="hidden" name="decision" value="deny" />
+                  <button
+                    type="submit"
+                    className="rounded-md border border-red-700 px-4 py-2 text-sm text-red-700 hover:bg-red-50 dark:border-red-500 dark:text-red-400 dark:hover:bg-red-950/40"
+                  >
+                    Deny booking
+                  </button>
+                </form>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              You do not have permission to approve or deny this booking request.
+            </p>
+          )
+        ) : (
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            This booking request has already been decided.
+          </p>
+        )}
+      </div>
 
       <dl className="grid gap-3 rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900 sm:grid-cols-2">
         <div>
@@ -189,6 +309,18 @@ export default async function BookingDetailsPage({
         <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Approval</dt>
           <dd className="text-zinc-600 dark:text-zinc-400">{formatFieldOpsEnum(booking.approvalStatus)}</dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Requested by</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">
+            {booking.requestedBy.firstName} {booking.requestedBy.lastName}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Decision by</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">
+            {booking.approvedBy ? `${booking.approvedBy.firstName} ${booking.approvedBy.lastName}` : "—"}
+          </dd>
         </div>
         <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Program</dt>

@@ -145,7 +145,7 @@ export default async function FieldOpsBookingsPage({
     <section className="space-y-4">
       <PageHeader
         title="FieldOps bookings"
-        description="Read-only booking schedule across facilities and resources."
+        description="Booking schedule across facilities and resources with approval state visibility."
       />
       <FieldOpsSubnav current="bookings" />
 
