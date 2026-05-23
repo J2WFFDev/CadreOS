@@ -227,29 +227,25 @@ export default async function TasksPage({
                   id: true,
                   firstName: true,
                   lastName: true,
-                  ...(canViewGuardianRelationshipDetails
-                    ? {
-                        athleteLinks: {
-                          where: { organizationId: scope.organizationId },
-                          select: {
-                            id: true,
-                            guardian: {
-                              select: {
-                                _count: { select: { userAccounts: true } },
-                                roles: {
-                                  where: {
-                                    organizationId: scope.organizationId,
-                                    roleType: RoleType.PARENT_GUARDIAN,
-                                  },
-                                  select: { id: true },
-                                  take: 1,
-                                },
-                              },
+                  athleteLinks: {
+                    where: { organizationId: scope.organizationId },
+                    select: {
+                      id: true,
+                      guardian: {
+                        select: {
+                          _count: { select: { userAccounts: true } },
+                          roles: {
+                            where: {
+                              organizationId: scope.organizationId,
+                              roleType: RoleType.PARENT_GUARDIAN,
                             },
+                            select: { id: true },
+                            take: 1,
                           },
                         },
-                      }
-                    : {}),
+                      },
+                    },
+                  },
                 },
               },
               event: { select: { team: { select: { id: true, name: true } } } },
