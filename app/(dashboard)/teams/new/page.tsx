@@ -102,7 +102,11 @@ export default async function NewTeamPage({
 
       {programs.length === 0 ? (
         <div className="rounded-lg border bg-white p-4 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
-          Add at least one program before creating teams.
+          Add at least one program before creating teams.{" "}
+          <Link href="/programs/new" className="underline">
+            Create a program
+          </Link>
+          .
         </div>
       ) : (
         <form action="/teams/create" method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">

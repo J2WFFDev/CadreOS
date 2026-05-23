@@ -80,11 +80,16 @@ export default async function ProgramsPage() {
 
   return (
     <section className="space-y-4">
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-2xl font-semibold tracking-tight">Programs</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Organization: {scope.organizationName ?? scope.organizationId}
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Organization: {scope.organizationName ?? scope.organizationId}
+          </p>
+          <Link href="/programs/new" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            New program
+          </Link>
+        </div>
       </div>
 
       {programs.length === 0 ? (
@@ -97,13 +102,15 @@ export default async function ProgramsPage() {
         <div className="grid gap-3 sm:grid-cols-2">
           {programs.map((program) => (
             <div key={program.id} className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-              <p className="text-lg font-medium">{program.name}</p>
+              <Link href={`/programs/${program.id}`} className="text-lg font-medium underline">
+                {program.name}
+              </Link>
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                 Organization: {program.organization.name}
               </p>
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Team count: {program._count.teams}</p>
-              <Link href="/teams" className="mt-3 inline-block text-sm underline">
-                View teams
+              <Link href={`/programs/${program.id}`} className="mt-3 inline-block text-sm underline">
+                View program details
               </Link>
             </div>
           ))}
