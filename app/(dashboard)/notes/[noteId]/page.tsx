@@ -3,6 +3,7 @@ import { NoteVisibility, RoleType } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
+import { getObservationNoteEntryRuntimeSummary } from "@/lib/entry-runtime";
 import {
   compareFollowUpTasks,
   formatEnumLabel,
@@ -267,6 +268,18 @@ export default async function NoteDetailPage({
     );
   }
 
+  let entryRuntimeSummary: Awaited<ReturnType<typeof getObservationNoteEntryRuntimeSummary>> | null = null;
+  let entryRuntimeSummaryUnavailable = false;
+
+  try {
+    entryRuntimeSummary = await getObservationNoteEntryRuntimeSummary({
+      organizationId: scope.organizationId,
+      noteId: note.id,
+    });
+  } catch {
+    entryRuntimeSummaryUnavailable = true;
+  }
+
   const guardianAccess = await resolveGuardianRelationshipAccess({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
@@ -425,6 +438,83 @@ export default async function NoteDetailPage({
             </dd>
           </div>
         </dl>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-lg font-semibold">Entry wrapper</h3>
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+              entryRuntimeSummary?.status === "linked"
+                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+                : "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200"
+            }`}
+          >
+            {entryRuntimeSummary?.status === "linked" ? "Linked metadata present" : "No linked metadata"}
+          </span>
+        </div>
+        {entryRuntimeSummaryUnavailable ? (
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            Entry wrapper metadata is temporarily unavailable. The current <code>ObservationNote</code> workflow remains
+            authoritative.
+          </p>
+        ) : entryRuntimeSummary?.status === "linked" ? (
+          <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="font-medium">Entry wrapper ID</dt>
+              <dd className="break-all text-zinc-600 dark:text-zinc-400">{entryRuntimeSummary.entryRuntimeRef.id}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Entry kind</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">
+                {formatEnumLabel(entryRuntimeSummary.entryRuntimeRef.entryKind)}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">Visibility mirror</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">
+                {formatEnumLabel(entryRuntimeSummary.entryRuntimeRef.visibilityClass)}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">Wrapper author pointer</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">{entryRuntimeSummary.entryRuntimeRef.authorPersonId}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Source linkage</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">
+                {formatEnumLabel(entryRuntimeSummary.entryRuntimeRef.sourceModelType)} · {entryRuntimeSummary.entryRuntimeRef.sourceModelId}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">Linked athlete pointer</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">{entryRuntimeSummary.entryRuntimeRef.athletePersonId ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Linked team pointer</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">{entryRuntimeSummary.entryRuntimeRef.teamId ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Linked event pointer</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">{entryRuntimeSummary.entryRuntimeRef.eventId ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Wrapper updated</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">
+                {formatDateTime(entryRuntimeSummary.entryRuntimeRef.updatedAt)}
+              </dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            No Entry wrapper metadata is linked to this note right now. <code>ObservationNote</code> remains the primary
+            operational record, and disabling sidecar writes remains a safe rollback path.
+          </p>
+        )}
+        <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+          This wrapper is metadata-only for ownership, visibility, relationship linkage, and traceability. Feed, Inbox,
+          Journal, messaging, notifications, guardian-facing runtime, and workflow automation remain deferred.
+        </p>
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">

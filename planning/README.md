@@ -94,6 +94,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 9N Entry Runtime Readiness Gate Review (Pre-Arc 10)](./PHASE_9N_ENTRY_RUNTIME_READINESS_GATE_REVIEW.md)
 - [Phase 10A Minimal Entry Runtime Foundation](./PHASE_10A_MINIMAL_ENTRY_RUNTIME_FOUNDATION.md)
 - [Phase 10A Validation Checklist](./PHASE_10A_VALIDATION_CHECKLIST.md)
+- [Phase 10B ObservationNote Entry Wrapper Integration](./PHASE_10B_OBSERVATIONNOTE_ENTRY_WRAPPER_INTEGRATION.md)
+- [Phase 10B Validation Checklist](./PHASE_10B_VALIDATION_CHECKLIST.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -153,6 +155,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 9N Entry Runtime Readiness Gate Review (Pre-Arc 10)](./PHASE_9N_ENTRY_RUNTIME_READINESS_GATE_REVIEW.md)
 - [Phase 10A Minimal Entry Runtime Foundation](./PHASE_10A_MINIMAL_ENTRY_RUNTIME_FOUNDATION.md)
 - [Phase 10A Validation Checklist](./PHASE_10A_VALIDATION_CHECKLIST.md)
+- [Phase 10B ObservationNote Entry Wrapper Integration](./PHASE_10B_OBSERVATIONNOTE_ENTRY_WRAPPER_INTEGRATION.md)
+- [Phase 10B Validation Checklist](./PHASE_10B_VALIDATION_CHECKLIST.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 
 ## Operational Foundation MVP Phase Sequence (8A–8P)
@@ -194,6 +198,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: implements the first Arc 10 candidate as a feature-flagged, fail-safe `ObservationNote` sidecar write (`EntryRuntimeRef`) for new notes only; operational reads/writes remain unchanged.
 - [Phase 10A Validation Checklist](./PHASE_10A_VALIDATION_CHECKLIST.md)
   - Summary: focused continuity/safety checklist to verify additive behavior and deferred runtime boundaries.
+- [Phase 10B ObservationNote Entry Wrapper Integration](./PHASE_10B_OBSERVATIONNOTE_ENTRY_WRAPPER_INTEGRATION.md)
+  - Summary: extends the note sidecar into a lightweight wrapper relationship by re-syncing note edits and exposing read-only wrapper traceability on note detail, while keeping `ObservationNote` authoritative.
+- [Phase 10B Validation Checklist](./PHASE_10B_VALIDATION_CHECKLIST.md)
+  - Summary: verifies wrapper sync continuity, note workflow safety, and that Feed/Inbox/guardian/messaging behavior is still deferred.
 
 ---
 
