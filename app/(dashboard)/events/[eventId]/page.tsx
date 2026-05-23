@@ -320,6 +320,11 @@ export default async function EventDetailsPage({
   const attendanceCapturedCount = event.attendance.length;
   const expectedAttendanceCount = rosterMembers.length;
   const attendanceMissingCount = missingRosterAttendance.length;
+  const lateAttendanceCount = event.attendance.filter((record) => record.status === AttendanceStatus.LATE).length;
+  const unexcusedAbsentAttendanceCount = event.attendance.filter(
+    (record) => record.status === AttendanceStatus.UNEXCUSED_ABSENT,
+  ).length;
+  const attendanceConcernCount = attendanceMissingCount + lateAttendanceCount + unexcusedAbsentAttendanceCount;
   const openTaskCount = eventTasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
   const followUpRequired = attendanceMissingCount > 0 || openTaskCount > 0;
   const attendanceIndicator = expectedAttendanceCount === 0
@@ -341,6 +346,9 @@ export default async function EventDetailsPage({
             className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Edit event
+          </Link>
+          <Link href="#attendance-workflow" className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Attendance workflow
           </Link>
           <Link
             href={`/tasks/new?sourceEventId=${event.id}`}
@@ -404,7 +412,7 @@ export default async function EventDetailsPage({
         </dl>
       </div>
 
-      <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-700 dark:bg-zinc-800/40">
+      <div id="operational-alignment" className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-700 dark:bg-zinc-800/40">
         <h3 className="text-lg font-semibold">Operational alignment summary</h3>
         <dl className="mt-3 grid gap-2 sm:grid-cols-2">
           <div>
@@ -434,6 +442,13 @@ export default async function EventDetailsPage({
             </dd>
           </div>
           <div>
+            <dt className="font-medium">Attendance concerns</dt>
+            <dd className={attendanceConcernCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {attendanceConcernCount}
+              {attendanceConcernCount > 0 ? " (missing, late, or unexcused absent)" : ""}
+            </dd>
+          </div>
+          <div>
             <dt className="font-medium">Operational indicator</dt>
             <dd>
               {followUpRequired ? (
@@ -449,17 +464,39 @@ export default async function EventDetailsPage({
           </div>
         </dl>
         <p className="mt-3 text-xs text-zinc-600 dark:text-zinc-400">{attendanceIndicator}.</p>
+        {attendanceConcernCount > 0 ? (
+          <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
+            Attendance concern follow-up is recommended. Capture a linked{" "}
+            <Link href={`/notes/new?eventId=${event.id}`} className="underline">
+              note
+            </Link>{" "}
+            and create a{" "}
+            <Link href={`/tasks/new?sourceEventId=${event.id}`} className="underline">
+              follow-up task
+            </Link>
+            .
+          </p>
+        ) : null}
       </div>
 
-      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+      <div id="related-notes" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-lg font-semibold">Related notes</h3>
-          <Link href={`/notes/new?eventId=${event.id}`} className="text-sm underline">
-            Add note
-          </Link>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <Link href={`/notes?eventId=${event.id}`} className="underline">
+              View event notes
+            </Link>
+            <span className="text-zinc-500 dark:text-zinc-400">•</span>
+            <Link href={`/notes/new?eventId=${event.id}`} className="underline">
+              Add note
+            </Link>
+          </div>
         </div>
         {eventNotes.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">No observation notes are linked to this event yet.</p>
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            No observation notes are linked to this event yet. Capture attendance concerns or operational context with an
+            event-linked note.
+          </p>
         ) : (
           <ul className="mt-3 space-y-3">
             {eventNotes.map((note) => {
@@ -486,15 +523,24 @@ export default async function EventDetailsPage({
         )}
       </div>
 
-      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+      <div id="related-tasks" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-lg font-semibold">Related tasks</h3>
-          <Link href={`/tasks/new?sourceEventId=${event.id}`} className="text-sm underline">
-            Create follow-up task
-          </Link>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <Link href="/tasks" className="underline">
+              Open tasks workflow
+            </Link>
+            <span className="text-zinc-500 dark:text-zinc-400">•</span>
+            <Link href={`/tasks/new?sourceEventId=${event.id}`} className="underline">
+              Create follow-up task
+            </Link>
+          </div>
         </div>
         {eventTasks.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">No follow-up tasks are linked to this event yet.</p>
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            No follow-up tasks are linked to this event yet. Create one when attendance gaps or note context need tracked
+            resolution.
+          </p>
         ) : (
           <ul className="mt-3 space-y-3">
             {eventTasks.map((task) => (
@@ -575,7 +621,7 @@ export default async function EventDetailsPage({
         )}
       </div>
 
-      <div className="rounded-lg border border-emerald-200 bg-emerald-50/30 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+      <div id="attendance-workflow" className="rounded-lg border border-emerald-200 bg-emerald-50/30 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-lg font-semibold">Attendance (Actual Participation)</h3>
           <form method="get" className="flex items-center gap-2 text-sm">
@@ -615,6 +661,24 @@ export default async function EventDetailsPage({
           Captured records: {attendanceCapturedCount}
           {expectedAttendanceCount > 0 ? ` · Missing from team roster: ${attendanceMissingCount}` : " · Team roster expectation not configured"}
         </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+          <span>Operational continuity:</span>
+          <Link href="#related-notes" className="underline">
+            related notes
+          </Link>
+          <span>•</span>
+          <Link href="#related-tasks" className="underline">
+            related tasks
+          </Link>
+          <span>•</span>
+          <Link href={`/notes/new?eventId=${event.id}`} className="underline">
+            add attendance concern note
+          </Link>
+          <span>•</span>
+          <Link href={`/tasks/new?sourceEventId=${event.id}`} className="underline">
+            create follow-up task
+          </Link>
+        </div>
 
         {filteredAttendance.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -667,15 +731,28 @@ export default async function EventDetailsPage({
             {missingRosterAttendance.length === 0 ? (
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">No roster-linked attendance is missing.</p>
             ) : (
-              <ul className="mt-2 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-                {missingRosterAttendance.map((person) => (
-                  <li key={person.id}>
-                    <Link href={`/people/${person.id}`} className="underline">
-                      {person.firstName} {person.lastName}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul className="mt-2 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+                  {missingRosterAttendance.map((person) => (
+                    <li key={person.id}>
+                      <Link href={`/people/${person.id}`} className="underline">
+                        {person.firstName} {person.lastName}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
+                  Missing attendance is an unresolved operational item. Capture context in{" "}
+                  <Link href={`/notes/new?eventId=${event.id}`} className="underline">
+                    notes
+                  </Link>{" "}
+                  and track action in{" "}
+                  <Link href={`/tasks/new?sourceEventId=${event.id}`} className="underline">
+                    follow-up tasks
+                  </Link>
+                  .
+                </p>
+              </>
             )}
           </div>
         ) : null}

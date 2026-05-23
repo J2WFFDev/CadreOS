@@ -68,6 +68,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 8B Guardian-Aware Operational Context](./PHASE_8B_GUARDIAN_OPERATIONAL_CONTEXT.md)
 - [Phase 8D Event/Attendance Operational Alignment](./PHASE_8D_EVENT_ATTENDANCE_OPERATIONAL_ALIGNMENT.md)
 - [Phase 8E Coach Operational Dashboard](./PHASE_8E_COACH_OPERATIONAL_DASHBOARD.md)
+- [Phase 8F Operational Workflow Continuity](./PHASE_8F_OPERATIONAL_WORKFLOW_CONTINUITY.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
 - [Chat Transcript](./CHAT_TRANSCRIPT.md)
@@ -100,6 +101,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 8B Guardian-Aware Operational Context](./PHASE_8B_GUARDIAN_OPERATIONAL_CONTEXT.md)
 - [Phase 8D Event/Attendance Operational Alignment](./PHASE_8D_EVENT_ATTENDANCE_OPERATIONAL_ALIGNMENT.md)
 - [Phase 8E Coach Operational Dashboard](./PHASE_8E_COACH_OPERATIONAL_DASHBOARD.md)
+- [Phase 8F Operational Workflow Continuity](./PHASE_8F_OPERATIONAL_WORKFLOW_CONTINUITY.md)
 
 ## Decision Log Summary
 - Product name: **CadreOS**

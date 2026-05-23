@@ -166,6 +166,17 @@ export default async function TaskDetailPage({
     canViewGuardianRelationshipDetails && task.sourceNote?.athlete
       ? deriveGuardianOperationalContext(task.sourceNote.athlete.athleteLinks ?? [])
       : null;
+  const hasUnresolvedOperationalItem = task.status !== "DONE" && task.status !== "CANCELLED";
+  const operationalReason =
+    task.sourceNote && task.sourceEvent
+      ? "Task exists to follow up on a note and event context."
+      : task.sourceNote
+        ? "Task exists to follow up on operational context captured in a note."
+        : task.sourceEvent
+          ? "Task exists to follow up on event/attendance operational context."
+          : task.sourceInboxItem
+            ? "Task exists from an inbox routing source item."
+            : "Task was created as a standalone follow-up action.";
 
   return (
     <section className="space-y-6">
@@ -191,6 +202,9 @@ export default async function TaskDetailPage({
                 {formatEnumLabel(task.status)}
               </span>
               {task.status === "BLOCKED" ? <span className="text-xs text-red-700 dark:text-red-300">Blocked</span> : null}
+              {hasUnresolvedOperationalItem ? (
+                <span className="text-xs text-amber-700 dark:text-amber-300">Unresolved operational item</span>
+              ) : null}
             </dd>
           </div>
           <div>
@@ -253,6 +267,11 @@ export default async function TaskDetailPage({
                 <span>
                   {formatGuardianOperationalIndicator(sourceAthleteGuardianContext)} ·{" "}
                   {formatGuardianFollowUpDependency(sourceAthleteGuardianContext)}
+                  {sourceAthleteGuardianContext.hasNoGuardianOnFile ? (
+                    <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                      Missing guardian linkage impacting follow-up
+                    </span>
+                  ) : null}
                 </span>
               ) : (
                 "Staff-only"
@@ -263,9 +282,15 @@ export default async function TaskDetailPage({
             <dt className="font-medium">Source event</dt>
             <dd className="text-zinc-600 dark:text-zinc-400">
               {task.sourceEvent ? (
-                <Link href={`/events/${task.sourceEvent.id}`} className="underline">
-                  {task.sourceEvent.title}
-                </Link>
+                <span>
+                  <Link href={`/events/${task.sourceEvent.id}`} className="underline">
+                    {task.sourceEvent.title}
+                  </Link>
+                  {" · "}
+                  <Link href={`/events/${task.sourceEvent.id}#attendance-workflow`} className="underline">
+                    Attendance workflow
+                  </Link>
+                </span>
               ) : (
                 "—"
               )}
@@ -282,6 +307,10 @@ export default async function TaskDetailPage({
                 "—"
               )}
             </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="font-medium">Why this task exists</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{operationalReason}</dd>
           </div>
         </dl>
       </div>

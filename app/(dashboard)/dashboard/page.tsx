@@ -705,8 +705,12 @@ export default async function DashboardPage() {
                               Open attendance filter
                             </Link>
                             <span className="text-zinc-500 dark:text-zinc-400">•</span>
-                            <Link href={`/events/${event.id}/attendance`} className="underline">
+                            <Link href={`/events/${event.id}#attendance-workflow`} className="underline">
                               Capture attendance
+                            </Link>
+                            <span className="text-zinc-500 dark:text-zinc-400">•</span>
+                            <Link href={`/notes?eventId=${event.id}`} className="underline">
+                              Event notes
                             </Link>
                           </div>
                         </div>
