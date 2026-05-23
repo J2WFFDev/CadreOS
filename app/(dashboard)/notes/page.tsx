@@ -33,23 +33,6 @@ function readParam(params: SearchParams, key: string): string {
   return val ?? "";
 }
 
-const staffScopeResolution = resolveStaffScopeResolution(actorRoleContext);
-if (
-  !staffScopeResolution.allowAllStaffScope &&
-  (staffScopeResolution.hasAmbiguousScopeAssignments || !staffScopeResolution.hasExplicitScopedAccess)
-) {
-  return (
-    <section className="space-y-4">
-      <h2 className="text-2xl font-semibold tracking-tight">Notes</h2>
-      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Your role scope is incomplete for safe note visibility evaluation. Contact an organization admin.
-        </p>
-      </div>
-    </section>
-  );
-}
-
 function buildHref(pathname: string, filters: Record<string, string>) {
   const params = new URLSearchParams();
 
@@ -128,6 +111,23 @@ export default async function NotesPage({
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             You do not have staff access to view notes. All notes require a staff role assignment.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  const staffScopeResolution = resolveStaffScopeResolution(actorRoleContext);
+  if (
+    !staffScopeResolution.allowAllStaffScope &&
+    (staffScopeResolution.hasAmbiguousScopeAssignments || !staffScopeResolution.hasExplicitScopedAccess)
+  ) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Notes</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Your role scope is incomplete for safe note visibility evaluation. Contact an organization admin.
           </p>
         </div>
       </section>
