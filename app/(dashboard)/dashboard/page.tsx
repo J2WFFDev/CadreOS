@@ -924,6 +924,95 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <>
+          {/* Operational Priority Focus — lightweight triage view of what requires immediate review */}
+          <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+            <h3 className="text-base font-medium">Operational priority focus</h3>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Lightweight triage summary. Use this to identify what requires immediate review, what needs
+              attention, and what may impact upcoming operations.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950/30">
+                <p className="text-sm font-semibold text-red-800 dark:text-red-300">Requires immediate review</p>
+                <ul className="mt-2 space-y-1 text-sm text-red-700 dark:text-red-400">
+                  <li>
+                    <Link href="/tasks?dueWindow=overdue" className="underline">
+                      Overdue follow-up tasks: {dashboardData.counts.overdueTasks}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/tasks?status=BLOCKED&resolution=unresolved" className="underline">
+                      Blocked follow-up tasks: {dashboardData.counts.blockedTasks}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/events?operationalIndicator=attendance_not_reviewed_recently" className="underline">
+                      Attendance gaps needing review: {dashboardData.counts.attendanceNeedingReview}
+                    </Link>
+                  </li>
+                </ul>
+                {dashboardData.counts.overdueTasks === 0 &&
+                  dashboardData.counts.blockedTasks === 0 &&
+                  dashboardData.counts.attendanceNeedingReview === 0 ? (
+                  <p className="mt-2 text-xs text-red-600 dark:text-red-400">No urgent items currently flagged.</p>
+                ) : null}
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Needs attention</p>
+                <ul className="mt-2 space-y-1 text-sm text-amber-700 dark:text-amber-400">
+                  <li>
+                    <Link href="/tasks?resolution=unresolved&ownershipIndicator=stale_unresolved" className="underline">
+                      Stale unresolved tasks: {dashboardData.counts.staleUnreviewedTasks}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/tasks?ownershipIndicator=missing_responsible_context" className="underline">
+                      Missing responsible context: {dashboardData.counts.missingResponsibleFollowUps}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/teams?readiness=needs_attention" className="underline">
+                      Teams with roster/assignment gaps: {dashboardData.counts.teamsWithOperationalGaps}
+                    </Link>
+                  </li>
+                </ul>
+                {dashboardData.counts.staleUnreviewedTasks === 0 &&
+                  dashboardData.counts.missingResponsibleFollowUps === 0 &&
+                  dashboardData.counts.teamsWithOperationalGaps === 0 ? (
+                  <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">No items currently need attention.</p>
+                ) : null}
+              </div>
+              <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 dark:border-violet-800 dark:bg-violet-950/30">
+                <p className="text-sm font-semibold text-violet-800 dark:text-violet-300">May impact upcoming operations</p>
+                <ul className="mt-2 space-y-1 text-sm text-violet-700 dark:text-violet-400">
+                  <li>
+                    <Link href="/events?status=SCHEDULED" className="underline">
+                      Upcoming scheduled events: {dashboardData.counts.upcomingEvents}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/events?links=follow_up_required" className="underline">
+                      Events with unresolved follow-up: {dashboardData.unresolvedEventConcerns.length}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/events?operationalIndicator=upcoming_operational_concern" className="underline">
+                      Upcoming events with operational concerns
+                    </Link>
+                  </li>
+                </ul>
+                {dashboardData.counts.upcomingEvents === 0 && dashboardData.unresolvedEventConcerns.length === 0 ? (
+                  <p className="mt-2 text-xs text-violet-600 dark:text-violet-400">No upcoming operational risks flagged.</p>
+                ) : null}
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+              Priority indicators are heuristic-based, derived from existing task status, attendance gaps, and event
+              timing. No AI or automated prioritization is used. Deferred: reminders, notifications, workflow
+              automation.
+            </p>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {[
               { label: "Programs", value: dashboardData.counts.programs, href: "/programs" },
