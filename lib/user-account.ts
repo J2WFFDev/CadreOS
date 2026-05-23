@@ -61,6 +61,9 @@ export async function resolveActorPersonId(input: {
     return organizationAdminAssignment.personId;
   }
 
+  // MVP fallback: no linked UserAccount or admin assignment found; resolve to the first person
+  // created in the organization. This keeps attribution non-null for create workflows.
+  // Remove once user-account linking is required for mutations.
   const firstPerson = await db.person.findFirst({
     where: { organizationId: input.organizationId },
     select: { id: true },
