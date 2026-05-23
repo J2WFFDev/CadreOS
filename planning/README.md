@@ -79,6 +79,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 8N Operational Summary and Review Usability](./PHASE_8N_OPERATIONAL_SUMMARY_REVIEW_USABILITY.md)
 - [Phase 8O Operational Edge-Case Hardening and Workflow Stability Review](./PHASE_8O_OPERATIONAL_EDGE_CASE_HARDENING.md)
 - [Phase 8P Operational Foundation MVP Closeout and Strategic Decision Options](./PHASE_8P_OPERATIONAL_FOUNDATION_MVP_CLOSEOUT.md)
+- [Phase 9A Entry Architecture Review and Migration Strategy Assessment](./PHASE_9A_ENTRY_ARCHITECTURE_REVIEW.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -123,6 +124,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 8N Operational Summary and Review Usability](./PHASE_8N_OPERATIONAL_SUMMARY_REVIEW_USABILITY.md)
 - [Phase 8O Operational Edge-Case Hardening and Workflow Stability Review](./PHASE_8O_OPERATIONAL_EDGE_CASE_HARDENING.md)
 - [Phase 8P Operational Foundation MVP Closeout and Strategic Decision Options](./PHASE_8P_OPERATIONAL_FOUNDATION_MVP_CLOSEOUT.md)
+- [Phase 9A Entry Architecture Review and Migration Strategy Assessment](./PHASE_9A_ENTRY_ARCHITECTURE_REVIEW.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 
 ## Operational Foundation MVP Phase Sequence (8A–8P)
@@ -142,6 +144,85 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 8N Operational Summary and Review Usability](./PHASE_8N_OPERATIONAL_SUMMARY_REVIEW_USABILITY.md)
 - [Phase 8O Operational Edge-Case Hardening and Workflow Stability Review](./PHASE_8O_OPERATIONAL_EDGE_CASE_HARDENING.md)
 - [Phase 8P Operational Foundation MVP Closeout and Strategic Decision Options](./PHASE_8P_OPERATIONAL_FOUNDATION_MVP_CLOSEOUT.md)
+
+## Phase 9A Entry Architecture Review
+
+- [Phase 9A Entry Architecture Review and Migration Strategy Assessment](./PHASE_9A_ENTRY_ARCHITECTURE_REVIEW.md)
+
+---
+
+## Architecture Track Separation
+
+CadreOS planning is organized into four distinct tracks. These tracks must remain clearly separated. Work on a future track must not begin until the prerequisite gates in the prior track are satisfied.
+
+### Track 1 — Operational Foundation MVP (current track, Phases 1A–8P)
+
+Implemented and closed out. All work in this track is complete or in active validation. This track is the prerequisite for all other tracks.
+
+Key phases:
+- Phase 1A–1F: Database, roles, programs, seasons
+- Phase 2A–2F: Events, RSVP, attendance, notes, tasks, dashboard
+- Phase 3A: Navigation/UX
+- Phase 4A–4F: Auth integration (Clerk), UserAccount linking, authorization
+- Phase 5A–5B: Pilot test plan, bootstrap org admin
+- Phase 6A–6K: FieldOps MVP (booking, conflict prechecks, approval workflow)
+- Phase 7B–7H: Team/member hardening, notes/tasks operational hardening
+- Phase 8A–8P: Guardian context, event/attendance alignment, dashboard, readiness/review workflows, closeout
+
+Active models: `ObservationNote`, `FollowUpTask`, `Event`, `RSVP`, `AttendanceRecord`, `InboxRoutingItem`, `AthleteGuardianRelationship`, FieldOps models.
+
+Prerequisite gates before advancing to Track 2:
+- [ ] Pilot validation complete (Phase 8P Option E)
+- [ ] Authorization maturity: per-record visibility enforcement designed and tested
+- [ ] FK dependency map complete for all `ObservationNote` and `FollowUpTask` references
+- [ ] Entry schema finalized (field set, indexes, supplemental tables locked)
+- [ ] Entry status model decision locked (universal vs type-specific hybrid)
+- [ ] Staging migration dry-run passing
+
+### Track 2 — Entry Architecture (deferred, Entry Track E0–E9)
+
+Blocked until Track 1 prerequisite gates are satisfied (see Phase 9A for full gate list).
+
+This track unifies `ObservationNote` and `FollowUpTask` into a single `Entry` model with Inbox, container, visibility, and tag support.
+
+Proposed phases (all deferred):
+- Entry Track E0: Architecture review (this document — Phase 9A)
+- Entry Track E1: Entry schema implementation planning checkpoint
+- Entry Track E2: Minimal Inbox capture
+- Entry Track E3: Entry triage and filing
+- Entry Track E4: Decision entries
+- Entry Track E5: Private Journal view
+- Entry Track E6: Role-aware Feed
+- Entry Track E7: Contact Notes
+- Entry Track E8: Migration from current Notes/Tasks/Events
+- Entry Track E9: Messaging/DM exploration (only after Feed stabilizes)
+
+Do not implement: Feed runtime behavior, Inbox triage, messaging/chat, notifications/reminders, AI workflows, or automation engines until the gates above are satisfied and this track is formally activated.
+
+### Track 3 — Communications Architecture (deferred)
+
+Blocked until Track 2 is substantially complete and authorization/privacy boundaries are established.
+
+This track covers in-app notifications, reminder delivery, parent-facing communication workflows, and eventually DM/group messaging.
+
+Do not implement any delivery channel runtime behavior until:
+- Entry authorization model is hardened
+- Parent/guardian boundary policies are defined
+- Consent and opt-out infrastructure is designed
+
+Suggested first milestone: Communication architecture boundaries document (notification event taxonomy, consent gating, delivery strategy, failure handling). See Phase 8P Option C.
+
+### Track 4 — AI / Automation (deferred)
+
+Blocked until Tracks 1 and 2 are stable and pilot-validated.
+
+This track covers AI-assisted note capture, AI-suggested task prioritization, escalation automation, and recommendation engines.
+
+Do not implement: AI-generated operational workflows, automation/escalation engines, or recommendation systems until operational baseline is pilot-validated and data volume confidence is established.
+
+Suggested first milestone: AI governance brief covering data readiness, use-case prioritization, governance model, and safety boundaries. See Phase 8P Option D.
+
+---
 
 ## Decision Log Summary
 - Product name: **CadreOS**
