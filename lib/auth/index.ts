@@ -1,30 +1,26 @@
 import { auth } from "@clerk/nextjs/server";
 
 export type AuthContext = {
-  userId: string;
+  userId: string | null;
   clerkUserId: string | null;
   userAccountId: string | null;
   personId: string | null;
   organizationId: string | null;
 };
 
-const PHASE_0_MOCK_AUTH_CONTEXT: AuthContext = {
-  userId: "phase0-mock-user",
+const LOCAL_UNCONFIGURED_AUTH_CONTEXT: AuthContext = {
+  userId: null,
   clerkUserId: null,
   userAccountId: null,
   personId: null,
-  organizationId: "phase0-mock-org",
+  organizationId: null,
 };
 
-function isClerkConfigured(): boolean {
+export function isClerkConfigured(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY);
 }
 
-async function getClerkAuthContext(): Promise<AuthContext | null> {
-  if (!isClerkConfigured()) {
-    return null;
-  }
-
+async function getClerkAuthContext(): Promise<AuthContext> {
   const { userId, orgId } = await auth();
 
   if (!userId) {
@@ -40,20 +36,16 @@ async function getClerkAuthContext(): Promise<AuthContext | null> {
   };
 }
 
-// Phase 4B baseline: use Clerk identity when available; keep Phase 0 fallback for non-configured environments.
 export async function requireAuthContext(): Promise<AuthContext> {
   if (isClerkConfigured()) {
-    const clerkAuthContext = await getClerkAuthContext();
-
-    if (clerkAuthContext) {
-      return clerkAuthContext;
-    }
+    return getClerkAuthContext();
   }
 
-  return PHASE_0_MOCK_AUTH_CONTEXT;
+  // Local/dev fallback when Clerk env vars are missing. This is fail-safe:
+  // no user and no org are assumed so writes remain denied and org selection cannot be spoofed.
+  return LOCAL_UNCONFIGURED_AUTH_CONTEXT;
 }
 
-// Phase 4B baseline: mirror auth context for organization resolution until explicit org authorization is introduced.
 export async function requireOrganizationContext(): Promise<AuthContext> {
   return requireAuthContext();
 }

@@ -1,7 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-import { requireAuthContext } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
@@ -163,10 +162,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const authContext = await requireAuthContext();
     const authorPersonId = await resolveActorPersonId({
       organizationId: scope.organizationId,
-      clerkUserId: authContext.clerkUserId,
+      clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });
 

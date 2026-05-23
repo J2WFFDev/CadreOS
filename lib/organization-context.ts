@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 
-import { requireOrganizationContext } from "@/lib/auth";
+import { isClerkConfigured, requireOrganizationContext } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { upsertUserAccountForOrganization } from "@/lib/user-account";
 
@@ -11,6 +11,7 @@ type OrganizationAuthState = {
   organizationId: string | null;
   unresolvedPersonLink: boolean;
   usesFallbackOrganization: boolean;
+  organizationWarning: string | null;
 };
 
 export type OrganizationScope = {
@@ -24,6 +25,7 @@ export type OrganizationScope = {
 export async function getOrganizationScope(): Promise<OrganizationScope> {
   try {
     const authContext = await requireOrganizationContext();
+    const clerkConfigured = isClerkConfigured();
     const baseAuthState: OrganizationAuthState = {
       clerkUserId: authContext.clerkUserId,
       userAccountId: authContext.userAccountId,
@@ -31,9 +33,11 @@ export async function getOrganizationScope(): Promise<OrganizationScope> {
       organizationId: authContext.organizationId,
       unresolvedPersonLink: false,
       usesFallbackOrganization: false,
+      organizationWarning: null,
     };
 
     let usedFallbackOrganization = false;
+    let organizationWarning: string | null = null;
     let selectedOrganization: { id: string; name: string } | null = null;
 
     if (authContext.organizationId) {
@@ -43,15 +47,45 @@ export async function getOrganizationScope(): Promise<OrganizationScope> {
       });
     }
 
-    if (!selectedOrganization) {
-      // MVP fallback: no explicit Clerk org context is available, so resolve against the first
-      // organization in the database ordered by creation date. This keeps the app functional
-      // during single-org MVP operation. Remove once Clerk organization context is enforced.
+    if (!selectedOrganization && authContext.clerkUserId && clerkConfigured) {
+      const fallbackCandidates = await db.organization.findMany({
+        select: { id: true, name: true },
+        orderBy: { createdAt: "asc" },
+        take: 2,
+      });
+
+      if (fallbackCandidates.length === 1) {
+        usedFallbackOrganization = true;
+        selectedOrganization = fallbackCandidates[0] ?? null;
+        organizationWarning =
+          "Active organization is using a temporary single-organization fallback because Clerk organization context is unavailable.";
+      } else if (fallbackCandidates.length > 1) {
+        return {
+          organizationId: null,
+          organizationName: null,
+          databaseReady: true,
+          errorMessage:
+            "Unable to resolve an active organization safely. Multiple organizations exist and no explicit Clerk organization context is available.",
+          auth: {
+            ...baseAuthState,
+            organizationId: null,
+            unresolvedPersonLink: false,
+            usesFallbackOrganization: false,
+            organizationWarning:
+              "Organization fallback is disabled for multi-organization environments without explicit Clerk organization context.",
+          },
+        };
+      }
+    }
+
+    if (!selectedOrganization && !authContext.clerkUserId) {
       usedFallbackOrganization = true;
       selectedOrganization = await db.organization.findFirst({
         select: { id: true, name: true },
         orderBy: { createdAt: "asc" },
       });
+      organizationWarning =
+        "Running without Clerk configuration. Using first-organization fallback for local development only.";
     }
 
     if (!selectedOrganization) {
@@ -65,6 +99,7 @@ export async function getOrganizationScope(): Promise<OrganizationScope> {
           organizationId: null,
           unresolvedPersonLink: false,
           usesFallbackOrganization: usedFallbackOrganization,
+          organizationWarning,
         },
       };
     }
@@ -80,6 +115,7 @@ export async function getOrganizationScope(): Promise<OrganizationScope> {
           organizationId: selectedOrganization.id,
           unresolvedPersonLink: false,
           usesFallbackOrganization: usedFallbackOrganization,
+          organizationWarning,
         },
       };
     }
@@ -101,6 +137,7 @@ export async function getOrganizationScope(): Promise<OrganizationScope> {
         organizationId: userAccount.organizationId,
         unresolvedPersonLink: !userAccount.personId,
         usesFallbackOrganization: usedFallbackOrganization,
+        organizationWarning,
       },
     };
   } catch (error) {
@@ -122,6 +159,7 @@ export async function getOrganizationScope(): Promise<OrganizationScope> {
         organizationId: null,
         unresolvedPersonLink: false,
         usesFallbackOrganization: false,
+        organizationWarning: null,
       },
     };
   }

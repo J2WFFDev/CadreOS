@@ -112,8 +112,12 @@ export default async function AccountPage() {
         <h3 className="text-base font-medium">Active organization</h3>
         <dl className="mt-3 space-y-2 text-sm">
           <div>
-            <dt className="text-zinc-600 dark:text-zinc-400">Organization</dt>
+            <dt className="text-zinc-600 dark:text-zinc-400">Organization name</dt>
             <dd className="font-medium">{scope.organizationName ?? scope.organizationId ?? "Unavailable"}</dd>
+          </div>
+          <div>
+            <dt className="text-zinc-600 dark:text-zinc-400">Organization id</dt>
+            <dd className="font-medium">{scope.organizationId ?? "Unavailable"}</dd>
           </div>
           <div>
             <dt className="text-zinc-600 dark:text-zinc-400">Organization resolution</dt>
@@ -122,6 +126,11 @@ export default async function AccountPage() {
             </dd>
           </div>
         </dl>
+        {scope.auth.organizationWarning ? (
+          <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/40">
+            <p className="text-sm text-amber-900 dark:text-amber-200">{scope.auth.organizationWarning}</p>
+          </div>
+        ) : null}
       </div>
     </section>
   );
