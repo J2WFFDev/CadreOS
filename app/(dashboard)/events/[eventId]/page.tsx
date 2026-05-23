@@ -274,7 +274,7 @@ export default async function EventDetailsPage({
     );
   }
 
-  if (!canReadTeamScopedContent(actorRoleContext, event.team?.id ?? null)) {
+  if (!canReadTeamScopedContent(actorRoleContext, event.team?.id ?? null, event.program.id)) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Event</h2>

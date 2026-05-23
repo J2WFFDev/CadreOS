@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ReviewFocusPanel } from "@/components/dashboard/review-focus-panel";
-import { canReadStaffOnlyContent, resolveActorRoleContext } from "@/lib/authorization";
+import { canReadStaffOnlyContent, resolveActorRoleContext, resolveStaffScopeResolution } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -147,6 +147,23 @@ export default async function EventsPage({
     );
   }
 
+  const staffScopeResolution = resolveStaffScopeResolution(actorRoleContext);
+  if (
+    !staffScopeResolution.allowAllStaffScope &&
+    (staffScopeResolution.hasAmbiguousScopeAssignments || !staffScopeResolution.hasExplicitScopedAccess)
+  ) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Events</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Your role scope is incomplete for safe event visibility evaluation. Contact an organization admin.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   const statusFilter = readSearchParam(resolvedSearchParams, "status");
   const teamIdFilter = readSearchParam(resolvedSearchParams, "teamId");
   const ownerPersonIdFilter = readSearchParam(resolvedSearchParams, "ownerPersonId");
@@ -206,10 +223,25 @@ export default async function EventsPage({
 
   try {
     const now = new Date();
-    const [fetchedEvents, fetchedTeams, fetchedPeople] = await Promise.all([
+    const eventScopeWhere =
+      staffScopeResolution.allowAllStaffScope
+        ? {}
+        : {
+            OR: [
+              ...(staffScopeResolution.allowedTeamIds.length > 0
+                ? [{ teamId: { in: staffScopeResolution.allowedTeamIds } }]
+                : []),
+              ...(staffScopeResolution.allowedProgramIds.length > 0
+                ? [{ programId: { in: staffScopeResolution.allowedProgramIds } }]
+                : []),
+            ],
+          };
+
+    const [fetchedEvents, fetchedTeams] = await Promise.all([
       db.event.findMany({
         where: {
           organizationId: scope.organizationId,
+          ...eventScopeWhere,
           ...(statusFilter ? { status: statusFilter as never } : {}),
           ...(teamIdFilter ? { teamId: teamIdFilter } : {}),
           ...(ownerPersonIdFilter ? { createdByPersonId: ownerPersonIdFilter } : {}),
@@ -245,14 +277,23 @@ export default async function EventsPage({
         ],
       }),
       db.team.findMany({
-        where: { organizationId: scope.organizationId },
+        where: {
+          organizationId: scope.organizationId,
+          ...(staffScopeResolution.allowAllStaffScope
+            ? {}
+            : {
+                OR: [
+                  ...(staffScopeResolution.allowedTeamIds.length > 0
+                    ? [{ id: { in: staffScopeResolution.allowedTeamIds } }]
+                    : []),
+                  ...(staffScopeResolution.allowedProgramIds.length > 0
+                    ? [{ programId: { in: staffScopeResolution.allowedProgramIds } }]
+                    : []),
+                ],
+              }),
+        },
         select: { id: true, name: true },
         orderBy: [{ name: "asc" }],
-      }),
-      db.person.findMany({
-        where: { organizationId: scope.organizationId },
-        select: { id: true, firstName: true, lastName: true },
-        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       }),
     ]);
 
@@ -265,7 +306,14 @@ export default async function EventsPage({
 
     events = [...upcomingEvents, ...pastEvents];
     teams = fetchedTeams;
-    people = fetchedPeople;
+    const ownerMap = new Map<string, { id: string; firstName: string; lastName: string }>();
+    for (const event of fetchedEvents) {
+      ownerMap.set(event.createdBy.id, event.createdBy);
+    }
+    people = [...ownerMap.values()].sort(
+      (left, right) =>
+        left.lastName.localeCompare(right.lastName) || left.firstName.localeCompare(right.firstName),
+    );
   } catch {
     events = null;
   }

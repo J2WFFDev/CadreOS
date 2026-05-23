@@ -16,7 +16,7 @@
  * @see planning/PHASE_9E_RUNTIME_AUTHORIZATION_HELPER_FOUNDATION.md
  */
 
-import { RoleType, ScopeType } from "@prisma/client";
+import { NoteVisibility, RoleType, ScopeType } from "@prisma/client";
 
 import { db } from "@/lib/db";
 
@@ -67,10 +67,19 @@ export type ActorRoleContext = {
   isStaffMember: boolean;
 };
 
+export type StaffScopeResolution = {
+  allowAllStaffScope: boolean;
+  allowedTeamIds: string[];
+  allowedProgramIds: string[];
+  hasAmbiguousScopeAssignments: boolean;
+  hasExplicitScopedAccess: boolean;
+};
+
 export type AuthorizationDecisionHelper =
   | "canReadStaffOnlyContent"
   | "canReadTeamScopedContent"
-  | "canAccessFollowUpTask";
+  | "canAccessFollowUpTask"
+  | "canReadObservationNoteByVisibility";
 
 export type AuthorizationDecisionScope =
   | "none"
@@ -92,12 +101,15 @@ export type AuthorizationDecisionReasonCode =
   | "ALLOW_ORG_LEVEL_CONTENT"
   | "ALLOW_ORGANIZATION_SCOPE_ASSIGNMENT"
   | "ALLOW_TEAM_SCOPE_ASSIGNMENT_MATCH"
-  | "ALLOW_PROGRAM_SCOPE_ASSIGNMENT_CONSERVATIVE"
+  | "ALLOW_PROGRAM_SCOPE_ASSIGNMENT_MATCH"
   | "ALLOW_TASK_ASSIGNEE"
   | "ALLOW_TASK_CREATOR"
   | "DENY_UNLINKED_ACCOUNT"
   | "DENY_NON_STAFF_ROLE"
   | "DENY_TEAM_SCOPE_MISMATCH"
+  | "DENY_PROGRAM_SCOPE_TEAM_UNVERIFIED"
+  | "DENY_ORG_LEVEL_SCOPE_UNVERIFIED"
+  | "DENY_NOTE_VISIBILITY_UNSUPPORTED"
   | "DENY_TASK_NO_OWNERSHIP";
 
 export type AuthorizationDecision = {
@@ -224,8 +236,24 @@ export function canReadStaffOnlyContent(context: ActorRoleContext): boolean {
  *
  * Non-staff actors always return false.
  */
-export function canReadTeamScopedContent(context: ActorRoleContext, teamId: string | null): boolean {
-  const decision = evaluateTeamScopedContentAccess(context, teamId);
+export function canReadTeamScopedContent(
+  context: ActorRoleContext,
+  teamId: string | null,
+  teamProgramId: string | null = null,
+): boolean {
+  const decision = evaluateTeamScopedContentAccess(context, teamId, teamProgramId);
+  logAuthorizationDecision(decision, {
+    workflow: "authorization-helper",
+    metadata: { helper: decision.helper },
+  });
+  return decision.allowed;
+}
+
+export function canReadObservationNoteByVisibility(
+  context: ActorRoleContext,
+  visibility: NoteVisibility | null | undefined,
+): boolean {
+  const decision = evaluateObservationNoteVisibilityAccess(context, visibility);
   logAuthorizationDecision(decision, {
     workflow: "authorization-helper",
     metadata: { helper: decision.helper },
@@ -281,6 +309,7 @@ export function evaluateStaffOnlyContentAccess(context: ActorRoleContext): Autho
 export function evaluateTeamScopedContentAccess(
   context: ActorRoleContext,
   teamId: string | null,
+  teamProgramId: string | null = null,
 ): AuthorizationDecision {
   if (!context.isStaffMember) {
     return {
@@ -301,17 +330,37 @@ export function evaluateTeamScopedContentAccess(
 
   // Org-level records are accessible to all staff.
   if (!teamId) {
+    const organizationAssignment = context.staffRoleAssignments.find(
+      (assignment) => assignment.scopeType === ScopeType.ORGANIZATION,
+    );
+
+    if (!organizationAssignment) {
+      return {
+        helper: "canReadTeamScopedContent",
+        allowed: false,
+        reasonCode: "DENY_ORG_LEVEL_SCOPE_UNVERIFIED",
+        reason:
+          "Record is organization-scoped (no teamId), but actor has no organization-scope assignment; denying by default.",
+        scopeApplied: "none",
+        ownershipRelationship: "staff_role",
+        organizationId: context.organizationId,
+        actorPersonId: context.actorPersonId,
+        evaluatedTeamId: null,
+        matchedRoleAssignment: null,
+      };
+    }
+
     return {
       helper: "canReadTeamScopedContent",
       allowed: true,
       reasonCode: "ALLOW_ORG_LEVEL_CONTENT",
-      reason: "Record is organization-scoped (no teamId) and actor is staff.",
+      reason: "Record is organization-scoped (no teamId) and actor has organization-scope staff access.",
       scopeApplied: "organization",
       ownershipRelationship: "staff_role",
       organizationId: context.organizationId,
       actorPersonId: context.actorPersonId,
       evaluatedTeamId: null,
-      matchedRoleAssignment: null,
+      matchedRoleAssignment: organizationAssignment,
     };
   }
 
@@ -354,22 +403,45 @@ export function evaluateTeamScopedContentAccess(
   }
 
   const programAssignment = context.staffRoleAssignments.find(
-    (assignment) => assignment.scopeType === ScopeType.PROGRAM,
+    (assignment) =>
+      assignment.scopeType === ScopeType.PROGRAM &&
+      assignment.programId &&
+      teamProgramId &&
+      assignment.programId === teamProgramId,
   );
 
   if (programAssignment) {
     return {
       helper: "canReadTeamScopedContent",
       allowed: true,
-      reasonCode: "ALLOW_PROGRAM_SCOPE_ASSIGNMENT_CONSERVATIVE",
-      reason:
-        "Actor has program-scope staff assignment; helper allows conservative access without strict team-program DB verification.",
+      reasonCode: "ALLOW_PROGRAM_SCOPE_ASSIGNMENT_MATCH",
+      reason: "Actor has program-scope staff assignment matching the resolved team program.",
       scopeApplied: "program",
       ownershipRelationship: "staff_role",
       organizationId: context.organizationId,
       actorPersonId: context.actorPersonId,
       evaluatedTeamId: teamId,
       matchedRoleAssignment: programAssignment,
+    };
+  }
+
+  const hasProgramScopedAssignment = context.staffRoleAssignments.some(
+    (assignment) => assignment.scopeType === ScopeType.PROGRAM,
+  );
+
+  if (hasProgramScopedAssignment && !teamProgramId) {
+    return {
+      helper: "canReadTeamScopedContent",
+      allowed: false,
+      reasonCode: "DENY_PROGRAM_SCOPE_TEAM_UNVERIFIED",
+      reason:
+        "Program-scope assignment exists, but team-to-program mapping is unresolved; denying by default.",
+      scopeApplied: "none",
+      ownershipRelationship: "staff_role",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: teamId,
+      matchedRoleAssignment: null,
     };
   }
 
@@ -384,6 +456,79 @@ export function evaluateTeamScopedContentAccess(
     actorPersonId: context.actorPersonId,
     evaluatedTeamId: teamId,
     matchedRoleAssignment: null,
+  };
+}
+
+export function evaluateObservationNoteVisibilityAccess(
+  context: ActorRoleContext,
+  visibility: NoteVisibility | null | undefined,
+): AuthorizationDecision {
+  if (!visibility || visibility !== NoteVisibility.STAFF_ONLY) {
+    return {
+      helper: "canReadObservationNoteByVisibility",
+      allowed: false,
+      reasonCode: "DENY_NOTE_VISIBILITY_UNSUPPORTED",
+      reason:
+        "ObservationNote visibility is unresolved or unsupported for this workflow; denying by default.",
+      scopeApplied: "none",
+      ownershipRelationship: "none",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: null,
+      matchedRoleAssignment: null,
+    };
+  }
+
+  const base = evaluateStaffOnlyContentAccess(context);
+  return {
+    ...base,
+    helper: "canReadObservationNoteByVisibility",
+  };
+}
+
+export function resolveStaffScopeResolution(context: ActorRoleContext): StaffScopeResolution {
+  const hasOrganizationScopeAssignment = context.staffRoleAssignments.some(
+    (assignment) => assignment.scopeType === ScopeType.ORGANIZATION,
+  );
+
+  if (hasOrganizationScopeAssignment) {
+    return {
+      allowAllStaffScope: true,
+      allowedTeamIds: [],
+      allowedProgramIds: [],
+      hasAmbiguousScopeAssignments: false,
+      hasExplicitScopedAccess: true,
+    };
+  }
+
+  const allowedTeamIds = Array.from(
+    new Set(
+      context.staffRoleAssignments
+        .filter((assignment) => assignment.scopeType === ScopeType.TEAM)
+        .map((assignment) => assignment.teamId)
+        .filter((teamId): teamId is string => Boolean(teamId)),
+    ),
+  );
+  const allowedProgramIds = Array.from(
+    new Set(
+      context.staffRoleAssignments
+        .filter((assignment) => assignment.scopeType === ScopeType.PROGRAM)
+        .map((assignment) => assignment.programId)
+        .filter((programId): programId is string => Boolean(programId)),
+    ),
+  );
+  const hasAmbiguousScopeAssignments = context.staffRoleAssignments.some(
+    (assignment) =>
+      (assignment.scopeType === ScopeType.TEAM && !assignment.teamId) ||
+      (assignment.scopeType === ScopeType.PROGRAM && !assignment.programId),
+  );
+
+  return {
+    allowAllStaffScope: false,
+    allowedTeamIds,
+    allowedProgramIds,
+    hasAmbiguousScopeAssignments,
+    hasExplicitScopedAccess: allowedTeamIds.length > 0 || allowedProgramIds.length > 0,
   };
 }
 

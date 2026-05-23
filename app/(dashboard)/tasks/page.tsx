@@ -23,6 +23,7 @@ import {
   evaluateStaffOnlyContentAccess,
   logAuthorizationDecision,
   resolveActorRoleContext,
+  resolveStaffScopeResolution,
 } from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -204,6 +205,23 @@ export default async function TasksPage({
     );
   }
 
+  const staffScopeResolution = resolveStaffScopeResolution(actorRoleContext);
+  if (
+    !staffScopeResolution.allowAllStaffScope &&
+    (staffScopeResolution.hasAmbiguousScopeAssignments || !staffScopeResolution.hasExplicitScopedAccess)
+  ) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Tasks</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Your role scope is incomplete for safe task visibility evaluation. Contact an organization admin.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   const guardianAccess = await resolveGuardianRelationshipAccess({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
@@ -251,6 +269,30 @@ export default async function TasksPage({
   try {
     const where: Prisma.FollowUpTaskWhereInput = {
       organizationId: scope.organizationId,
+      ...(staffScopeResolution.allowAllStaffScope
+        ? {}
+        : {
+            OR: [
+              ...(staffScopeResolution.allowedTeamIds.length > 0
+                ? [{ sourceEvent: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+                : []),
+              ...(staffScopeResolution.allowedTeamIds.length > 0
+                ? [{ sourceNote: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+                : []),
+              ...(staffScopeResolution.allowedTeamIds.length > 0
+                ? [{ sourceNote: { is: { event: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } } } }]
+                : []),
+              ...(staffScopeResolution.allowedProgramIds.length > 0
+                ? [{ sourceEvent: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
+                : []),
+              ...(staffScopeResolution.allowedProgramIds.length > 0
+                ? [{ sourceNote: { is: { event: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
+                : []),
+              ...(staffScopeResolution.allowedProgramIds.length > 0
+                ? [{ sourceNote: { is: { team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
+                : []),
+            ],
+          }),
       ...(statusFilter ? { status: statusFilter } : {}),
       ...(assigneePersonIdParam ? { assigneePersonId: assigneePersonIdParam } : {}),
       ...(!statusFilter && resolutionFilter === "unresolved"
@@ -307,7 +349,7 @@ export default async function TasksPage({
         : {}),
     };
 
-    [tasks, people, teams, events] = await Promise.all([
+    [tasks, teams, events] = await Promise.all([
       db.followUpTask.findMany({
         where,
         select: {
@@ -356,23 +398,55 @@ export default async function TasksPage({
           sourceInboxItem: { select: { id: true, category: true, status: true } },
         },
       }),
-      db.person.findMany({
-        where: { organizationId: scope.organizationId },
-        select: { id: true, firstName: true, lastName: true },
-        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-      }),
       db.team.findMany({
-        where: { organizationId: scope.organizationId },
+        where: {
+          organizationId: scope.organizationId,
+          ...(staffScopeResolution.allowAllStaffScope
+            ? {}
+            : {
+                OR: [
+                  ...(staffScopeResolution.allowedTeamIds.length > 0
+                    ? [{ id: { in: staffScopeResolution.allowedTeamIds } }]
+                    : []),
+                  ...(staffScopeResolution.allowedProgramIds.length > 0
+                    ? [{ programId: { in: staffScopeResolution.allowedProgramIds } }]
+                    : []),
+                ],
+              }),
+        },
         select: { id: true, name: true },
         orderBy: [{ name: "asc" }],
       }),
       db.event.findMany({
-        where: { organizationId: scope.organizationId },
+        where: {
+          organizationId: scope.organizationId,
+          ...(staffScopeResolution.allowAllStaffScope
+            ? {}
+            : {
+                OR: [
+                  ...(staffScopeResolution.allowedTeamIds.length > 0
+                    ? [{ teamId: { in: staffScopeResolution.allowedTeamIds } }]
+                    : []),
+                  ...(staffScopeResolution.allowedProgramIds.length > 0
+                    ? [{ programId: { in: staffScopeResolution.allowedProgramIds } }]
+                    : []),
+                ],
+              }),
+        },
         select: { id: true, title: true },
         orderBy: [{ startsAt: "desc" }],
         take: 150,
       }),
     ]);
+    const peopleMap = new Map<string, { id: string; firstName: string; lastName: string }>();
+    for (const task of tasks) {
+      peopleMap.set(task.assignee.id, task.assignee);
+      peopleMap.set(task.createdBy.id, task.createdBy);
+    }
+    people = [...peopleMap.values()].sort(
+      (left, right) =>
+        left.lastName.localeCompare(right.lastName) || left.firstName.localeCompare(right.firstName),
+    );
   } catch (error) {
     if (isSchemaUnavailableError(error)) {
       queryErrorMessage = "Database schema is not available yet. Run database setup before loading tasks.";
