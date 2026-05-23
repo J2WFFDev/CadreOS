@@ -3,12 +3,23 @@ import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
-import { canReadStaffOnlyContent, resolveActorRoleContext } from "@/lib/authorization";
+import {
+  evaluatePersonOperationalContentAccess,
+  evaluateStaffOnlyContentAccess,
+  logAuthorizationDecision,
+  resolveActorRoleContext,
+  resolveStaffScopeResolution,
+  type StaffScopeResolution,
+} from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { isUnresolvedTaskStatus } from "@/lib/follow-up-tasks";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { getOperationalHistory } from "@/lib/operational-history";
+import {
+  buildSupportedTaskSourceNoteVisibilityWhere,
+  SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
+} from "@/lib/operational-visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +44,51 @@ function formatEnumLabel(value: string) {
     .replaceAll("_", " ")
     .toLowerCase()
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function matchesScopedTeamOrProgram(
+  staffScopeResolution: StaffScopeResolution,
+  teamId: string | null,
+  programId: string | null,
+) {
+  if (staffScopeResolution.allowAllStaffScope) {
+    return true;
+  }
+
+  if (teamId && staffScopeResolution.allowedTeamIds.includes(teamId)) {
+    return true;
+  }
+
+  if (programId && staffScopeResolution.allowedProgramIds.includes(programId)) {
+    return true;
+  }
+
+  return false;
+}
+
+function derivePersonOperationalScope(person: {
+  roles: Array<{
+    program: { id: string } | null;
+    team: { id: string; program: { id: string } | null } | null;
+  }>;
+  roster: Array<{
+    team: { id: string; program: { id: string } };
+  }>;
+}) {
+  return {
+    teamIds: Array.from(
+      new Set([
+        ...person.roles.map((role) => role.team?.id ?? null),
+        ...person.roster.map((membership) => membership.team.id),
+      ].filter((value): value is string => Boolean(value))),
+    ),
+    programIds: Array.from(
+      new Set([
+        ...person.roles.map((role) => role.program?.id ?? role.team?.program?.id ?? null),
+        ...person.roster.map((membership) => membership.team.program.id),
+      ].filter((value): value is string => Boolean(value))),
+    ),
+  };
 }
 
 export default async function PersonDetailsPage({
@@ -76,14 +132,37 @@ export default async function PersonDetailsPage({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
   });
+  const staffAccessDecision = evaluateStaffOnlyContentAccess(actorRoleContext);
+  logAuthorizationDecision(staffAccessDecision, {
+    workflow: "people.detail.access",
+    entityType: "person",
+    entityId: personId,
+  });
 
-  if (!canReadStaffOnlyContent(actorRoleContext)) {
+  if (!staffAccessDecision.allowed) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Person</h2>
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             You do not have staff access to view person operational workflows.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  const staffScopeResolution = resolveStaffScopeResolution(actorRoleContext);
+  if (
+    !staffScopeResolution.allowAllStaffScope &&
+    (staffScopeResolution.hasAmbiguousScopeAssignments || !staffScopeResolution.hasExplicitScopedAccess)
+  ) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Person</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Your role scope is incomplete for safe person visibility evaluation. Contact an organization admin.
           </p>
         </div>
       </section>
@@ -243,6 +322,18 @@ export default async function PersonDetailsPage({
       db.program.findMany({
         where: {
           organizationId: scope.organizationId,
+          ...(staffScopeResolution.allowAllStaffScope
+            ? {}
+            : {
+                OR: [
+                  ...(staffScopeResolution.allowedProgramIds.length > 0
+                    ? [{ id: { in: staffScopeResolution.allowedProgramIds } }]
+                    : []),
+                  ...(staffScopeResolution.allowedTeamIds.length > 0
+                    ? [{ teams: { some: { id: { in: staffScopeResolution.allowedTeamIds } } } }]
+                    : []),
+                ],
+              }),
         },
         select: {
           id: true,
@@ -253,6 +344,18 @@ export default async function PersonDetailsPage({
       db.team.findMany({
         where: {
           organizationId: scope.organizationId,
+          ...(staffScopeResolution.allowAllStaffScope
+            ? {}
+            : {
+                OR: [
+                  ...(staffScopeResolution.allowedTeamIds.length > 0
+                    ? [{ id: { in: staffScopeResolution.allowedTeamIds } }]
+                    : []),
+                  ...(staffScopeResolution.allowedProgramIds.length > 0
+                    ? [{ programId: { in: staffScopeResolution.allowedProgramIds } }]
+                    : []),
+                ],
+              }),
         },
         select: {
           id: true,
@@ -297,6 +400,29 @@ export default async function PersonDetailsPage({
     );
   }
 
+  const personAccessDecision = evaluatePersonOperationalContentAccess(
+    actorRoleContext,
+    derivePersonOperationalScope(person),
+  );
+  logAuthorizationDecision(personAccessDecision, {
+    workflow: "people.detail.scope",
+    entityType: "person",
+    entityId: person.id,
+  });
+
+  if (!personAccessDecision.allowed) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Person</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            You do not have access to this person within your current team/program scope.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   const roleError = readSearchParam(resolvedSearchParams, "roleError");
   const roleTypeError = readSearchParam(resolvedSearchParams, "roleTypeError");
   const scopeTypeError = readSearchParam(resolvedSearchParams, "scopeTypeError");
@@ -311,9 +437,27 @@ export default async function PersonDetailsPage({
   const selectedTeamId = hasSearchParam(resolvedSearchParams, "teamId")
     ? readSearchParam(resolvedSearchParams, "teamId")
     : "";
+  const visibleRoles = staffScopeResolution.allowAllStaffScope
+    ? person.roles
+    : person.roles.filter((role) =>
+        matchesScopedTeamOrProgram(
+          staffScopeResolution,
+          role.team?.id ?? null,
+          role.program?.id ?? role.team?.program?.id ?? null,
+        ),
+      );
+  const visibleRoster = staffScopeResolution.allowAllStaffScope
+    ? person.roster
+    : person.roster.filter((membership) =>
+        matchesScopedTeamOrProgram(
+          staffScopeResolution,
+          membership.team.id,
+          membership.team.program.id,
+        ),
+      );
   const isAthleteProfile =
-    person.roles.some((role) => role.roleType === RoleType.ATHLETE) ||
-    person.roster.some((membership) => membership.rosterRole === RoleType.ATHLETE);
+    visibleRoles.some((role) => role.roleType === RoleType.ATHLETE) ||
+    visibleRoster.some((membership) => membership.rosterRole === RoleType.ATHLETE);
   const hasGuardianRelationship = canViewGuardianRelationshipDetails && person.athleteLinks.length > 0;
   const hasGuardianAccountLinkGap = person.athleteLinks.some(
     (link) => link.guardian._count.userAccounts === 0,
@@ -327,18 +471,52 @@ export default async function PersonDetailsPage({
     personId: person.id,
     limit: 10,
     sinceDays: 45,
+    allowAllStaffScope: staffScopeResolution.allowAllStaffScope,
+    allowedTeamIds: staffScopeResolution.allowedTeamIds,
+    allowedProgramIds: staffScopeResolution.allowedProgramIds,
   });
-  const rosterTeamIds = [...new Set(person.roster.map((membership) => membership.team.id))];
+  const rosterTeamIds = [...new Set(visibleRoster.map((membership) => membership.team.id))];
   const now = new Date();
   const upcomingWindowEndsAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
   const [relatedTasks, relatedNotes, relatedAttendance, upcomingTeamEvents] = await Promise.all([
     db.followUpTask.findMany({
       where: {
         organizationId: scope.organizationId,
-        OR: [
-          { assigneePersonId: person.id },
-          { createdByPersonId: person.id },
-          { sourceNote: { is: { athletePersonId: person.id } } },
+        AND: [
+          buildSupportedTaskSourceNoteVisibilityWhere(),
+          {
+            OR: [
+              { assigneePersonId: person.id },
+              { createdByPersonId: person.id },
+              { sourceNote: { is: { athletePersonId: person.id } } },
+            ],
+          },
+          ...(staffScopeResolution.allowAllStaffScope
+            ? []
+            : [
+                {
+                  OR: [
+                    ...(staffScopeResolution.allowedTeamIds.length > 0
+                      ? [{ sourceEvent: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+                      : []),
+                    ...(staffScopeResolution.allowedTeamIds.length > 0
+                      ? [{ sourceNote: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+                      : []),
+                    ...(staffScopeResolution.allowedTeamIds.length > 0
+                      ? [{ sourceNote: { is: { event: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } } } }]
+                      : []),
+                    ...(staffScopeResolution.allowedProgramIds.length > 0
+                      ? [{ sourceEvent: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
+                      : []),
+                    ...(staffScopeResolution.allowedProgramIds.length > 0
+                      ? [{ sourceNote: { is: { team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
+                      : []),
+                    ...(staffScopeResolution.allowedProgramIds.length > 0
+                      ? [{ sourceNote: { is: { event: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
+                      : []),
+                  ],
+                },
+              ]),
         ],
       },
       select: {
@@ -361,7 +539,30 @@ export default async function PersonDetailsPage({
     db.observationNote.findMany({
       where: {
         organizationId: scope.organizationId,
-        OR: [{ athletePersonId: person.id }, { authorPersonId: person.id }],
+        visibility: SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
+        AND: [
+          { OR: [{ athletePersonId: person.id }, { authorPersonId: person.id }] },
+          ...(staffScopeResolution.allowAllStaffScope
+            ? []
+            : [
+                {
+                  OR: [
+                    ...(staffScopeResolution.allowedTeamIds.length > 0
+                      ? [{ teamId: { in: staffScopeResolution.allowedTeamIds } }]
+                      : []),
+                    ...(staffScopeResolution.allowedTeamIds.length > 0
+                      ? [{ event: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+                      : []),
+                    ...(staffScopeResolution.allowedProgramIds.length > 0
+                      ? [{ team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
+                      : []),
+                    ...(staffScopeResolution.allowedProgramIds.length > 0
+                      ? [{ event: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
+                      : []),
+                  ],
+                },
+              ]),
+        ],
       },
       select: {
         id: true,
@@ -377,6 +578,18 @@ export default async function PersonDetailsPage({
       where: {
         organizationId: scope.organizationId,
         personId: person.id,
+        ...(staffScopeResolution.allowAllStaffScope
+          ? {}
+          : {
+              OR: [
+                ...(staffScopeResolution.allowedTeamIds.length > 0
+                  ? [{ event: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+                  : []),
+                ...(staffScopeResolution.allowedProgramIds.length > 0
+                  ? [{ event: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
+                  : []),
+              ],
+            }),
       },
       select: {
         id: true,
@@ -522,11 +735,11 @@ export default async function PersonDetailsPage({
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Role assignments</h3>
-        {person.roles.length === 0 ? (
+        {visibleRoles.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No role assignments.</p>
         ) : (
           <ul className="space-y-3 text-sm">
-            {person.roles.map((role) => (
+            {visibleRoles.map((role) => (
               <li key={role.id} className="flex flex-wrap items-start justify-between gap-2 border-b pb-3 last:border-b-0 last:pb-0">
                 <span>
                   {formatEnumLabel(role.roleType)} · {formatEnumLabel(role.scopeType)}
@@ -699,11 +912,11 @@ export default async function PersonDetailsPage({
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Roster memberships</h3>
-        {person.roster.length === 0 ? (
+        {visibleRoster.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No roster memberships.</p>
         ) : (
           <ul className="space-y-2 text-sm">
-            {person.roster.map((membership) => (
+            {visibleRoster.map((membership) => (
               <li key={membership.id}>
                 Program:{" "}
                 <Link href={`/programs/${membership.team.program.id}`} className="underline">

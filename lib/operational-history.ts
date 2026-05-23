@@ -45,17 +45,48 @@ export async function getOperationalHistory(input: {
   limit?: number;
   sinceDays?: number;
   unresolvedOnly?: boolean;
+  allowAllStaffScope?: boolean;
+  allowedTeamIds?: string[];
+  allowedProgramIds?: string[];
 }) {
   const sinceDays = input.sinceDays ?? 30;
   const limit = input.limit ?? 8;
   const changedSince = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
   const unresolvedStatuses: TaskStatus[] = [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED];
+  const allowAllStaffScope = input.allowAllStaffScope ?? true;
+  const allowedTeamIds = Array.from(new Set((input.allowedTeamIds ?? []).filter(Boolean)));
+  const allowedProgramIds = Array.from(new Set((input.allowedProgramIds ?? []).filter(Boolean)));
   const taskWhere: Prisma.FollowUpTaskWhereInput = {
     organizationId: input.organizationId,
     updatedAt: { gte: changedSince },
     ...(input.unresolvedOnly ? { status: { in: unresolvedStatuses } } : {}),
   };
   const taskAnd: Prisma.FollowUpTaskWhereInput[] = [buildSupportedTaskSourceNoteVisibilityWhere()];
+
+  if (!allowAllStaffScope) {
+    taskAnd.push({
+      OR: [
+        ...(allowedTeamIds.length > 0
+          ? [{ sourceEvent: { is: { teamId: { in: allowedTeamIds } } } }]
+          : []),
+        ...(allowedTeamIds.length > 0
+          ? [{ sourceNote: { is: { teamId: { in: allowedTeamIds } } } }]
+          : []),
+        ...(allowedTeamIds.length > 0
+          ? [{ sourceNote: { is: { event: { is: { teamId: { in: allowedTeamIds } } } } } }]
+          : []),
+        ...(allowedProgramIds.length > 0
+          ? [{ sourceEvent: { is: { programId: { in: allowedProgramIds } } } }]
+          : []),
+        ...(allowedProgramIds.length > 0
+          ? [{ sourceNote: { is: { team: { is: { programId: { in: allowedProgramIds } } } } } }]
+          : []),
+        ...(allowedProgramIds.length > 0
+          ? [{ sourceNote: { is: { event: { is: { programId: { in: allowedProgramIds } } } } } }]
+          : []),
+      ],
+    });
+  }
 
   if (input.eventId) {
     taskAnd.push({
@@ -94,6 +125,19 @@ export async function getOperationalHistory(input: {
   };
   const noteAnd: Prisma.ObservationNoteWhereInput[] = [];
 
+  if (!allowAllStaffScope) {
+    noteAnd.push({
+      OR: [
+        ...(allowedTeamIds.length > 0 ? [{ teamId: { in: allowedTeamIds } }] : []),
+        ...(allowedTeamIds.length > 0 ? [{ event: { is: { teamId: { in: allowedTeamIds } } } }] : []),
+        ...(allowedProgramIds.length > 0 ? [{ team: { is: { programId: { in: allowedProgramIds } } } }] : []),
+        ...(allowedProgramIds.length > 0
+          ? [{ event: { is: { programId: { in: allowedProgramIds } } } }]
+          : []),
+      ],
+    });
+  }
+
   if (input.eventId) {
     noteAnd.push({ eventId: input.eventId });
   }
@@ -116,6 +160,17 @@ export async function getOperationalHistory(input: {
   };
   const attendanceAnd: Prisma.AttendanceRecordWhereInput[] = [];
 
+  if (!allowAllStaffScope) {
+    attendanceAnd.push({
+      OR: [
+        ...(allowedTeamIds.length > 0 ? [{ event: { is: { teamId: { in: allowedTeamIds } } } }] : []),
+        ...(allowedProgramIds.length > 0
+          ? [{ event: { is: { programId: { in: allowedProgramIds } } } }]
+          : []),
+      ],
+    });
+  }
+
   if (input.eventId) {
     attendanceAnd.push({ eventId: input.eventId });
   }
@@ -137,6 +192,15 @@ export async function getOperationalHistory(input: {
     updatedAt: { gte: changedSince },
   };
   const eventAnd: Prisma.EventWhereInput[] = [];
+
+  if (!allowAllStaffScope) {
+    eventAnd.push({
+      OR: [
+        ...(allowedTeamIds.length > 0 ? [{ teamId: { in: allowedTeamIds } }] : []),
+        ...(allowedProgramIds.length > 0 ? [{ programId: { in: allowedProgramIds } }] : []),
+      ],
+    });
+  }
 
   if (input.eventId) {
     eventAnd.push({ id: input.eventId });
@@ -250,6 +314,16 @@ export async function getOperationalHistory(input: {
           where: {
             organizationId: input.organizationId,
             updatedAt: { gte: changedSince },
+            ...(!allowAllStaffScope
+              ? {
+                  OR: [
+                    ...(allowedTeamIds.length > 0 ? [{ teamId: { in: allowedTeamIds } }] : []),
+                    ...(allowedProgramIds.length > 0
+                      ? [{ team: { is: { programId: { in: allowedProgramIds } } } }]
+                      : []),
+                  ],
+                }
+              : {}),
             ...(input.personId ? { personId: input.personId } : {}),
             ...(input.teamId ? { teamId: input.teamId } : {}),
           },
@@ -271,6 +345,17 @@ export async function getOperationalHistory(input: {
           where: {
             organizationId: input.organizationId,
             updatedAt: { gte: changedSince },
+            ...(!allowAllStaffScope
+              ? {
+                  OR: [
+                    ...(allowedTeamIds.length > 0 ? [{ teamId: { in: allowedTeamIds } }] : []),
+                    ...(allowedProgramIds.length > 0 ? [{ programId: { in: allowedProgramIds } }] : []),
+                    ...(allowedProgramIds.length > 0
+                      ? [{ team: { is: { programId: { in: allowedProgramIds } } } }]
+                      : []),
+                  ],
+                }
+              : {}),
             ...(input.personId ? { personId: input.personId } : {}),
             ...(input.teamId ? { teamId: input.teamId } : {}),
           },

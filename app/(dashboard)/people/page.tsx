@@ -3,6 +3,13 @@ import Link from "next/link";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
+import {
+  evaluateStaffOnlyContentAccess,
+  logAuthorizationDecision,
+  resolveActorRoleContext,
+  resolveStaffScopeResolution,
+  type StaffScopeResolution,
+} from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -23,8 +30,8 @@ function formatRoleSummary(roleTypes: string[]) {
 function formatAssignmentSummary(assignments: Array<{
   roleType: string;
   scopeType: string;
-  program: { name: string } | null;
-  team: { name: string; program: { name: string } | null } | null;
+  program: { id: string; name: string } | null;
+  team: { id: string; name: string; program: { id: string; name: string } | null } | null;
 }>) {
   if (assignments.length === 0) {
     return "No roles assigned";
@@ -54,7 +61,7 @@ function formatAssignmentSummary(assignments: Array<{
 }
 
 function formatTeamMembershipSummary(memberships: Array<{
-  team: { id: string; name: string; program: { name: string } };
+  team: { id: string; name: string; program: { id: string; name: string } };
 }>) {
   if (memberships.length === 0) {
     return "No team memberships";
@@ -63,6 +70,26 @@ function formatTeamMembershipSummary(memberships: Array<{
   const summaries = memberships.map((membership) => `${membership.team.program.name} · ${membership.team.name}`);
 
   return [...new Set(summaries)].join(", ");
+}
+
+function matchesScopedTeamOrProgram(
+  staffScopeResolution: StaffScopeResolution,
+  teamId: string | null,
+  programId: string | null,
+) {
+  if (staffScopeResolution.allowAllStaffScope) {
+    return true;
+  }
+
+  if (teamId && staffScopeResolution.allowedTeamIds.includes(teamId)) {
+    return true;
+  }
+
+  if (programId && staffScopeResolution.allowedProgramIds.includes(programId)) {
+    return true;
+  }
+
+  return false;
 }
 
 export default async function PeoplePage() {
@@ -90,6 +117,46 @@ export default async function PeoplePage() {
     );
   }
 
+  const actorRoleContext = await resolveActorRoleContext({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const staffAccessDecision = evaluateStaffOnlyContentAccess(actorRoleContext);
+  logAuthorizationDecision(staffAccessDecision, {
+    workflow: "people.list.access",
+    entityType: "person",
+  });
+
+  if (!staffAccessDecision.allowed) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">People</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            You do not have staff access to view people operational workflows.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  const staffScopeResolution = resolveStaffScopeResolution(actorRoleContext);
+  if (
+    !staffScopeResolution.allowAllStaffScope &&
+    (staffScopeResolution.hasAmbiguousScopeAssignments || !staffScopeResolution.hasExplicitScopedAccess)
+  ) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">People</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Your role scope is incomplete for safe people visibility evaluation. Contact an organization admin.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   const guardianAccess = await resolveGuardianRelationshipAccess({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
@@ -105,11 +172,11 @@ export default async function PeoplePage() {
         roles: Array<{
           roleType: string;
           scopeType: string;
-          program: { name: string } | null;
-          team: { name: string; program: { name: string } | null } | null;
+          program: { id: string; name: string } | null;
+          team: { id: string; name: string; program: { id: string; name: string } | null } | null;
         }>;
         roster: Array<{
-          team: { id: string; name: string; program: { name: string } };
+          team: { id: string; name: string; program: { id: string; name: string } };
         }>;
         _count: {
           guardianLinks: number;
@@ -120,7 +187,30 @@ export default async function PeoplePage() {
 
   try {
     people = await db.person.findMany({
-      where: { organizationId: scope.organizationId },
+      where: {
+        organizationId: scope.organizationId,
+        ...(staffScopeResolution.allowAllStaffScope
+          ? {}
+          : {
+              OR: [
+                ...(staffScopeResolution.allowedTeamIds.length > 0
+                  ? [{ roster: { some: { organizationId: scope.organizationId, teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+                  : []),
+                ...(staffScopeResolution.allowedTeamIds.length > 0
+                  ? [{ roles: { some: { organizationId: scope.organizationId, teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+                  : []),
+                ...(staffScopeResolution.allowedProgramIds.length > 0
+                  ? [{ roster: { some: { organizationId: scope.organizationId, team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
+                  : []),
+                ...(staffScopeResolution.allowedProgramIds.length > 0
+                  ? [{ roles: { some: { organizationId: scope.organizationId, programId: { in: staffScopeResolution.allowedProgramIds } } } }]
+                  : []),
+                ...(staffScopeResolution.allowedProgramIds.length > 0
+                  ? [{ roles: { some: { organizationId: scope.organizationId, team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
+                  : []),
+              ],
+            }),
+      },
       include: {
         roles: {
           select: {
@@ -128,14 +218,17 @@ export default async function PeoplePage() {
             scopeType: true,
             program: {
               select: {
+                id: true,
                 name: true,
               },
             },
             team: {
               select: {
+                id: true,
                 name: true,
                 program: {
                   select: {
+                    id: true,
                     name: true,
                   },
                 },
@@ -151,6 +244,7 @@ export default async function PeoplePage() {
                 name: true,
                 program: {
                   select: {
+                    id: true,
                     name: true,
                   },
                 },
@@ -167,6 +261,23 @@ export default async function PeoplePage() {
       },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     });
+    people = people.map((person) => ({
+      ...person,
+      roles: person.roles.filter((assignment) =>
+        matchesScopedTeamOrProgram(
+          staffScopeResolution,
+          assignment.team?.id ?? null,
+          assignment.program?.id ?? assignment.team?.program?.id ?? null,
+        ),
+      ),
+      roster: person.roster.filter((membership) =>
+        matchesScopedTeamOrProgram(
+          staffScopeResolution,
+          membership.team.id,
+          membership.team.program.id,
+        ),
+      ),
+    }));
   } catch {
     people = null;
   }

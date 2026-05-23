@@ -78,6 +78,7 @@ export type StaffScopeResolution = {
 export type AuthorizationDecisionHelper =
   | "canReadStaffOnlyContent"
   | "canReadTeamScopedContent"
+  | "canReadPersonOperationalContent"
   | "canAccessFollowUpTask"
   | "canReadObservationNoteByVisibility";
 
@@ -108,6 +109,8 @@ export type AuthorizationDecisionReasonCode =
   | "DENY_NON_STAFF_ROLE"
   | "DENY_TEAM_SCOPE_MISMATCH"
   | "DENY_PROGRAM_SCOPE_TEAM_UNVERIFIED"
+  | "DENY_PERSON_SCOPE_MISMATCH"
+  | "DENY_PERSON_SCOPE_UNRESOLVED"
   | "DENY_ORG_LEVEL_SCOPE_UNVERIFIED"
   | "DENY_NOTE_VISIBILITY_UNSUPPORTED"
   | "DENY_TASK_NO_OWNERSHIP";
@@ -254,6 +257,18 @@ export function canReadObservationNoteByVisibility(
   visibility: NoteVisibility | null | undefined,
 ): boolean {
   const decision = evaluateObservationNoteVisibilityAccess(context, visibility);
+  logAuthorizationDecision(decision, {
+    workflow: "authorization-helper",
+    metadata: { helper: decision.helper },
+  });
+  return decision.allowed;
+}
+
+export function canReadPersonOperationalContent(
+  context: ActorRoleContext,
+  personScope: { teamIds: string[]; programIds: string[] },
+): boolean {
+  const decision = evaluatePersonOperationalContentAccess(context, personScope);
   logAuthorizationDecision(decision, {
     workflow: "authorization-helper",
     metadata: { helper: decision.helper },
@@ -486,6 +501,123 @@ export function evaluateObservationNoteVisibilityAccess(
   };
 }
 
+export function evaluatePersonOperationalContentAccess(
+  context: ActorRoleContext,
+  personScope: { teamIds: string[]; programIds: string[] },
+): AuthorizationDecision {
+  if (!context.isStaffMember) {
+    return {
+      helper: "canReadPersonOperationalContent",
+      allowed: false,
+      reasonCode: context.actorPersonId ? "DENY_NON_STAFF_ROLE" : "DENY_UNLINKED_ACCOUNT",
+      reason: context.actorPersonId
+        ? "Actor has no staff role assignment in this organization."
+        : "Actor account is not linked to a person record.",
+      scopeApplied: "none",
+      ownershipRelationship: context.actorPersonId ? "none" : "unlinked_account",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: null,
+      matchedRoleAssignment: null,
+    };
+  }
+
+  const organizationAssignment = context.staffRoleAssignments.find(
+    (assignment) => assignment.scopeType === ScopeType.ORGANIZATION,
+  );
+
+  if (organizationAssignment) {
+    return {
+      helper: "canReadPersonOperationalContent",
+      allowed: true,
+      reasonCode: "ALLOW_ORGANIZATION_SCOPE_ASSIGNMENT",
+      reason: "Actor has organization-scope staff assignment covering this person workflow.",
+      scopeApplied: "organization",
+      ownershipRelationship: "staff_role",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: null,
+      matchedRoleAssignment: organizationAssignment,
+    };
+  }
+
+  const uniqueTeamIds = Array.from(new Set(personScope.teamIds.filter(Boolean)));
+  const uniqueProgramIds = Array.from(new Set(personScope.programIds.filter(Boolean)));
+
+  const teamAssignment = context.staffRoleAssignments.find(
+    (assignment) =>
+      assignment.scopeType === ScopeType.TEAM &&
+      assignment.teamId &&
+      uniqueTeamIds.includes(assignment.teamId),
+  );
+
+  if (teamAssignment) {
+    return {
+      helper: "canReadPersonOperationalContent",
+      allowed: true,
+      reasonCode: "ALLOW_TEAM_SCOPE_ASSIGNMENT_MATCH",
+      reason: "Actor has team-scope staff assignment overlapping this person's operational scope.",
+      scopeApplied: "team",
+      ownershipRelationship: "staff_role",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: teamAssignment.teamId,
+      matchedRoleAssignment: teamAssignment,
+    };
+  }
+
+  const programAssignment = context.staffRoleAssignments.find(
+    (assignment) =>
+      assignment.scopeType === ScopeType.PROGRAM &&
+      assignment.programId &&
+      uniqueProgramIds.includes(assignment.programId),
+  );
+
+  if (programAssignment) {
+    return {
+      helper: "canReadPersonOperationalContent",
+      allowed: true,
+      reasonCode: "ALLOW_PROGRAM_SCOPE_ASSIGNMENT_MATCH",
+      reason: "Actor has program-scope staff assignment overlapping this person's operational scope.",
+      scopeApplied: "program",
+      ownershipRelationship: "staff_role",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: null,
+      matchedRoleAssignment: programAssignment,
+    };
+  }
+
+  if (uniqueTeamIds.length === 0 && uniqueProgramIds.length === 0) {
+    return {
+      helper: "canReadPersonOperationalContent",
+      allowed: false,
+      reasonCode: "DENY_PERSON_SCOPE_UNRESOLVED",
+      reason:
+        "Person operational scope has no resolved team or program context; denying non-organization staff by default.",
+      scopeApplied: "none",
+      ownershipRelationship: "staff_role",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: null,
+      matchedRoleAssignment: null,
+    };
+  }
+
+  return {
+    helper: "canReadPersonOperationalContent",
+    allowed: false,
+    reasonCode: "DENY_PERSON_SCOPE_MISMATCH",
+    reason: "Actor is staff but has no team/program assignment overlapping this person's operational scope.",
+    scopeApplied: "none",
+    ownershipRelationship: "staff_role",
+    organizationId: context.organizationId,
+    actorPersonId: context.actorPersonId,
+    evaluatedTeamId: null,
+    matchedRoleAssignment: null,
+  };
+}
+
 export function resolveStaffScopeResolution(context: ActorRoleContext): StaffScopeResolution {
   const hasOrganizationScopeAssignment = context.staffRoleAssignments.some(
     (assignment) => assignment.scopeType === ScopeType.ORGANIZATION,
@@ -541,9 +673,8 @@ export function resolveStaffScopeResolution(context: ActorRoleContext): StaffSco
  *
  * Access rules:
  * - All staff members may read any task in their organization.
- * - Non-staff actors may read a task only if they are the assignee or creator.
- *   (This supports a future pattern where tasks could be assigned to athletes
- *    or non-staff persons; currently all actors with a person link are staff.)
+ * - Non-staff actors are denied until a guardian/athlete task-detail policy is
+ *   intentionally designed and implemented end-to-end.
  *
  * Returns false when actorPersonId is null (unlinked account).
  */
@@ -561,8 +692,10 @@ export function canAccessFollowUpTask(
 
 export function evaluateFollowUpTaskAccess(
   context: ActorRoleContext,
-  task: { assigneePersonId: string; createdByPersonId: string },
+  _task: { assigneePersonId: string; createdByPersonId: string },
 ): AuthorizationDecision {
+  void _task;
+
   if (context.isStaffMember) {
     return {
       helper: "canAccessFollowUpTask",
@@ -593,41 +726,12 @@ export function evaluateFollowUpTaskAccess(
     };
   }
 
-  if (context.actorPersonId === task.assigneePersonId) {
-    return {
-      helper: "canAccessFollowUpTask",
-      allowed: true,
-      reasonCode: "ALLOW_TASK_ASSIGNEE",
-      reason: "Actor is the assignee of the task.",
-      scopeApplied: "self_assignee",
-      ownershipRelationship: "assignee",
-      organizationId: context.organizationId,
-      actorPersonId: context.actorPersonId,
-      evaluatedTeamId: null,
-      matchedRoleAssignment: null,
-    };
-  }
-
-  if (context.actorPersonId === task.createdByPersonId) {
-    return {
-      helper: "canAccessFollowUpTask",
-      allowed: true,
-      reasonCode: "ALLOW_TASK_CREATOR",
-      reason: "Actor is the creator of the task.",
-      scopeApplied: "self_creator",
-      ownershipRelationship: "creator",
-      organizationId: context.organizationId,
-      actorPersonId: context.actorPersonId,
-      evaluatedTeamId: null,
-      matchedRoleAssignment: null,
-    };
-  }
-
   return {
     helper: "canAccessFollowUpTask",
     allowed: false,
     reasonCode: "DENY_TASK_NO_OWNERSHIP",
-    reason: "Actor is not task assignee, not task creator, and has no staff role.",
+    reason:
+      "Task detail access requires a staff role assignment until non-staff task visibility is intentionally designed.",
     scopeApplied: "none",
     ownershipRelationship: "none",
     organizationId: context.organizationId,

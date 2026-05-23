@@ -1,4 +1,4 @@
-import { ApprovalStatus, RoleType, ScopeType, TaskStatus } from "@prisma/client";
+import { ApprovalStatus, Prisma, RoleType, ScopeType, TaskStatus } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -155,6 +155,78 @@ function renderNavigationCards() {
 
 function renderEmptyList(message: string) {
   return <p className="text-sm text-zinc-600 dark:text-zinc-400">{message}</p>;
+}
+
+function buildScopedProgramWhere(
+  organizationId: string,
+  staffScopeResolution: ReturnType<typeof resolveStaffScopeResolution>,
+): Prisma.ProgramWhereInput {
+  return {
+    organizationId,
+    ...(staffScopeResolution.allowAllStaffScope
+      ? {}
+      : {
+          OR: [
+            ...(staffScopeResolution.allowedProgramIds.length > 0
+              ? [{ id: { in: staffScopeResolution.allowedProgramIds } }]
+              : []),
+            ...(staffScopeResolution.allowedTeamIds.length > 0
+              ? [{ teams: { some: { id: { in: staffScopeResolution.allowedTeamIds } } } }]
+              : []),
+          ],
+        }),
+  };
+}
+
+function buildScopedTeamWhere(
+  organizationId: string,
+  staffScopeResolution: ReturnType<typeof resolveStaffScopeResolution>,
+): Prisma.TeamWhereInput {
+  return {
+    organizationId,
+    ...(staffScopeResolution.allowAllStaffScope
+      ? {}
+      : {
+          OR: [
+            ...(staffScopeResolution.allowedTeamIds.length > 0
+              ? [{ id: { in: staffScopeResolution.allowedTeamIds } }]
+              : []),
+            ...(staffScopeResolution.allowedProgramIds.length > 0
+              ? [{ programId: { in: staffScopeResolution.allowedProgramIds } }]
+              : []),
+          ],
+        }),
+  };
+}
+
+function buildScopedPersonWhere(
+  organizationId: string,
+  staffScopeResolution: ReturnType<typeof resolveStaffScopeResolution>,
+): Prisma.PersonWhereInput {
+  return {
+    organizationId,
+    ...(staffScopeResolution.allowAllStaffScope
+      ? {}
+      : {
+          OR: [
+            ...(staffScopeResolution.allowedTeamIds.length > 0
+              ? [{ roster: { some: { organizationId, teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+              : []),
+            ...(staffScopeResolution.allowedTeamIds.length > 0
+              ? [{ roles: { some: { organizationId, teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+              : []),
+            ...(staffScopeResolution.allowedProgramIds.length > 0
+              ? [{ roster: { some: { organizationId, team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
+              : []),
+            ...(staffScopeResolution.allowedProgramIds.length > 0
+              ? [{ roles: { some: { organizationId, programId: { in: staffScopeResolution.allowedProgramIds } } } }]
+              : []),
+            ...(staffScopeResolution.allowedProgramIds.length > 0
+              ? [{ roles: { some: { organizationId, team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
+              : []),
+          ],
+        }),
+  };
 }
 
 export default async function DashboardPage() {
@@ -329,6 +401,10 @@ export default async function DashboardPage() {
           },
         ],
       };
+  const scopedProgramWhere = buildScopedProgramWhere(scope.organizationId, staffScopeResolution);
+  const scopedTeamWhere = buildScopedTeamWhere(scope.organizationId, staffScopeResolution);
+  const scopedPersonWhere = buildScopedPersonWhere(scope.organizationId, staffScopeResolution);
+  const canViewOrganizationLevelFieldOpsApprovals = staffScopeResolution.allowAllStaffScope;
 
   const guardianAccess = await resolveGuardianRelationshipAccess({
     organizationId: scope.organizationId,
@@ -495,13 +571,13 @@ export default async function DashboardPage() {
       unresolvedOperationalHistory,
     ] = await Promise.all([
       db.program.count({
-        where: { organizationId: scope.organizationId },
+        where: scopedProgramWhere,
       }),
       db.team.count({
-        where: { organizationId: scope.organizationId },
+        where: scopedTeamWhere,
       }),
       db.person.count({
-        where: { organizationId: scope.organizationId },
+        where: scopedPersonWhere,
       }),
       db.event.count({
         where: {
@@ -739,7 +815,7 @@ export default async function DashboardPage() {
       canViewGuardianRelationshipDetails
         ? db.person.count({
             where: {
-              organizationId: scope.organizationId,
+              ...scopedPersonWhere,
               roster: { some: { organizationId: scope.organizationId, rosterRole: RoleType.ATHLETE } },
               athleteLinks: { none: { organizationId: scope.organizationId } },
             },
@@ -748,7 +824,7 @@ export default async function DashboardPage() {
       canViewGuardianRelationshipDetails
         ? db.person.findMany({
             where: {
-              organizationId: scope.organizationId,
+              ...scopedPersonWhere,
               roster: { some: { organizationId: scope.organizationId, rosterRole: RoleType.ATHLETE } },
               athleteLinks: { none: { organizationId: scope.organizationId } },
             },
@@ -768,7 +844,7 @@ export default async function DashboardPage() {
           })
         : Promise.resolve([]),
       db.team.findMany({
-        where: { organizationId: scope.organizationId },
+        where: scopedTeamWhere,
         select: {
           id: true,
           name: true,
@@ -792,38 +868,48 @@ export default async function DashboardPage() {
         },
         orderBy: [{ name: "asc" }],
       }),
-      db.resourceBooking.count({
-        where: {
-          organizationId: scope.organizationId,
-          approvalStatus: ApprovalStatus.PENDING,
-        },
-      }),
-      db.resourceBooking.findMany({
-        where: {
-          organizationId: scope.organizationId,
-          approvalStatus: ApprovalStatus.PENDING,
-        },
-        select: {
-          id: true,
-          title: true,
-          startsAt: true,
-          status: true,
-          facility: { select: { id: true, name: true } },
-          resource: { select: { id: true, name: true } },
-        },
-        orderBy: [{ startsAt: "asc" }, { createdAt: "asc" }],
-        take: 5,
-      }),
+      canViewOrganizationLevelFieldOpsApprovals
+        ? db.resourceBooking.count({
+            where: {
+              organizationId: scope.organizationId,
+              approvalStatus: ApprovalStatus.PENDING,
+            },
+          })
+        : Promise.resolve(0),
+      canViewOrganizationLevelFieldOpsApprovals
+        ? db.resourceBooking.findMany({
+            where: {
+              organizationId: scope.organizationId,
+              approvalStatus: ApprovalStatus.PENDING,
+            },
+            select: {
+              id: true,
+              title: true,
+              startsAt: true,
+              status: true,
+              facility: { select: { id: true, name: true } },
+              resource: { select: { id: true, name: true } },
+            },
+            orderBy: [{ startsAt: "asc" }, { createdAt: "asc" }],
+            take: 5,
+          })
+        : Promise.resolve([]),
       getOperationalHistory({
         organizationId: scope.organizationId,
         limit: 8,
         sinceDays: RECENT_OPERATIONAL_CHANGE_WINDOW_DAYS,
+        allowAllStaffScope: staffScopeResolution.allowAllStaffScope,
+        allowedTeamIds: staffScopeResolution.allowedTeamIds,
+        allowedProgramIds: staffScopeResolution.allowedProgramIds,
       }),
       getOperationalHistory({
         organizationId: scope.organizationId,
         limit: 6,
         sinceDays: 30,
         unresolvedOnly: true,
+        allowAllStaffScope: staffScopeResolution.allowAllStaffScope,
+        allowedTeamIds: staffScopeResolution.allowedTeamIds,
+        allowedProgramIds: staffScopeResolution.allowedProgramIds,
       }),
     ]);
 
@@ -1075,7 +1161,7 @@ export default async function DashboardPage() {
           <ReviewFocusPanel
             title="Operational review at a glance"
             description="Start here for a lighter review pass before opening the detailed sections below."
-            defaultScope="Dashboard summary uses current organization-scoped task, note, attendance, event, roster, assignment, and FieldOps approval data only."
+            defaultScope="Dashboard summary uses current resolved staff scope across task, note, attendance, event, roster, assignment, and permitted FieldOps approval data only."
             stats={[
               {
                 label: "Changed recently",
@@ -1252,11 +1338,15 @@ export default async function DashboardPage() {
                 href: "/notes",
                 sublabel: `Last ${RECENT_NOTE_WINDOW_DAYS} days`,
               },
-              {
-                label: "FieldOps pending approvals",
-                value: dashboardData.counts.pendingFieldOpsApprovals,
-                href: "/field-ops/bookings?approvalStatus=PENDING",
-              },
+              ...(canViewOrganizationLevelFieldOpsApprovals
+                ? [
+                    {
+                      label: "FieldOps pending approvals",
+                      value: dashboardData.counts.pendingFieldOpsApprovals,
+                      href: "/field-ops/bookings?approvalStatus=PENDING",
+                    },
+                  ]
+                : []),
               ...(canViewGuardianRelationshipDetails
                 ? [
                     {
@@ -1706,12 +1796,18 @@ export default async function DashboardPage() {
             <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-base font-medium">Pending FieldOps approvals</h3>
-                <Link href="/field-ops/bookings?approvalStatus=PENDING" className="text-sm underline">
-                  Review pending
-                </Link>
+                {canViewOrganizationLevelFieldOpsApprovals ? (
+                  <Link href="/field-ops/bookings?approvalStatus=PENDING" className="text-sm underline">
+                    Review pending
+                  </Link>
+                ) : null}
               </div>
               <div className="mt-4 space-y-4">
-                {dashboardData.pendingFieldOpsApprovals.length === 0
+                {!canViewOrganizationLevelFieldOpsApprovals
+                  ? renderEmptyList(
+                      "Pending FieldOps approval review remains organization-scoped until staff-safe non-org visibility rules are defined.",
+                    )
+                  : dashboardData.pendingFieldOpsApprovals.length === 0
                   ? renderEmptyList("No pending FieldOps approval requests.")
                   : dashboardData.pendingFieldOpsApprovals.map((booking) => (
                       <div key={booking.id} className="border-b pb-4 last:border-b-0 last:pb-0">
