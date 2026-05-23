@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: "/events", label: "Events" },
   { href: "/notes", label: "Notes" },
   { href: "/tasks", label: "Tasks" },
+  { href: "/account", label: "Account" },
 ] as const;
 
 export function NavSidebar() {

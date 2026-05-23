@@ -1,4 +1,4 @@
-import { EventStatus, Prisma, RoleType, ScopeType } from "@prisma/client";
+import { EventStatus, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { requireAuthContext } from "@/lib/auth";
@@ -10,6 +10,7 @@ import {
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
 } from "@/lib/workflows";
+import { resolveActorPersonId } from "@/lib/user-account";
 
 function buildErrorRedirectUrl(requestUrl: string, input: {
   values: {
@@ -65,43 +66,6 @@ function buildErrorRedirectUrl(requestUrl: string, input: {
   }
 
   return url;
-}
-
-async function resolveEventCreatorPersonId(organizationId: string, actorUserId: string): Promise<string | null> {
-  const linkedUserAccount = await db.userAccount.findFirst({
-    where: {
-      organizationId,
-      clerkUserId: actorUserId,
-      personId: { not: null },
-    },
-    select: { personId: true },
-  });
-
-  if (linkedUserAccount?.personId) {
-    return linkedUserAccount.personId;
-  }
-
-  const organizationAdminAssignment = await db.roleAssignment.findFirst({
-    where: {
-      organizationId,
-      roleType: RoleType.ORGANIZATION_ADMIN,
-      scopeType: ScopeType.ORGANIZATION,
-    },
-    select: { personId: true },
-    orderBy: [{ createdAt: "asc" }],
-  });
-
-  if (organizationAdminAssignment?.personId) {
-    return organizationAdminAssignment.personId;
-  }
-
-  const firstPerson = await db.person.findFirst({
-    where: { organizationId },
-    select: { id: true },
-    orderBy: [{ createdAt: "asc" }],
-  });
-
-  return firstPerson?.id ?? null;
 }
 
 export async function POST(request: Request) {
@@ -215,7 +179,11 @@ export async function POST(request: Request) {
     }
 
     const authContext = await requireAuthContext();
-    const createdByPersonId = await resolveEventCreatorPersonId(scope.organizationId, authContext.userId);
+    const createdByPersonId = await resolveActorPersonId({
+      organizationId: scope.organizationId,
+      clerkUserId: authContext.clerkUserId,
+      preferredPersonId: scope.auth.personId,
+    });
 
     if (!createdByPersonId) {
       return NextResponse.redirect(

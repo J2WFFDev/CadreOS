@@ -2,12 +2,16 @@ import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
 import { NavSidebar } from "@/components/nav-sidebar";
+import { getOrganizationScope } from "@/lib/organization-context";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const scope = await getOrganizationScope();
+  const shouldShowLinkingBanner = scope.auth.unresolvedPersonLink;
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-3 dark:bg-zinc-900">
@@ -22,7 +26,20 @@ export default function DashboardLayout({
       <div className="flex min-h-[calc(100vh-49px)]">
         <NavSidebar />
         <main className="flex-1 overflow-auto p-6">
-          <div className="mx-auto w-full max-w-5xl">{children}</div>
+          <div className="mx-auto w-full max-w-5xl space-y-4">
+            {shouldShowLinkingBanner ? (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
+                <p className="text-sm text-amber-900 dark:text-amber-200">
+                  Your account is signed in with Clerk but is not linked to a CadreOS person yet.{" "}
+                  <Link href="/account/link-person" className="underline">
+                    Link a person now
+                  </Link>
+                  .
+                </p>
+              </div>
+            ) : null}
+            {children}
+          </div>
         </main>
       </div>
     </div>
