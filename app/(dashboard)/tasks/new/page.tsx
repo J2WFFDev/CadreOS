@@ -1,10 +1,16 @@
 import Link from "next/link";
-import { TaskStatus } from "@prisma/client";
+import { RoleType, TaskStatus } from "@prisma/client";
 
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { FormActions } from "@/components/dashboard/form-actions";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
+import {
+  deriveGuardianOperationalContext,
+  formatGuardianFollowUpDependency,
+  formatGuardianOperationalIndicator,
+} from "@/lib/guardian-operational-context";
+import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -55,7 +61,32 @@ export default async function NewTaskPage({
   }
 
   let people: Array<{ id: string; firstName: string; lastName: string }> | null = null;
-  let notes: Array<{ id: string; body: string }> | null = null;
+  const guardianAccess = await resolveGuardianRelationshipAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const canViewGuardianRelationshipDetails = guardianAccess.canViewGuardianRelationshipDetails;
+
+  let notes:
+    | Array<{
+        id: string;
+        body: string;
+        athlete:
+          | {
+              id: string;
+              firstName: string;
+              lastName: string;
+              athleteLinks?: Array<{
+                id: string;
+                guardian: {
+                  _count: { userAccounts: number };
+                  roles: Array<{ id: string }>;
+                };
+              }>;
+            }
+          | null;
+      }>
+    | null = null;
   let events: Array<{ id: string; title: string; startsAt: Date }> | null = null;
   let queryErrorMessage = "Unable to load task options right now. Please try again later.";
 
@@ -68,7 +99,40 @@ export default async function NewTaskPage({
       }),
       db.observationNote.findMany({
         where: { organizationId: scope.organizationId },
-        select: { id: true, body: true },
+        select: {
+          id: true,
+          body: true,
+          athlete: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              ...(canViewGuardianRelationshipDetails
+                ? {
+                    athleteLinks: {
+                      where: { organizationId: scope.organizationId },
+                      select: {
+                        id: true,
+                        guardian: {
+                          select: {
+                            _count: { select: { userAccounts: true } },
+                            roles: {
+                              where: {
+                                organizationId: scope.organizationId,
+                                roleType: RoleType.PARENT_GUARDIAN,
+                              },
+                              select: { id: true },
+                              take: 1,
+                            },
+                          },
+                        },
+                      },
+                    },
+                  }
+                : {}),
+            },
+          },
+        },
         orderBy: [{ createdAt: "desc" }],
         take: 200,
       }),
@@ -103,6 +167,11 @@ export default async function NewTaskPage({
   const sourceNoteId = readSearchParam(resolvedSearchParams, "sourceNoteId");
   const sourceEventId = readSearchParam(resolvedSearchParams, "sourceEventId");
   const generalError = readSearchParam(resolvedSearchParams, "error");
+  const selectedSourceNote = notes.find((note) => note.id === sourceNoteId) ?? null;
+  const selectedSourceNoteGuardianContext =
+    canViewGuardianRelationshipDetails && selectedSourceNote?.athlete
+      ? deriveGuardianOperationalContext(selectedSourceNote.athlete.athleteLinks ?? [])
+      : null;
 
   return (
     <section className="space-y-4">
@@ -226,6 +295,22 @@ export default async function NewTaskPage({
               </select>
               {hasSearchParam(resolvedSearchParams, "sourceNoteIdError") ? (
                 <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "sourceNoteIdError")}</p>
+              ) : null}
+              {selectedSourceNote?.athlete && selectedSourceNoteGuardianContext ? (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Source athlete:{" "}
+                  <Link href={`/people/${selectedSourceNote.athlete.id}`} className="underline">
+                    {selectedSourceNote.athlete.firstName} {selectedSourceNote.athlete.lastName}
+                  </Link>
+                  {" · "}
+                  {formatGuardianOperationalIndicator(selectedSourceNoteGuardianContext)}
+                  {" · "}
+                  {formatGuardianFollowUpDependency(selectedSourceNoteGuardianContext)}
+                </p>
+              ) : selectedSourceNote?.athlete ? (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Source athlete selected. Guardian relationship diagnostics are staff-only.
+                </p>
               ) : null}
             </div>
 

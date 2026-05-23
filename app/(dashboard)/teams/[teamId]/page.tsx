@@ -3,6 +3,10 @@ import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
+import {
+  deriveGuardianOperationalContext,
+  formatGuardianOperationalIndicator,
+} from "@/lib/guardian-operational-context";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { selectSeededOrCurrentSeason } from "@/lib/workflows";
@@ -28,7 +32,7 @@ function formatEnumLabel(value: string) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function buildTeamViewHref(teamId: string, filters: { seasonId?: string; roleFilter?: string }) {
+function buildTeamViewHref(teamId: string, filters: { seasonId?: string; roleFilter?: string; guardianFilter?: string }) {
   const params = new URLSearchParams();
 
   if (filters.seasonId) {
@@ -37,6 +41,10 @@ function buildTeamViewHref(teamId: string, filters: { seasonId?: string; roleFil
 
   if (filters.roleFilter && filters.roleFilter !== "ALL") {
     params.set("roleFilter", filters.roleFilter);
+  }
+
+  if (filters.guardianFilter) {
+    params.set("guardianFilter", filters.guardianFilter);
   }
 
   const query = params.toString();
@@ -269,28 +277,45 @@ export default async function TeamDetailsPage({
   const roleFilter = roleFilterParam && Object.values(RoleType).includes(roleFilterParam as RoleType)
     ? (roleFilterParam as RoleType)
     : "ALL";
+  const guardianFilterParam = readSearchParam(resolvedSearchParams, "guardianFilter");
+  const guardianFilter =
+    guardianFilterParam === "missing_guardian_linkage" ||
+    guardianFilterParam === "inactive_guardian_account" ||
+    guardianFilterParam === "incomplete_support"
+      ? guardianFilterParam
+      : "";
   const filteredSelectedSeasonRosterMembers =
     roleFilter === "ALL"
       ? selectedSeasonRosterMembers
       : selectedSeasonRosterMembers.filter((membership) => membership.rosterRole === roleFilter);
+  const guardianFilteredSelectedSeasonRosterMembers =
+    canViewGuardianRelationshipDetails && guardianFilter
+      ? filteredSelectedSeasonRosterMembers.filter((membership) => {
+          if (membership.rosterRole !== RoleType.ATHLETE) {
+            return false;
+          }
+          const context = deriveGuardianOperationalContext(membership.person.athleteLinks);
+          if (guardianFilter === "missing_guardian_linkage") {
+            return context.hasNoGuardianOnFile;
+          }
+          if (guardianFilter === "inactive_guardian_account") {
+            return context.hasInactiveGuardianAccountSignal;
+          }
+          return context.hasIncompleteRelationshipSupport;
+        })
+      : filteredSelectedSeasonRosterMembers;
   const athleteRosterMemberships = selectedSeasonRosterMembers.filter((membership) => membership.rosterRole === RoleType.ATHLETE);
   const athleteRosterWithGuardianLinks = athleteRosterMemberships.filter(
-    (membership) => membership.person.athleteLinks.length > 0,
+    (membership) => deriveGuardianOperationalContext(membership.person.athleteLinks).hasGuardianRelationship,
   ).length;
   const athleteRosterWithGuardianAccountLinkGaps = athleteRosterMemberships.filter((membership) =>
-    membership.person.athleteLinks.some((relationship) => relationship.guardian._count.userAccounts === 0),
+    deriveGuardianOperationalContext(membership.person.athleteLinks).missingGuardianAccountLinkCount > 0,
   ).length;
   const athleteRosterWithInactiveGuardianAccountSignals = athleteRosterMemberships.filter((membership) =>
-    membership.person.athleteLinks.some(
-      (relationship) => relationship.guardian._count.userAccounts > 0 && relationship.guardian.roles.length === 0,
-    ),
+    deriveGuardianOperationalContext(membership.person.athleteLinks).hasInactiveGuardianAccountSignal,
   ).length;
   const athleteRosterWithPendingOrIncompleteRelationshipSupport = athleteRosterMemberships.filter((membership) =>
-    membership.person.athleteLinks.some(
-      (relationship) =>
-        relationship.guardian._count.userAccounts === 0 ||
-        (relationship.guardian._count.userAccounts > 0 && relationship.guardian.roles.length === 0),
-    ),
+    deriveGuardianOperationalContext(membership.person.athleteLinks).hasIncompleteRelationshipSupport,
   ).length;
   const athleteRosterWithoutGuardianLinks = athleteRosterMemberships.length - athleteRosterWithGuardianLinks;
   const roleAssignmentsByPersonId = new Map<
@@ -371,7 +396,11 @@ export default async function TeamDetailsPage({
             {team.program.seasons.map((season) => (
               <Link
                 key={season.id}
-                href={buildTeamViewHref(team.id, { seasonId: season.id, roleFilter: roleFilter === "ALL" ? undefined : roleFilter })}
+                href={buildTeamViewHref(team.id, {
+                  seasonId: season.id,
+                  roleFilter: roleFilter === "ALL" ? undefined : roleFilter,
+                  guardianFilter: guardianFilter || undefined,
+                })}
                 className={`rounded-md border px-2 py-1 ${
                   selectedSeasonForView?.id === season.id ? "bg-zinc-100 dark:bg-zinc-800" : ""
                 }`}
@@ -384,7 +413,11 @@ export default async function TeamDetailsPage({
         {selectedSeasonRosterMembers.length > 0 ? (
           <div className="mb-3 flex flex-wrap gap-2 text-xs">
             <Link
-              href={buildTeamViewHref(team.id, { seasonId: selectedSeasonForView?.id, roleFilter: undefined })}
+              href={buildTeamViewHref(team.id, {
+                seasonId: selectedSeasonForView?.id,
+                roleFilter: undefined,
+                guardianFilter: guardianFilter || undefined,
+              })}
               className={`rounded-md border px-2 py-1 ${roleFilter === "ALL" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
             >
               All roster roles
@@ -392,7 +425,11 @@ export default async function TeamDetailsPage({
             {Object.values(RoleType).map((roleType) => (
               <Link
                 key={roleType}
-                href={buildTeamViewHref(team.id, { seasonId: selectedSeasonForView?.id, roleFilter: roleType })}
+                href={buildTeamViewHref(team.id, {
+                  seasonId: selectedSeasonForView?.id,
+                  roleFilter: roleType,
+                  guardianFilter: guardianFilter || undefined,
+                })}
                 className={`rounded-md border px-2 py-1 ${roleFilter === roleType ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
               >
                 {formatEnumLabel(roleType)}
@@ -400,12 +437,57 @@ export default async function TeamDetailsPage({
             ))}
           </div>
         ) : null}
+        {selectedSeasonRosterMembers.length > 0 && canViewGuardianRelationshipDetails ? (
+          <div className="mb-3 flex flex-wrap gap-2 text-xs">
+            <Link
+              href={buildTeamViewHref(team.id, {
+                seasonId: selectedSeasonForView?.id,
+                roleFilter: roleFilter === "ALL" ? undefined : roleFilter,
+              })}
+              className={`rounded-md border px-2 py-1 ${guardianFilter === "" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
+            >
+              All guardian contexts
+            </Link>
+            <Link
+              href={buildTeamViewHref(team.id, {
+                seasonId: selectedSeasonForView?.id,
+                roleFilter: roleFilter === "ALL" ? undefined : roleFilter,
+                guardianFilter: "missing_guardian_linkage",
+              })}
+              className={`rounded-md border px-2 py-1 ${guardianFilter === "missing_guardian_linkage" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
+            >
+              Athletes missing guardian linkage
+            </Link>
+            <Link
+              href={buildTeamViewHref(team.id, {
+                seasonId: selectedSeasonForView?.id,
+                roleFilter: roleFilter === "ALL" ? undefined : roleFilter,
+                guardianFilter: "inactive_guardian_account",
+              })}
+              className={`rounded-md border px-2 py-1 ${guardianFilter === "inactive_guardian_account" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
+            >
+              Inactive guardian account signal
+            </Link>
+            <Link
+              href={buildTeamViewHref(team.id, {
+                seasonId: selectedSeasonForView?.id,
+                roleFilter: roleFilter === "ALL" ? undefined : roleFilter,
+                guardianFilter: "incomplete_support",
+              })}
+              className={`rounded-md border px-2 py-1 ${guardianFilter === "incomplete_support" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
+            >
+              Pending/incomplete support
+            </Link>
+          </div>
+        ) : null}
         {selectedSeasonRosterMembers.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             No members on team for this season yet.
           </p>
-        ) : filteredSelectedSeasonRosterMembers.length === 0 ? (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">No roster members match the selected role filter.</p>
+        ) : guardianFilteredSelectedSeasonRosterMembers.length === 0 ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            No roster members match the selected role/guardian filters.
+          </p>
         ) : (
           <div className="overflow-x-auto rounded-md border">
             <table className="min-w-full text-left text-sm">
@@ -420,7 +502,7 @@ export default async function TeamDetailsPage({
                 </tr>
               </thead>
               <tbody>
-                {filteredSelectedSeasonRosterMembers.map((membership) => {
+                {guardianFilteredSelectedSeasonRosterMembers.map((membership) => {
                   const personRoleAssignments = roleAssignmentsByPersonId.get(membership.person.id) ?? [];
                   const roleAssignmentStatus =
                     personRoleAssignments.length === 0
@@ -431,17 +513,13 @@ export default async function TeamDetailsPage({
                       ? canViewGuardianRelationshipDetails
                         ? membership.person.athleteLinks.length > 0
                           ? (() => {
-                              const linkedGuardianCount = membership.person.athleteLinks.length;
-                              const guardiansMissingAccountLinks = membership.person.athleteLinks.filter(
-                                (relationship) => relationship.guardian._count.userAccounts === 0,
-                              ).length;
-                              const inactiveGuardianAccountSignals = membership.person.athleteLinks.filter(
-                                (relationship) =>
-                                  relationship.guardian._count.userAccounts > 0 &&
-                                  relationship.guardian.roles.length === 0,
-                              ).length;
+                              const guardianContext = deriveGuardianOperationalContext(membership.person.athleteLinks);
+                              const linkedGuardianCount = guardianContext.linkedGuardianCount;
+                              const guardiansMissingAccountLinks = guardianContext.missingGuardianAccountLinkCount;
+                              const inactiveGuardianAccountSignals = guardianContext.inactiveGuardianAccountSignalCount;
                               const segments = [
                                 `${linkedGuardianCount} guardian relationship${linkedGuardianCount === 1 ? "" : "s"} linked`,
+                                formatGuardianOperationalIndicator(guardianContext),
                               ];
                               if (guardiansMissingAccountLinks > 0) {
                                 segments.push(

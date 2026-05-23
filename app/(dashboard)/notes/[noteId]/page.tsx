@@ -1,14 +1,21 @@
 import Link from "next/link";
+import { RoleType } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
 import {
   compareFollowUpTasks,
-  formatDateTime,
   formatEnumLabel,
+  formatDateTime,
   getTaskStatusBadgeClassName,
   isTaskOverdue,
 } from "@/lib/follow-up-tasks";
+import {
+  deriveGuardianOperationalContext,
+  formatGuardianFollowUpDependency,
+  formatGuardianOperationalIndicator,
+} from "@/lib/guardian-operational-context";
+import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -54,7 +61,20 @@ export default async function NoteDetailPage({
         createdAt: Date;
         updatedAt: Date;
         author: { id: string; firstName: string; lastName: string };
-        athlete: { id: string; firstName: string; lastName: string } | null;
+        athlete:
+          | {
+              id: string;
+              firstName: string;
+              lastName: string;
+              athleteLinks?: Array<{
+                id: string;
+                guardian: {
+                  _count: { userAccounts: number };
+                  roles: Array<{ id: string }>;
+                };
+              }>;
+            }
+          | null;
         team: { id: string; name: string } | null;
         event: { id: string; title: string } | null;
         tasks: Array<{
@@ -68,6 +88,11 @@ export default async function NoteDetailPage({
       }
     | null = null;
   let queryErrorMessage = "Unable to load note details right now. Please try again later.";
+  const guardianAccess = await resolveGuardianRelationshipAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const canViewGuardianRelationshipDetails = guardianAccess.canViewGuardianRelationshipDetails;
 
   try {
     note = await db.observationNote.findFirst({
@@ -82,7 +107,36 @@ export default async function NoteDetailPage({
         createdAt: true,
         updatedAt: true,
         author: { select: { id: true, firstName: true, lastName: true } },
-        athlete: { select: { id: true, firstName: true, lastName: true } },
+        athlete: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            ...(canViewGuardianRelationshipDetails
+              ? {
+                  athleteLinks: {
+                    where: { organizationId: scope.organizationId },
+                    select: {
+                      id: true,
+                      guardian: {
+                        select: {
+                          _count: { select: { userAccounts: true } },
+                          roles: {
+                            where: {
+                              organizationId: scope.organizationId,
+                              roleType: RoleType.PARENT_GUARDIAN,
+                            },
+                            select: { id: true },
+                            take: 1,
+                          },
+                        },
+                      },
+                    },
+                  },
+                }
+              : {}),
+          },
+        },
         team: { select: { id: true, name: true } },
         event: { select: { id: true, title: true } },
         tasks: {
@@ -123,6 +177,11 @@ export default async function NoteDetailPage({
       </section>
     );
   }
+
+  const noteGuardianContext =
+    canViewGuardianRelationshipDetails && note.athlete
+      ? deriveGuardianOperationalContext(note.athlete.athleteLinks ?? [])
+      : null;
 
   return (
     <section className="space-y-6">
@@ -184,6 +243,18 @@ export default async function NoteDetailPage({
             </dd>
           </div>
           <div>
+            <dt className="font-medium">Guardian context</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {!note.athlete ? (
+                "—"
+              ) : canViewGuardianRelationshipDetails && noteGuardianContext ? (
+                formatGuardianOperationalIndicator(noteGuardianContext)
+              ) : (
+                "Staff-only"
+              )}
+            </dd>
+          </div>
+          <div>
             <dt className="font-medium">Team</dt>
             <dd className="text-zinc-600 dark:text-zinc-400">
               {note.team ? (
@@ -222,6 +293,11 @@ export default async function NoteDetailPage({
             Create follow-up task
           </Link>
         </div>
+        {note.athlete && canViewGuardianRelationshipDetails && noteGuardianContext ? (
+          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+            Operational guardian dependency: {formatGuardianFollowUpDependency(noteGuardianContext)}.
+          </p>
+        ) : null}
         {note.tasks.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">No follow-up tasks are linked to this note yet.</p>
         ) : (
