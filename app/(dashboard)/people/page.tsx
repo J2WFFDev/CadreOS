@@ -21,7 +21,7 @@ function formatAssignmentSummary(assignments: Array<{
   scopeType: string;
   program: { name: string } | null;
   team: { name: string; program: { name: string } | null } | null;
-}) {
+}>) {
   if (assignments.length === 0) {
     return "No roles assigned";
   }
