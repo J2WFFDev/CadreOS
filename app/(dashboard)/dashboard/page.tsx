@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,20 @@ export default async function DashboardPage() {
             <p className="mt-2 text-2xl font-semibold">{metric.value}</p>
           </div>
         ))}
+      </div>
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="text-base font-medium">Read-only views</h3>
+        <div className="mt-3 flex flex-wrap gap-3">
+          <Link href="/people" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            People
+          </Link>
+          <Link href="/programs" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Programs
+          </Link>
+          <Link href="/teams" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Teams
+          </Link>
+        </div>
       </div>
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <p className="text-sm">
