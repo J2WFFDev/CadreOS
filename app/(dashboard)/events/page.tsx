@@ -111,6 +111,7 @@ export default async function EventsPage({
 
   const statusFilter = readSearchParam(resolvedSearchParams, "status");
   const teamIdFilter = readSearchParam(resolvedSearchParams, "teamId");
+  const ownerPersonIdFilter = readSearchParam(resolvedSearchParams, "ownerPersonId");
   const attendanceFilterParam = readSearchParam(resolvedSearchParams, "attendance");
   const attendanceFilter =
     attendanceFilterParam === "complete" ||
@@ -128,6 +129,11 @@ export default async function EventsPage({
     linkFilterParam === "follow_up_required"
       ? linkFilterParam
       : "";
+  const accountabilityFilterParam = readSearchParam(resolvedSearchParams, "accountability");
+  const accountabilityFilter =
+    accountabilityFilterParam === "unresolved_follow_up" || accountabilityFilterParam === "missing_responsible_team"
+      ? accountabilityFilterParam
+      : "";
 
   let events:
     | Array<{
@@ -138,6 +144,7 @@ export default async function EventsPage({
         startsAt: Date;
         endsAt: Date | null;
         location: string | null;
+        createdBy: { id: string; firstName: string; lastName: string };
         program: { id: string; name: string };
         team: { id: string; name: string; roster: Array<{ personId: string }> } | null;
         _count: { attendance: number; notes: number; tasks: number };
@@ -145,17 +152,20 @@ export default async function EventsPage({
       }>
     | null = null;
   let teams: Array<{ id: string; name: string }> = [];
+  let people: Array<{ id: string; firstName: string; lastName: string }> = [];
 
   try {
     const now = new Date();
-    const [fetchedEvents, fetchedTeams] = await Promise.all([
+    const [fetchedEvents, fetchedTeams, fetchedPeople] = await Promise.all([
       db.event.findMany({
         where: {
           organizationId: scope.organizationId,
           ...(statusFilter ? { status: statusFilter as never } : {}),
           ...(teamIdFilter ? { teamId: teamIdFilter } : {}),
+          ...(ownerPersonIdFilter ? { createdByPersonId: ownerPersonIdFilter } : {}),
         },
         include: {
+          createdBy: { select: { id: true, firstName: true, lastName: true } },
           program: { select: { id: true, name: true } },
           team: {
             select: {
@@ -189,6 +199,11 @@ export default async function EventsPage({
         select: { id: true, name: true },
         orderBy: [{ name: "asc" }],
       }),
+      db.person.findMany({
+        where: { organizationId: scope.organizationId },
+        select: { id: true, firstName: true, lastName: true },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      }),
     ]);
 
     const upcomingEvents = fetchedEvents
@@ -200,6 +215,7 @@ export default async function EventsPage({
 
     events = [...upcomingEvents, ...pastEvents];
     teams = fetchedTeams;
+    people = fetchedPeople;
   } catch {
     events = null;
   }
@@ -223,6 +239,7 @@ export default async function EventsPage({
       missingAttendanceCount,
     );
     const openTaskCount = event.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
+    const followUpRequired = missingAttendanceCount > 0 || openTaskCount > 0;
 
     if (attendanceFilter && attendanceCoverage !== attendanceFilter) {
       return false;
@@ -244,10 +261,20 @@ export default async function EventsPage({
       return false;
     }
 
+    if (accountabilityFilter === "unresolved_follow_up" && !followUpRequired) {
+      return false;
+    }
+
+    if (accountabilityFilter === "missing_responsible_team" && (event.team || !followUpRequired)) {
+      return false;
+    }
+
     return true;
   });
 
-  const hasActiveFilters = Boolean(statusFilter || teamIdFilter || attendanceFilter || linkFilter);
+  const hasActiveFilters = Boolean(
+    statusFilter || teamIdFilter || ownerPersonIdFilter || attendanceFilter || linkFilter || accountabilityFilter,
+  );
 
   return (
     <section className="space-y-4">
@@ -262,7 +289,7 @@ export default async function EventsPage({
       />
 
       <form method="GET" className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-6">
           <div className="space-y-1">
             <label htmlFor="status" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
               Status
@@ -285,6 +312,25 @@ export default async function EventsPage({
               {teams.map((team) => (
                 <option key={team.id} value={team.id}>
                   {team.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="ownerPersonId" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              Responsible person
+            </label>
+            <select
+              id="ownerPersonId"
+              name="ownerPersonId"
+              defaultValue={ownerPersonIdFilter}
+              className="w-full rounded-md border px-2 py-1.5 text-sm"
+            >
+              <option value="">All responsible people</option>
+              {people.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.firstName} {person.lastName}
                 </option>
               ))}
             </select>
@@ -314,6 +360,22 @@ export default async function EventsPage({
               <option value="tasks">Has linked tasks</option>
               <option value="notes_or_tasks">Has linked notes or tasks</option>
               <option value="follow_up_required">Follow-up required</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="accountability" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              Accountability
+            </label>
+            <select
+              id="accountability"
+              name="accountability"
+              defaultValue={accountabilityFilter}
+              className="w-full rounded-md border px-2 py-1.5 text-sm"
+            >
+              <option value="">All accountability states</option>
+              <option value="unresolved_follow_up">Unresolved event follow-up</option>
+              <option value="missing_responsible_team">Missing responsible team context</option>
             </select>
           </div>
         </div>
@@ -351,6 +413,7 @@ export default async function EventsPage({
                 <th className="px-4 py-3 font-medium">Start</th>
                 <th className="px-4 py-3 font-medium">Program</th>
                 <th className="px-4 py-3 font-medium">Team</th>
+                <th className="px-4 py-3 font-medium">Responsible person</th>
                 <th className="px-4 py-3 font-medium">Attendance</th>
                 <th className="px-4 py-3 font-medium">Notes / Tasks</th>
                 <th className="px-4 py-3 font-medium">Operational indicator</th>
@@ -382,6 +445,11 @@ export default async function EventsPage({
                     <td className="px-4 py-3">{event.program.name}</td>
                     <td className="px-4 py-3">{event.team?.name ?? "—"}</td>
                     <td className="px-4 py-3">
+                      <Link href={`/people/${event.createdBy.id}`} className="underline">
+                        {event.createdBy.firstName} {event.createdBy.lastName}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getCoverageBadgeClassName(attendanceCoverage)}`}
                       >
@@ -398,15 +466,22 @@ export default async function EventsPage({
                       Notes: {event._count.notes} · Tasks: {event._count.tasks}
                     </td>
                     <td className="px-4 py-3">
-                      {followUpRequired ? (
-                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                          Follow-up required
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-                          Operationally clear
-                        </span>
-                      )}
+                      <div className="flex flex-wrap gap-1">
+                        {followUpRequired ? (
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            Unresolved follow-up
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            Operationally clear
+                          </span>
+                        )}
+                        {followUpRequired && !event.team ? (
+                          <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                            Missing responsible team
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 );

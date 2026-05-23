@@ -33,6 +33,11 @@ const OPERATIONAL_REVIEW_CADENCE = [
     href: "/tasks?resolution=unresolved&dueWindow=overdue",
   },
   {
+    title: "Ownership accountability review",
+    description: "Review overdue owner-linked work and unresolved items with missing responsible context.",
+    href: "/tasks?ownershipIndicator=overdue_owner_linked",
+  },
+  {
     title: "Roster readiness review",
     description: "Confirm teams with selected-season roster or assignment gaps are addressed.",
     href: "/teams?readiness=needs_attention",
@@ -223,6 +228,7 @@ export default async function DashboardPage() {
           pendingFieldOpsApprovals: number;
           athletesMissingGuardianLinkage: number;
           teamsWithOperationalGaps: number;
+          missingResponsibleFollowUps: number;
         };
         upcomingEvents: Array<{
           id: string;
@@ -312,6 +318,22 @@ export default async function DashboardPage() {
           event: { id: string; title: string } | null;
           unresolvedTaskCount: number;
         }>;
+        tasksMissingResponsibleContext: Array<{
+          id: string;
+          title: string;
+          status: string;
+          dueAt: Date | null;
+          updatedAt: Date;
+          assignee: { id: string; firstName: string; lastName: string };
+        }>;
+        eventsMissingResponsibleTeam: Array<{
+          id: string;
+          title: string;
+          startsAt: Date;
+          status: string;
+          missingAttendanceCount: number;
+          openTaskCount: number;
+        }>;
       }
     | null = null;
   let queryErrorMessage = "Unable to load dashboard data right now. Please try again later.";
@@ -331,6 +353,8 @@ export default async function DashboardPage() {
       blockedTasks,
       staleUnreviewedTaskCount,
       staleUnreviewedTasks,
+      missingResponsibleFollowUpCount,
+      missingResponsibleFollowUps,
       recentNotes,
       eventOperationalConcerns,
       notesForAttentionReview,
@@ -465,6 +489,34 @@ export default async function DashboardPage() {
           updatedAt: {
             lt: new Date(currentTime.getTime() - STALE_UNRESOLVED_TASK_WINDOW_DAYS * 24 * 60 * 60 * 1000),
           },
+        },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          dueAt: true,
+          updatedAt: true,
+          assignee: { select: { id: true, firstName: true, lastName: true } },
+        },
+        orderBy: [{ updatedAt: "asc" }, { dueAt: "asc" }, { createdAt: "asc" }],
+        take: 5,
+      }),
+      db.followUpTask.count({
+        where: {
+          organizationId: scope.organizationId,
+          status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED] },
+          sourceNoteId: null,
+          sourceEventId: null,
+          sourceInboxItemId: null,
+        },
+      }),
+      db.followUpTask.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED] },
+          sourceNoteId: null,
+          sourceEventId: null,
+          sourceInboxItemId: null,
         },
         select: {
           id: true,
@@ -705,6 +757,17 @@ export default async function DashboardPage() {
         return left.startsAt.getTime() - right.startsAt.getTime();
       })
       .slice(0, 5);
+    const eventsMissingResponsibleTeam = unresolvedEventConcerns
+      .filter((event) => !event.team)
+      .map((event) => ({
+        id: event.id,
+        title: event.title,
+        startsAt: event.startsAt,
+        status: event.status,
+        missingAttendanceCount: event.missingAttendanceCount,
+        openTaskCount: event.openTaskCount,
+      }))
+      .slice(0, 5);
 
     const notesNeedingAttention = notesForAttentionReview
       .map((note) => ({
@@ -768,12 +831,14 @@ export default async function DashboardPage() {
         pendingFieldOpsApprovals: pendingFieldOpsApprovalsCount,
         athletesMissingGuardianLinkage: athletesMissingGuardianLinkageCount,
         teamsWithOperationalGaps: teamOperationalGaps.length,
+        missingResponsibleFollowUps: missingResponsibleFollowUpCount + eventsMissingResponsibleTeam.length,
       },
       upcomingEvents,
       attendanceNeedingReview,
       overdueTasks: sortOpenTasks(overdueTasks),
       blockedTasks,
       staleUnreviewedTasks: sortOpenTasks(staleUnreviewedTasks),
+      tasksMissingResponsibleContext: sortOpenTasks(missingResponsibleFollowUps),
       recentNotes,
       athletesMissingGuardianLinkage,
       teamOperationalGaps,
@@ -782,6 +847,7 @@ export default async function DashboardPage() {
       unresolvedOperationalHistory,
       unresolvedEventConcerns,
       notesNeedingAttention,
+      eventsMissingResponsibleTeam,
     };
   } catch (error) {
     if (isSchemaUnavailableError(error)) {
@@ -864,6 +930,11 @@ export default async function DashboardPage() {
                 value: dashboardData.counts.staleUnreviewedTasks,
                 href: "/tasks?resolution=unresolved",
                 sublabel: `No updates in ${STALE_UNRESOLVED_TASK_WINDOW_DAYS}+ days`,
+              },
+              {
+                label: "Missing responsible follow-up context",
+                value: dashboardData.counts.missingResponsibleFollowUps,
+                href: "/tasks?ownershipIndicator=missing_responsible_context",
               },
               {
                 label: "Recent notes",
@@ -1073,6 +1144,57 @@ export default async function DashboardPage() {
                         </p>
                       </div>
                     ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-medium">Missing responsible follow-up context</h3>
+                <Link href="/tasks?ownershipIndicator=missing_responsible_context" className="text-sm underline">
+                  Review ownership gaps
+                </Link>
+              </div>
+              <div className="mt-4 space-y-4">
+                {dashboardData.tasksMissingResponsibleContext.length === 0 &&
+                dashboardData.eventsMissingResponsibleTeam.length === 0 ? (
+                  renderEmptyList("No unresolved ownership/accountability gaps are currently flagged.")
+                ) : (
+                  <>
+                    {dashboardData.tasksMissingResponsibleContext.map((task) => (
+                      <div key={task.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                        <Link href={`/tasks/${task.id}`} className="font-medium underline">
+                          {task.title}
+                        </Link>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          Status: {formatEnumLabel(task.status)} · Due: {formatDateTime(task.dueAt)}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          Assigned owner:{" "}
+                          <Link href={`/people/${task.assignee.id}`} className="underline">
+                            {task.assignee.firstName} {task.assignee.lastName}
+                          </Link>
+                        </p>
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                          Last changed: {formatDateTime(task.updatedAt)} · Source context missing
+                        </p>
+                      </div>
+                    ))}
+                    {dashboardData.eventsMissingResponsibleTeam.map((event) => (
+                      <div key={event.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                        <Link href={`/events/${event.id}`} className="font-medium underline">
+                          {event.title}
+                        </Link>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          {formatDateTime(event.startsAt)} · {formatEnumLabel(event.status)}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          Missing attendance: {event.missingAttendanceCount} · Open tasks: {event.openTaskCount}
+                        </p>
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Responsible team context is missing.</p>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             </div>
 
