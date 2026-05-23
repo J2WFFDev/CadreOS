@@ -19,7 +19,11 @@ import {
   formatGuardianFollowUpDependency,
   formatGuardianOperationalIndicator,
 } from "@/lib/guardian-operational-context";
-import { canReadStaffOnlyContent, resolveActorRoleContext } from "@/lib/authorization";
+import {
+  evaluateStaffOnlyContentAccess,
+  logAuthorizationDecision,
+  resolveActorRoleContext,
+} from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -181,7 +185,13 @@ export default async function TasksPage({
     actorPersonId: scope.auth.personId,
   });
 
-  if (!canReadStaffOnlyContent(actorRoleContext)) {
+  const staffAccessDecision = evaluateStaffOnlyContentAccess(actorRoleContext);
+  logAuthorizationDecision(staffAccessDecision, {
+    workflow: "tasks.list.access",
+    entityType: "followUpTask",
+  });
+
+  if (!staffAccessDecision.allowed) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Tasks</h2>

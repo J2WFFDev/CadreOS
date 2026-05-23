@@ -67,6 +67,66 @@ export type ActorRoleContext = {
   isStaffMember: boolean;
 };
 
+export type AuthorizationDecisionHelper =
+  | "canReadStaffOnlyContent"
+  | "canReadTeamScopedContent"
+  | "canAccessFollowUpTask";
+
+export type AuthorizationDecisionScope =
+  | "none"
+  | "organization"
+  | "team"
+  | "program"
+  | "self_assignee"
+  | "self_creator";
+
+export type AuthorizationOwnershipRelationship =
+  | "staff_role"
+  | "assignee"
+  | "creator"
+  | "none"
+  | "unlinked_account";
+
+export type AuthorizationDecisionReasonCode =
+  | "ALLOW_STAFF_ROLE"
+  | "ALLOW_ORG_LEVEL_CONTENT"
+  | "ALLOW_ORGANIZATION_SCOPE_ASSIGNMENT"
+  | "ALLOW_TEAM_SCOPE_ASSIGNMENT_MATCH"
+  | "ALLOW_PROGRAM_SCOPE_ASSIGNMENT_CONSERVATIVE"
+  | "ALLOW_TASK_ASSIGNEE"
+  | "ALLOW_TASK_CREATOR"
+  | "DENY_UNLINKED_ACCOUNT"
+  | "DENY_NON_STAFF_ROLE"
+  | "DENY_TEAM_SCOPE_MISMATCH"
+  | "DENY_TASK_NO_OWNERSHIP";
+
+export type AuthorizationDecision = {
+  helper: AuthorizationDecisionHelper;
+  allowed: boolean;
+  reasonCode: AuthorizationDecisionReasonCode;
+  reason: string;
+  scopeApplied: AuthorizationDecisionScope;
+  ownershipRelationship: AuthorizationOwnershipRelationship;
+  organizationId: string;
+  actorPersonId: string | null;
+  evaluatedTeamId: string | null;
+  matchedRoleAssignment:
+    | {
+        roleType: RoleType;
+        scopeType: ScopeType;
+        programId: string | null;
+        teamId: string | null;
+      }
+    | null;
+};
+
+type AuthorizationDecisionLogInput = {
+  workflow: string;
+  entityType?: string;
+  entityId?: string;
+  metadata?: Record<string, string | number | boolean | null>;
+};
+
 // ---------------------------------------------------------------------------
 // Error
 // ---------------------------------------------------------------------------
@@ -143,7 +203,12 @@ export async function resolveActorRoleContext(input: {
  * PARENT_GUARDIAN and ATHLETE users must not read STAFF_ONLY content.
  */
 export function canReadStaffOnlyContent(context: ActorRoleContext): boolean {
-  return context.isStaffMember;
+  const decision = evaluateStaffOnlyContentAccess(context);
+  logAuthorizationDecision(decision, {
+    workflow: "authorization-helper",
+    metadata: { helper: decision.helper },
+  });
+  return decision.allowed;
 }
 
 /**
@@ -160,30 +225,166 @@ export function canReadStaffOnlyContent(context: ActorRoleContext): boolean {
  * Non-staff actors always return false.
  */
 export function canReadTeamScopedContent(context: ActorRoleContext, teamId: string | null): boolean {
+  const decision = evaluateTeamScopedContentAccess(context, teamId);
+  logAuthorizationDecision(decision, {
+    workflow: "authorization-helper",
+    metadata: { helper: decision.helper },
+  });
+  return decision.allowed;
+}
+
+export function evaluateStaffOnlyContentAccess(context: ActorRoleContext): AuthorizationDecision {
+  if (!context.actorPersonId) {
+    return {
+      helper: "canReadStaffOnlyContent",
+      allowed: false,
+      reasonCode: "DENY_UNLINKED_ACCOUNT",
+      reason: "Actor account is not linked to a person record.",
+      scopeApplied: "none",
+      ownershipRelationship: "unlinked_account",
+      organizationId: context.organizationId,
+      actorPersonId: null,
+      evaluatedTeamId: null,
+      matchedRoleAssignment: null,
+    };
+  }
+
   if (!context.isStaffMember) {
-    return false;
+    return {
+      helper: "canReadStaffOnlyContent",
+      allowed: false,
+      reasonCode: "DENY_NON_STAFF_ROLE",
+      reason: "Actor has no staff role assignment in this organization.",
+      scopeApplied: "none",
+      ownershipRelationship: "none",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: null,
+      matchedRoleAssignment: null,
+    };
+  }
+
+  return {
+    helper: "canReadStaffOnlyContent",
+    allowed: true,
+    reasonCode: "ALLOW_STAFF_ROLE",
+    reason: "Actor has staff role assignment in this organization.",
+    scopeApplied: "organization",
+    ownershipRelationship: "staff_role",
+    organizationId: context.organizationId,
+    actorPersonId: context.actorPersonId,
+    evaluatedTeamId: null,
+    matchedRoleAssignment: null,
+  };
+}
+
+export function evaluateTeamScopedContentAccess(
+  context: ActorRoleContext,
+  teamId: string | null,
+): AuthorizationDecision {
+  if (!context.isStaffMember) {
+    return {
+      helper: "canReadTeamScopedContent",
+      allowed: false,
+      reasonCode: context.actorPersonId ? "DENY_NON_STAFF_ROLE" : "DENY_UNLINKED_ACCOUNT",
+      reason: context.actorPersonId
+        ? "Actor has no staff role assignment in this organization."
+        : "Actor account is not linked to a person record.",
+      scopeApplied: "none",
+      ownershipRelationship: context.actorPersonId ? "none" : "unlinked_account",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: teamId,
+      matchedRoleAssignment: null,
+    };
   }
 
   // Org-level records are accessible to all staff.
   if (!teamId) {
-    return true;
+    return {
+      helper: "canReadTeamScopedContent",
+      allowed: true,
+      reasonCode: "ALLOW_ORG_LEVEL_CONTENT",
+      reason: "Record is organization-scoped (no teamId) and actor is staff.",
+      scopeApplied: "organization",
+      ownershipRelationship: "staff_role",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: null,
+      matchedRoleAssignment: null,
+    };
   }
 
-  return context.staffRoleAssignments.some((assignment) => {
-    // ORGANIZATION scope assignments (including org admin) cover all teams.
-    if (assignment.scopeType === ScopeType.ORGANIZATION) {
-      return true;
-    }
+  const organizationAssignment = context.staffRoleAssignments.find(
+    (assignment) => assignment.scopeType === ScopeType.ORGANIZATION,
+  );
 
-    // TEAM scope: exact match required.
-    if (assignment.scopeType === ScopeType.TEAM) {
-      return assignment.teamId === teamId;
-    }
+  if (organizationAssignment) {
+    return {
+      helper: "canReadTeamScopedContent",
+      allowed: true,
+      reasonCode: "ALLOW_ORGANIZATION_SCOPE_ASSIGNMENT",
+      reason: "Actor has organization-scope staff assignment covering all teams.",
+      scopeApplied: "organization",
+      ownershipRelationship: "staff_role",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: teamId,
+      matchedRoleAssignment: organizationAssignment,
+    };
+  }
 
-    // PROGRAM scope: conservatively allow; callers that need strict enforcement
-    // should verify team.programId === assignment.programId with a DB lookup.
-    return assignment.scopeType === ScopeType.PROGRAM;
-  });
+  const teamAssignment = context.staffRoleAssignments.find(
+    (assignment) => assignment.scopeType === ScopeType.TEAM && assignment.teamId === teamId,
+  );
+
+  if (teamAssignment) {
+    return {
+      helper: "canReadTeamScopedContent",
+      allowed: true,
+      reasonCode: "ALLOW_TEAM_SCOPE_ASSIGNMENT_MATCH",
+      reason: "Actor has team-scope staff assignment matching this team.",
+      scopeApplied: "team",
+      ownershipRelationship: "staff_role",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: teamId,
+      matchedRoleAssignment: teamAssignment,
+    };
+  }
+
+  const programAssignment = context.staffRoleAssignments.find(
+    (assignment) => assignment.scopeType === ScopeType.PROGRAM,
+  );
+
+  if (programAssignment) {
+    return {
+      helper: "canReadTeamScopedContent",
+      allowed: true,
+      reasonCode: "ALLOW_PROGRAM_SCOPE_ASSIGNMENT_CONSERVATIVE",
+      reason:
+        "Actor has program-scope staff assignment; helper allows conservative access without strict team-program DB verification.",
+      scopeApplied: "program",
+      ownershipRelationship: "staff_role",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: teamId,
+      matchedRoleAssignment: programAssignment,
+    };
+  }
+
+  return {
+    helper: "canReadTeamScopedContent",
+    allowed: false,
+    reasonCode: "DENY_TEAM_SCOPE_MISMATCH",
+    reason: "Actor is staff but has no scope assignment matching this team.",
+    scopeApplied: "none",
+    ownershipRelationship: "staff_role",
+    organizationId: context.organizationId,
+    actorPersonId: context.actorPersonId,
+    evaluatedTeamId: teamId,
+    matchedRoleAssignment: null,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -205,17 +406,115 @@ export function canAccessFollowUpTask(
   context: ActorRoleContext,
   task: { assigneePersonId: string; createdByPersonId: string },
 ): boolean {
+  const decision = evaluateFollowUpTaskAccess(context, task);
+  logAuthorizationDecision(decision, {
+    workflow: "authorization-helper",
+    metadata: { helper: decision.helper },
+  });
+  return decision.allowed;
+}
+
+export function evaluateFollowUpTaskAccess(
+  context: ActorRoleContext,
+  task: { assigneePersonId: string; createdByPersonId: string },
+): AuthorizationDecision {
   if (context.isStaffMember) {
-    return true;
+    return {
+      helper: "canAccessFollowUpTask",
+      allowed: true,
+      reasonCode: "ALLOW_STAFF_ROLE",
+      reason: "Actor has staff role assignment and may access organization tasks.",
+      scopeApplied: "organization",
+      ownershipRelationship: "staff_role",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: null,
+      matchedRoleAssignment: null,
+    };
   }
 
   if (!context.actorPersonId) {
-    return false;
+    return {
+      helper: "canAccessFollowUpTask",
+      allowed: false,
+      reasonCode: "DENY_UNLINKED_ACCOUNT",
+      reason: "Actor account is not linked to a person record.",
+      scopeApplied: "none",
+      ownershipRelationship: "unlinked_account",
+      organizationId: context.organizationId,
+      actorPersonId: null,
+      evaluatedTeamId: null,
+      matchedRoleAssignment: null,
+    };
   }
 
-  return (
-    context.actorPersonId === task.assigneePersonId ||
-    context.actorPersonId === task.createdByPersonId
+  if (context.actorPersonId === task.assigneePersonId) {
+    return {
+      helper: "canAccessFollowUpTask",
+      allowed: true,
+      reasonCode: "ALLOW_TASK_ASSIGNEE",
+      reason: "Actor is the assignee of the task.",
+      scopeApplied: "self_assignee",
+      ownershipRelationship: "assignee",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: null,
+      matchedRoleAssignment: null,
+    };
+  }
+
+  if (context.actorPersonId === task.createdByPersonId) {
+    return {
+      helper: "canAccessFollowUpTask",
+      allowed: true,
+      reasonCode: "ALLOW_TASK_CREATOR",
+      reason: "Actor is the creator of the task.",
+      scopeApplied: "self_creator",
+      ownershipRelationship: "creator",
+      organizationId: context.organizationId,
+      actorPersonId: context.actorPersonId,
+      evaluatedTeamId: null,
+      matchedRoleAssignment: null,
+    };
+  }
+
+  return {
+    helper: "canAccessFollowUpTask",
+    allowed: false,
+    reasonCode: "DENY_TASK_NO_OWNERSHIP",
+    reason: "Actor is not task assignee, not task creator, and has no staff role.",
+    scopeApplied: "none",
+    ownershipRelationship: "none",
+    organizationId: context.organizationId,
+    actorPersonId: context.actorPersonId,
+    evaluatedTeamId: null,
+    matchedRoleAssignment: null,
+  };
+}
+
+function isAuthorizationAuditLogEnabled(): boolean {
+  const rawValue = process.env.CADREOS_AUTH_AUDIT_LOG?.toLowerCase();
+  return rawValue === "1" || rawValue === "true" || rawValue === "yes" || rawValue === "on";
+}
+
+export function logAuthorizationDecision(
+  decision: AuthorizationDecision,
+  input: AuthorizationDecisionLogInput,
+): void {
+  if (!isAuthorizationAuditLogEnabled()) {
+    return;
+  }
+
+  console.info(
+    "[cadreos.authz]",
+    JSON.stringify({
+      timestamp: new Date().toISOString(),
+      workflow: input.workflow,
+      entityType: input.entityType ?? null,
+      entityId: input.entityId ?? null,
+      metadata: input.metadata ?? null,
+      decision,
+    }),
   );
 }
 

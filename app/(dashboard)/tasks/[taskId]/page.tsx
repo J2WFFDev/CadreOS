@@ -10,9 +10,10 @@ import {
   formatGuardianOperationalIndicator,
 } from "@/lib/guardian-operational-context";
 import {
-  canAccessFollowUpTask,
-  canReadStaffOnlyContent,
-  canReadTeamScopedContent,
+  evaluateFollowUpTaskAccess,
+  evaluateStaffOnlyContentAccess,
+  evaluateTeamScopedContentAccess,
+  logAuthorizationDecision,
   resolveActorRoleContext,
 } from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
@@ -58,7 +59,14 @@ export default async function TaskDetailPage({
     actorPersonId: scope.auth.personId,
   });
 
-  if (!canReadStaffOnlyContent(actorRoleContext) && !actorRoleContext.actorPersonId) {
+  const staffAccessDecision = evaluateStaffOnlyContentAccess(actorRoleContext);
+  logAuthorizationDecision(staffAccessDecision, {
+    workflow: "tasks.detail.access",
+    entityType: "followUpTask",
+    entityId: taskId,
+  });
+
+  if (!staffAccessDecision.allowed && !actorRoleContext.actorPersonId) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Task</h2>
@@ -184,12 +192,21 @@ export default async function TaskDetailPage({
     );
   }
 
-  if (
-    !canAccessFollowUpTask(actorRoleContext, {
+  const taskAccessDecision = evaluateFollowUpTaskAccess(actorRoleContext, {
+    assigneePersonId: task.assignee.id,
+    createdByPersonId: task.createdBy.id,
+  });
+  logAuthorizationDecision(taskAccessDecision, {
+    workflow: "tasks.detail.ownership",
+    entityType: "followUpTask",
+    entityId: task.id,
+    metadata: {
       assigneePersonId: task.assignee.id,
       createdByPersonId: task.createdBy.id,
-    })
-  ) {
+    },
+  });
+
+  if (!taskAccessDecision.allowed) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Task</h2>
@@ -204,7 +221,15 @@ export default async function TaskDetailPage({
 
   if (actorRoleContext.isStaffMember) {
     const taskTeamId = task.sourceEvent?.teamId ?? task.sourceNote?.teamId ?? task.sourceNote?.event?.teamId ?? null;
-    if (!canReadTeamScopedContent(actorRoleContext, taskTeamId)) {
+    const teamAccessDecision = evaluateTeamScopedContentAccess(actorRoleContext, taskTeamId);
+    logAuthorizationDecision(teamAccessDecision, {
+      workflow: "tasks.detail.team-scope",
+      entityType: "followUpTask",
+      entityId: task.id,
+      metadata: { taskTeamId },
+    });
+
+    if (!teamAccessDecision.allowed) {
       return (
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold tracking-tight">Task</h2>
