@@ -18,6 +18,10 @@ import {
 } from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { getOperationalHistory } from "@/lib/operational-history";
+import {
+  buildSupportedTaskSourceNoteVisibilityWhere,
+  SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
+} from "@/lib/operational-visibility";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
@@ -172,6 +176,7 @@ export default async function EventDetailsPage({
           },
           createdBy: { select: { id: true, firstName: true, lastName: true } },
           tasks: {
+            where: buildSupportedTaskSourceNoteVisibilityWhere(),
             select: {
               id: true,
               title: true,
@@ -182,6 +187,7 @@ export default async function EventDetailsPage({
             },
           },
           notes: {
+            where: { visibility: SUPPORTED_OPERATIONAL_NOTE_VISIBILITY },
             select: {
               id: true,
               body: true,

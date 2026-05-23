@@ -12,6 +12,10 @@ import {
 } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import {
+  buildSupportedTaskSourceNoteVisibilityWhere,
+  SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
+} from "@/lib/operational-visibility";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { getOperationalHistory, type OperationalHistoryItem } from "@/lib/operational-history";
 import { isSchemaUnavailableError, selectSeededOrCurrentSeason } from "@/lib/workflows";
@@ -297,27 +301,32 @@ export default async function DashboardPage() {
         ],
       };
   const scopedTaskWhere = staffScopeResolution.allowAllStaffScope
-    ? {}
+    ? buildSupportedTaskSourceNoteVisibilityWhere()
     : {
-        OR: [
-          ...(staffScopeResolution.allowedTeamIds.length > 0
-            ? [{ sourceEvent: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
-            : []),
-          ...(staffScopeResolution.allowedTeamIds.length > 0
-            ? [{ sourceNote: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
-            : []),
-          ...(staffScopeResolution.allowedTeamIds.length > 0
-            ? [{ sourceNote: { is: { event: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } } } }]
-            : []),
-          ...(staffScopeResolution.allowedProgramIds.length > 0
-            ? [{ sourceEvent: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
-            : []),
-          ...(staffScopeResolution.allowedProgramIds.length > 0
-            ? [{ sourceNote: { is: { event: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
-            : []),
-          ...(staffScopeResolution.allowedProgramIds.length > 0
-            ? [{ sourceNote: { is: { team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
-            : []),
+        AND: [
+          buildSupportedTaskSourceNoteVisibilityWhere(),
+          {
+            OR: [
+              ...(staffScopeResolution.allowedTeamIds.length > 0
+                ? [{ sourceEvent: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+                : []),
+              ...(staffScopeResolution.allowedTeamIds.length > 0
+                ? [{ sourceNote: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+                : []),
+              ...(staffScopeResolution.allowedTeamIds.length > 0
+                ? [{ sourceNote: { is: { event: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } } } }]
+                : []),
+              ...(staffScopeResolution.allowedProgramIds.length > 0
+                ? [{ sourceEvent: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
+                : []),
+              ...(staffScopeResolution.allowedProgramIds.length > 0
+                ? [{ sourceNote: { is: { event: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
+                : []),
+              ...(staffScopeResolution.allowedProgramIds.length > 0
+                ? [{ sourceNote: { is: { team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
+                : []),
+            ],
+          },
         ],
       };
 
@@ -504,6 +513,7 @@ export default async function DashboardPage() {
       db.observationNote.count({
         where: {
           organizationId: scope.organizationId,
+          visibility: SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
           ...scopedNoteWhere,
           createdAt: { gte: recentNotesThreshold },
         },
@@ -661,7 +671,11 @@ export default async function DashboardPage() {
         take: 5,
       }),
       db.observationNote.findMany({
-        where: { organizationId: scope.organizationId, ...scopedNoteWhere },
+        where: {
+          organizationId: scope.organizationId,
+          visibility: SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
+          ...scopedNoteWhere,
+        },
         select: {
           id: true,
           body: true,
@@ -707,6 +721,7 @@ export default async function DashboardPage() {
       db.observationNote.findMany({
         where: {
           organizationId: scope.organizationId,
+          visibility: SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
           ...scopedNoteWhere,
           updatedAt: { gte: new Date(currentTime.getTime() - RECENT_NOTE_WINDOW_DAYS * 24 * 60 * 60 * 1000) },
         },
