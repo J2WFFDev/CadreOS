@@ -3,6 +3,11 @@ import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
+import {
+  canReadStaffOnlyContent,
+  canReadTeamScopedContent,
+  resolveActorRoleContext,
+} from "@/lib/authorization";
 import { db } from "@/lib/db";
 import {
   deriveGuardianOperationalContext,
@@ -84,6 +89,24 @@ export default async function TeamDetailsPage({
         <h2 className="text-2xl font-semibold tracking-tight">Team</h2>
         <div id="relationship-summary" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No organization context is available yet.</p>
+        </div>
+      </section>
+    );
+  }
+
+  const actorRoleContext = await resolveActorRoleContext({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+
+  if (!canReadStaffOnlyContent(actorRoleContext)) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Team</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            You do not have staff access to view team operational workflows.
+          </p>
         </div>
       </section>
     );
@@ -264,6 +287,19 @@ export default async function TeamDetailsPage({
         <h2 className="text-2xl font-semibold tracking-tight">Team</h2>
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">Team not found in the selected organization.</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!canReadTeamScopedContent(actorRoleContext, team.id)) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Team</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            You do not have access to this team-scoped workflow.
+          </p>
         </div>
       </section>
     );
