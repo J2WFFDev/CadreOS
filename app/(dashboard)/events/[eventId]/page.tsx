@@ -1,9 +1,22 @@
 import Link from "next/link";
+import { RSVPStatus } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
+
+type SearchParams = Record<string, string | string[] | undefined>;
+
+function readSearchParam(searchParams: SearchParams, key: string): string {
+  const value = searchParams[key];
+
+  if (Array.isArray(value)) {
+    return value[0] ?? "";
+  }
+
+  return value ?? "";
+}
 
 function formatEnumLabel(value: string) {
   return value
@@ -22,10 +35,13 @@ function formatDateTime(value: Date | null) {
 
 export default async function EventDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ eventId: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const { eventId } = await params;
+  const resolvedSearchParams = await searchParams;
   const scope = await getOrganizationScope();
 
   if (!scope.databaseReady) {
@@ -65,21 +81,58 @@ export default async function EventDetailsPage({
         program: { id: string; name: string };
         team: { id: string; name: string } | null;
         createdBy: { id: string; firstName: string; lastName: string } | null;
+        rsvps: Array<{
+          id: string;
+          status: RSVPStatus;
+          reason: string | null;
+          respondedAt: Date;
+          person: { id: string; firstName: string; lastName: string };
+        }>;
       }
     | null = null;
+  let people: Array<{ id: string; firstName: string; lastName: string }> = [];
 
   try {
-    event = await db.event.findFirst({
-      where: {
-        id: eventId,
-        organizationId: scope.organizationId,
-      },
-      include: {
-        program: { select: { id: true, name: true } },
-        team: { select: { id: true, name: true } },
-        createdBy: { select: { id: true, firstName: true, lastName: true } },
-      },
-    });
+    [event, people] = await Promise.all([
+      db.event.findFirst({
+        where: {
+          id: eventId,
+          organizationId: scope.organizationId,
+        },
+        include: {
+          program: { select: { id: true, name: true } },
+          team: { select: { id: true, name: true } },
+          createdBy: { select: { id: true, firstName: true, lastName: true } },
+          rsvps: {
+            select: {
+              id: true,
+              status: true,
+              reason: true,
+              respondedAt: true,
+              person: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
+            orderBy: [{ respondedAt: "desc" }],
+          },
+        },
+      }),
+      db.person.findMany({
+        where: {
+          organizationId: scope.organizationId,
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+        },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      }),
+    ]);
   } catch {
     queryFailed = true;
   }
@@ -107,6 +160,14 @@ export default async function EventDetailsPage({
       </section>
     );
   }
+
+  const rsvpPersonId = readSearchParam(resolvedSearchParams, "rsvpPersonId");
+  const rawRsvpStatus = readSearchParam(resolvedSearchParams, "rsvpStatus");
+  const rsvpStatus = Object.values(RSVPStatus).includes(rawRsvpStatus as RSVPStatus)
+    ? (rawRsvpStatus as RSVPStatus)
+    : RSVPStatus.MAYBE;
+  const rsvpReason = readSearchParam(resolvedSearchParams, "rsvpReason");
+  const rsvpError = readSearchParam(resolvedSearchParams, "rsvpError");
 
   return (
     <section className="space-y-6">
@@ -165,6 +226,112 @@ export default async function EventDetailsPage({
             </dd>
           </div>
         </dl>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="text-lg font-semibold">RSVPs</h3>
+        {event.rsvps.length === 0 ? (
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            No RSVPs have been submitted for this event yet.
+          </p>
+        ) : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+              <thead>
+                <tr className="text-left text-zinc-600 dark:text-zinc-400">
+                  <th className="py-2 pr-4 font-medium">Person</th>
+                  <th className="py-2 pr-4 font-medium">Status</th>
+                  <th className="py-2 pr-4 font-medium">Reason</th>
+                  <th className="py-2 font-medium">Responded at</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                {event.rsvps.map((rsvp) => (
+                  <tr key={rsvp.id}>
+                    <td className="py-2 pr-4">{rsvp.person.firstName} {rsvp.person.lastName}</td>
+                    <td className="py-2 pr-4">{formatEnumLabel(rsvp.status)}</td>
+                    <td className="py-2 pr-4 text-zinc-600 dark:text-zinc-400">{rsvp.reason ?? "—"}</td>
+                    <td className="py-2 text-zinc-600 dark:text-zinc-400">{formatDateTime(rsvp.respondedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="text-lg font-semibold">Add or update RSVP</h3>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Submit availability intent now; attendance will be recorded in a later phase.
+        </p>
+
+        {rsvpError ? (
+          <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/40">
+            <p className="text-sm text-amber-900 dark:text-amber-200">{rsvpError}</p>
+          </div>
+        ) : null}
+
+        {people.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            No people are available in the active organization yet.
+          </p>
+        ) : (
+          <form action={`/events/${event.id}/rsvp`} method="post" className="mt-3 space-y-4">
+            <div className="space-y-1">
+              <label htmlFor="personId" className="text-sm font-medium">
+                Person
+              </label>
+              <select id="personId" name="personId" defaultValue={rsvpPersonId} className="w-full rounded-md border px-3 py-2 text-sm">
+                <option value="">Select a person</option>
+                {people.map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.firstName} {person.lastName}
+                  </option>
+                ))}
+              </select>
+              {readSearchParam(resolvedSearchParams, "rsvpPersonIdError") ? (
+                <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "rsvpPersonIdError")}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="status" className="text-sm font-medium">
+                RSVP status
+              </label>
+              <select id="status" name="status" defaultValue={rsvpStatus} className="w-full rounded-md border px-3 py-2 text-sm">
+                {Object.values(RSVPStatus).map((value) => (
+                  <option key={value} value={value}>
+                    {formatEnumLabel(value)}
+                  </option>
+                ))}
+              </select>
+              {readSearchParam(resolvedSearchParams, "rsvpStatusError") ? (
+                <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "rsvpStatusError")}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="reason" className="text-sm font-medium">
+                Reason (optional)
+              </label>
+              <textarea
+                id="reason"
+                name="reason"
+                defaultValue={rsvpReason}
+                rows={3}
+                className="w-full rounded-md border px-3 py-2 text-sm"
+              />
+              {readSearchParam(resolvedSearchParams, "rsvpReasonError") ? (
+                <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "rsvpReasonError")}</p>
+              ) : null}
+            </div>
+
+            <button type="submit" className="rounded-md bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black">
+              Save RSVP
+            </button>
+          </form>
+        )}
       </div>
     </section>
   );
