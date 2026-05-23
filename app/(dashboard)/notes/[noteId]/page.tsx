@@ -118,14 +118,11 @@ export default async function NoteDetailPage({
   return (
     <section className="space-y-6">
       <div className="space-y-1">
+        <Link href="/notes" className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
+          ← Notes
+        </Link>
         <h2 className="text-2xl font-semibold tracking-tight">Observation note</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Organization: {scope.organizationName ?? scope.organizationId}
-        </p>
         <div className="flex flex-wrap gap-2">
-          <Link href="/notes" className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-            Back to notes
-          </Link>
           <Link
             href={`/notes/${note.id}/edit`}
             className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"

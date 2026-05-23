@@ -255,14 +255,14 @@ export default async function PersonDetailsPage({
   return (
     <section className="space-y-6">
       <div className="space-y-1">
+        <Link href="/people" className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
+          ← People
+        </Link>
         <h2 className="text-2xl font-semibold tracking-tight">
           {person.firstName} {person.lastName}
         </h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">{person.email ?? "No email on file"}</p>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">{person.phone ?? "No phone on file"}</p>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Organization: {scope.organizationName ?? scope.organizationId}
-        </p>
         <Link href={`/people/${person.id}/edit`} className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
           Edit person
         </Link>

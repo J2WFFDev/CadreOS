@@ -101,14 +101,11 @@ export default async function TaskDetailPage({
   return (
     <section className="space-y-6">
       <div className="space-y-1">
+        <Link href="/tasks" className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
+          ← Tasks
+        </Link>
         <h2 className="text-2xl font-semibold tracking-tight">{task.title}</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Organization: {scope.organizationName ?? scope.organizationId}
-        </p>
         <div className="flex flex-wrap gap-2">
-          <Link href="/tasks" className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-            Back to tasks
-          </Link>
           <Link
             href={`/tasks/${task.id}/edit`}
             className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"

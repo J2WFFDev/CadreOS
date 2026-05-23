@@ -1,3 +1,7 @@
+import Link from "next/link";
+
+import { NavSidebar } from "@/components/nav-sidebar";
+
 export default function DashboardLayout({
   children,
 }: {
@@ -5,11 +9,18 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <header className="flex items-center justify-between border-b bg-white px-6 py-4 dark:bg-zinc-900">
-        <h1 className="text-lg font-semibold">CadreOS Dashboard</h1>
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-3 dark:bg-zinc-900">
+        <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
+          CadreOS
+        </Link>
         <span className="text-sm text-zinc-500 dark:text-zinc-400">Auth deferred (Phase 0)</span>
       </header>
-      <main className="mx-auto w-full max-w-6xl p-6">{children}</main>
+      <div className="flex min-h-[calc(100vh-49px)]">
+        <NavSidebar />
+        <main className="flex-1 overflow-auto p-6">
+          <div className="mx-auto w-full max-w-5xl">{children}</div>
+        </main>
+      </div>
     </div>
   );
 }

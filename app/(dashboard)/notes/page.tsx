@@ -93,21 +93,27 @@ export default async function NotesPage() {
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-semibold tracking-tight">Notes</h2>
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold tracking-tight">Notes</h2>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Organization: {scope.organizationName ?? scope.organizationId}
+            Record coaching observations about athletes, teams, and events.
           </p>
-          <Link href="/notes/new" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-            New note
-          </Link>
         </div>
+        <Link href="/notes/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+          New note
+        </Link>
       </div>
 
       {notes.length === 0 ? (
-        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">No observation notes found for this organization.</p>
+        <div className="rounded-lg border bg-white p-6 text-center dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">No observation notes have been recorded yet.</p>
+          <Link
+            href="/notes/new"
+            className="mt-3 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Record the first note
+          </Link>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">

@@ -112,11 +112,10 @@ export default async function DashboardPage() {
   if (!scope.databaseReady) {
     return (
       <section className="space-y-6">
-        <div className="space-y-2">
-          <h2 className="text-2xl font-semibold tracking-tight">Coach Action Dashboard</h2>
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Phase 2F turns the dashboard into a read-only operational command center for coaches and
-            program operators.
+            Operational overview for coaches and program operators.
           </p>
         </div>
 
@@ -126,16 +125,8 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-          <h3 className="text-base font-medium">Read-only operations</h3>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            The dashboard stays available even when the schema is unavailable, but it does not expose
-            create or edit actions in this phase.
-          </p>
-        </div>
-
         <div className="space-y-3">
-          <h3 className="text-lg font-medium">Navigation</h3>
+          <h3 className="text-base font-medium">Quick links</h3>
           {renderNavigationCards()}
         </div>
       </section>
@@ -145,11 +136,10 @@ export default async function DashboardPage() {
   if (!scope.organizationId) {
     return (
       <section className="space-y-6">
-        <div className="space-y-2">
-          <h2 className="text-2xl font-semibold tracking-tight">Coach Action Dashboard</h2>
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Phase 2F turns the dashboard into a read-only operational command center for coaches and
-            program operators.
+            Operational overview for coaches and program operators.
           </p>
         </div>
 
@@ -161,7 +151,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="space-y-3">
-          <h3 className="text-lg font-medium">Navigation</h3>
+          <h3 className="text-base font-medium">Quick links</h3>
           {renderNavigationCards()}
         </div>
       </section>
@@ -358,11 +348,10 @@ export default async function DashboardPage() {
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-2">
-          <h2 className="text-2xl font-semibold tracking-tight">Coach Action Dashboard</h2>
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Phase 2F turns the dashboard into a read-only operational command center for coaches and
-            program operators.
+            Operational overview for coaches and program operators.
           </p>
         </div>
         <div className="rounded-lg border bg-white px-4 py-3 text-sm dark:bg-zinc-900">
@@ -371,16 +360,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <h3 className="text-base font-medium">Read-only operations</h3>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-          This dashboard summarizes live operational data and links to detail screens, but it does not
-          add create or edit forms directly on the dashboard.
-        </p>
-      </div>
-
       <div className="space-y-3">
-        <h3 className="text-lg font-medium">Navigation</h3>
+        <h3 className="text-base font-medium">Quick links</h3>
         {renderNavigationCards()}
       </div>
 
