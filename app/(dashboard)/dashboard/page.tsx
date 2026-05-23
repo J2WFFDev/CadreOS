@@ -32,6 +32,11 @@ const NAVIGATION_CARDS = [
     description: "Track upcoming sessions, games, and event status.",
   },
   {
+    href: "/field-ops",
+    title: "FieldOps",
+    description: "Review facilities, resources, and bookings across the organization.",
+  },
+  {
     href: "/notes",
     title: "Notes",
     description: "Review the latest operational and coaching notes.",

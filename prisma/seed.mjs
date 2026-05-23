@@ -1,4 +1,17 @@
-import { PrismaClient, RelationshipType, RoleType, ScopeType, FacilityStatus, ResourceStatus, ResourceType } from "@prisma/client";
+import {
+  ApprovalStatus,
+  BookingStatus,
+  EventStatus,
+  EventType,
+  FacilityStatus,
+  PrecheckStatus,
+  PrismaClient,
+  RelationshipType,
+  ResourceStatus,
+  ResourceType,
+  RoleType,
+  ScopeType,
+} from "@prisma/client";
 
 const db = new PrismaClient();
 
@@ -307,6 +320,103 @@ async function main() {
       description: "Standard range bay — 50 yards",
       capacity: 4,
       status: ResourceStatus.ACTIVE,
+    },
+  });
+
+  const demoEvent = await db.event.upsert({
+    where: { id: "cadreos-demo-event-range-block" },
+    update: {
+      title: "Demo Team Range Block",
+      startsAt: new Date("2026-06-15T14:00:00.000Z"),
+      endsAt: new Date("2026-06-15T16:00:00.000Z"),
+      location: demoFacility.name,
+    },
+    create: {
+      id: "cadreos-demo-event-range-block",
+      organizationId: organization.id,
+      programId: program.id,
+      teamId: team.id,
+      title: "Demo Team Range Block",
+      eventType: EventType.PRACTICE,
+      status: EventStatus.PUBLISHED,
+      startsAt: new Date("2026-06-15T14:00:00.000Z"),
+      endsAt: new Date("2026-06-15T16:00:00.000Z"),
+      location: demoFacility.name,
+      createdByPersonId: teamCoach.id,
+    },
+  });
+
+  await db.resourceBooking.upsert({
+    where: { id: "cadreos-demo-booking-bay-a-range-block" },
+    update: {
+      facilityId: demoFacility.id,
+      resourceId: "cadreos-demo-resource-bay-a",
+      programId: program.id,
+      teamId: team.id,
+      eventId: demoEvent.id,
+      requestedByPersonId: programManager.id,
+      approvedByPersonId: generalManager.id,
+      title: "Demo Team Range Block",
+      description: "Reserved Bay A for the seeded demo practice block.",
+      startsAt: new Date("2026-06-15T14:00:00.000Z"),
+      endsAt: new Date("2026-06-15T16:00:00.000Z"),
+      status: BookingStatus.APPROVED,
+      precheckStatus: PrecheckStatus.PASSED,
+      approvalStatus: ApprovalStatus.APPROVED,
+    },
+    create: {
+      id: "cadreos-demo-booking-bay-a-range-block",
+      organizationId: organization.id,
+      facilityId: demoFacility.id,
+      resourceId: "cadreos-demo-resource-bay-a",
+      programId: program.id,
+      teamId: team.id,
+      eventId: demoEvent.id,
+      requestedByPersonId: programManager.id,
+      approvedByPersonId: generalManager.id,
+      title: "Demo Team Range Block",
+      description: "Reserved Bay A for the seeded demo practice block.",
+      startsAt: new Date("2026-06-15T14:00:00.000Z"),
+      endsAt: new Date("2026-06-15T16:00:00.000Z"),
+      status: BookingStatus.APPROVED,
+      precheckStatus: PrecheckStatus.PASSED,
+      approvalStatus: ApprovalStatus.APPROVED,
+    },
+  });
+
+  await db.resourceBooking.upsert({
+    where: { id: "cadreos-demo-booking-bay-b-open-session" },
+    update: {
+      facilityId: demoFacility.id,
+      resourceId: "cadreos-demo-resource-bay-b",
+      programId: program.id,
+      teamId: team.id,
+      requestedByPersonId: teamCoach.id,
+      approvedByPersonId: null,
+      title: "Open Skills Bay Session",
+      description: "Read-only seeded booking without event linkage for FieldOps list validation.",
+      startsAt: new Date("2026-06-17T18:00:00.000Z"),
+      endsAt: new Date("2026-06-17T19:30:00.000Z"),
+      status: BookingStatus.REQUESTED,
+      precheckStatus: PrecheckStatus.WARNING,
+      approvalStatus: ApprovalStatus.PENDING,
+    },
+    create: {
+      id: "cadreos-demo-booking-bay-b-open-session",
+      organizationId: organization.id,
+      facilityId: demoFacility.id,
+      resourceId: "cadreos-demo-resource-bay-b",
+      programId: program.id,
+      teamId: team.id,
+      requestedByPersonId: teamCoach.id,
+      approvedByPersonId: null,
+      title: "Open Skills Bay Session",
+      description: "Read-only seeded booking without event linkage for FieldOps list validation.",
+      startsAt: new Date("2026-06-17T18:00:00.000Z"),
+      endsAt: new Date("2026-06-17T19:30:00.000Z"),
+      status: BookingStatus.REQUESTED,
+      precheckStatus: PrecheckStatus.WARNING,
+      approvalStatus: ApprovalStatus.PENDING,
     },
   });
 }
