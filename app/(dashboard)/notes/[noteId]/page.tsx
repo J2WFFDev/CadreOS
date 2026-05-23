@@ -179,6 +179,7 @@ export default async function NoteDetailPage({
       ? deriveGuardianOperationalContext(note.athlete.athleteLinks ?? [])
       : null;
   const unresolvedTaskCount = note.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
+  const isContextFree = !note.athlete && !note.team && !note.event;
 
   return (
     <section className="space-y-6">
@@ -283,9 +284,14 @@ export default async function NoteDetailPage({
           </div>
           <div className="sm:col-span-2">
             <dt className="font-medium">Operational status</dt>
-            <dd className="text-zinc-600 dark:text-zinc-400">
+            <dd className="space-y-1.5 text-zinc-600 dark:text-zinc-400">
+              {isContextFree ? (
+                <span className="inline-flex items-center rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
+                  Context-free note — no athlete, team, or event linked
+                </span>
+              ) : null}
               {unresolvedTaskCount > 0 ? (
-                <span>
+                <span className="block">
                   <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                     Follow-up pending
                   </span>

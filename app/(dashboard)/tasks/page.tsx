@@ -12,6 +12,7 @@ import {
   formatEnumLabel,
   getTaskStatusBadgeClassName,
   isTaskOverdue,
+  isUnresolvedTaskStatus,
 } from "@/lib/follow-up-tasks";
 import {
   deriveGuardianOperationalContext,
@@ -78,9 +79,6 @@ function hasTaskResponsibleContext(task: {
   return Boolean(task.sourceEvent || task.sourceNote || task.sourceInboxItem);
 }
 
-function isUnresolvedTaskStatus(status: string) {
-  return status === TaskStatus.OPEN || status === TaskStatus.IN_PROGRESS || status === TaskStatus.BLOCKED;
-}
 
 function formatSource(task: {
   sourceNote: { id: string; body: string } | null;
@@ -721,17 +719,15 @@ export default async function TasksPage({
       </form>
 
       {filteredTasks.length === 0 ? (
-        hasActiveFilters ? (
-          <div className="rounded-lg border bg-white p-4 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
-            No follow-up tasks match the selected filters.
-          </div>
-        ) : (
-          <EmptyState
-            message="No follow-up tasks have been created yet."
-            actionHref="/tasks/new"
-            actionLabel="Create the first task"
-          />
-        )
+        <EmptyState
+          message={
+            hasActiveFilters
+              ? "No follow-up tasks match the selected filters."
+              : "No follow-up tasks have been created yet."
+          }
+          actionHref={hasActiveFilters ? "/tasks" : "/tasks/new"}
+          actionLabel={hasActiveFilters ? "Clear filters" : "Create the first task"}
+        />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
           <table className="min-w-full text-left text-sm">
