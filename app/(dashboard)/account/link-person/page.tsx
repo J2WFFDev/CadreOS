@@ -129,7 +129,7 @@ export default async function LinkPersonPage({
         </div>
       ) : null}
 
-      <form action="/account/link-person" method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
+      <form action="/account/link-person/update" method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <div className="space-y-2">
           <label htmlFor="personId" className="text-sm font-medium">
             Person in {scope.organizationName ?? "active organization"}
