@@ -30,6 +30,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 2D Notes Observations](./PHASE_2D_NOTES_OBSERVATIONS.md)
 - [Phase 2E Follow-up Tasks](./PHASE_2E_FOLLOW_UP_TASKS.md)
 - [Phase 2F Coach Action Dashboard](./PHASE_2F_COACH_ACTION_DASHBOARD.md)
+- [Phase 3A Navigation UX Cleanup](./PHASE_3A_NAVIGATION_UX_CLEANUP.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
 - [Chat Transcript](./CHAT_TRANSCRIPT.md)
 
