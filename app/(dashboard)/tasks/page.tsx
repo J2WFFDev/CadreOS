@@ -26,6 +26,7 @@ import {
   resolveStaffScopeResolution,
 } from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import { buildSupportedTaskSourceNoteVisibilityWhere } from "@/lib/operational-visibility";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -269,6 +270,7 @@ export default async function TasksPage({
   try {
     const where: Prisma.FollowUpTaskWhereInput = {
       organizationId: scope.organizationId,
+      AND: [buildSupportedTaskSourceNoteVisibilityWhere()],
       ...(staffScopeResolution.allowAllStaffScope
         ? {}
         : {

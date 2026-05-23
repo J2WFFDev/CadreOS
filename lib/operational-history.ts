@@ -2,6 +2,10 @@ import { AttendanceStatus, Prisma, RoleType, TaskStatus } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { formatDateTime, formatEnumLabel } from "@/lib/follow-up-tasks";
+import {
+  buildSupportedTaskSourceNoteVisibilityWhere,
+  SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
+} from "@/lib/operational-visibility";
 
 type OperationalHistoryContext = {
   label: string;
@@ -50,7 +54,7 @@ export async function getOperationalHistory(input: {
     updatedAt: { gte: changedSince },
     ...(input.unresolvedOnly ? { status: { in: unresolvedStatuses } } : {}),
   };
-  const taskAnd: Prisma.FollowUpTaskWhereInput[] = [];
+  const taskAnd: Prisma.FollowUpTaskWhereInput[] = [buildSupportedTaskSourceNoteVisibilityWhere()];
 
   if (input.eventId) {
     taskAnd.push({
@@ -84,6 +88,7 @@ export async function getOperationalHistory(input: {
 
   const noteWhere: Prisma.ObservationNoteWhereInput = {
     organizationId: input.organizationId,
+    visibility: SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
     updatedAt: { gte: changedSince },
   };
   const noteAnd: Prisma.ObservationNoteWhereInput[] = [];

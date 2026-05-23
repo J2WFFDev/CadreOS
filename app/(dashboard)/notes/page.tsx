@@ -17,6 +17,7 @@ import {
   resolveStaffScopeResolution,
 } from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import { SUPPORTED_OPERATIONAL_NOTE_VISIBILITY } from "@/lib/operational-visibility";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -225,7 +226,7 @@ export default async function NotesPage({
       db.observationNote.findMany({
         where: {
           organizationId: scope.organizationId,
-          visibility: NoteVisibility.STAFF_ONLY,
+          visibility: SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
           ...noteScopeWhere,
           ...(filterTeamId ? { teamId: filterTeamId } : {}),
           ...(filterAthletePersonId ? { athletePersonId: filterAthletePersonId } : {}),

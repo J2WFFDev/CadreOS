@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RoleType } from "@prisma/client";
+import { NoteVisibility, RoleType } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
@@ -17,6 +17,7 @@ import {
   resolveActorRoleContext,
 } from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import { classifyFollowUpTaskOperationalVisibility } from "@/lib/operational-visibility";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -92,6 +93,7 @@ export default async function TaskDetailPage({
           | {
               id: string;
               body: string;
+              visibility: NoteVisibility;
               teamId: string | null;
               team: { programId: string } | null;
               event: { teamId: string | null; programId: string } | null;
@@ -133,6 +135,7 @@ export default async function TaskDetailPage({
           select: {
             id: true,
             body: true,
+            visibility: true,
             teamId: true,
             team: { select: { programId: true } },
             event: { select: { teamId: true, programId: true } },
@@ -221,16 +224,45 @@ export default async function TaskDetailPage({
     );
   }
 
+  const visibilityClassification = classifyFollowUpTaskOperationalVisibility({
+    sourceNoteVisibility: task.sourceNote?.visibility,
+    sourceEventTeamId: task.sourceEvent?.teamId ?? null,
+    sourceEventProgramId: task.sourceEvent?.programId ?? null,
+    sourceNoteTeamId: task.sourceNote?.teamId ?? null,
+    sourceNoteTeamProgramId: task.sourceNote?.team?.programId ?? null,
+    sourceNoteEventTeamId: task.sourceNote?.event?.teamId ?? null,
+    sourceNoteEventProgramId: task.sourceNote?.event?.programId ?? null,
+  });
+
+  if (visibilityClassification.visibilityClass === "UNRESOLVED") {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Task</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Task visibility context is unresolved for this workflow and cannot be safely displayed.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   if (actorRoleContext.isStaffMember) {
-    const taskTeamId = task.sourceEvent?.teamId ?? task.sourceNote?.teamId ?? task.sourceNote?.event?.teamId ?? null;
-    const taskTeamProgramId =
-      task.sourceEvent?.programId ?? task.sourceNote?.team?.programId ?? task.sourceNote?.event?.programId ?? null;
-    const teamAccessDecision = evaluateTeamScopedContentAccess(actorRoleContext, taskTeamId, taskTeamProgramId);
+    const teamAccessDecision = evaluateTeamScopedContentAccess(
+      actorRoleContext,
+      visibilityClassification.teamId,
+      visibilityClassification.programId,
+    );
     logAuthorizationDecision(teamAccessDecision, {
-      workflow: "tasks.detail.team-scope",
+      workflow: "tasks.detail.visibility-scope",
       entityType: "followUpTask",
       entityId: task.id,
-      metadata: { taskTeamId },
+      metadata: {
+        visibilityClass: visibilityClassification.visibilityClass,
+        visibilityReason: visibilityClassification.reason,
+        taskTeamId: visibilityClassification.teamId,
+        taskProgramId: visibilityClassification.programId,
+      },
     });
 
     if (!teamAccessDecision.allowed) {
@@ -239,7 +271,9 @@ export default async function TaskDetailPage({
           <h2 className="text-2xl font-semibold tracking-tight">Task</h2>
           <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              You do not have access to this team-scoped task.
+              {visibilityClassification.visibilityClass === "TEAM_STAFF"
+                ? "You do not have access to this team-scoped task."
+                : "You do not have access to this organization-scoped task."}
             </p>
           </div>
         </section>

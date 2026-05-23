@@ -23,6 +23,7 @@ import {
   resolveActorRoleContext,
 } from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import { classifyObservationNoteOperationalVisibility } from "@/lib/operational-visibility";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -200,6 +201,27 @@ export default async function NoteDetailPage({
     );
   }
 
+  const visibilityClassification = classifyObservationNoteOperationalVisibility({
+    visibility: note.visibility,
+    teamId: note.team?.id ?? null,
+    eventTeamId: note.event?.teamId ?? null,
+    teamProgramId: note.team?.programId ?? null,
+    eventProgramId: note.event?.programId ?? null,
+  });
+
+  if (visibilityClassification.visibilityClass === "UNRESOLVED") {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Note</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Note visibility is unresolved for the current workflow and cannot be safely displayed.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   if (!canReadObservationNoteByVisibility(actorRoleContext, note.visibility)) {
     return (
       <section className="space-y-4">
@@ -213,14 +235,21 @@ export default async function NoteDetailPage({
     );
   }
 
-  const noteTeamId = note.team?.id ?? note.event?.teamId ?? null;
-  const noteTeamProgramId = note.team?.programId ?? note.event?.programId ?? null;
-  const teamAccessDecision = evaluateTeamScopedContentAccess(actorRoleContext, noteTeamId, noteTeamProgramId);
+  const teamAccessDecision = evaluateTeamScopedContentAccess(
+    actorRoleContext,
+    visibilityClassification.teamId,
+    visibilityClassification.programId,
+  );
   logAuthorizationDecision(teamAccessDecision, {
-    workflow: "notes.detail.team-scope",
+    workflow: "notes.detail.visibility-scope",
     entityType: "observationNote",
     entityId: note.id,
-    metadata: { noteTeamId },
+    metadata: {
+      visibilityClass: visibilityClassification.visibilityClass,
+      visibilityReason: visibilityClassification.reason,
+      noteTeamId: visibilityClassification.teamId,
+      noteProgramId: visibilityClassification.programId,
+    },
   });
 
   if (!teamAccessDecision.allowed) {
@@ -229,7 +258,9 @@ export default async function NoteDetailPage({
         <h2 className="text-2xl font-semibold tracking-tight">Note</h2>
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            You do not have access to this team-scoped note.
+            {visibilityClassification.visibilityClass === "TEAM_STAFF"
+              ? "You do not have access to this team-scoped note."
+              : "You do not have access to this organization-scoped note."}
           </p>
         </div>
       </section>

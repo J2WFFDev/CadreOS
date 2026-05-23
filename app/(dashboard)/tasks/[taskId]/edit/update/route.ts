@@ -1,7 +1,8 @@
-import { NoteVisibility, TaskStatus, Prisma } from "@prisma/client";
+import { TaskStatus, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { classifyObservationNoteOperationalVisibility } from "@/lib/operational-visibility";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   followUpTaskWorkflowSchema,
@@ -173,7 +174,11 @@ export async function POST(
         );
       }
 
-      if (sourceNote.visibility !== NoteVisibility.STAFF_ONLY) {
+      const sourceNoteVisibility = classifyObservationNoteOperationalVisibility({
+        visibility: sourceNote.visibility,
+      });
+
+      if (sourceNoteVisibility.visibilityClass === "UNRESOLVED") {
         return NextResponse.redirect(
           buildErrorRedirectUrl(request.url, taskId, {
             values,
