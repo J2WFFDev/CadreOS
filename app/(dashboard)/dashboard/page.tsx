@@ -168,7 +168,10 @@ export default async function DashboardPage() {
     );
   }
 
-  const recentNotesThreshold = new Date(Date.now() - RECENT_NOTE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const currentTime = new Date();
+  const recentNotesThreshold = new Date(
+    currentTime.getTime() - RECENT_NOTE_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  );
 
   let dashboardData:
     | {
@@ -220,8 +223,6 @@ export default async function DashboardPage() {
   let queryErrorMessage = "Unable to load dashboard data right now. Please try again later.";
 
   try {
-    const now = new Date();
-
     const [
       programCount,
       teamCount,
@@ -247,7 +248,7 @@ export default async function DashboardPage() {
       db.event.count({
         where: {
           organizationId: scope.organizationId,
-          startsAt: { gte: now },
+          startsAt: { gte: currentTime },
         },
       }),
       db.followUpTask.count({
@@ -265,7 +266,7 @@ export default async function DashboardPage() {
       db.event.findMany({
         where: {
           organizationId: scope.organizationId,
-          startsAt: { gte: now },
+          startsAt: { gte: currentTime },
         },
         select: {
           id: true,
