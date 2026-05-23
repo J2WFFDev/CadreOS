@@ -34,8 +34,17 @@ export default async function ProgramsPage() {
     );
   }
 
+  let programs:
+    | Array<{
+        id: string;
+        name: string;
+        organization: { id: string; name: string };
+        _count: { teams: number };
+      }>
+    | null = null;
+
   try {
-    const programs = await db.program.findMany({
+    programs = await db.program.findMany({
       where: { organizationId: scope.organizationId },
       include: {
         organization: {
@@ -52,43 +61,11 @@ export default async function ProgramsPage() {
       },
       orderBy: { name: "asc" },
     });
-
-    return (
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Programs</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Organization: {scope.organizationName ?? scope.organizationId}
-          </p>
-        </div>
-
-        {programs.length === 0 ? (
-          <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              No programs found for this organization.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {programs.map((program) => (
-              <div key={program.id} className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-                <p className="text-lg font-medium">{program.name}</p>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  Organization: {program.organization.name}
-                </p>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  Team count: {program._count.teams}
-                </p>
-                <Link href="/teams" className="mt-3 inline-block text-sm underline">
-                  View teams
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-    );
   } catch {
+    programs = null;
+  }
+
+  if (!programs) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Programs</h2>
@@ -100,4 +77,38 @@ export default async function ProgramsPage() {
       </section>
     );
   }
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">Programs</h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Organization: {scope.organizationName ?? scope.organizationId}
+        </p>
+      </div>
+
+      {programs.length === 0 ? (
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            No programs found for this organization.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {programs.map((program) => (
+            <div key={program.id} className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <p className="text-lg font-medium">{program.name}</p>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                Organization: {program.organization.name}
+              </p>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Team count: {program._count.teams}</p>
+              <Link href="/teams" className="mt-3 inline-block text-sm underline">
+                View teams
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }

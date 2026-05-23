@@ -44,8 +44,41 @@ export default async function PersonDetailsPage({
     );
   }
 
+  let queryFailed = false;
+  let person:
+    | {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string | null;
+        roles: Array<{
+          id: string;
+          roleType: string;
+          scopeType: string;
+          program: { id: string; name: string } | null;
+          team: { id: string; name: string } | null;
+        }>;
+        guardianLinks: Array<{
+          id: string;
+          relationshipType: string;
+          athlete: { id: string; firstName: string; lastName: string };
+        }>;
+        athleteLinks: Array<{
+          id: string;
+          relationshipType: string;
+          guardian: { id: string; firstName: string; lastName: string };
+        }>;
+        roster: Array<{
+          id: string;
+          rosterRole: string;
+          team: { id: string; name: string };
+          season: { id: string; name: string };
+        }>;
+      }
+    | null = null;
+
   try {
-    const person = await db.person.findFirst({
+    person = await db.person.findFirst({
       where: {
         id: personId,
         organizationId: scope.organizationId,
@@ -115,102 +148,11 @@ export default async function PersonDetailsPage({
         },
       },
     });
-
-    if (!person) {
-      return (
-        <section className="space-y-4">
-          <h2 className="text-2xl font-semibold tracking-tight">Person</h2>
-          <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Person not found in the selected organization.
-            </p>
-          </div>
-        </section>
-      );
-    }
-
-    return (
-      <section className="space-y-6">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-semibold tracking-tight">
-            {person.firstName} {person.lastName}
-          </h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">{person.email ?? "No email on file"}</p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Organization: {scope.organizationName ?? scope.organizationId}
-          </p>
-        </div>
-
-        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-          <h3 className="mb-3 text-lg font-medium">Role assignments</h3>
-          {person.roles.length === 0 ? (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">No role assignments.</p>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {person.roles.map((role) => (
-                <li key={role.id}>
-                  {formatEnumLabel(role.roleType)} · {formatEnumLabel(role.scopeType)}
-                  {role.program ? ` · Program: ${role.program.name}` : ""}
-                  {role.team ? ` · Team: ${role.team.name}` : ""}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-          <h3 className="mb-3 text-lg font-medium">Guardian / athlete relationships</h3>
-          {person.guardianLinks.length === 0 && person.athleteLinks.length === 0 ? (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">No guardian/athlete relationships.</p>
-          ) : (
-            <div className="space-y-3 text-sm">
-              {person.guardianLinks.length > 0 ? (
-                <div>
-                  <p className="font-medium">Guardian for</p>
-                  <ul className="mt-1 list-disc pl-5">
-                    {person.guardianLinks.map((link) => (
-                      <li key={link.id}>
-                        {link.athlete.firstName} {link.athlete.lastName} ({formatEnumLabel(link.relationshipType)})
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
-              {person.athleteLinks.length > 0 ? (
-                <div>
-                  <p className="font-medium">Athlete linked to guardians</p>
-                  <ul className="mt-1 list-disc pl-5">
-                    {person.athleteLinks.map((link) => (
-                      <li key={link.id}>
-                        {link.guardian.firstName} {link.guardian.lastName} ({formatEnumLabel(link.relationshipType)})
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-          <h3 className="mb-3 text-lg font-medium">Roster memberships</h3>
-          {person.roster.length === 0 ? (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">No roster memberships.</p>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {person.roster.map((membership) => (
-                <li key={membership.id}>
-                  Team: {membership.team.name} · Season: {membership.season.name} · Role:{" "}
-                  {formatEnumLabel(membership.rosterRole)}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
-    );
   } catch {
+    queryFailed = true;
+  }
+
+  if (queryFailed) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Person</h2>
@@ -222,4 +164,99 @@ export default async function PersonDetailsPage({
       </section>
     );
   }
+
+  if (person === null) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Person</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Person not found in the selected organization.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {person.firstName} {person.lastName}
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">{person.email ?? "No email on file"}</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Organization: {scope.organizationName ?? scope.organizationId}
+        </p>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="mb-3 text-lg font-medium">Role assignments</h3>
+        {person.roles.length === 0 ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">No role assignments.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {person.roles.map((role) => (
+              <li key={role.id}>
+                {formatEnumLabel(role.roleType)} · {formatEnumLabel(role.scopeType)}
+                {role.program ? ` · Program: ${role.program.name}` : ""}
+                {role.team ? ` · Team: ${role.team.name}` : ""}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="mb-3 text-lg font-medium">Guardian / athlete relationships</h3>
+        {person.guardianLinks.length === 0 && person.athleteLinks.length === 0 ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">No guardian/athlete relationships.</p>
+        ) : (
+          <div className="space-y-3 text-sm">
+            {person.guardianLinks.length > 0 ? (
+              <div>
+                <p className="font-medium">Guardian for</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {person.guardianLinks.map((link) => (
+                    <li key={link.id}>
+                      {link.athlete.firstName} {link.athlete.lastName} ({formatEnumLabel(link.relationshipType)})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {person.athleteLinks.length > 0 ? (
+              <div>
+                <p className="font-medium">Athlete linked to guardians</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {person.athleteLinks.map((link) => (
+                    <li key={link.id}>
+                      {link.guardian.firstName} {link.guardian.lastName} ({formatEnumLabel(link.relationshipType)})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="mb-3 text-lg font-medium">Roster memberships</h3>
+        {person.roster.length === 0 ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">No roster memberships.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {person.roster.map((membership) => (
+              <li key={membership.id}>
+                Team: {membership.team.name} · Season: {membership.season.name} · Role:{" "}
+                {formatEnumLabel(membership.rosterRole)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
 }

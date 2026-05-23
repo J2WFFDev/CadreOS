@@ -34,8 +34,16 @@ export default async function TeamsPage() {
     );
   }
 
+  let teams:
+    | Array<{
+        id: string;
+        name: string;
+        program: { id: string; name: string };
+      }>
+    | null = null;
+
   try {
-    const teams = await db.team.findMany({
+    teams = await db.team.findMany({
       where: { organizationId: scope.organizationId },
       include: {
         program: {
@@ -44,40 +52,11 @@ export default async function TeamsPage() {
       },
       orderBy: { name: "asc" },
     });
-
-    return (
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Teams</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Organization: {scope.organizationName ?? scope.organizationId}
-          </p>
-        </div>
-
-        {teams.length === 0 ? (
-          <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              No teams found for this organization.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {teams.map((team) => (
-              <div key={team.id} className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-                <p className="text-lg font-medium">{team.name}</p>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  Program: {team.program.name}
-                </p>
-                <Link href={`/teams/${team.id}`} className="mt-3 inline-block text-sm underline">
-                  View team details
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-    );
   } catch {
+    teams = null;
+  }
+
+  if (!teams) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Teams</h2>
@@ -89,4 +68,35 @@ export default async function TeamsPage() {
       </section>
     );
   }
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">Teams</h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Organization: {scope.organizationName ?? scope.organizationId}
+        </p>
+      </div>
+
+      {teams.length === 0 ? (
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            No teams found for this organization.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {teams.map((team) => (
+            <div key={team.id} className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <p className="text-lg font-medium">{team.name}</p>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Program: {team.program.name}</p>
+              <Link href={`/teams/${team.id}`} className="mt-3 inline-block text-sm underline">
+                View team details
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
