@@ -98,8 +98,7 @@ export default async function NewNotePage({
 
       <form action="/notes/create" method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <p className="text-xs text-zinc-600 dark:text-zinc-400">
-          Notes default to staff-only visibility. Author attribution uses mock actor context and falls back to a
-          seeded/admin organization person until real authentication-to-person resolution is implemented.
+          Notes are created with staff-only visibility. Author attribution resolves from your linked organization person via Clerk authentication. If no person link is detected, attribution falls back to an admin person in the organization.
         </p>
 
         <div className="space-y-1">

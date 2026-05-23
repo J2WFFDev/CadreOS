@@ -90,7 +90,12 @@ export default async function PersonDetailsPage({
         athleteLinks: Array<{
           id: string;
           relationshipType: string;
-          guardian: { id: string; firstName: string; lastName: string };
+          guardian: {
+            id: string;
+            firstName: string;
+            lastName: string;
+            _count: { userAccounts: number };
+          };
         }>;
         roster: Array<{
           id: string;
@@ -157,6 +162,11 @@ export default async function PersonDetailsPage({
                   id: true,
                   firstName: true,
                   lastName: true,
+                  _count: {
+                    select: {
+                      userAccounts: true,
+                    },
+                  },
                 },
               },
             },
@@ -261,6 +271,13 @@ export default async function PersonDetailsPage({
   const selectedTeamId = hasSearchParam(resolvedSearchParams, "teamId")
     ? readSearchParam(resolvedSearchParams, "teamId")
     : "";
+  const isAthleteProfile =
+    person.roles.some((role) => role.roleType === RoleType.ATHLETE) ||
+    person.roster.some((membership) => membership.rosterRole === RoleType.ATHLETE);
+  const hasGuardianRelationship = person.athleteLinks.length > 0;
+  const hasGuardianAccountLinkGap = person.athleteLinks.some(
+    (link) => link.guardian._count.userAccounts === 0,
+  );
 
   return (
     <section className="space-y-6">
@@ -380,6 +397,24 @@ export default async function PersonDetailsPage({
           Relationship records are visible here. Dedicated create/manage guardian relationship workflows are not yet
           exposed in this MVP slice.
         </p>
+        <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+          Relationship indicators on this page are staff-facing visibility diagnostics only. They do not grant guardian
+          access to staff-only data, and onboarding/invitation workflows remain intentionally deferred.
+        </p>
+        {isAthleteProfile ? (
+          <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+            Athlete relationship status:{" "}
+            {!hasGuardianRelationship
+              ? "Missing guardian relationship."
+              : hasGuardianAccountLinkGap
+                ? "Guardian relationship exists, but at least one linked guardian user/account is missing."
+                : "Guardian relationship linked and guardian user/account link detected."}
+          </p>
+        ) : (
+          <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+            Relationship visibility is intentionally limited for non-athlete profiles.
+          </p>
+        )}
         {person.guardianLinks.length === 0 && person.athleteLinks.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No guardian/athlete relationships.</p>
         ) : (
@@ -403,7 +438,10 @@ export default async function PersonDetailsPage({
                 <ul className="mt-1 list-disc pl-5">
                   {person.athleteLinks.map((link) => (
                     <li key={link.id}>
-                      {link.guardian.firstName} {link.guardian.lastName} ({formatEnumLabel(link.relationshipType)})
+                      {link.guardian.firstName} {link.guardian.lastName} ({formatEnumLabel(link.relationshipType)}) ·{" "}
+                      {link.guardian._count.userAccounts > 0
+                        ? "Guardian account linked"
+                        : "Guardian account link missing"}
                     </li>
                   ))}
                 </ul>

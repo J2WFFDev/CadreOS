@@ -370,15 +370,17 @@ Use Option B as long-term direction, phased carefully. Prefer compatibility-laye
 
 ## 15. Proposed Future Phases
 
-- Phase 7A: Entry / Inbox schema design
-- Phase 7B: Minimal Inbox capture
-- Phase 7C: Entry triage and filing
-- Phase 7D: Decision entries
-- Phase 7E: Private Journal view
-- Phase 7F: Role-aware Feed
-- Phase 7G: Contact Notes
-- Phase 7H: Migration from current Notes/Tasks/Events if needed
-- Phase 7I: Messaging/DM exploration only after Feed stabilizes
+To avoid overlap with active Team/Member phase IDs, Entry/Inbox work uses a separate deferred track label:
+
+- Entry Track E0: Entry / Inbox schema design (this planning phase)
+- Entry Track E1: Minimal Inbox capture
+- Entry Track E2: Entry triage and filing
+- Entry Track E3: Decision entries
+- Entry Track E4: Private Journal view
+- Entry Track E5: Role-aware Feed
+- Entry Track E6: Contact Notes
+- Entry Track E7: Migration from current Notes/Tasks/Events if needed
+- Entry Track E8: Messaging/DM exploration only after Feed stabilizes
 
 ## 16. Open Decisions
 

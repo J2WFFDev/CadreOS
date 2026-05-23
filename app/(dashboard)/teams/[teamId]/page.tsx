@@ -100,7 +100,15 @@ export default async function TeamDetailsPage({
             firstName: string;
             lastName: string;
             email: string | null;
-            athleteLinks: Array<{ id: string }>;
+            athleteLinks: Array<{
+              id: string;
+              guardian: {
+                id: string;
+                firstName: string;
+                lastName: string;
+                _count: { userAccounts: number };
+              };
+            }>;
           };
           season: { id: string; name: string; startDate: Date | null; endDate: Date | null };
         }>;
@@ -163,6 +171,18 @@ export default async function TeamDetailsPage({
                     },
                     select: {
                       id: true,
+                      guardian: {
+                        select: {
+                          id: true,
+                          firstName: true,
+                          lastName: true,
+                          _count: {
+                            select: {
+                              userAccounts: true,
+                            },
+                          },
+                        },
+                      },
                     },
                   },
                 },
@@ -238,6 +258,9 @@ export default async function TeamDetailsPage({
   const athleteRosterMemberships = selectedSeasonRosterMembers.filter((membership) => membership.rosterRole === RoleType.ATHLETE);
   const athleteRosterWithGuardianLinks = athleteRosterMemberships.filter(
     (membership) => membership.person.athleteLinks.length > 0,
+  ).length;
+  const athleteRosterWithGuardianAccountLinkGaps = athleteRosterMemberships.filter((membership) =>
+    membership.person.athleteLinks.some((relationship) => relationship.guardian._count.userAccounts === 0),
   ).length;
   const athleteRosterWithoutGuardianLinks = athleteRosterMemberships.length - athleteRosterWithGuardianLinks;
   const roleAssignmentsByPersonId = new Map<
@@ -376,9 +399,18 @@ export default async function TeamDetailsPage({
                   const guardianStatus =
                     membership.rosterRole === RoleType.ATHLETE
                       ? membership.person.athleteLinks.length > 0
-                        ? `${membership.person.athleteLinks.length} guardian link${membership.person.athleteLinks.length === 1 ? "" : "s"}`
-                        : "No guardian linked"
-                      : "Guardian support not modeled yet";
+                        ? (() => {
+                            const linkedGuardianCount = membership.person.athleteLinks.length;
+                            const guardiansMissingAccountLinks = membership.person.athleteLinks.filter(
+                              (relationship) => relationship.guardian._count.userAccounts === 0,
+                            ).length;
+                            if (guardiansMissingAccountLinks > 0) {
+                              return `${linkedGuardianCount} guardian relationship${linkedGuardianCount === 1 ? "" : "s"} · ${guardiansMissingAccountLinks} guardian account link missing`;
+                            }
+                            return `${linkedGuardianCount} guardian relationship${linkedGuardianCount === 1 ? "" : "s"} linked`;
+                          })()
+                        : "No guardian relationship linked"
+                      : "Relationship visibility intentionally limited to athlete roster rows";
 
                   return (
                     <tr key={membership.id} className="border-b align-top last:border-b-0">
@@ -418,8 +450,17 @@ export default async function TeamDetailsPage({
           {athleteRosterWithGuardianLinks === 1 ? "" : "s"}, {athleteRosterWithoutGuardianLinks} without.
         </p>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Athlete rows with guardian account-link gaps: {athleteRosterWithGuardianAccountLinkGaps} athlete
+          {athleteRosterWithGuardianAccountLinkGaps === 1 ? "" : "s"} have at least one guardian relationship with no
+          linked user account.
+        </p>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Team roster role-assignment gaps: {rosterMembersWithoutRoleAssignments} member
           {rosterMembersWithoutRoleAssignments === 1 ? "" : "s"} with role assignment missing.
+        </p>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Relationship status indicators are staff-facing roster diagnostics only. They do not grant guardian access,
+          and guardian onboarding/invitation workflows are intentionally deferred.
         </p>
         {athleteRosterMemberships.length === 0 ? (
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">

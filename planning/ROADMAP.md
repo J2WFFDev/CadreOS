@@ -14,6 +14,13 @@ This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the
 
 ## Current Build Snapshot
 
+### Phase 7E clarification: active vs deferred tracks
+- **Active implementation track now:** Team/Member Management hardening and usability (Phase 7B–7E).
+- **Future deferred track:** Entry/Inbox/Journal architecture and migration work.
+- `ObservationNote` and `FollowUpTask` remain the implemented runtime workflows today.
+- Unified `Entry` migration is intentionally deferred and remains planning-only.
+- Feed/Journal/Messaging concepts remain deferred and must not be implemented in the active Team/Member slice.
+
 ### Built now (active MVP surface)
 - Organization/program/team/person records with scoped role assignments.
 - Team roster operations (season-scoped) and person profile views.
@@ -102,8 +109,10 @@ This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the
 ## Build Order After Recenter (planning-level)
 
 1. **Phase 7B:** Team/Member Management Hardening (recommended)
-2. **Phase 7C candidate:** Parent/Guardian workflow foundation or Notes hardening (decision based on Phase 7B validation outcomes)
-3. **Later:** Reporting uplift, then deferred FieldOps/GearOps expansions as separate module tracks
+2. **Phase 7C–7E:** Team/Member follow-on hardening slices, including guardian relationship visibility clarity and authorization boundaries
+3. **Phase 7F:** Operational Notes workflow hardening — notes list filtering, visibility labeling, readability improvements, relationship clarity between notes/tasks/events, and documentation separating current `ObservationNote` workflow from future Entry direction
+4. **Later (deferred Entry/Inbox track):** Entry/Inbox schema implementation and migration planning under a separate track label to avoid overlap with Team/Member phase IDs
+5. **Then:** Reporting uplift, then deferred FieldOps/GearOps expansions as separate module tracks
 
 ---
 
