@@ -63,6 +63,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 7E Guardian Relationship Visibility and Roadmap Realignment](./PHASE_7E_GUARDIAN_RELATIONSHIP_VISIBILITY_AND_ROADMAP_REALIGNMENT.md)
 - [Phase 7F Operational Notes Workflow Hardening](./PHASE_7F_NOTES_WORKFLOW_HARDENING.md)
 - [Phase 7G FollowUpTask Operational Clarity](./PHASE_7G_FOLLOW_UP_TASK_OPERATIONAL_CLARITY.md)
+- [Phase 7H Team/Member + Notes/Tasks Operational Hardening Closeout](./PHASE_7H_TEAM_MEMBER_NOTES_TASKS_OPERATIONAL_HARDENING_CLOSEOUT.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
 - [Chat Transcript](./CHAT_TRANSCRIPT.md)
@@ -90,6 +91,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 7E Guardian Relationship Visibility and Roadmap Realignment](./PHASE_7E_GUARDIAN_RELATIONSHIP_VISIBILITY_AND_ROADMAP_REALIGNMENT.md)
 - [Phase 7F Operational Notes Workflow Hardening](./PHASE_7F_NOTES_WORKFLOW_HARDENING.md)
 - [Phase 7G FollowUpTask Operational Clarity](./PHASE_7G_FOLLOW_UP_TASK_OPERATIONAL_CLARITY.md)
+- [Phase 7H Team/Member + Notes/Tasks Operational Hardening Closeout](./PHASE_7H_TEAM_MEMBER_NOTES_TASKS_OPERATIONAL_HARDENING_CLOSEOUT.md)
 
 ## Decision Log Summary
 - Product name: **CadreOS**
