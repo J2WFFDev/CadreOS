@@ -44,6 +44,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 6A FieldOps Planning](./PHASE_6A_FIELDOPS_PLANNING.md)
 - [Phase 6B FieldOps Schema Draft](./PHASE_6B_FIELDOPS_SCHEMA_DRAFT.md)
 - [Phase 6B Entry / Inbox / Feed / Journal Plan](./PHASE_6B_ENTRY_INBOX_FEED_JOURNAL_PLAN.md)
+- [Phase 6C FieldOps Prisma Schema](./PHASE_6C_FIELDOPS_PRISMA_SCHEMA.md)
 - [Phase 7A Entry / Inbox Schema Design](./PHASE_7A_ENTRY_INBOX_SCHEMA_DESIGN.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)

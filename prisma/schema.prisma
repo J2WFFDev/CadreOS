@@ -80,6 +80,73 @@ enum RelationshipType {
   GUARDIAN
 }
 
+// FieldOps enums
+
+enum FacilityStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum ResourceStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  ARCHIVED
+}
+
+enum ResourceType {
+  FIELD
+  RANGE
+  BAY
+  ROOM
+  COURT
+  EQUIPMENT_AREA
+  OTHER
+}
+
+enum BookingStatus {
+  DRAFT
+  REQUESTED
+  PRECHECK_PASSED
+  CONFLICT_FOUND
+  RECOMMENDED
+  APPROVED
+  DENIED
+  CANCELED
+  COMPLETED
+}
+
+enum PrecheckStatus {
+  NOT_RUN
+  PASSED
+  WARNING
+  FAILED
+}
+
+enum ApprovalStatus {
+  NOT_REQUIRED
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum ConflictType {
+  RESOURCE_TIME_OVERLAP
+  FACILITY_BLACKOUT
+  EVENT_OVERLAP
+  MISSING_REQUIRED_STAFF
+  RESOURCE_UNAVAILABLE
+  CAPACITY_EXCEEDED
+  POLICY_WARNING
+}
+
+enum ConflictSeverity {
+  INFO
+  WARNING
+  BLOCKING
+}
+
 model Organization {
   id        String    @id @default(cuid())
   name      String
@@ -102,6 +169,10 @@ model Organization {
   followUpTasks               FollowUpTask[]
   inboxRoutingItems           InboxRoutingItem[]
   auditEvents                 AuditEvent[]
+  facilities                  Facility[]
+  facilityResources           FacilityResource[]
+  resourceBookings            ResourceBooking[]
+  bookingConflicts            BookingConflict[]
 }
 
 model Program {
@@ -117,6 +188,7 @@ model Program {
   roles        RoleAssignment[]
   events       Event[]
   auditEvents  AuditEvent[]
+  resourceBookings ResourceBooking[]
 
   @@index([organizationId])
   @@unique([organizationId, name])
@@ -137,6 +209,7 @@ model Team {
   notes        ObservationNote[]
   events       Event[]
   auditEvents  AuditEvent[]
+  resourceBookings ResourceBooking[]
 
   @@index([organizationId, programId])
   @@unique([programId, name])
@@ -201,6 +274,8 @@ model Person {
   createdInboxRoutingItems   InboxRoutingItem[]           @relation("InboxCreatedBy")
   createdEvents              Event[]                      @relation("EventCreatedBy")
   actorAuditEvents           AuditEvent[]                 @relation("AuditActor")
+  requestedBookings          ResourceBooking[]            @relation("BookingRequestedBy")
+  approvedBookings           ResourceBooking[]            @relation("BookingApprovedBy")
 
   @@index([organizationId])
   @@index([organizationId, lastName, firstName])
@@ -312,6 +387,7 @@ model Event {
   attendance   AttendanceRecord[]
   notes        ObservationNote[]
   tasks        FollowUpTask[]
+  resourceBookings ResourceBooking[]
 
   @@index([organizationId, startsAt])
   @@index([organizationId, teamId, startsAt])
@@ -428,4 +504,112 @@ model AuditEvent {
   @@index([organizationId, createdAt])
   @@index([organizationId, entityType, entityId, createdAt])
   @@index([organizationId, actorPersonId, createdAt])
+}
+
+// FieldOps models
+
+model Facility {
+  id             String         @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  addressLine1   String?
+  addressLine2   String?
+  city           String?
+  state          String?
+  postalCode     String?
+  status         FacilityStatus @default(ACTIVE)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  resources    FacilityResource[]
+  bookings     ResourceBooking[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+}
+
+model FacilityResource {
+  id             String         @id @default(cuid())
+  organizationId String
+  facilityId     String
+  name           String
+  resourceType   ResourceType
+  description    String?
+  capacity       Int?
+  status         ResourceStatus @default(ACTIVE)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  facility     Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  bookings     ResourceBooking[]
+
+  @@index([organizationId])
+  @@index([facilityId])
+  @@index([organizationId, facilityId])
+  @@index([organizationId, status])
+}
+
+model ResourceBooking {
+  id                  String         @id @default(cuid())
+  organizationId      String
+  facilityId          String
+  resourceId          String
+  programId           String?
+  teamId              String?
+  eventId             String?
+  requestedByPersonId String
+  approvedByPersonId  String?
+  title               String
+  description         String?
+  startsAt            DateTime
+  endsAt              DateTime
+  status              BookingStatus  @default(DRAFT)
+  precheckStatus      PrecheckStatus @default(NOT_RUN)
+  approvalStatus      ApprovalStatus @default(NOT_REQUIRED)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  facility     Facility         @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  resource     FacilityResource @relation(fields: [resourceId], references: [id], onDelete: Restrict)
+  program      Program?         @relation(fields: [programId], references: [id], onDelete: SetNull)
+  team         Team?            @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  event        Event?           @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  requestedBy  Person           @relation("BookingRequestedBy", fields: [requestedByPersonId], references: [id], onDelete: Restrict)
+  approvedBy   Person?          @relation("BookingApprovedBy", fields: [approvedByPersonId], references: [id], onDelete: SetNull)
+  conflicts    BookingConflict[] @relation("BookingConflicts")
+  relatedConflicts BookingConflict[] @relation("RelatedBookingConflicts")
+
+  @@index([organizationId])
+  @@index([organizationId, facilityId])
+  @@index([organizationId, resourceId])
+  @@index([organizationId, status])
+  @@index([organizationId, approvalStatus])
+  @@index([organizationId, eventId])
+  @@index([resourceId, startsAt])
+  @@index([resourceId, endsAt])
+}
+
+model BookingConflict {
+  id               String           @id @default(cuid())
+  organizationId   String
+  bookingId        String
+  conflictType     ConflictType
+  severity         ConflictSeverity
+  message          String
+  relatedBookingId String?
+  createdAt        DateTime         @default(now())
+  resolvedAt       DateTime?
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  booking        ResourceBooking @relation("BookingConflicts", fields: [bookingId], references: [id], onDelete: Cascade)
+  relatedBooking ResourceBooking? @relation("RelatedBookingConflicts", fields: [relatedBookingId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([bookingId])
+  @@index([organizationId, bookingId])
+  @@index([relatedBookingId])
 }
