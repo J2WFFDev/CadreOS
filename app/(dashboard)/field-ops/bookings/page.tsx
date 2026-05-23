@@ -69,6 +69,7 @@ export default async function FieldOpsBookingsPage({
         program: { id: string; name: string } | null;
         team: { id: string; name: string } | null;
         event: { id: string; title: string } | null;
+        _count: { conflicts: number };
       }>
     | null = null;
   let filterContext: {
@@ -98,6 +99,7 @@ export default async function FieldOpsBookingsPage({
           program: { select: { id: true, name: true } },
           team: { select: { id: true, name: true } },
           event: { select: { id: true, title: true } },
+          _count: { select: { conflicts: true } },
         },
         orderBy: [{ startsAt: "asc" }, { createdAt: "asc" }],
       }),
@@ -191,7 +193,7 @@ export default async function FieldOpsBookingsPage({
       ) : (
         <div className="space-y-3">
           {bookings.map((booking) => (
-            <BookingCard key={booking.id} booking={booking} />
+            <BookingCard key={booking.id} booking={{ ...booking, conflictCount: booking._count.conflicts }} />
           ))}
         </div>
       )}

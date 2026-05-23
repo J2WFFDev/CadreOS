@@ -313,8 +313,8 @@ export default async function NewFieldOpsBookingRequestPage({
           </div>
 
           <p className="text-xs text-zinc-600 dark:text-zinc-400">
-            New requests start as Requested, with precheck not run and approval pending. Conflict detection and approval
-            actions are added in later phases.
+            New requests run an immediate precheck for active facility/resource and booking conflicts. Approval/deny actions
+            are added in a later phase.
           </p>
 
           <FormActions submitLabel="Create booking request" cancelHref="/field-ops/bookings" />

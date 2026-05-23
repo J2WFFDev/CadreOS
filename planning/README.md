@@ -48,6 +48,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 6D FieldOps DB Update Validation](./PHASE_6D_FIELDOPS_DB_UPDATE_VALIDATION.md)
 - [Phase 6E FieldOps Read-Only Views](./PHASE_6E_FIELDOPS_READ_ONLY_VIEWS.md)
 - [Phase 6F FieldOps Booking Request Workflow](./PHASE_6F_FIELDOPS_BOOKING_REQUEST_WORKFLOW.md)
+- [Phase 6G FieldOps Conflict Prechecks](./PHASE_6G_FIELDOPS_CONFLICT_PRECHECKS.md)
 - [Phase 7A Entry / Inbox Schema Design](./PHASE_7A_ENTRY_INBOX_SCHEMA_DESIGN.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
