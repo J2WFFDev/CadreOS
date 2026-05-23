@@ -44,6 +44,9 @@ export async function getOrganizationScope(): Promise<OrganizationScope> {
     }
 
     if (!selectedOrganization) {
+      // MVP fallback: no explicit Clerk org context is available, so resolve against the first
+      // organization in the database ordered by creation date. This keeps the app functional
+      // during single-org MVP operation. Remove once Clerk organization context is enforced.
       usedFallbackOrganization = true;
       selectedOrganization = await db.organization.findFirst({
         select: { id: true, name: true },

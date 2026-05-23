@@ -19,7 +19,12 @@ export default async function DashboardLayout({
           CadreOS
         </Link>
         <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
-          <span>Protected dashboard</span>
+          <Link
+            href="/account"
+            className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+          >
+            Account
+          </Link>
           <UserButton />
         </div>
       </header>
