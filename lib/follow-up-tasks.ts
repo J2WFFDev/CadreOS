@@ -1,4 +1,3 @@
-import { db } from "@/lib/db";
 import { resolveActorPersonId } from "@/lib/user-account";
 
 const TASK_STATUS_SORT_WEIGHT: Record<string, number> = {

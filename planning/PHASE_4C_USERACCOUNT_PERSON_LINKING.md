@@ -35,9 +35,21 @@
 - `/account` and `/account/link-person` are now included in protected route matching.
 - No redirect redesign was applied in Phase 4C; any minor Clerk-hosted redirect edge behavior remains for later hardening.
 
+## Parent/Guardian Access Model (Not Implemented Yet)
+
+**Model rule established in Phase 4C:**
+- A `PARENT_GUARDIAN` role holder should exist as a `Person` record first (staff creates them in the People workflow).
+- A parent/guardian may **optionally** be linked to a `UserAccount` later — not all guardians require login access.
+- `UserAccount` linking already supports linking a Clerk user to a `Person` with any role, including `PARENT_GUARDIAN`. No schema changes are needed.
+- Staff-only `ObservationNote` records (`visibility: STAFF_ONLY`) must not be exposed to parent/guardian-linked users. This enforcement is deferred to the authorization phase.
+
+**What is deferred to a later authorization phase:**
+- Route-level authorization checks scoping parent/guardian users to only their linked athlete(s).
+- Visibility filtering on Notes and other staff-only data based on `PARENT_GUARDIAN` role.
+- Access model will be enforced through `AthleteGuardianRelationship` rows, which already exist in the schema and capture the athlete ↔ guardian link.
+
 ## Explicit Non-Scope
 - No Clerk Organizations integration.
 - No full authorization policy enforcement.
-- No parent/guardian access model changes.
 - No FieldOps or GearOps modules.
 - No Notes/Entry model refactor.
