@@ -90,6 +90,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 9J Visibility Relationship Handling and Inheritance Consistency](./PHASE_9J_VISIBILITY_RELATIONSHIP_INHERITANCE_CONSISTENCY.md)
 - [Phase 9K Authorization / Visibility Validation Matrix](./PHASE_9K_AUTHORIZATION_VISIBILITY_VALIDATION_MATRIX.md)
 - [Phase 9L Runtime Authorization / Visibility Remediation Summary](./PHASE_9L_RUNTIME_AUTHORIZATION_VISIBILITY_REMEDIATION.md)
+- [Phase 9M Minimal Safe Runtime Entry Slice Design](./PHASE_9M_MINIMAL_RUNTIME_ENTRY_SLICE_DESIGN.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -145,6 +146,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 9J Visibility Relationship Handling and Inheritance Consistency](./PHASE_9J_VISIBILITY_RELATIONSHIP_INHERITANCE_CONSISTENCY.md)
 - [Phase 9K Authorization / Visibility Validation Matrix](./PHASE_9K_AUTHORIZATION_VISIBILITY_VALIDATION_MATRIX.md)
 - [Phase 9L Runtime Authorization / Visibility Remediation Summary](./PHASE_9L_RUNTIME_AUTHORIZATION_VISIBILITY_REMEDIATION.md)
+- [Phase 9M Minimal Safe Runtime Entry Slice Design](./PHASE_9M_MINIMAL_RUNTIME_ENTRY_SLICE_DESIGN.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 
 ## Operational Foundation MVP Phase Sequence (8A–8P)
@@ -178,6 +180,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 9J Visibility Relationship Handling and Inheritance Consistency](./PHASE_9J_VISIBILITY_RELATIONSHIP_INHERITANCE_CONSISTENCY.md)
 - [Phase 9K Authorization / Visibility Validation Matrix](./PHASE_9K_AUTHORIZATION_VISIBILITY_VALIDATION_MATRIX.md)
 - [Phase 9L Runtime Authorization / Visibility Remediation Summary](./PHASE_9L_RUNTIME_AUTHORIZATION_VISIBILITY_REMEDIATION.md)
+- [Phase 9M Minimal Safe Runtime Entry Slice Design](./PHASE_9M_MINIMAL_RUNTIME_ENTRY_SLICE_DESIGN.md)
+  - Summary: recommends a flagged ObservationNote wrapper sidecar as the first runtime Entry slice, with Feed/Inbox/guardian runtime still deferred.
 
 ---
 
