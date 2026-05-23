@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 
+import { getBootstrapOrganizationAdminEligibility } from "@/lib/bootstrap-admin";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -42,6 +43,8 @@ export default async function AccountPage() {
     });
   }
 
+  const bootstrapAdminEligibility = await getBootstrapOrganizationAdminEligibility(scope);
+
   return (
     <section className="space-y-6">
       <div className="space-y-1">
@@ -80,22 +83,35 @@ export default async function AccountPage() {
             No active organization is available yet.
           </p>
         ) : linkedPerson ? (
-          <dl className="mt-3 space-y-2 text-sm">
-            <div>
-              <dt className="text-zinc-600 dark:text-zinc-400">Linked person</dt>
-              <dd className="font-medium">
-                {linkedPerson.firstName} {linkedPerson.lastName}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-zinc-600 dark:text-zinc-400">Linked person id</dt>
-              <dd className="font-medium">{linkedPerson.id}</dd>
-            </div>
-            <div>
-              <dt className="text-zinc-600 dark:text-zinc-400">Person email</dt>
-              <dd className="font-medium">{linkedPerson.email ?? "—"}</dd>
-            </div>
-          </dl>
+          <div className="mt-3 space-y-3">
+            <dl className="space-y-2 text-sm">
+              <div>
+                <dt className="text-zinc-600 dark:text-zinc-400">Linked person</dt>
+                <dd className="font-medium">
+                  {linkedPerson.firstName} {linkedPerson.lastName}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-zinc-600 dark:text-zinc-400">Linked person id</dt>
+                <dd className="font-medium">{linkedPerson.id}</dd>
+              </div>
+              <div>
+                <dt className="text-zinc-600 dark:text-zinc-400">Person email</dt>
+                <dd className="font-medium">{linkedPerson.email ?? "—"}</dd>
+              </div>
+            </dl>
+            {bootstrapAdminEligibility.isEligible ? (
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/40">
+                <p className="text-sm text-amber-900 dark:text-amber-200">
+                  No Organization Admin exists yet for the active organization.{" "}
+                  <Link href="/account/bootstrap-admin" className="underline">
+                    Bootstrap Organization Admin access
+                  </Link>
+                  .
+                </p>
+              </div>
+            ) : null}
+          </div>
         ) : (
           <div className="mt-3 space-y-2">
             <p className="text-sm text-zinc-700 dark:text-zinc-300">
