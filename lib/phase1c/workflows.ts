@@ -1,4 +1,4 @@
-import { EventStatus, EventType, Prisma, RoleType, ScopeType } from "@prisma/client";
+import { EventStatus, EventType, Prisma, RoleType, RSVPStatus, ScopeType } from "@prisma/client";
 import { z } from "zod";
 
 import { requireAuthContext } from "@/lib/auth";
@@ -8,6 +8,7 @@ const MAX_EMAIL_LENGTH = 320;
 const MAX_PHONE_LENGTH = 32;
 const MAX_EVENT_TITLE_LENGTH = 160;
 const MAX_EVENT_LOCATION_LENGTH = 200;
+const MAX_RSVP_REASON_LENGTH = 500;
 const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DATETIME_LOCAL_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
 
@@ -242,6 +243,23 @@ export const eventWorkflowSchema = z
     location: value.location.length === 0 ? null : value.location,
   }));
 
+export const rsvpWorkflowSchema = z
+  .object({
+    personId: z.string().trim().min(1, "Person selection is required."),
+    status: z.nativeEnum(RSVPStatus, {
+      message: "RSVP status must use an existing RSVP status value.",
+    }),
+    reason: z
+      .string()
+      .trim()
+      .max(MAX_RSVP_REASON_LENGTH, `Reason must be ${MAX_RSVP_REASON_LENGTH} characters or less.`),
+  })
+  .transform((value) => ({
+    personId: value.personId,
+    status: value.status,
+    reason: value.reason.length === 0 ? null : value.reason,
+  }));
+
 export type PersonWorkflowInput = z.output<typeof personWorkflowSchema>;
 export type TeamWorkflowInput = z.output<typeof teamWorkflowSchema>;
 export type ProgramWorkflowInput = z.output<typeof programWorkflowSchema>;
@@ -249,6 +267,7 @@ export type RosterMembershipWorkflowInput = z.output<typeof rosterMembershipWork
 export type SeasonWorkflowInput = z.output<typeof seasonWorkflowSchema>;
 export type RoleAssignmentWorkflowInput = z.output<typeof roleAssignmentWorkflowSchema>;
 export type EventWorkflowInput = z.output<typeof eventWorkflowSchema>;
+export type RsvpWorkflowInput = z.output<typeof rsvpWorkflowSchema>;
 
 export function getStringField(formData: FormData, field: string): string {
   const rawValue = formData.get(field);
@@ -299,6 +318,7 @@ export async function requirePhase1CMutationPermission(input: {
     | "season.update"
     | "event.create"
     | "event.update"
+    | "rsvp.upsert"
     | "rosterMembership.create"
     | "roleAssignment.create"
     | "roleAssignment.delete";
