@@ -14,9 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <ClerkProvider>
-        <body className="min-h-full flex flex-col bg-background text-foreground">{children}</body>
-      </ClerkProvider>
+      <body className="min-h-full flex flex-col bg-background text-foreground">
+        <ClerkProvider>{children}</ClerkProvider>
+      </body>
     </html>
   );
 }

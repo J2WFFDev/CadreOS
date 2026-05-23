@@ -16,7 +16,7 @@ export default function DashboardLayout({
         </Link>
         <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
           <span>Authenticated dashboard</span>
-          <UserButton afterSignOutUrl="/" />
+          <UserButton />
         </div>
       </header>
       <div className="flex min-h-[calc(100vh-49px)]">
