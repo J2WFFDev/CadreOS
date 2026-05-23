@@ -1,9 +1,26 @@
+import { RoleType, ScopeType } from "@prisma/client";
 import Link from "next/link";
 
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
+
+type SearchParams = Record<string, string | string[] | undefined>;
+
+function readSearchParam(searchParams: SearchParams, key: string): string {
+  const value = searchParams[key];
+
+  if (Array.isArray(value)) {
+    return value[0] ?? "";
+  }
+
+  return value ?? "";
+}
+
+function hasSearchParam(searchParams: SearchParams, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(searchParams, key);
+}
 
 function formatEnumLabel(value: string) {
   return value
@@ -14,10 +31,13 @@ function formatEnumLabel(value: string) {
 
 export default async function PersonDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ personId: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const { personId } = await params;
+  const resolvedSearchParams = await searchParams;
   const scope = await getOrganizationScope();
 
   if (!scope.databaseReady) {
@@ -59,7 +79,7 @@ export default async function PersonDetailsPage({
           roleType: string;
           scopeType: string;
           program: { id: string; name: string } | null;
-          team: { id: string; name: string } | null;
+          team: { id: string; name: string; program: { id: string; name: string } | null } | null;
         }>;
         guardianLinks: Array<{
           id: string;
@@ -79,78 +99,114 @@ export default async function PersonDetailsPage({
         }>;
       }
     | null = null;
+  let programs: Array<{ id: string; name: string }> = [];
+  let teams: Array<{ id: string; name: string; program: { id: string; name: string } }> = [];
 
   try {
-    person = await db.person.findFirst({
-      where: {
-        id: personId,
-        organizationId: scope.organizationId,
-      },
-      include: {
-        roles: {
-          include: {
-            program: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            team: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-          orderBy: [{ scopeType: "asc" }, { roleType: "asc" }],
+    [person, programs, teams] = await Promise.all([
+      db.person.findFirst({
+        where: {
+          id: personId,
+          organizationId: scope.organizationId,
         },
-        guardianLinks: {
-          include: {
-            athlete: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
+        include: {
+          roles: {
+            include: {
+              program: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              team: {
+                select: {
+                  id: true,
+                  name: true,
+                  program: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
               },
             },
+            orderBy: [{ scopeType: "asc" }, { roleType: "asc" }, { createdAt: "asc" }],
           },
-          orderBy: {
-            athlete: {
-              lastName: "asc",
+          guardianLinks: {
+            include: {
+              athlete: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
             },
-          },
-        },
-        athleteLinks: {
-          include: {
-            guardian: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
+            orderBy: {
+              athlete: {
+                lastName: "asc",
               },
             },
           },
-          orderBy: {
-            guardian: {
-              lastName: "asc",
+          athleteLinks: {
+            include: {
+              guardian: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
+            orderBy: {
+              guardian: {
+                lastName: "asc",
+              },
+            },
+          },
+          roster: {
+            include: {
+              team: {
+                select: { id: true, name: true },
+              },
+              season: {
+                select: { id: true, name: true },
+              },
+            },
+            orderBy: {
+              createdAt: "desc",
             },
           },
         },
-        roster: {
-          include: {
-            team: {
-              select: { id: true, name: true },
+      }),
+      db.program.findMany({
+        where: {
+          organizationId: scope.organizationId,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+        orderBy: [{ name: "asc" }],
+      }),
+      db.team.findMany({
+        where: {
+          organizationId: scope.organizationId,
+        },
+        select: {
+          id: true,
+          name: true,
+          program: {
+            select: {
+              id: true,
+              name: true,
             },
-            season: {
-              select: { id: true, name: true },
-            },
-          },
-          orderBy: {
-            createdAt: "desc",
           },
         },
-      },
-    });
+        orderBy: [{ program: { name: "asc" } }, { name: "asc" }],
+      }),
+    ]);
   } catch {
     queryFailed = true;
   }
@@ -181,6 +237,21 @@ export default async function PersonDetailsPage({
     );
   }
 
+  const roleError = readSearchParam(resolvedSearchParams, "roleError");
+  const roleTypeError = readSearchParam(resolvedSearchParams, "roleTypeError");
+  const scopeTypeError = readSearchParam(resolvedSearchParams, "scopeTypeError");
+  const programIdError = readSearchParam(resolvedSearchParams, "programIdError");
+  const teamIdError = readSearchParam(resolvedSearchParams, "teamIdError");
+
+  const selectedRoleType = (readSearchParam(resolvedSearchParams, "roleType") || RoleType.ATHLETE) as RoleType;
+  const selectedScopeType = (readSearchParam(resolvedSearchParams, "scopeType") || ScopeType.ORGANIZATION) as ScopeType;
+  const selectedProgramId = hasSearchParam(resolvedSearchParams, "programId")
+    ? readSearchParam(resolvedSearchParams, "programId")
+    : "";
+  const selectedTeamId = hasSearchParam(resolvedSearchParams, "teamId")
+    ? readSearchParam(resolvedSearchParams, "teamId")
+    : "";
+
   return (
     <section className="space-y-6">
       <div className="space-y-1">
@@ -202,16 +273,97 @@ export default async function PersonDetailsPage({
         {person.roles.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No role assignments.</p>
         ) : (
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-3 text-sm">
             {person.roles.map((role) => (
-              <li key={role.id}>
-                {formatEnumLabel(role.roleType)} · {formatEnumLabel(role.scopeType)}
-                {role.program ? ` · Program: ${role.program.name}` : ""}
-                {role.team ? ` · Team: ${role.team.name}` : ""}
+              <li key={role.id} className="flex flex-wrap items-start justify-between gap-2 border-b pb-3 last:border-b-0 last:pb-0">
+                <span>
+                  {formatEnumLabel(role.roleType)} · {formatEnumLabel(role.scopeType)}
+                  {role.scopeType === ScopeType.PROGRAM
+                    ? ` · Program: ${role.program?.name ?? "Unknown program"}`
+                    : ""}
+                  {role.scopeType === ScopeType.TEAM
+                    ? ` · Team: ${role.team?.name ?? "Unknown team"}${role.team?.program?.name ? ` (${role.team.program.name})` : ""}`
+                    : ""}
+                </span>
+                <form action={`/people/${person.id}/roles/${role.id}/delete`} method="post">
+                  <button type="submit" className="rounded-md border border-red-300 px-3 py-1.5 text-xs text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950/40">
+                    Remove role
+                  </button>
+                </form>
               </li>
             ))}
           </ul>
         )}
+      </div>
+
+      <div id="assign-role" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="mb-3 text-lg font-medium">Assign role</h3>
+
+        {roleError ? <p className="mb-3 text-sm text-red-600">{roleError}</p> : null}
+
+        <form action={`/people/${person.id}/roles/create`} method="post" className="space-y-3">
+          <div className="space-y-1">
+            <label htmlFor="roleType" className="text-sm font-medium">
+              Role type
+            </label>
+            <select id="roleType" name="roleType" defaultValue={selectedRoleType} className="w-full rounded-md border px-3 py-2 text-sm">
+              {Object.values(RoleType).map((roleType) => (
+                <option key={roleType} value={roleType}>
+                  {formatEnumLabel(roleType)}
+                </option>
+              ))}
+            </select>
+            {roleTypeError ? <p className="text-sm text-red-600">{roleTypeError}</p> : null}
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="scopeType" className="text-sm font-medium">
+              Scope type
+            </label>
+            <select id="scopeType" name="scopeType" defaultValue={selectedScopeType} className="w-full rounded-md border px-3 py-2 text-sm">
+              {Object.values(ScopeType).map((scopeType) => (
+                <option key={scopeType} value={scopeType}>
+                  {formatEnumLabel(scopeType)}
+                </option>
+              ))}
+            </select>
+            {scopeTypeError ? <p className="text-sm text-red-600">{scopeTypeError}</p> : null}
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="programId" className="text-sm font-medium">
+              Program (required for PROGRAM scope)
+            </label>
+            <select id="programId" name="programId" defaultValue={selectedProgramId} className="w-full rounded-md border px-3 py-2 text-sm">
+              <option value="">No program</option>
+              {programs.map((program) => (
+                <option key={program.id} value={program.id}>
+                  {program.name}
+                </option>
+              ))}
+            </select>
+            {programIdError ? <p className="text-sm text-red-600">{programIdError}</p> : null}
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="teamId" className="text-sm font-medium">
+              Team (required for TEAM scope)
+            </label>
+            <select id="teamId" name="teamId" defaultValue={selectedTeamId} className="w-full rounded-md border px-3 py-2 text-sm">
+              <option value="">No team</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.program.name} · {team.name}
+                </option>
+              ))}
+            </select>
+            {teamIdError ? <p className="text-sm text-red-600">{teamIdError}</p> : null}
+          </div>
+
+          <button type="submit" className="rounded-md bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black">
+            Assign role
+          </button>
+        </form>
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
