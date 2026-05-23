@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { ErrorMessage } from "@/components/dashboard/error-message";
+import { FormActions } from "@/components/dashboard/form-actions";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -29,11 +32,7 @@ export default async function NewTeamPage({
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">New team</h2>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">
-            {scope.errorMessage ?? "Unable to load team creation right now."}
-          </p>
-        </div>
+        <ErrorMessage message={scope.errorMessage ?? "Unable to load team creation right now."} />
       </section>
     );
   }
@@ -72,11 +71,7 @@ export default async function NewTeamPage({
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">New team</h2>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">
-            Unable to load programs right now. Please try again later.
-          </p>
-        </div>
+        <ErrorMessage message="Unable to load programs right now. Please try again later." />
       </section>
     );
   }
@@ -87,18 +82,9 @@ export default async function NewTeamPage({
 
   return (
     <section className="space-y-4">
-      <div className="space-y-1">
-        <h2 className="text-2xl font-semibold tracking-tight">New team</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Organization: {scope.organizationName ?? scope.organizationId}
-        </p>
-      </div>
+      <PageHeader title="New team" description={`Organization: ${scope.organizationName ?? scope.organizationId}`} />
 
-      {generalError ? (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">{generalError}</p>
-        </div>
-      ) : null}
+      {generalError ? <ErrorMessage message={generalError} /> : null}
 
       {programs.length === 0 ? (
         <div className="rounded-lg border bg-white p-4 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
@@ -141,14 +127,7 @@ export default async function NewTeamPage({
             ) : null}
           </div>
 
-          <div className="flex gap-3">
-            <button type="submit" className="rounded-md bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black">
-              Create team
-            </button>
-            <Link href="/teams" className="rounded-md border px-4 py-2 text-sm">
-              Cancel
-            </Link>
-          </div>
+          <FormActions submitLabel="Create team" cancelHref="/teams" />
         </form>
       )}
     </section>

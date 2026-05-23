@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { isSchemaUnavailableError } from "@/lib/phase1c/workflows";
+import { isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 

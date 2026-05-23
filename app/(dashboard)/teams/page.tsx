@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { ErrorMessage } from "@/components/dashboard/error-message";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -12,11 +15,7 @@ export default async function TeamsPage() {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Teams</h2>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">
-            {scope.errorMessage ?? "Unable to query teams right now."}
-          </p>
-        </div>
+        <ErrorMessage message={scope.errorMessage ?? "Unable to query teams right now."} />
       </section>
     );
   }
@@ -60,39 +59,25 @@ export default async function TeamsPage() {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Teams</h2>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">
-            Unable to load teams right now. Please try again later.
-          </p>
-        </div>
+        <ErrorMessage message="Unable to load teams right now. Please try again later." />
       </section>
     );
   }
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-semibold tracking-tight">Teams</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Manage team memberships, rosters, and roles across your programs.
-          </p>
-        </div>
-        <Link href="/teams/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-          New team
-        </Link>
-      </div>
+      <PageHeader
+        title="Teams"
+        description="Manage team memberships, rosters, and roles across your programs."
+        actions={
+          <Link href="/teams/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+            New team
+          </Link>
+        }
+      />
 
       {teams.length === 0 ? (
-        <div className="rounded-lg border bg-white p-6 text-center dark:bg-zinc-900">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">No teams have been created yet.</p>
-          <Link
-            href="/teams/new"
-            className="mt-3 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-          >
-            Create the first team
-          </Link>
-        </div>
+        <EmptyState message="No teams have been created yet." actionHref="/teams/new" actionLabel="Create the first team" />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {teams.map((team) => (

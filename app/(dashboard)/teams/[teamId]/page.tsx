@@ -1,9 +1,10 @@
 import { RoleType, ScopeType } from "@prisma/client";
 import Link from "next/link";
 
+import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { selectSeededOrCurrentSeason } from "@/lib/phase1c/workflows";
+import { selectSeededOrCurrentSeason } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -215,9 +216,7 @@ export default async function TeamDetailsPage({
     <section className="space-y-6">
       <div className="space-y-1">
         <div className="flex flex-wrap gap-3 text-sm text-zinc-500 dark:text-zinc-400">
-          <Link href="/teams" className="hover:text-zinc-700 dark:hover:text-zinc-200">
-            ← Teams
-          </Link>
+          <BackLink href="/teams" label="Teams" />
           <span>·</span>
           <Link href={`/programs/${team.program.id}`} className="hover:text-zinc-700 dark:hover:text-zinc-200">
             {team.program.name}

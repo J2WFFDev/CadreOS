@@ -8,7 +8,7 @@ import {
   isSchemaUnavailableError,
   programWorkflowSchema,
   requirePhase1CMutationPermission,
-} from "@/lib/phase1c/workflows";
+} from "@/lib/workflows";
 
 function buildErrorRedirectUrl(requestUrl: string, programId: string, input: {
   values: { name: string };

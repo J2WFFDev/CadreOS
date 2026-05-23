@@ -8,7 +8,7 @@ import {
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
   roleAssignmentWorkflowSchema,
-} from "@/lib/phase1c/workflows";
+} from "@/lib/workflows";
 
 function buildErrorRedirectUrl(requestUrl: string, personId: string, input: {
   values: { roleType: string; scopeType: string; programId: string; teamId: string };

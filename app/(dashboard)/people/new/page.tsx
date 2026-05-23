@@ -1,5 +1,6 @@
-import Link from "next/link";
-
+import { ErrorMessage } from "@/components/dashboard/error-message";
+import { FormActions } from "@/components/dashboard/form-actions";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -28,11 +29,7 @@ export default async function NewPersonPage({
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">New person</h2>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">
-            {scope.errorMessage ?? "Unable to load person creation right now."}
-          </p>
-        </div>
+        <ErrorMessage message={scope.errorMessage ?? "Unable to load person creation right now."} />
       </section>
     );
   }
@@ -56,18 +53,9 @@ export default async function NewPersonPage({
 
   return (
     <section className="space-y-4">
-      <div className="space-y-1">
-        <h2 className="text-2xl font-semibold tracking-tight">New person</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Organization: {scope.organizationName ?? scope.organizationId}
-        </p>
-      </div>
+      <PageHeader title="New person" description={`Organization: ${scope.organizationName ?? scope.organizationId}`} />
 
-      {generalError ? (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">{generalError}</p>
-        </div>
-      ) : null}
+      {generalError ? <ErrorMessage message={generalError} /> : null}
 
       <form action="/people/create" method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <div className="space-y-1">
@@ -134,14 +122,7 @@ export default async function NewPersonPage({
           ) : null}
         </div>
 
-        <div className="flex gap-3">
-          <button type="submit" className="rounded-md bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black">
-            Create person
-          </button>
-          <Link href="/people" className="rounded-md border px-4 py-2 text-sm">
-            Cancel
-          </Link>
-        </div>
+        <FormActions submitLabel="Create person" cancelHref="/people" />
       </form>
     </section>
   );

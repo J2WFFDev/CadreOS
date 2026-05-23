@@ -1,9 +1,12 @@
 import Link from "next/link";
 
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { ErrorMessage } from "@/components/dashboard/error-message";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
 import { compareFollowUpTasks, formatDateTime, formatEnumLabel } from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { isSchemaUnavailableError } from "@/lib/phase1c/workflows";
+import { isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -38,11 +41,7 @@ export default async function TasksPage() {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Tasks</h2>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">
-            {scope.errorMessage ?? "Unable to query tasks right now."}
-          </p>
-        </div>
+        <ErrorMessage message={scope.errorMessage ?? "Unable to query tasks right now."} />
       </section>
     );
   }
@@ -95,37 +94,25 @@ export default async function TasksPage() {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Tasks</h2>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">{queryErrorMessage}</p>
-        </div>
+        <ErrorMessage message={queryErrorMessage} />
       </section>
     );
   }
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-semibold tracking-tight">Tasks</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Track follow-up actions and accountability items across your organization.
-          </p>
-        </div>
-        <Link href="/tasks/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-          New task
-        </Link>
-      </div>
+      <PageHeader
+        title="Tasks"
+        description="Track follow-up actions and accountability items across your organization."
+        actions={
+          <Link href="/tasks/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+            New task
+          </Link>
+        }
+      />
 
       {tasks.length === 0 ? (
-        <div className="rounded-lg border bg-white p-6 text-center dark:bg-zinc-900">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">No follow-up tasks have been created yet.</p>
-          <Link
-            href="/tasks/new"
-            className="mt-3 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-          >
-            Create the first task
-          </Link>
-        </div>
+        <EmptyState message="No follow-up tasks have been created yet." actionHref="/tasks/new" actionLabel="Create the first task" />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
           <table className="min-w-full text-left text-sm">

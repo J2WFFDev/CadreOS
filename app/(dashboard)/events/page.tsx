@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { ErrorMessage } from "@/components/dashboard/error-message";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -27,11 +30,7 @@ export default async function EventsPage() {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Events</h2>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">
-            {scope.errorMessage ?? "Unable to query events right now."}
-          </p>
-        </div>
+        <ErrorMessage message={scope.errorMessage ?? "Unable to query events right now."} />
       </section>
     );
   }
@@ -97,39 +96,25 @@ export default async function EventsPage() {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Events</h2>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">
-            Unable to load events right now. Please try again later.
-          </p>
-        </div>
+        <ErrorMessage message="Unable to load events right now. Please try again later." />
       </section>
     );
   }
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-semibold tracking-tight">Events</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Schedule and track training sessions, games, and other program events.
-          </p>
-        </div>
-        <Link href="/events/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-          New event
-        </Link>
-      </div>
+      <PageHeader
+        title="Events"
+        description="Schedule and track training sessions, games, and other program events."
+        actions={
+          <Link href="/events/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+            New event
+          </Link>
+        }
+      />
 
       {events.length === 0 ? (
-        <div className="rounded-lg border bg-white p-6 text-center dark:bg-zinc-900">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">No events have been scheduled yet.</p>
-          <Link
-            href="/events/new"
-            className="mt-3 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-          >
-            Schedule the first event
-          </Link>
-        </div>
+        <EmptyState message="No events have been scheduled yet." actionHref="/events/new" actionLabel="Schedule the first event" />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
           <table className="min-w-full text-left text-sm">

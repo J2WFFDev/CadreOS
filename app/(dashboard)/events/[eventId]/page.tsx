@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { AttendanceStatus, RSVPStatus } from "@prisma/client";
 
+import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
 import { compareFollowUpTasks, formatDateTime, formatEnumLabel } from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { isSchemaUnavailableError } from "@/lib/phase1c/workflows";
+import { isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -246,9 +247,7 @@ export default async function EventDetailsPage({
   return (
     <section className="space-y-6">
       <div className="space-y-1">
-        <Link href="/events" className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
-          ← Events
-        </Link>
+        <BackLink href="/events" label="Events" />
         <h2 className="text-2xl font-semibold tracking-tight">{event.title}</h2>
         <div className="flex flex-wrap gap-2">
           <Link

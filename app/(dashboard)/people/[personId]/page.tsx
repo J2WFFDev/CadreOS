@@ -1,6 +1,7 @@
 import { RoleType, ScopeType } from "@prisma/client";
 import Link from "next/link";
 
+import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -255,9 +256,7 @@ export default async function PersonDetailsPage({
   return (
     <section className="space-y-6">
       <div className="space-y-1">
-        <Link href="/people" className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
-          ← People
-        </Link>
+        <BackLink href="/people" label="People" />
         <h2 className="text-2xl font-semibold tracking-tight">
           {person.firstName} {person.lastName}
         </h2>

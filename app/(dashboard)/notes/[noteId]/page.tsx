@@ -1,9 +1,10 @@
 import Link from "next/link";
 
+import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
 import { compareFollowUpTasks, formatDateTime, formatEnumLabel } from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { isSchemaUnavailableError } from "@/lib/phase1c/workflows";
+import { isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -118,9 +119,7 @@ export default async function NoteDetailPage({
   return (
     <section className="space-y-6">
       <div className="space-y-1">
-        <Link href="/notes" className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
-          ← Notes
-        </Link>
+        <BackLink href="/notes" label="Notes" />
         <h2 className="text-2xl font-semibold tracking-tight">Observation note</h2>
         <div className="flex flex-wrap gap-2">
           <Link
