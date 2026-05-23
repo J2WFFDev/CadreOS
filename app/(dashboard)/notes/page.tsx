@@ -14,6 +14,9 @@ import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
+const STALE_NOTE_WINDOW_DAYS = 14;
+const RECENTLY_ACTIVE_NOTE_WINDOW_HOURS = 72;
+const UPCOMING_EVENT_LOOKAHEAD_DAYS = 14;
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -74,6 +77,15 @@ export default async function NotesPage({
   const filterAthletePersonId = readParam(resolvedParams, "athletePersonId");
   const filterEventId = readParam(resolvedParams, "eventId");
   const filterAuthorPersonId = readParam(resolvedParams, "authorPersonId");
+  const readinessIndicatorParam = readParam(resolvedParams, "readinessIndicator");
+  const readinessIndicatorFilter =
+    readinessIndicatorParam === "recently_active" ||
+    readinessIndicatorParam === "stale" ||
+    readinessIndicatorParam === "needs_review" ||
+    readinessIndicatorParam === "unresolved_too_long" ||
+    readinessIndicatorParam === "upcoming_operational_concern"
+      ? readinessIndicatorParam
+      : "";
   const guardianContextFilterParam = readParam(resolvedParams, "guardianContext");
   const guardianContextFilter =
     guardianContextFilterParam === "missing_guardian_linkage" ||
@@ -91,6 +103,7 @@ export default async function NotesPage({
     filterAthletePersonId ||
     filterEventId ||
     filterAuthorPersonId ||
+    readinessIndicatorFilter ||
     (canViewGuardianRelationshipDetails && guardianContextFilter)
   );
 
@@ -100,6 +113,7 @@ export default async function NotesPage({
         body: string;
         visibility: string;
         createdAt: Date;
+        updatedAt: Date;
         author: { id: string; firstName: string; lastName: string };
         athlete:
           | {
@@ -116,7 +130,8 @@ export default async function NotesPage({
             }
           | null;
         team: { id: string; name: string } | null;
-        event: { id: string; title: string } | null;
+        event: { id: string; title: string; startsAt: Date; status: string } | null;
+        tasks: Array<{ status: string }>;
       }>
     | null = null;
   let filterTeams: Array<{ id: string; name: string }> = [];
@@ -182,6 +197,7 @@ export default async function NotesPage({
           body: true,
           visibility: true,
           createdAt: true,
+          updatedAt: true,
           author: { select: { id: true, firstName: true, lastName: true } },
           athlete: {
             select: {
@@ -210,7 +226,8 @@ export default async function NotesPage({
             },
           },
           team: { select: { id: true, name: true } },
-          event: { select: { id: true, title: true } },
+          event: { select: { id: true, title: true, startsAt: true, status: true } },
+          tasks: { select: { status: true } },
         },
         orderBy: [{ createdAt: "desc" }],
       }),
@@ -268,6 +285,16 @@ export default async function NotesPage({
     const author = filterPeople.find((p) => p.id === filterAuthorPersonId);
     if (author) activeFilterLabels.push(`Author: ${author.firstName} ${author.lastName}`);
   }
+  if (readinessIndicatorFilter) {
+    const labelByFilter: Record<string, string> = {
+      recently_active: "Readiness: recently active",
+      stale: "Readiness: stale",
+      needs_review: "Readiness: needs review",
+      unresolved_too_long: "Readiness: unresolved too long",
+      upcoming_operational_concern: "Readiness: upcoming operational concern",
+    };
+    activeFilterLabels.push(labelByFilter[readinessIndicatorFilter] ?? readinessIndicatorFilter);
+  }
   if (canViewGuardianRelationshipDetails && guardianContextFilter) {
     const labelByFilter: Record<string, string> = {
       missing_guardian_linkage: "Guardian context: athlete missing guardian linkage",
@@ -276,6 +303,41 @@ export default async function NotesPage({
     };
     activeFilterLabels.push(labelByFilter[guardianContextFilter] ?? guardianContextFilter);
   }
+  const now = new Date();
+  const staleCutoff = new Date(now.getTime() - STALE_NOTE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const recentlyActiveCutoff = new Date(now.getTime() - RECENTLY_ACTIVE_NOTE_WINDOW_HOURS * 60 * 60 * 1000);
+  const upcomingEventCutoff = new Date(now.getTime() + UPCOMING_EVENT_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
+  const filteredNotes = notes.filter((note) => {
+    const unresolvedTaskCount = note.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
+    const hasUnresolvedFollowUp = unresolvedTaskCount > 0;
+    const isStale = note.updatedAt.getTime() < staleCutoff.getTime();
+    const isRecentlyActive = note.updatedAt.getTime() >= recentlyActiveCutoff.getTime();
+    const hasUpcomingEventContext = Boolean(
+      note.event &&
+        note.event.startsAt.getTime() >= now.getTime() &&
+        note.event.startsAt.getTime() <= upcomingEventCutoff.getTime(),
+    );
+    const hasUpcomingOperationalConcern = hasUpcomingEventContext && hasUnresolvedFollowUp;
+    const needsReview = hasUnresolvedFollowUp || isStale;
+    const unresolvedTooLong = hasUnresolvedFollowUp && isStale;
+
+    if (readinessIndicatorFilter === "recently_active" && !isRecentlyActive) {
+      return false;
+    }
+    if (readinessIndicatorFilter === "stale" && !isStale) {
+      return false;
+    }
+    if (readinessIndicatorFilter === "needs_review" && !needsReview) {
+      return false;
+    }
+    if (readinessIndicatorFilter === "unresolved_too_long" && !unresolvedTooLong) {
+      return false;
+    }
+    if (readinessIndicatorFilter === "upcoming_operational_concern" && !hasUpcomingOperationalConcern) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <section className="space-y-4">
@@ -368,6 +430,25 @@ export default async function NotesPage({
             </select>
           </div>
 
+          <div className="space-y-1">
+            <label htmlFor="filter-readinessIndicator" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              Readiness indicator
+            </label>
+            <select
+              id="filter-readinessIndicator"
+              name="readinessIndicator"
+              defaultValue={readinessIndicatorFilter}
+              className="w-52 rounded-md border px-2 py-1.5 text-sm"
+            >
+              <option value="">All readiness indicators</option>
+              <option value="recently_active">Recently active</option>
+              <option value="stale">Stale</option>
+              <option value="needs_review">Needs review</option>
+              <option value="unresolved_too_long">Unresolved too long</option>
+              <option value="upcoming_operational_concern">Upcoming operational concern</option>
+            </select>
+          </div>
+
           {canViewGuardianRelationshipDetails ? (
             <div className="space-y-1">
               <label htmlFor="filter-guardianContext" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
@@ -409,7 +490,7 @@ export default async function NotesPage({
         ) : null}
       </form>
 
-      {notes.length === 0 ? (
+      {filteredNotes.length === 0 ? (
         <EmptyState
           message={
             hasActiveFilters
@@ -427,72 +508,122 @@ export default async function NotesPage({
                 <th className="px-4 py-3 font-medium">Note</th>
                 <th className="px-4 py-3 font-medium">Author</th>
                 <th className="px-4 py-3 font-medium">Created</th>
+                <th className="px-4 py-3 font-medium">Updated</th>
                 <th className="px-4 py-3 font-medium">Visibility</th>
                 <th className="px-4 py-3 font-medium">Athlete / Person</th>
                 <th className="px-4 py-3 font-medium">Guardian context</th>
                 <th className="px-4 py-3 font-medium">Team</th>
                 <th className="px-4 py-3 font-medium">Event</th>
+                <th className="px-4 py-3 font-medium">Operational indicator</th>
               </tr>
             </thead>
             <tbody>
-              {notes.map((note) => (
-                <tr key={note.id} className="border-b last:border-b-0">
-                  <td className="px-4 py-3">
-                    <Link href={`/notes/${note.id}`} className="underline">
-                      {note.body.length > 80 ? `${note.body.slice(0, 80)}…` : note.body}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link href={`/people/${note.author.id}`} className="underline">
-                      {note.author.firstName} {note.author.lastName}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{formatDateTime(note.createdAt)}</td>
-                  <td className="px-4 py-3">
-                    <VisibilityBadge visibility={note.visibility} />
-                  </td>
-                  <td className="px-4 py-3">
-                    {note.athlete ? (
-                      <Link href={`/people/${note.athlete.id}`} className="underline">
-                        {note.athlete.firstName} {note.athlete.lastName}
+              {filteredNotes.map((note) => {
+                const unresolvedTaskCount = note.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
+                const hasUnresolvedFollowUp = unresolvedTaskCount > 0;
+                const isStale = note.updatedAt.getTime() < staleCutoff.getTime();
+                const isRecentlyActive = note.updatedAt.getTime() >= recentlyActiveCutoff.getTime();
+                const hasUpcomingEventContext = Boolean(
+                  note.event &&
+                    note.event.startsAt.getTime() >= now.getTime() &&
+                    note.event.startsAt.getTime() <= upcomingEventCutoff.getTime(),
+                );
+                const hasUpcomingOperationalConcern = hasUpcomingEventContext && hasUnresolvedFollowUp;
+                const unresolvedTooLong = hasUnresolvedFollowUp && isStale;
+                const needsReview = hasUnresolvedFollowUp || isStale;
+
+                return (
+                  <tr key={note.id} className="border-b last:border-b-0">
+                    <td className="px-4 py-3">
+                      <Link href={`/notes/${note.id}`} className="underline">
+                        {note.body.length > 80 ? `${note.body.slice(0, 80)}…` : note.body}
                       </Link>
-                    ) : (
-                      <span className="text-zinc-400 dark:text-zinc-600">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {!note.athlete ? (
-                      <span className="text-zinc-400 dark:text-zinc-600">—</span>
-                    ) : canViewGuardianRelationshipDetails ? (
-                      <span className="text-zinc-600 dark:text-zinc-400">
-                        {formatGuardianOperationalIndicator(
-                          deriveGuardianOperationalContext(note.athlete.athleteLinks ?? []),
-                        )}
-                      </span>
-                    ) : (
-                      <span className="text-zinc-400 dark:text-zinc-600">Staff-only</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {note.team ? (
-                      <Link href={`/teams/${note.team.id}`} className="underline">
-                        {note.team.name}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link href={`/people/${note.author.id}`} className="underline">
+                        {note.author.firstName} {note.author.lastName}
                       </Link>
-                    ) : (
-                      <span className="text-zinc-400 dark:text-zinc-600">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {note.event ? (
-                      <Link href={`/events/${note.event.id}`} className="underline">
-                        {note.event.title}
-                      </Link>
-                    ) : (
-                      <span className="text-zinc-400 dark:text-zinc-600">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{formatDateTime(note.createdAt)}</td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{formatDateTime(note.updatedAt)}</td>
+                    <td className="px-4 py-3">
+                      <VisibilityBadge visibility={note.visibility} />
+                    </td>
+                    <td className="px-4 py-3">
+                      {note.athlete ? (
+                        <Link href={`/people/${note.athlete.id}`} className="underline">
+                          {note.athlete.firstName} {note.athlete.lastName}
+                        </Link>
+                      ) : (
+                        <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {!note.athlete ? (
+                        <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                      ) : canViewGuardianRelationshipDetails ? (
+                        <span className="text-zinc-600 dark:text-zinc-400">
+                          {formatGuardianOperationalIndicator(
+                            deriveGuardianOperationalContext(note.athlete.athleteLinks ?? []),
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-zinc-400 dark:text-zinc-600">Staff-only</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {note.team ? (
+                        <Link href={`/teams/${note.team.id}`} className="underline">
+                          {note.team.name}
+                        </Link>
+                      ) : (
+                        <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {note.event ? (
+                        <Link href={`/events/${note.event.id}`} className="underline">
+                          {note.event.title}
+                        </Link>
+                      ) : (
+                        <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {isRecentlyActive ? (
+                          <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                            Recently active
+                          </span>
+                        ) : null}
+                        {isStale ? (
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            Stale
+                          </span>
+                        ) : null}
+                        {needsReview ? (
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            Needs review
+                          </span>
+                        ) : null}
+                        {unresolvedTooLong ? (
+                          <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                            Unresolved too long
+                          </span>
+                        ) : null}
+                        {hasUpcomingOperationalConcern ? (
+                          <span className="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">
+                            Upcoming operational concern
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                        Unresolved linked tasks: {unresolvedTaskCount}
+                      </p>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
