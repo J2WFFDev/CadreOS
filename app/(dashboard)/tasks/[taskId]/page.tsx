@@ -80,8 +80,6 @@ export default async function TaskDetailPage({
       queryErrorMessage = "Database schema is not available yet. Run database setup before loading tasks.";
     }
 
-    const isOverdue = isTaskOverdue(task);
-
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Task</h2>
@@ -102,6 +100,8 @@ export default async function TaskDetailPage({
       </section>
     );
   }
+
+  const isOverdue = isTaskOverdue(task);
 
   return (
     <section className="space-y-6">
