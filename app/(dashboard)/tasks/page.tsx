@@ -134,7 +134,8 @@ export default async function TasksPage({
     ownershipIndicatorParam === "unresolved_owner_linked" ||
     ownershipIndicatorParam === "overdue_owner_linked" ||
     ownershipIndicatorParam === "missing_responsible_context" ||
-    ownershipIndicatorParam === "stale_unresolved"
+    ownershipIndicatorParam === "stale_unresolved" ||
+    ownershipIndicatorParam === "urgent"
       ? ownershipIndicatorParam
       : "";
 
@@ -398,6 +399,11 @@ export default async function TasksPage({
         return false;
       }
 
+      // "urgent" = unresolved AND (overdue OR blocked) — highest operational priority
+      if (ownershipIndicatorFilter === "urgent" && !(unresolved && (isTaskOverdue(task, now) || task.status === TaskStatus.BLOCKED))) {
+        return false;
+      }
+
       return true;
     })
     .sort(compareFollowUpTasks);
@@ -520,7 +526,7 @@ export default async function TasksPage({
           </div>
           <div className="space-y-1">
             <label htmlFor="ownershipIndicator" className="text-sm font-medium">
-              Ownership indicator
+              Priority / ownership indicator
             </label>
             <select
               id="ownershipIndicator"
@@ -528,7 +534,8 @@ export default async function TasksPage({
               defaultValue={ownershipIndicatorFilter}
               className="w-full rounded-md border px-3 py-2 text-sm"
             >
-              <option value="">All ownership states</option>
+              <option value="">All priority states</option>
+              <option value="urgent">Urgent (overdue or blocked, unresolved)</option>
               <option value="unresolved_owner_linked">Unresolved owner-linked items</option>
               <option value="overdue_owner_linked">Overdue owner-linked items</option>
               <option value="missing_responsible_context">Missing responsible context</option>
@@ -604,6 +611,7 @@ export default async function TasksPage({
                 const overdue = isTaskOverdue(task, now);
                 const unresolved =
                   task.status === TaskStatus.OPEN || task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.BLOCKED;
+                const urgent = unresolved && (overdue || task.status === TaskStatus.BLOCKED);
                 const staleUnresolved = unresolved && task.updatedAt.getTime() < staleUnresolvedCutoff.getTime();
                 const missingResponsibleContext = !hasTaskResponsibleContext(task);
                 const sourceAthleteGuardianContext =
@@ -664,6 +672,11 @@ export default async function TasksPage({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
+                        {urgent ? (
+                          <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                            Urgent
+                          </span>
+                        ) : null}
                         <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
                           Assigned owner
                         </span>

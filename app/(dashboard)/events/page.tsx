@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
 const STALE_CONCERN_WINDOW_DAYS = 14;
 const RECENT_ACTIVITY_WINDOW_HOURS = 72;
 const UPCOMING_CONCERN_LOOKAHEAD_DAYS = 14;
+const UPCOMING_RISK_LOOKAHEAD_DAYS = 7;
 const ATTENDANCE_REVIEW_STALE_DAYS = 7;
 
 function formatEnumLabel(value: string) {
@@ -145,6 +146,7 @@ export default async function EventsPage({
     operationalIndicatorParam === "needs_review" ||
     operationalIndicatorParam === "unresolved_too_long" ||
     operationalIndicatorParam === "upcoming_operational_concern" ||
+    operationalIndicatorParam === "upcoming_operational_risk" ||
     operationalIndicatorParam === "attendance_not_reviewed_recently"
       ? operationalIndicatorParam
       : "";
@@ -249,6 +251,7 @@ export default async function EventsPage({
     const staleConcernCutoff = new Date(now.getTime() - STALE_CONCERN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
     const recentActivityCutoff = new Date(now.getTime() - RECENT_ACTIVITY_WINDOW_HOURS * 60 * 60 * 1000);
     const upcomingConcernCutoff = new Date(now.getTime() + UPCOMING_CONCERN_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
+    const upcomingRiskCutoff = new Date(now.getTime() + UPCOMING_RISK_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
     const attendanceReviewStaleCutoff = new Date(now.getTime() - ATTENDANCE_REVIEW_STALE_DAYS * 24 * 60 * 60 * 1000);
     const expectedAttendanceCount = new Set(event.team?.roster.map((membership) => membership.personId) ?? []).size;
     const capturedAttendanceCount = event._count.attendance;
@@ -271,6 +274,11 @@ export default async function EventsPage({
       followUpRequired &&
       event.startsAt.getTime() >= now.getTime() &&
       event.startsAt.getTime() <= upcomingConcernCutoff.getTime();
+    // upcoming_operational_risk = upcoming within 7 days AND has unresolved follow-up (higher urgency than concern)
+    const upcomingOperationalRisk =
+      followUpRequired &&
+      event.startsAt.getTime() >= now.getTime() &&
+      event.startsAt.getTime() <= upcomingRiskCutoff.getTime();
 
     if (attendanceFilter && attendanceCoverage !== attendanceFilter) {
       return false;
@@ -312,6 +320,9 @@ export default async function EventsPage({
       return false;
     }
     if (operationalIndicatorFilter === "upcoming_operational_concern" && !upcomingOperationalConcern) {
+      return false;
+    }
+    if (operationalIndicatorFilter === "upcoming_operational_risk" && !upcomingOperationalRisk) {
       return false;
     }
     if (operationalIndicatorFilter === "attendance_not_reviewed_recently" && !attendanceNotReviewedRecently) {
@@ -448,7 +459,8 @@ export default async function EventsPage({
               <option value="stale">Stale</option>
               <option value="needs_review">Needs review</option>
               <option value="unresolved_too_long">Unresolved too long</option>
-              <option value="upcoming_operational_concern">Upcoming operational concern</option>
+              <option value="upcoming_operational_risk">Upcoming operational risk (within 7 days)</option>
+              <option value="upcoming_operational_concern">Upcoming operational concern (within 14 days)</option>
               <option value="attendance_not_reviewed_recently">Attendance not reviewed recently</option>
             </select>
           </div>
@@ -499,6 +511,7 @@ export default async function EventsPage({
                 const staleConcernCutoff = new Date(now.getTime() - STALE_CONCERN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
                 const recentActivityCutoff = new Date(now.getTime() - RECENT_ACTIVITY_WINDOW_HOURS * 60 * 60 * 1000);
                 const upcomingConcernCutoff = new Date(now.getTime() + UPCOMING_CONCERN_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
+                const upcomingRiskCutoff = new Date(now.getTime() + UPCOMING_RISK_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
                 const attendanceReviewStaleCutoff = new Date(now.getTime() - ATTENDANCE_REVIEW_STALE_DAYS * 24 * 60 * 60 * 1000);
                 const expectedAttendanceCount = new Set(event.team?.roster.map((membership) => membership.personId) ?? []).size;
                 const capturedAttendanceCount = event._count.attendance;
@@ -517,6 +530,10 @@ export default async function EventsPage({
                 const stale = followUpRequired && event.updatedAt.getTime() < staleConcernCutoff.getTime();
                 const needsReview = followUpRequired || attendanceNotReviewedRecently;
                 const unresolvedTooLong = followUpRequired && stale;
+                const upcomingOperationalRisk =
+                  followUpRequired &&
+                  event.startsAt.getTime() >= now.getTime() &&
+                  event.startsAt.getTime() <= upcomingRiskCutoff.getTime();
                 const upcomingOperationalConcern =
                   followUpRequired &&
                   event.startsAt.getTime() >= now.getTime() &&
@@ -557,6 +574,11 @@ export default async function EventsPage({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
+                        {upcomingOperationalRisk ? (
+                          <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                            Upcoming operational risk
+                          </span>
+                        ) : null}
                         {followUpRequired ? (
                           <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                             Unresolved follow-up
@@ -591,7 +613,7 @@ export default async function EventsPage({
                             Unresolved too long
                           </span>
                         ) : null}
-                        {upcomingOperationalConcern ? (
+                        {upcomingOperationalConcern && !upcomingOperationalRisk ? (
                           <span className="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">
                             Upcoming operational concern
                           </span>

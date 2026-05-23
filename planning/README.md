@@ -75,6 +75,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 8J Operational Ownership and Accountability Visibility](./PHASE_8J_OPERATIONAL_OWNERSHIP_ACCOUNTABILITY_VISIBILITY.md)
 - [Phase 8K Operational Stale-State and Readiness Trend Visibility](./PHASE_8K_OPERATIONAL_STALE_STATE_AND_READINESS_TRENDS.md)
 - [Phase 8L Operational Relationship Summary Visibility](./PHASE_8L_OPERATIONAL_RELATIONSHIP_SUMMARY_VISIBILITY.md)
+- [Phase 8M Operational Priority Focus and Visibility](./PHASE_8M_OPERATIONAL_PRIORITY_FOCUS.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
 - [Chat Transcript](./CHAT_TRANSCRIPT.md)
@@ -114,6 +115,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 8J Operational Ownership and Accountability Visibility](./PHASE_8J_OPERATIONAL_OWNERSHIP_ACCOUNTABILITY_VISIBILITY.md)
 - [Phase 8K Operational Stale-State and Readiness Trend Visibility](./PHASE_8K_OPERATIONAL_STALE_STATE_AND_READINESS_TRENDS.md)
 - [Phase 8L Operational Relationship Summary Visibility](./PHASE_8L_OPERATIONAL_RELATIONSHIP_SUMMARY_VISIBILITY.md)
+- [Phase 8M Operational Priority Focus and Visibility](./PHASE_8M_OPERATIONAL_PRIORITY_FOCUS.md)
 
 ## Decision Log Summary
 - Product name: **CadreOS**
