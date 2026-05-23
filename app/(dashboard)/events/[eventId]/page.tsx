@@ -246,14 +246,11 @@ export default async function EventDetailsPage({
   return (
     <section className="space-y-6">
       <div className="space-y-1">
+        <Link href="/events" className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
+          ← Events
+        </Link>
         <h2 className="text-2xl font-semibold tracking-tight">{event.title}</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Organization: {scope.organizationName ?? scope.organizationId}
-        </p>
         <div className="flex flex-wrap gap-2">
-          <Link href="/events" className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-            Back to events
-          </Link>
           <Link
             href={`/events/${event.id}/edit`}
             className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"

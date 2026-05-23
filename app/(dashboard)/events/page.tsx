@@ -108,21 +108,27 @@ export default async function EventsPage() {
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-semibold tracking-tight">Events</h2>
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold tracking-tight">Events</h2>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Organization: {scope.organizationName ?? scope.organizationId}
+            Schedule and track training sessions, games, and other program events.
           </p>
-          <Link href="/events/new" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-            New event
-          </Link>
         </div>
+        <Link href="/events/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+          New event
+        </Link>
       </div>
 
       {events.length === 0 ? (
-        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">No events found for this organization.</p>
+        <div className="rounded-lg border bg-white p-6 text-center dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">No events have been scheduled yet.</p>
+          <Link
+            href="/events/new"
+            className="mt-3 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Schedule the first event
+          </Link>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">

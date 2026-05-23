@@ -139,6 +139,9 @@ export default async function ProgramDetailsPage({
   return (
     <section className="space-y-6">
       <div className="space-y-1">
+        <Link href="/programs" className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
+          ← Programs
+        </Link>
         <h2 className="text-2xl font-semibold tracking-tight">{program.name}</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">Organization: {program.organization.name}</p>
         <div className="flex flex-wrap gap-2">

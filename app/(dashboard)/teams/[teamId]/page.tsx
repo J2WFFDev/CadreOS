@@ -214,11 +214,17 @@ export default async function TeamDetailsPage({
   return (
     <section className="space-y-6">
       <div className="space-y-1">
+        <div className="flex flex-wrap gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+          <Link href="/teams" className="hover:text-zinc-700 dark:hover:text-zinc-200">
+            ← Teams
+          </Link>
+          <span>·</span>
+          <Link href={`/programs/${team.program.id}`} className="hover:text-zinc-700 dark:hover:text-zinc-200">
+            {team.program.name}
+          </Link>
+        </div>
         <h2 className="text-2xl font-semibold tracking-tight">{team.name}</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">Program: {team.program.name}</p>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Organization: {scope.organizationName ?? scope.organizationId}
-        </p>
         <Link
           href="#add-roster-member"
           className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
