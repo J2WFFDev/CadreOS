@@ -257,6 +257,12 @@ export default async function EventDetailsPage({
           >
             Edit event
           </Link>
+          <Link
+            href={`/notes/new?eventId=${event.id}`}
+            className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Add note
+          </Link>
         </div>
       </div>
 
