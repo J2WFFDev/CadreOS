@@ -16,6 +16,7 @@ type BookingCardProps = {
     program: { id: string; name: string } | null;
     team: { id: string; name: string } | null;
     event: { id: string; title: string } | null;
+    conflictCount?: number;
   };
 };
 
@@ -46,11 +47,17 @@ function renderLinkedContext(booking: BookingCardProps["booking"]) {
 }
 
 export function BookingCard({ booking }: BookingCardProps) {
+  const hasConflictWarning = (booking.conflictCount ?? 0) > 0;
+
   return (
     <article className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <h3 className="text-base font-medium">{booking.title}</h3>
+          <h3 className="text-base font-medium">
+            <Link href={`/field-ops/bookings/${booking.id}`} className="underline">
+              {booking.title}
+            </Link>
+          </h3>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             <Link href={`/field-ops/facilities/${booking.facility.id}`} className="underline">
               {booking.facility.name}
@@ -65,6 +72,14 @@ export function BookingCard({ booking }: BookingCardProps) {
           {formatFieldOpsEnum(booking.status)}
         </span>
       </div>
+
+      {hasConflictWarning ? (
+        <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/40">
+          <p className="text-sm text-amber-900 dark:text-amber-200">
+            Conflict warning: {booking.conflictCount} conflict{booking.conflictCount === 1 ? "" : "s"} detected.
+          </p>
+        </div>
+      ) : null}
 
       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <div>

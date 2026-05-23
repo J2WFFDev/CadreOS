@@ -1,7 +1,8 @@
-import { Prisma } from "@prisma/client";
+import { ApprovalStatus, BookingStatus, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { evaluateFieldOpsBookingPrecheck } from "@/lib/field-ops-booking-precheck";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   bookingRequestWorkflowSchema,
@@ -110,6 +111,7 @@ export async function POST(request: Request) {
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = bookingRequestWorkflowSchema.safeParse(values);
 
@@ -138,7 +140,7 @@ export async function POST(request: Request) {
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId,
       action: "booking.create",
       programId: parsed.data.programId,
       teamId: parsed.data.teamId,
@@ -148,11 +150,17 @@ export async function POST(request: Request) {
     const resource = await db.facilityResource.findFirst({
       where: {
         id: parsed.data.resourceId,
-        organizationId: scope.organizationId,
+        organizationId,
       },
       select: {
         id: true,
         facilityId: true,
+        status: true,
+        facility: {
+          select: {
+            status: true,
+          },
+        },
       },
     });
 
@@ -189,7 +197,7 @@ export async function POST(request: Request) {
       const program = await db.program.findFirst({
         where: {
           id: resolvedProgramId,
-          organizationId: scope.organizationId,
+          organizationId,
         },
         select: { id: true },
       });
@@ -212,7 +220,7 @@ export async function POST(request: Request) {
       const team = await db.team.findFirst({
         where: {
           id: resolvedTeamId,
-          organizationId: scope.organizationId,
+          organizationId,
           ...(resolvedProgramId ? { programId: resolvedProgramId } : {}),
         },
         select: { id: true, programId: true },
@@ -242,7 +250,7 @@ export async function POST(request: Request) {
       const event = await db.event.findFirst({
         where: {
           id: parsed.data.eventId,
-          organizationId: scope.organizationId,
+          organizationId,
         },
         select: {
           id: true,
@@ -300,7 +308,7 @@ export async function POST(request: Request) {
     }
 
     const requestedByPersonId = await resolveActorPersonId({
-      organizationId: scope.organizationId,
+      organizationId,
       clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });
@@ -315,24 +323,76 @@ export async function POST(request: Request) {
       );
     }
 
-    await db.resourceBooking.create({
-      data: {
-        organizationId: scope.organizationId,
-        facilityId: resource.facilityId,
+    const overlappingBookings = await db.resourceBooking.findMany({
+      where: {
+        organizationId,
         resourceId: resource.id,
-        title: parsed.data.title,
-        description: parsed.data.description,
-        startsAt: parsed.data.startsAt,
-        endsAt: parsed.data.endsAt,
-        programId: resolvedProgramId,
-        teamId: resolvedTeamId,
-        eventId: parsed.data.eventId,
-        requestedByPersonId,
-        status: parsed.data.status,
-        precheckStatus: parsed.data.precheckStatus,
-        approvalStatus: parsed.data.approvalStatus,
+        startsAt: { lt: parsed.data.endsAt },
+        endsAt: { gt: parsed.data.startsAt },
+        OR: [
+          { status: BookingStatus.APPROVED },
+          {
+            status: {
+              in: [
+                BookingStatus.REQUESTED,
+                BookingStatus.PRECHECK_PASSED,
+                BookingStatus.CONFLICT_FOUND,
+                BookingStatus.RECOMMENDED,
+              ],
+            },
+          },
+          { approvalStatus: ApprovalStatus.PENDING },
+        ],
       },
-      select: { id: true },
+      select: {
+        id: true,
+        title: true,
+        startsAt: true,
+        endsAt: true,
+        status: true,
+        approvalStatus: true,
+      },
+    });
+
+    const precheckResult = evaluateFieldOpsBookingPrecheck({
+      facilityStatus: resource.facility.status,
+      resourceStatus: resource.status,
+      overlappingBookings,
+    });
+
+    await db.$transaction(async (tx) => {
+      const booking = await tx.resourceBooking.create({
+        data: {
+          organizationId,
+          facilityId: resource.facilityId,
+          resourceId: resource.id,
+          title: parsed.data.title,
+          description: parsed.data.description,
+          startsAt: parsed.data.startsAt,
+          endsAt: parsed.data.endsAt,
+          programId: resolvedProgramId,
+          teamId: resolvedTeamId,
+          eventId: parsed.data.eventId,
+          requestedByPersonId,
+          status: precheckResult.status,
+          precheckStatus: precheckResult.precheckStatus,
+          approvalStatus: parsed.data.approvalStatus,
+        },
+        select: { id: true },
+      });
+
+      if (precheckResult.conflicts.length > 0) {
+        await tx.bookingConflict.createMany({
+          data: precheckResult.conflicts.map((conflict) => ({
+            organizationId,
+            bookingId: booking.id,
+            conflictType: conflict.conflictType,
+            severity: conflict.severity,
+            message: conflict.message,
+            relatedBookingId: conflict.relatedBookingId ?? null,
+          })),
+        });
+      }
     });
 
     const redirectUrl = new URL("/field-ops/bookings", request.url);

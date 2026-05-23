@@ -62,6 +62,7 @@ export default async function ResourceDetailsPage({
           program: { id: string; name: string } | null;
           team: { id: string; name: string } | null;
           event: { id: string; title: string } | null;
+          _count: { conflicts: number };
         }>;
       }
     | null = null;
@@ -104,6 +105,7 @@ export default async function ResourceDetailsPage({
             program: { select: { id: true, name: true } },
             team: { select: { id: true, name: true } },
             event: { select: { id: true, title: true } },
+            _count: { select: { conflicts: true } },
           },
           orderBy: [{ startsAt: "asc" }, { createdAt: "asc" }],
         },
@@ -205,7 +207,7 @@ export default async function ResourceDetailsPage({
         ) : (
           <div className="space-y-3">
             {resource.bookings.map((booking) => (
-              <BookingCard key={booking.id} booking={booking} />
+              <BookingCard key={booking.id} booking={{ ...booking, conflictCount: booking._count.conflicts }} />
             ))}
           </div>
         )}
