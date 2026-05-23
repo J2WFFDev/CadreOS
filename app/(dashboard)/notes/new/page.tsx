@@ -1,6 +1,7 @@
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { FormActions } from "@/components/dashboard/form-actions";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { canReadStaffOnlyContent, resolveActorRoleContext } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -42,6 +43,20 @@ export default async function NewNotePage({
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No organization context is available yet.</p>
         </div>
+      </section>
+    );
+  }
+
+  const actorRoleContext = await resolveActorRoleContext({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+
+  if (!canReadStaffOnlyContent(actorRoleContext)) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">New note</h2>
+        <ErrorMessage message="You do not have staff access to create notes." />
       </section>
     );
   }

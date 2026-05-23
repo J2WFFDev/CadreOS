@@ -3,6 +3,11 @@ import { AttendanceStatus, RSVPStatus } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
+import {
+  canReadStaffOnlyContent,
+  canReadTeamScopedContent,
+  resolveActorRoleContext,
+} from "@/lib/authorization";
 import { db } from "@/lib/db";
 import {
   compareFollowUpTasks,
@@ -59,6 +64,24 @@ export default async function EventDetailsPage({
         <h2 className="text-2xl font-semibold tracking-tight">Event</h2>
         <div id="relationship-summary" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No organization context is available yet.</p>
+        </div>
+      </section>
+    );
+  }
+
+  const actorRoleContext = await resolveActorRoleContext({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+
+  if (!canReadStaffOnlyContent(actorRoleContext)) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Event</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            You do not have staff access to view event operational workflows.
+          </p>
         </div>
       </section>
     );
@@ -246,6 +269,19 @@ export default async function EventDetailsPage({
         <h2 className="text-2xl font-semibold tracking-tight">Event</h2>
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">Event not found in the selected organization.</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!canReadTeamScopedContent(actorRoleContext, event.team?.id ?? null)) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Event</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            You do not have access to this team-scoped event workflow.
+          </p>
         </div>
       </section>
     );

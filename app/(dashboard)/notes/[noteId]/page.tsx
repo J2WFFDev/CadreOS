@@ -15,6 +15,11 @@ import {
   formatGuardianFollowUpDependency,
   formatGuardianOperationalIndicator,
 } from "@/lib/guardian-operational-context";
+import {
+  canReadStaffOnlyContent,
+  canReadTeamScopedContent,
+  resolveActorRoleContext,
+} from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -76,7 +81,7 @@ export default async function NoteDetailPage({
             }
           | null;
         team: { id: string; name: string } | null;
-        event: { id: string; title: string } | null;
+        event: { id: string; title: string; teamId: string | null } | null;
         tasks: Array<{
           id: string;
           title: string;
@@ -86,13 +91,26 @@ export default async function NoteDetailPage({
           sourceEvent: { id: string; title: string } | null;
         }>;
       }
+
+      const actorRoleContext = await resolveActorRoleContext({
+        organizationId: scope.organizationId,
+        actorPersonId: scope.auth.personId,
+      });
+
+      if (!canReadStaffOnlyContent(actorRoleContext)) {
+        return (
+          <section className="space-y-4">
+            <h2 className="text-2xl font-semibold tracking-tight">Note</h2>
+            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                You do not have staff access to view notes.
+              </p>
+            </div>
+          </section>
+        );
+      }
     | null = null;
   let queryErrorMessage = "Unable to load note details right now. Please try again later.";
-  const guardianAccess = await resolveGuardianRelationshipAccess({
-    organizationId: scope.organizationId,
-    actorPersonId: scope.auth.personId,
-  });
-  const canViewGuardianRelationshipDetails = guardianAccess.canViewGuardianRelationshipDetails;
 
   try {
     note = await db.observationNote.findFirst({
@@ -134,7 +152,7 @@ export default async function NoteDetailPage({
           },
         },
         team: { select: { id: true, name: true } },
-        event: { select: { id: true, title: true } },
+        event: { select: { id: true, title: true, teamId: true } },
         tasks: {
           select: {
             id: true,
@@ -173,6 +191,26 @@ export default async function NoteDetailPage({
       </section>
     );
   }
+
+  const noteTeamId = note.team?.id ?? note.event?.teamId ?? null;
+  if (!canReadTeamScopedContent(actorRoleContext, noteTeamId)) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Note</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            You do not have access to this team-scoped note.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  const guardianAccess = await resolveGuardianRelationshipAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const canViewGuardianRelationshipDetails = guardianAccess.canViewGuardianRelationshipDetails;
 
   const noteGuardianContext =
     canViewGuardianRelationshipDetails && note.athlete

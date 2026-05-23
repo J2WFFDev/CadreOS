@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
 import { ReviewFocusPanel } from "@/components/dashboard/review-focus-panel";
+import { canReadStaffOnlyContent, resolveActorRoleContext } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -201,6 +202,35 @@ export default async function DashboardPage() {
 
   if (scope.auth.unresolvedPersonLink) {
     redirect("/account/link-person");
+  }
+
+  const actorRoleContext = await resolveActorRoleContext({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+
+  if (!canReadStaffOnlyContent(actorRoleContext)) {
+    return (
+      <section className="space-y-6">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Operational overview for coaches and program operators.
+          </p>
+        </div>
+
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            You do not have staff access to view operational dashboard workflows.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-base font-medium">Quick links</h3>
+          {renderNavigationCards()}
+        </div>
+      </section>
+    );
   }
 
   const guardianAccess = await resolveGuardianRelationshipAccess({

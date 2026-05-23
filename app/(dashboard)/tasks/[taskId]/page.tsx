@@ -9,6 +9,12 @@ import {
   formatGuardianFollowUpDependency,
   formatGuardianOperationalIndicator,
 } from "@/lib/guardian-operational-context";
+import {
+  canAccessFollowUpTask,
+  canReadStaffOnlyContent,
+  canReadTeamScopedContent,
+  resolveActorRoleContext,
+} from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -47,6 +53,24 @@ export default async function TaskDetailPage({
     );
   }
 
+  const actorRoleContext = await resolveActorRoleContext({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+
+  if (!canReadStaffOnlyContent(actorRoleContext) && !actorRoleContext.actorPersonId) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Task</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Your account is not linked to a person record and cannot access task details.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   let task:
     | {
         id: string;
@@ -60,6 +84,8 @@ export default async function TaskDetailPage({
           | {
               id: string;
               body: string;
+              teamId: string | null;
+              event: { teamId: string | null } | null;
               athlete: {
                 id: string;
                 firstName: string;
@@ -74,16 +100,11 @@ export default async function TaskDetailPage({
               } | null;
             }
           | null;
-        sourceEvent: { id: string; title: string } | null;
+        sourceEvent: { id: string; title: string; teamId: string | null } | null;
         sourceInboxItem: { id: string; category: string; status: string } | null;
       }
     | null = null;
   let queryErrorMessage = "Unable to load task details right now. Please try again later.";
-  const guardianAccess = await resolveGuardianRelationshipAccess({
-    organizationId: scope.organizationId,
-    actorPersonId: scope.auth.personId,
-  });
-  const canViewGuardianRelationshipDetails = guardianAccess.canViewGuardianRelationshipDetails;
 
   try {
     task = await db.followUpTask.findFirst({
@@ -103,6 +124,8 @@ export default async function TaskDetailPage({
           select: {
             id: true,
             body: true,
+            teamId: true,
+            event: { select: { teamId: true } },
             athlete: {
               select: {
                 id: true,
@@ -131,7 +154,7 @@ export default async function TaskDetailPage({
             },
           },
         },
-        sourceEvent: { select: { id: true, title: true } },
+        sourceEvent: { select: { id: true, title: true, teamId: true } },
         sourceInboxItem: { select: { id: true, category: true, status: true } },
       },
     });
@@ -160,6 +183,46 @@ export default async function TaskDetailPage({
       </section>
     );
   }
+
+  if (
+    !canAccessFollowUpTask(actorRoleContext, {
+      assigneePersonId: task.assignee.id,
+      createdByPersonId: task.createdBy.id,
+    })
+  ) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Task</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            You do not have access to this task.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  if (actorRoleContext.isStaffMember) {
+    const taskTeamId = task.sourceEvent?.teamId ?? task.sourceNote?.teamId ?? task.sourceNote?.event?.teamId ?? null;
+    if (!canReadTeamScopedContent(actorRoleContext, taskTeamId)) {
+      return (
+        <section className="space-y-4">
+          <h2 className="text-2xl font-semibold tracking-tight">Task</h2>
+          <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              You do not have access to this team-scoped task.
+            </p>
+          </div>
+        </section>
+      );
+    }
+  }
+
+  const guardianAccess = await resolveGuardianRelationshipAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const canViewGuardianRelationshipDetails = guardianAccess.canViewGuardianRelationshipDetails;
 
   const isOverdue = isTaskOverdue(task);
   const sourceAthleteGuardianContext =
