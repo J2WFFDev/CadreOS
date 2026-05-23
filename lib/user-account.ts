@@ -1,5 +1,3 @@
-import { RoleType, ScopeType } from "@prisma/client";
-
 import { db } from "@/lib/db";
 
 export async function upsertUserAccountForOrganization(input: {
@@ -47,28 +45,5 @@ export async function resolveActorPersonId(input: {
     }
   }
 
-  const organizationAdminAssignment = await db.roleAssignment.findFirst({
-    where: {
-      organizationId: input.organizationId,
-      roleType: RoleType.ORGANIZATION_ADMIN,
-      scopeType: ScopeType.ORGANIZATION,
-    },
-    select: { personId: true },
-    orderBy: [{ createdAt: "asc" }],
-  });
-
-  if (organizationAdminAssignment?.personId) {
-    return organizationAdminAssignment.personId;
-  }
-
-  // MVP fallback: no linked UserAccount or admin assignment found; resolve to the first person
-  // created in the organization. This keeps attribution non-null for create workflows.
-  // Remove once user-account linking is required for mutations.
-  const firstPerson = await db.person.findFirst({
-    where: { organizationId: input.organizationId },
-    select: { id: true },
-    orderBy: [{ createdAt: "asc" }],
-  });
-
-  return firstPerson?.id ?? null;
+  return null;
 }

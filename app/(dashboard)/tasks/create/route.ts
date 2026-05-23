@@ -1,7 +1,6 @@
 import { TaskStatus, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-import { requireAuthContext } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { resolveFollowUpTaskCreatorPersonId } from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -192,10 +191,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const authContext = await requireAuthContext();
     const createdByPersonId = await resolveFollowUpTaskCreatorPersonId(
       scope.organizationId,
-      authContext.clerkUserId,
+      scope.auth.clerkUserId,
       scope.auth.personId,
     );
 

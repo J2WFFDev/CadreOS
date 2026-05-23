@@ -1,5 +1,6 @@
 import { TaskStatus } from "@prisma/client";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -156,6 +157,10 @@ export default async function DashboardPage() {
         </div>
       </section>
     );
+  }
+
+  if (scope.auth.unresolvedPersonLink) {
+    redirect("/account/link-person");
   }
 
   const currentTime = new Date();

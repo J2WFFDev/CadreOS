@@ -491,8 +491,8 @@ export default async function EventDetailsPage({
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-lg font-semibold">Add or update attendance</h3>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Attendance captures what actually happened after RSVP intent. Marked-by currently uses mock auth resolution and falls
-          back to an organization admin/seeded person until real auth-to-person mapping is implemented.
+          Attendance captures what actually happened after RSVP intent. Marked-by attribution now requires a linked
+          Clerk UserAccount → Person mapping.
         </p>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           {event.team
