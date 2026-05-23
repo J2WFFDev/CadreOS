@@ -1,4 +1,4 @@
-import { Prisma, RoleType, ScopeType } from "@prisma/client";
+import { EventStatus, EventType, Prisma, RoleType, ScopeType } from "@prisma/client";
 import { z } from "zod";
 
 import { requireAuthContext } from "@/lib/auth";
@@ -6,7 +6,10 @@ import { requireAuthContext } from "@/lib/auth";
 const MAX_NAME_LENGTH = 100;
 const MAX_EMAIL_LENGTH = 320;
 const MAX_PHONE_LENGTH = 32;
+const MAX_EVENT_TITLE_LENGTH = 160;
+const MAX_EVENT_LOCATION_LENGTH = 200;
 const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const DATETIME_LOCAL_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
 
 const emailValidator = z.string().email();
 
@@ -176,12 +179,76 @@ export const roleAssignmentWorkflowSchema = z
     teamId: value.teamId.length === 0 ? null : value.teamId,
   }));
 
+export const eventWorkflowSchema = z
+  .object({
+    title: z
+      .string()
+      .trim()
+      .min(1, "Event title is required.")
+      .max(MAX_EVENT_TITLE_LENGTH, `Event title must be ${MAX_EVENT_TITLE_LENGTH} characters or less.`),
+    eventType: z.nativeEnum(EventType, {
+      message: "Event type must use an existing event type value.",
+    }),
+    status: z.nativeEnum(EventStatus, {
+      message: "Status must use an existing event status value.",
+    }),
+    programId: z.string().trim().min(1, "Program selection is required."),
+    teamId: z.string().trim(),
+    startsAt: z.string().trim().min(1, "Start date/time is required."),
+    endsAt: z.string().trim(),
+    location: z
+      .string()
+      .trim()
+      .max(MAX_EVENT_LOCATION_LENGTH, `Location must be ${MAX_EVENT_LOCATION_LENGTH} characters or less.`),
+  })
+  .superRefine((value, context) => {
+    if (!DATETIME_LOCAL_INPUT_PATTERN.test(value.startsAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startsAt"],
+        message: "Start date/time must use YYYY-MM-DDTHH:mm format.",
+      });
+    }
+
+    if (value.endsAt.length > 0 && !DATETIME_LOCAL_INPUT_PATTERN.test(value.endsAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["endsAt"],
+        message: "End date/time must use YYYY-MM-DDTHH:mm format.",
+      });
+    }
+
+    if (
+      DATETIME_LOCAL_INPUT_PATTERN.test(value.startsAt) &&
+      value.endsAt.length > 0 &&
+      DATETIME_LOCAL_INPUT_PATTERN.test(value.endsAt) &&
+      value.endsAt < value.startsAt
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["endsAt"],
+        message: "End date/time cannot be before start date/time.",
+      });
+    }
+  })
+  .transform((value) => ({
+    title: value.title,
+    eventType: value.eventType,
+    status: value.status,
+    programId: value.programId,
+    teamId: value.teamId.length === 0 ? null : value.teamId,
+    startsAt: dateTimeInputToUtcDate(value.startsAt),
+    endsAt: value.endsAt.length === 0 ? null : dateTimeInputToUtcDate(value.endsAt),
+    location: value.location.length === 0 ? null : value.location,
+  }));
+
 export type PersonWorkflowInput = z.output<typeof personWorkflowSchema>;
 export type TeamWorkflowInput = z.output<typeof teamWorkflowSchema>;
 export type ProgramWorkflowInput = z.output<typeof programWorkflowSchema>;
 export type RosterMembershipWorkflowInput = z.output<typeof rosterMembershipWorkflowSchema>;
 export type SeasonWorkflowInput = z.output<typeof seasonWorkflowSchema>;
 export type RoleAssignmentWorkflowInput = z.output<typeof roleAssignmentWorkflowSchema>;
+export type EventWorkflowInput = z.output<typeof eventWorkflowSchema>;
 
 export function getStringField(formData: FormData, field: string): string {
   const rawValue = formData.get(field);
@@ -208,6 +275,18 @@ export function formatDateInputValue(value: Date | null): string {
   return value.toISOString().slice(0, 10);
 }
 
+export function dateTimeInputToUtcDate(value: string): Date {
+  return new Date(`${value.length === 16 ? `${value}:00` : value}Z`);
+}
+
+export function formatDateTimeInputValue(value: Date | null): string {
+  if (!value) {
+    return "";
+  }
+
+  return value.toISOString().slice(0, 16);
+}
+
 export async function requirePhase1CMutationPermission(input: {
   organizationId: string;
   action:
@@ -218,6 +297,8 @@ export async function requirePhase1CMutationPermission(input: {
     | "team.create"
     | "season.create"
     | "season.update"
+    | "event.create"
+    | "event.update"
     | "rosterMembership.create"
     | "roleAssignment.create"
     | "roleAssignment.delete";

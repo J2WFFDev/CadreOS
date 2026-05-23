@@ -69,6 +69,9 @@ export default async function DashboardPage() {
           <Link href="/teams" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
             Teams
           </Link>
+          <Link href="/events" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Events
+          </Link>
         </div>
       </div>
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
