@@ -55,8 +55,16 @@ export default async function NewFieldOpsBookingRequestPage({
     );
   }
 
-  let facilities: Array<{ id: string; name: string }> | null = null;
-  let resources: Array<{ id: string; name: string; facilityId: string; facility: { id: string; name: string } }> | null = null;
+  let facilities: Array<{ id: string; name: string; status: string }> | null = null;
+  let resources:
+    | Array<{
+        id: string;
+        name: string;
+        status: string;
+        facilityId: string;
+        facility: { id: string; name: string; status: string };
+      }>
+    | null = null;
   let programs: Array<{ id: string; name: string }> | null = null;
   let teams: Array<{ id: string; name: string; programId: string; program: { id: string; name: string } }> | null = null;
   let events: Array<{ id: string; title: string; startsAt: Date; programId: string; teamId: string | null }> | null = null;
@@ -66,7 +74,7 @@ export default async function NewFieldOpsBookingRequestPage({
     [facilities, resources, programs, teams, events] = await Promise.all([
       db.facility.findMany({
         where: { organizationId: scope.organizationId },
-        select: { id: true, name: true },
+        select: { id: true, name: true, status: true },
         orderBy: [{ name: "asc" }],
       }),
       db.facilityResource.findMany({
@@ -74,11 +82,13 @@ export default async function NewFieldOpsBookingRequestPage({
         select: {
           id: true,
           name: true,
+          status: true,
           facilityId: true,
           facility: {
             select: {
               id: true,
               name: true,
+              status: true,
             },
           },
         },
@@ -142,6 +152,8 @@ export default async function NewFieldOpsBookingRequestPage({
   const teamId = readSearchParam(resolvedSearchParams, "teamId");
   const eventId = readSearchParam(resolvedSearchParams, "eventId");
   const generalError = readSearchParam(resolvedSearchParams, "error");
+  const activeResources = resources.filter((resource) => resource.status === "ACTIVE" && resource.facility.status === "ACTIVE");
+  const activeFacilities = facilities.filter((facility) => facility.status === "ACTIVE");
 
   return (
     <section className="space-y-4">
@@ -149,15 +161,15 @@ export default async function NewFieldOpsBookingRequestPage({
         title="New booking request"
         description="Create a FieldOps booking request for an existing facility resource."
       />
-      <FieldOpsSubnav current="new-booking" />
+      <FieldOpsSubnav current="requests" />
 
       {generalError ? <ErrorMessage message={generalError} /> : null}
 
-      {resources.length === 0 ? (
+      {activeResources.length === 0 ? (
         <EmptyState
-          message="No facility resources are available for booking requests yet."
-          actionHref="/field-ops/facilities"
-          actionLabel="View facilities"
+          message="No active facility resources are available for booking requests yet."
+          actionHref="/field-ops/resources"
+          actionLabel="Review resources"
         />
       ) : (
         <form
@@ -171,7 +183,7 @@ export default async function NewFieldOpsBookingRequestPage({
             </label>
             <select id="facilityId" name="facilityId" defaultValue={facilityId} className="w-full rounded-md border px-3 py-2 text-sm">
               <option value="">Auto-select from resource</option>
-              {facilities.map((facility) => (
+              {activeFacilities.map((facility) => (
                 <option key={facility.id} value={facility.id}>
                   {facility.name}
                 </option>
@@ -188,7 +200,7 @@ export default async function NewFieldOpsBookingRequestPage({
             </label>
             <select id="resourceId" name="resourceId" defaultValue={resourceId} className="w-full rounded-md border px-3 py-2 text-sm">
               <option value="">Select a resource</option>
-              {resources.map((resource) => (
+              {activeResources.map((resource) => (
                 <option key={resource.id} value={resource.id}>
                   {resource.name} — {resource.facility.name}
                 </option>

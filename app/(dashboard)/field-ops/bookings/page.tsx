@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { BookingCard } from "@/components/field-ops/booking-card";
 import { FieldOpsSubnav } from "@/components/field-ops/subnav";
 import { db } from "@/lib/db";
+import { formatFieldOpsEnum } from "@/lib/field-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -13,14 +14,42 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
+const STATUS_FILTERS = [
+  "DRAFT",
+  "REQUESTED",
+  "PRECHECK_PASSED",
+  "CONFLICT_FOUND",
+  "RECOMMENDED",
+  "APPROVED",
+  "DENIED",
+  "CANCELED",
+  "COMPLETED",
+] as const;
+
+const APPROVAL_FILTERS = ["PENDING", "APPROVED", "DENIED", "NOT_REQUIRED"] as const;
+const PRECHECK_FILTERS = ["NOT_RUN", "PASSED", "WARNING", "FAILED"] as const;
+
 function readSearchParam(searchParams: SearchParams, key: string) {
   const value = searchParams[key];
-
   if (Array.isArray(value)) {
     return value[0] ?? "";
   }
 
   return value ?? "";
+}
+
+function readSearchParamValues(searchParams: SearchParams, key: string) {
+  const value = searchParams[key];
+
+  if (Array.isArray(value)) {
+    return value.filter((item) => item.length > 0);
+  }
+
+  if (!value) {
+    return [];
+  }
+
+  return [value];
 }
 
 export default async function FieldOpsBookingsPage({
@@ -53,38 +82,73 @@ export default async function FieldOpsBookingsPage({
 
   const facilityId = readSearchParam(resolvedSearchParams, "facilityId");
   const resourceId = readSearchParam(resolvedSearchParams, "resourceId");
+  const approvalStatus = readSearchParam(resolvedSearchParams, "approvalStatus");
+  const precheckStatus = readSearchParam(resolvedSearchParams, "precheckStatus");
+  const timeframe = readSearchParam(resolvedSearchParams, "timeframe") || "all";
+  const hasConflicts = readSearchParam(resolvedSearchParams, "hasConflicts");
   const created = readSearchParam(resolvedSearchParams, "created");
+  const statusValues = readSearchParamValues(resolvedSearchParams, "status");
+  const selectedStatus = statusValues[0] ?? "";
+  const now = new Date();
 
-  let bookings:
-    | Array<{
-        id: string;
-        title: string;
-        startsAt: Date;
-        endsAt: Date;
-        status: string;
-        precheckStatus: string;
-        approvalStatus: string;
-        facility: { id: string; name: string };
-        resource: { id: string; name: string };
-        program: { id: string; name: string } | null;
-        team: { id: string; name: string } | null;
-        event: { id: string; title: string } | null;
-        _count: { conflicts: number };
-      }>
-    | null = null;
-  let filterContext: {
-    facility: { id: string; name: string } | null;
-    resource: { id: string; name: string } | null;
-  } = { facility: null, resource: null };
   let queryErrorMessage = "Unable to load FieldOps bookings right now. Please try again later.";
+  let data:
+    | {
+        bookings: Array<{
+          id: string;
+          title: string;
+          startsAt: Date;
+          endsAt: Date;
+          status: string;
+          precheckStatus: string;
+          approvalStatus: string;
+          facility: { id: string; name: string; status: string };
+          resource: { id: string; name: string; status: string };
+          program: { id: string; name: string } | null;
+          team: { id: string; name: string } | null;
+          event: { id: string; title: string } | null;
+          _count: { conflicts: number };
+        }>;
+        facilities: Array<{ id: string; name: string }>;
+        resources: Array<{ id: string; name: string; facilityId: string }>;
+        activeResourceCount: number;
+      }
+    | null = null;
 
   try {
-    [bookings, filterContext] = await Promise.all([
+    const [bookings, facilities, resources, activeResourceCount] = await Promise.all([
       db.resourceBooking.findMany({
         where: {
           organizationId: scope.organizationId,
           ...(facilityId ? { facilityId } : {}),
           ...(resourceId ? { resourceId } : {}),
+          ...(statusValues.length > 0 ? { status: { in: statusValues } } : {}),
+          ...(approvalStatus ? { approvalStatus } : {}),
+          ...(precheckStatus ? { precheckStatus } : {}),
+          ...(hasConflicts === "yes"
+            ? {
+                conflicts: {
+                  some: {},
+                },
+              }
+            : {}),
+          ...(hasConflicts === "no"
+            ? {
+                conflicts: {
+                  none: {},
+                },
+              }
+            : {}),
+          ...(timeframe === "upcoming"
+            ? {
+                startsAt: { gte: now },
+              }
+            : {}),
+          ...(timeframe === "past"
+            ? {
+                startsAt: { lt: now },
+              }
+            : {}),
         },
         select: {
           id: true,
@@ -94,8 +158,8 @@ export default async function FieldOpsBookingsPage({
           status: true,
           precheckStatus: true,
           approvalStatus: true,
-          facility: { select: { id: true, name: true } },
-          resource: { select: { id: true, name: true } },
+          facility: { select: { id: true, name: true, status: true } },
+          resource: { select: { id: true, name: true, status: true } },
           program: { select: { id: true, name: true } },
           team: { select: { id: true, name: true } },
           event: { select: { id: true, title: true } },
@@ -103,34 +167,33 @@ export default async function FieldOpsBookingsPage({
         },
         orderBy: [{ startsAt: "asc" }, { createdAt: "asc" }],
       }),
-      Promise.all([
-        facilityId
-          ? db.facility.findFirst({
-              where: {
-                id: facilityId,
-                organizationId: scope.organizationId,
-              },
-              select: { id: true, name: true },
-            })
-          : Promise.resolve(null),
-        resourceId
-          ? db.facilityResource.findFirst({
-              where: {
-                id: resourceId,
-                organizationId: scope.organizationId,
-              },
-              select: { id: true, name: true },
-            })
-          : Promise.resolve(null),
-      ]).then(([facility, resource]) => ({ facility, resource })),
+      db.facility.findMany({
+        where: { organizationId: scope.organizationId },
+        select: { id: true, name: true },
+        orderBy: [{ name: "asc" }],
+      }),
+      db.facilityResource.findMany({
+        where: { organizationId: scope.organizationId },
+        select: { id: true, name: true, facilityId: true },
+        orderBy: [{ name: "asc" }],
+      }),
+      db.facilityResource.count({
+        where: {
+          organizationId: scope.organizationId,
+          status: "ACTIVE",
+          facility: { status: "ACTIVE" },
+        },
+      }),
     ]);
+
+    data = { bookings, facilities, resources, activeResourceCount };
   } catch (error) {
     if (isSchemaUnavailableError(error)) {
       queryErrorMessage = "Database schema is not available yet. Run database setup before loading FieldOps bookings.";
     }
   }
 
-  if (!bookings) {
+  if (!data) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">FieldOps bookings</h2>
@@ -139,24 +202,43 @@ export default async function FieldOpsBookingsPage({
     );
   }
 
-  const hasFilters = Boolean(facilityId || resourceId);
+  const filteredResources = facilityId
+    ? data.resources.filter((resource) => resource.facilityId === facilityId)
+    : data.resources;
+  const hasFilters = Boolean(
+    facilityId || resourceId || selectedStatus || approvalStatus || precheckStatus || hasConflicts || timeframe !== "all",
+  );
 
   return (
     <section className="space-y-4">
-      <PageHeader
-        title="FieldOps bookings"
-        description="Booking schedule across facilities and resources with approval state visibility."
-      />
-      <FieldOpsSubnav current="bookings" />
+      <PageHeader title="FieldOps bookings" description="Booking requests, approvals, conflicts, and schedule filters." />
+      <FieldOpsSubnav current={approvalStatus === "PENDING" ? "approvals" : "bookings"} />
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Need to submit a new booking request?</p>
-        <Link
-          href={resourceId ? `/field-ops/bookings/new?resourceId=${resourceId}` : "/field-ops/bookings/new"}
-          className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-        >
-          New booking request
-        </Link>
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Requests and approvals</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">Use filters to review pending approvals, conflicts, and history.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/field-ops/bookings?approvalStatus=PENDING"
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Pending approvals
+          </Link>
+          {data.activeResourceCount > 0 ? (
+            <Link
+              href={resourceId ? `/field-ops/bookings/new?resourceId=${resourceId}` : "/field-ops/bookings/new"}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              New booking request
+            </Link>
+          ) : (
+            <span className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+              New requests unavailable: no active resources
+            </span>
+          )}
+        </div>
       </div>
 
       {created === "1" ? (
@@ -165,34 +247,141 @@ export default async function FieldOpsBookingsPage({
         </div>
       ) : null}
 
-      {hasFilters ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-          <span className="font-medium text-zinc-900 dark:text-zinc-50">Filters:</span>
-          {filterContext.facility ? (
-            <span className="rounded-full bg-zinc-100 px-2.5 py-1 dark:bg-zinc-800">
-              Facility: {filterContext.facility.name}
-            </span>
-          ) : null}
-          {filterContext.resource ? (
-            <span className="rounded-full bg-zinc-100 px-2.5 py-1 dark:bg-zinc-800">
-              Resource: {filterContext.resource.name}
-            </span>
-          ) : null}
-          <Link href="/field-ops/bookings" className="underline">
-            Clear filters
+      <form method="get" className="grid gap-3 rounded-lg border bg-white p-4 dark:bg-zinc-900 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-1">
+          <label htmlFor="status" className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Status
+          </label>
+          <select id="status" name="status" defaultValue={selectedStatus} className="w-full rounded-md border px-3 py-2 text-sm">
+            <option value="">All statuses</option>
+            {STATUS_FILTERS.map((value) => (
+              <option key={value} value={value}>
+                {formatFieldOpsEnum(value)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="approvalStatus" className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Approval
+          </label>
+          <select
+            id="approvalStatus"
+            name="approvalStatus"
+            defaultValue={approvalStatus}
+            className="w-full rounded-md border px-3 py-2 text-sm"
+          >
+            <option value="">All approval states</option>
+            {APPROVAL_FILTERS.map((value) => (
+              <option key={value} value={value}>
+                {formatFieldOpsEnum(value)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="precheckStatus" className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Precheck
+          </label>
+          <select
+            id="precheckStatus"
+            name="precheckStatus"
+            defaultValue={precheckStatus}
+            className="w-full rounded-md border px-3 py-2 text-sm"
+          >
+            <option value="">All precheck states</option>
+            {PRECHECK_FILTERS.map((value) => (
+              <option key={value} value={value}>
+                {formatFieldOpsEnum(value)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="facilityId" className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Facility
+          </label>
+          <select id="facilityId" name="facilityId" defaultValue={facilityId} className="w-full rounded-md border px-3 py-2 text-sm">
+            <option value="">All facilities</option>
+            {data.facilities.map((facility) => (
+              <option key={facility.id} value={facility.id}>
+                {facility.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="resourceId" className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Resource
+          </label>
+          <select id="resourceId" name="resourceId" defaultValue={resourceId} className="w-full rounded-md border px-3 py-2 text-sm">
+            <option value="">All resources</option>
+            {filteredResources.map((resource) => (
+              <option key={resource.id} value={resource.id}>
+                {resource.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="timeframe" className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Timeframe
+          </label>
+          <select id="timeframe" name="timeframe" defaultValue={timeframe} className="w-full rounded-md border px-3 py-2 text-sm">
+            <option value="all">All</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="past">Past</option>
+          </select>
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="hasConflicts" className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Conflicts
+          </label>
+          <select
+            id="hasConflicts"
+            name="hasConflicts"
+            defaultValue={hasConflicts}
+            className="w-full rounded-md border px-3 py-2 text-sm"
+          >
+            <option value="">All</option>
+            <option value="yes">With conflicts</option>
+            <option value="no">No conflicts</option>
+          </select>
+        </div>
+
+        <div className="flex items-end gap-2">
+          <button type="submit" className="rounded-md border px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Apply filters
+          </button>
+          <Link href="/field-ops/bookings" className="rounded-md border px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Clear
           </Link>
         </div>
-      ) : null}
+      </form>
 
-      {bookings.length === 0 ? (
+      {data.bookings.length === 0 ? (
         <EmptyState
-          message={hasFilters ? "No bookings match the selected FieldOps filters yet." : "No FieldOps bookings have been recorded yet."}
+          message={
+            hasFilters
+              ? "No bookings match the selected filters."
+              : approvalStatus === "PENDING"
+                ? "No pending approvals found."
+                : hasConflicts === "yes"
+                  ? "No bookings with conflicts found."
+                  : "No FieldOps bookings have been recorded yet."
+          }
           actionHref={hasFilters ? "/field-ops/bookings" : undefined}
           actionLabel={hasFilters ? "View all bookings" : undefined}
         />
       ) : (
         <div className="space-y-3">
-          {bookings.map((booking) => (
+          {data.bookings.map((booking) => (
             <BookingCard key={booking.id} booking={{ ...booking, conflictCount: booking._count.conflicts }} />
           ))}
         </div>

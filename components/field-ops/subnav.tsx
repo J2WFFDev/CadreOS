@@ -1,9 +1,12 @@
 import Link from "next/link";
 
 const FIELD_OPS_LINKS = [
+  { href: "/field-ops", label: "Overview", key: "overview" },
   { href: "/field-ops/facilities", label: "Facilities", key: "facilities" },
+  { href: "/field-ops/resources", label: "Resources", key: "resources" },
   { href: "/field-ops/bookings", label: "Bookings", key: "bookings" },
-  { href: "/field-ops/bookings/new", label: "New booking request", key: "new-booking" },
+  { href: "/field-ops/bookings/new", label: "Requests", key: "requests" },
+  { href: "/field-ops/bookings?approvalStatus=PENDING", label: "Approvals", key: "approvals" },
 ] as const;
 
 export function FieldOpsSubnav({
