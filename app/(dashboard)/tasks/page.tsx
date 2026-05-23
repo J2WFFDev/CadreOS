@@ -22,6 +22,7 @@ import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
+const STALE_UNRESOLVED_TASK_WINDOW_DAYS = 14;
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -49,6 +50,18 @@ function deriveTaskTeams(task: {
   ].filter((value): value is { id: string; name: string } => Boolean(value));
 
   return candidates.filter((value, index, array) => array.findIndex((item) => item.id === value.id) === index);
+}
+
+function hasTaskResponsibleContext(task: {
+  sourceNote: {
+    athlete: { id: string } | null;
+    team: { id: string; name: string } | null;
+    event: { id: string; title: string; team: { id: string; name: string } | null } | null;
+  } | null;
+  sourceEvent: { id: string; title: string; team: { id: string; name: string } | null } | null;
+  sourceInboxItem: { id: string; category: string; status: string } | null;
+}) {
+  return Boolean(task.sourceEvent || task.sourceNote || task.sourceInboxItem);
 }
 
 function formatSource(task: {
@@ -97,6 +110,7 @@ export default async function TasksPage({
   const dueWindowParam = readSearchParam(resolvedSearchParams, "dueWindow");
   const changedWindowParam = readSearchParam(resolvedSearchParams, "changedWindow");
   const guardianFollowUpParam = readSearchParam(resolvedSearchParams, "guardianFollowUp");
+  const ownershipIndicatorParam = readSearchParam(resolvedSearchParams, "ownershipIndicator");
   const statusFilter = Object.values(TaskStatus).includes(statusParam as TaskStatus)
     ? (statusParam as TaskStatus)
     : "";
@@ -115,6 +129,13 @@ export default async function TasksPage({
   const guardianFollowUpFilter =
     guardianFollowUpParam === "involving_guardian" || guardianFollowUpParam === "missing_guardian_linkage"
       ? guardianFollowUpParam
+      : "";
+  const ownershipIndicatorFilter =
+    ownershipIndicatorParam === "unresolved_owner_linked" ||
+    ownershipIndicatorParam === "overdue_owner_linked" ||
+    ownershipIndicatorParam === "missing_responsible_context" ||
+    ownershipIndicatorParam === "stale_unresolved"
+      ? ownershipIndicatorParam
       : "";
 
   if (!scope.databaseReady) {
@@ -323,8 +344,12 @@ export default async function TasksPage({
 
   const now = new Date();
   const upcomingCutoff = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const staleUnresolvedCutoff = new Date(now.getTime() - STALE_UNRESOLVED_TASK_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const filteredTasks = tasks
     .filter((task) => {
+      const unresolved = task.status === TaskStatus.OPEN || task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.BLOCKED;
+      const staleUnresolved = unresolved && task.updatedAt.getTime() < staleUnresolvedCutoff.getTime();
+      const missingResponsibleContext = !hasTaskResponsibleContext(task);
       const taskTeams = deriveTaskTeams({
         sourceEvent: task.sourceEvent,
         sourceNote: task.sourceNote,
@@ -357,6 +382,22 @@ export default async function TasksPage({
         return task.dueAt.getTime() >= now.getTime() && task.dueAt.getTime() <= upcomingCutoff.getTime();
       }
 
+      if (ownershipIndicatorFilter === "unresolved_owner_linked" && !unresolved) {
+        return false;
+      }
+
+      if (ownershipIndicatorFilter === "overdue_owner_linked" && (!unresolved || !isTaskOverdue(task, now))) {
+        return false;
+      }
+
+      if (ownershipIndicatorFilter === "missing_responsible_context" && (!unresolved || !missingResponsibleContext)) {
+        return false;
+      }
+
+      if (ownershipIndicatorFilter === "stale_unresolved" && !staleUnresolved) {
+        return false;
+      }
+
       return true;
     })
     .sort(compareFollowUpTasks);
@@ -368,6 +409,7 @@ export default async function TasksPage({
     resolutionFilter !== "all" ||
     dueWindowFilter !== "all" ||
     changedWindowFilter !== "all" ||
+    Boolean(ownershipIndicatorFilter) ||
     (canViewGuardianRelationshipDetails && Boolean(guardianFollowUpFilter));
 
   return (
@@ -383,7 +425,7 @@ export default async function TasksPage({
       />
 
       <form method="get" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <div className="grid gap-3 md:grid-cols-7">
+        <div className="grid gap-3 md:grid-cols-8">
           <div className="space-y-1">
             <label htmlFor="status" className="text-sm font-medium">
               Status
@@ -476,6 +518,23 @@ export default async function TasksPage({
               <option value="last_7d">Updated in last 7 days</option>
             </select>
           </div>
+          <div className="space-y-1">
+            <label htmlFor="ownershipIndicator" className="text-sm font-medium">
+              Ownership indicator
+            </label>
+            <select
+              id="ownershipIndicator"
+              name="ownershipIndicator"
+              defaultValue={ownershipIndicatorFilter}
+              className="w-full rounded-md border px-3 py-2 text-sm"
+            >
+              <option value="">All ownership states</option>
+              <option value="unresolved_owner_linked">Unresolved owner-linked items</option>
+              <option value="overdue_owner_linked">Overdue owner-linked items</option>
+              <option value="missing_responsible_context">Missing responsible context</option>
+              <option value="stale_unresolved">Stale unresolved items</option>
+            </select>
+          </div>
           {canViewGuardianRelationshipDetails ? (
             <div className="space-y-1">
               <label htmlFor="guardianFollowUp" className="text-sm font-medium">
@@ -530,6 +589,7 @@ export default async function TasksPage({
                 <th className="px-4 py-3 font-medium">Due date</th>
                 <th className="px-4 py-3 font-medium">Team context</th>
                 <th className="px-4 py-3 font-medium">Event context</th>
+                <th className="px-4 py-3 font-medium">Ownership indicator</th>
                 <th className="px-4 py-3 font-medium">Last updated</th>
                 <th className="px-4 py-3 font-medium">Guardian context</th>
                 <th className="px-4 py-3 font-medium">Source</th>
@@ -542,6 +602,10 @@ export default async function TasksPage({
                   sourceNote: task.sourceNote,
                 });
                 const overdue = isTaskOverdue(task, now);
+                const unresolved =
+                  task.status === TaskStatus.OPEN || task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.BLOCKED;
+                const staleUnresolved = unresolved && task.updatedAt.getTime() < staleUnresolvedCutoff.getTime();
+                const missingResponsibleContext = !hasTaskResponsibleContext(task);
                 const sourceAthleteGuardianContext =
                   canViewGuardianRelationshipDetails && task.sourceNote?.athlete
                     ? deriveGuardianOperationalContext(task.sourceNote.athlete.athleteLinks ?? [])
@@ -598,6 +662,23 @@ export default async function TasksPage({
                         "—"
                       )}
                     </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                          Assigned owner
+                        </span>
+                        {missingResponsibleContext ? (
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            Missing responsible context
+                          </span>
+                        ) : null}
+                        {staleUnresolved ? (
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            Stale unresolved
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                       {formatDateTime(task.updatedAt)}
                       {task.updatedAt.getTime() >= now.getTime() - 24 * 60 * 60 * 1000 ? (
@@ -605,6 +686,13 @@ export default async function TasksPage({
                           Recent
                         </span>
                       ) : null}
+                      <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                        Last updater: not stored (creator:{" "}
+                        <Link href={`/people/${task.createdBy.id}`} className="underline">
+                          {task.createdBy.firstName} {task.createdBy.lastName}
+                        </Link>
+                        )
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                       {!task.sourceNote?.athlete ? (
