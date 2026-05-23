@@ -413,15 +413,17 @@ Recommended conceptual indexes:
 
 ## Recommended Future Phases
 
-- **Phase 7B**: Entry schema implementation
-- **Phase 7C**: Minimal Inbox capture
-- **Phase 7D**: Entry triage and filing
-- **Phase 7E**: Decision entries
-- **Phase 7F**: Private Journal view
-- **Phase 7G**: Role-aware Feed
-- **Phase 7H**: Contact Notes
-- **Phase 7I**: Migration from current Notes/Tasks/Events
-- **Phase 7J**: Messaging/DM exploration only after Feed stabilizes
+To avoid confusion with active Team/Member phases (7B+), Entry/Inbox work is relabeled as a separate deferred track:
+
+- **Entry Track E1 (deferred):** Entry schema implementation planning checkpoint
+- **Entry Track E2 (deferred):** Minimal Inbox capture
+- **Entry Track E3 (deferred):** Entry triage and filing
+- **Entry Track E4 (deferred):** Decision entries
+- **Entry Track E5 (deferred):** Private Journal view
+- **Entry Track E6 (deferred):** Role-aware Feed
+- **Entry Track E7 (deferred):** Contact Notes
+- **Entry Track E8 (deferred):** Migration from current Notes/Tasks/Events
+- **Entry Track E9 (deferred):** Messaging/DM exploration only after Feed stabilizes
 
 ## Open Decisions
 
@@ -445,4 +447,4 @@ Recommended conceptual indexes:
 3. **Key open decisions**
    - status model shape, contact-note modeling choice, tag modeling shape, migration path strategy, feed sourcing model, guardian feed timing, sharing semantics for private journal entries, and replacement vs wrapper strategy for Event/Task.
 4. **Recommended next phase**
-   - **Phase 7B: Entry schema implementation** (after Core MVP stability and authorization confidence gates).
+   - **Entry Track E1 (deferred): Entry schema implementation planning checkpoint** (after Core MVP stability and authorization confidence gates and after active Team/Member phases complete).
