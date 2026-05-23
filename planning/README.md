@@ -7,7 +7,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [PRD](./PRD.md)
 - [Feature Breakdown](./FEATURE_BREAKDOWN.md)
 - [Domain Model](./DOMAIN_MODEL.md)
-- [Roadmap](./ROADMAP.md)
+- [Phase 7A MVP Recenter Roadmap (recommended Phase 7B direction)](./ROADMAP.md)
 - [Roadmap: Core MVP, FieldOps, GearOps](./ROADMAP_CORE_FIELDOPS_GEAROPS.md)
 - [Notes / Inbox / Entry Model](./NOTES_INBOX_ENTRY_MODEL.md)
 - [User Stories](./USER_STORIES.md)
@@ -73,6 +73,10 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 6H FieldOps Approval Workflow](./PHASE_6H_FIELDOPS_APPROVAL_WORKFLOW.md)
 - [Phase 6I FieldOps MVP Polish](./PHASE_6I_FIELDOPS_MVP_POLISH.md)
 - [Phase 6J FieldOps MVP Hardening](./PHASE_6J_FIELDOPS_MVP_HARDENING.md)
+- [Phase 6K FieldOps MVP Closeout and Phase 7 Decision Plan](./PHASE_6K_FIELDOPS_MVP_CLOSEOUT.md)
+
+## Phase 7A Recenter (current decision path)
+- [CadreOS MVP Roadmap (Phase 7A Recenter)](./ROADMAP.md)
 - [Phase 6K FieldOps MVP Closeout and Phase 7 Decision Plan](./PHASE_6K_FIELDOPS_MVP_CLOSEOUT.md)
 
 ## Decision Log Summary

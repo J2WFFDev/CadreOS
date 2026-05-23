@@ -1,35 +1,112 @@
-# CadreOS Roadmap
+# CadreOS MVP Roadmap (Phase 7A Recenter)
 
-## Milestone Buckets
+## Purpose
 
-### Milestone 1: Foundation OS (MVP Core)
-- Identity, roles, and relationships
-- Program/team/roster management
-- Note capture and linked records
-- Communication routing and inbox triage
-- Event scheduling and attendance basics
-- Task creation and follow-up
-- Baseline audit trail
+This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the next highest-value MVP slice.
 
-### Milestone 2: Operational Maturity
-- Enhanced workflows and escalations
-- Consent/forms and compliance tracking
-- Inventory and asset lifecycle management
-- Reporting dashboards for operations
+### Phase 7A constraints (planning only)
+- No new runtime product features in this phase.
+- No Prisma schema changes in this phase.
+- FieldOps is treated as completed MVP with future enhancements parked.
+- Do not expand into recurring bookings, notifications, calendar sync, GearOps integration, or advanced FieldOps recommendations.
 
-### Milestone 3: Development Intelligence
-- Athlete goals and structured development plans
-- Progress trend views and alerts
-- Cross-team performance and participation analytics
+---
 
-### Milestone 4: Advanced Organization Support
-- Multi-program governance features
-- Advanced automation and intelligent recommendations
-- Expanded integration surfaces
+## Current Build Snapshot
 
-## MVP Exit Criteria
-- A program can onboard users and assign roles
-- Staff can manage teams/rosters and schedule events
-- Notes/messages can be routed and tracked to closure
-- Attendance can be recorded and reported
-- Tasks can be assigned and completed with accountability
+### Built now (active MVP surface)
+- Organization/program/team/person records with scoped role assignments.
+- Team roster operations (season-scoped) and person profile views.
+- Events with RSVP and attendance capture.
+- Observation notes and follow-up task workflows.
+- FieldOps MVP booking lifecycle (request, precheck/conflicts, approve/deny, dashboard views).
+- Dashboard summaries and navigation across implemented modules.
+
+### Built but intentionally limited
+- Parent/guardian relationship records are represented and visible in person detail, but relationship-aware guardian workflows are not complete.
+- Notes exist as `ObservationNote`; unified inbox/journal/entry model is planning-only.
+- Reporting is basic operational summary, not full analytics/dashboarding.
+
+### Not built yet (planned/future)
+- Communications/announcements runtime module.
+- Athlete development plans/goals/progress workflows.
+- GearOps equipment lifecycle.
+- Advanced reporting/analytics and cross-module intelligence.
+
+---
+
+## Domain-by-Domain MVP Roadmap
+
+| Domain | Current status | User value | Dependency on existing data model | Implementation complexity | MVP risk | Suggested first small PR |
+| --- | --- | --- | --- | --- | --- | --- |
+| Core organization/team/person model | **Implemented and in active use** (Organization, Program, Team, Person, UserAccount, RoleAssignment). | Establishes secure, scoped operating context for every workflow. | Strong: already backed by current Prisma models and auth/permission helpers. | Medium | Medium | Harden organization context guardrails and add focused planning acceptance checks for person-role-scope consistency. |
+| FieldOps | **MVP complete (Phase 6K closeout); expansion paused.** | Provides facility/resource booking with conflict-aware approval flow. | Strong: Facility/Resource/Booking/Conflict models are implemented. | Medium for maintenance; High for next feature expansion | Medium if expanded too early | Planning-only backlog hygiene PR: move recurring/notifications/calendar/recommendations to deferred backlog and keep FieldOps in maintenance mode. |
+| Team/member management | **Partially implemented** (team CRUD + roster add flows exist; member lifecycle and richer role workflows are limited). | Direct coach value: keep squads accurate, role ownership clear, and season operations reliable. | Strong: Team, RosterMembership, RoleAssignment, Season already support incremental improvements. | Medium | Low-Medium | Add planning + acceptance criteria for roster/member lifecycle actions (join, move, inactive, season rollover) using existing models only. |
+| Parent/guardian relationships | **Partially implemented** (AthleteGuardianRelationship modeled; read visibility constraints documented; full guardian workflow deferred). | High trust/safety value for family-aware operations and controlled visibility. | Strong: AthleteGuardianRelationship + Person/UserAccount link patterns already exist. | Medium | Medium-High (privacy/authorization leakage risk) | Define minimal relationship-management slice boundaries and authorization rules in planning/AC docs without new runtime surfaces. |
+| Athlete development | **Not implemented** (goals/plans/progress remain planned). | Long-term program differentiation and athlete progress continuity. | Weak-to-moderate: base Person/Team/Event/Note records exist but dedicated development model is absent. | High | High | Author a narrow planning spec for first development artifact (e.g., simple goal record) while keeping out of immediate build queue. |
+| Attendance/events | **Implemented core workflow** (event CRUD + RSVP + attendance capture). | Core daily operations and participation accountability. | Strong: Event, RSVP, AttendanceRecord are established and used. | Medium | Low-Medium | Document incremental polish backlog for attendance/event reliability (data consistency/reporting UX) without broad scope growth. |
+| Task/action tracking | **Implemented core workflow** (FollowUpTask create/list/detail/edit with source links). | Ensures follow-through from coaching and operational work. | Strong: FollowUpTask links into notes/events and person assignments. | Medium | Low | Plan a focused backlog PR for task-state ergonomics and ownership clarity using current schema. |
+| Notes/observations/journal entries | **Partially implemented** (`ObservationNote` live; unified Entry/Inbox/Journal is planning-only). | Captures coaching memory and creates downstream action context. | Strong for notes today; moderate for future unified model (requires migration strategy). | Medium-High | Medium | Tighten Phase 7 planning docs to separate “current notes flow” from “future unified entry model” and define migration guardrails. |
+| Communications/announcements | **Not implemented** (explicitly future-only concept). | Important for broad coordination, but not required to unlock next MVP value slice. | Weak: no dedicated runtime model/surfaces yet. | High | High | Add a parked concept note defining boundaries and explicit non-goals for MVP to prevent accidental scope creep. |
+| GearOps/equipment | **Not implemented** (module is defined but deferred). | Useful for operations that track inventory/custody, but not core to immediate MVP recenter. | Weak: no GearOps runtime schema/workflows yet. | High | Medium-High | Keep GearOps in deferred module roadmap; add dependency notes tied to stable team/member and task foundations. |
+| Reporting/dashboarding | **Partially implemented** (dashboard has summary counts and recent-work views). | Gives coaches/operators fast operational awareness. | Moderate: current queryable data exists across people/events/notes/tasks/bookings. | Medium | Medium | Define minimal MVP reporting slice criteria (role-safe summary views, no advanced analytics) and map to existing entities. |
+
+---
+
+## Recommended Next Slice (Phase 7B)
+
+### Phase 7B recommendation: **Team/Member Management Hardening**
+
+### Why this is next
+- Best aligns with coach operating system vision by improving the daily “who is on which team and in what role” workflow.
+- Delivers clear team-member management value immediately.
+- Leverages existing schema (`Team`, `RosterMembership`, `RoleAssignment`, `AthleteGuardianRelationship`) with no large redesign required.
+- Can be delivered in small PRs (policy/acceptance criteria first, then narrowly scoped runtime increments in later phases).
+- Useful without notifications/mobile app/native messaging.
+
+### Proposed small-PR delivery shape (for later implementation phases)
+1. Finalize scope + acceptance criteria for member lifecycle states and season transitions.
+2. Add guardrail-focused workflow improvements for roster and role assignment consistency.
+3. Add relationship-aware checks where team member visibility touches guardian-linked athletes.
+
+---
+
+## Alternate Phase 7B Options (with trade-offs)
+
+1. **Notes/Observations workflow hardening before Entry migration**
+   - **Pros:** Improves daily staff capture quality quickly; low migration risk if staying on `ObservationNote`.
+   - **Cons:** Delays team-member lifecycle improvements; may postpone guardian-related complexity validation.
+
+2. **Parent/Guardian relationship management foundation**
+   - **Pros:** Addresses high-value trust/authorization complexity directly.
+   - **Cons:** Higher privacy/permission risk early; needs careful policy sequencing before broad rollout.
+
+3. **MVP reporting/dashboarding uplift**
+   - **Pros:** Immediate cross-role visibility using already-collected data.
+   - **Cons:** Dashboard improvements can mask underlying workflow gaps if team/member data quality is not hardened first.
+
+---
+
+## Do Not Build Yet (parked until after Phase 7B maturity)
+
+- FieldOps recurring bookings
+- FieldOps notifications/reminders
+- FieldOps external calendar sync
+- GearOps runtime integration work
+- Advanced FieldOps recommendation/optimization logic
+- Native messaging/DM/announcement runtime channels
+- Large Entry/Inbox schema migration into production runtime
+
+---
+
+## Build Order After Recenter (planning-level)
+
+1. **Phase 7B:** Team/Member Management Hardening (recommended)
+2. **Phase 7C candidate:** Parent/Guardian workflow foundation or Notes hardening (decision based on Phase 7B validation outcomes)
+3. **Later:** Reporting uplift, then deferred FieldOps/GearOps expansions as separate module tracks
+
+---
+
+## PR Summary (directional)
+
+This Phase 7A roadmap update formally marks FieldOps as MVP-complete and shifts immediate priority to Team/Member Management Hardening for Phase 7B. The recommendation emphasizes high day-to-day coach value, parent/guardian-adjacent complexity readiness, and low redesign risk by building on existing models in small PRs. Future module expansion items are explicitly parked to prevent scope creep while keeping a clear, decision-ready backlog.
