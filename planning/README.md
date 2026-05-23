@@ -82,6 +82,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 9A Entry Architecture Review and Migration Strategy Assessment](./PHASE_9A_ENTRY_ARCHITECTURE_REVIEW.md)
 - [Phase 9C Entry Migration Dependency Map and Authorization Gap Review](./PHASE_9C_ENTRY_MIGRATION_DEPENDENCY_MAP.md)
 - [Phase 9D Per-Record Visibility and Access Policy Architecture](./PHASE_9D_ENTRY_VISIBILITY_ACCESS_POLICY.md)
+- [Phase 9E Runtime Authorization Helper Foundation](./PHASE_9E_RUNTIME_AUTHORIZATION_HELPER_FOUNDATION.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)

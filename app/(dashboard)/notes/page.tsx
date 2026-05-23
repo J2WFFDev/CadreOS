@@ -10,6 +10,7 @@ import {
   deriveGuardianOperationalContext,
   formatGuardianOperationalIndicator,
 } from "@/lib/guardian-operational-context";
+import { canReadStaffOnlyContent, resolveActorRoleContext } from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -82,6 +83,24 @@ export default async function NotesPage({
         <h2 className="text-2xl font-semibold tracking-tight">Notes</h2>
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No organization context is available yet.</p>
+        </div>
+      </section>
+    );
+  }
+
+  const actorRoleContext = await resolveActorRoleContext({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+
+  if (!canReadStaffOnlyContent(actorRoleContext)) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Notes</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            You do not have staff access to view notes. All notes require a staff role assignment.
+          </p>
         </div>
       </section>
     );
