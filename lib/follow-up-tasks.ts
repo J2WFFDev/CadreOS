@@ -23,6 +23,38 @@ export function formatDateTime(value: Date | null) {
   return `${value.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
+export function isTaskOverdue(task: { dueAt: Date | null; status: string }, now: Date = new Date()) {
+  if (!task.dueAt) {
+    return false;
+  }
+
+  if (task.status === "DONE" || task.status === "CANCELLED") {
+    return false;
+  }
+
+  return task.dueAt.getTime() < now.getTime();
+}
+
+export function getTaskStatusBadgeClassName(status: string) {
+  if (status === "DONE") {
+    return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300";
+  }
+
+  if (status === "BLOCKED") {
+    return "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300";
+  }
+
+  if (status === "IN_PROGRESS") {
+    return "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300";
+  }
+
+  if (status === "CANCELLED") {
+    return "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200";
+  }
+
+  return "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300";
+}
+
 export function compareFollowUpTasks<T extends { status: string; dueAt: Date | null; title: string }>(
   left: T,
   right: T,

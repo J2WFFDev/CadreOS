@@ -3,7 +3,13 @@ import { AttendanceStatus, RSVPStatus } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
-import { compareFollowUpTasks, formatDateTime, formatEnumLabel } from "@/lib/follow-up-tasks";
+import {
+  compareFollowUpTasks,
+  formatDateTime,
+  formatEnumLabel,
+  getTaskStatusBadgeClassName,
+  isTaskOverdue,
+} from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -75,6 +81,7 @@ export default async function EventDetailsPage({
           status: string;
           dueAt: Date | null;
           assignee: { id: string; firstName: string; lastName: string };
+          sourceNote: { id: string; body: string } | null;
         }>;
         rsvps: Array<{
           id: string;
@@ -124,6 +131,7 @@ export default async function EventDetailsPage({
               status: true,
               dueAt: true,
               assignee: { select: { id: true, firstName: true, lastName: true } },
+              sourceNote: { select: { id: true, body: true } },
             },
           },
           rsvps: {
@@ -327,15 +335,36 @@ export default async function EventDetailsPage({
                   <Link href={`/tasks/${task.id}`} className="font-medium underline">
                     {task.title}
                   </Link>
-                  <span className="text-sm text-zinc-600 dark:text-zinc-400">{formatEnumLabel(task.status)}</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${getTaskStatusBadgeClassName(task.status)}`}
+                  >
+                    {formatEnumLabel(task.status)}
+                  </span>
                 </div>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                <p
+                  className={`mt-1 text-sm ${
+                    isTaskOverdue(task) ? "text-red-700 dark:text-red-300" : "text-zinc-600 dark:text-zinc-400"
+                  }`}
+                >
                   Assignee:{" "}
                   <Link href={`/people/${task.assignee.id}`} className="underline">
                     {task.assignee.firstName} {task.assignee.lastName}
                   </Link>
                   {" · "}Due: {formatDateTime(task.dueAt)}
+                  {isTaskOverdue(task) ? (
+                    <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                      Overdue
+                    </span>
+                  ) : null}
                 </p>
+                {task.sourceNote ? (
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    Note:{" "}
+                    <Link href={`/notes/${task.sourceNote.id}`} className="underline">
+                      {task.sourceNote.body.length > 90 ? `${task.sourceNote.body.slice(0, 90)}…` : task.sourceNote.body}
+                    </Link>
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>

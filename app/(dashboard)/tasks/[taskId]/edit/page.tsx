@@ -160,6 +160,7 @@ export default async function EditTaskPage({
   const sourceEventId = hasSearchParam(resolvedSearchParams, "sourceEventId")
     ? readSearchParam(resolvedSearchParams, "sourceEventId")
     : task.sourceEventId ?? "";
+  const assigneeExists = people.some((person) => person.id === assigneePersonId);
   const generalError = readSearchParam(resolvedSearchParams, "error");
 
   return (
@@ -231,12 +232,20 @@ export default async function EditTaskPage({
               defaultValue={assigneePersonId}
               className="w-full rounded-md border px-3 py-2 text-sm"
             >
+              {!assigneeExists && assigneePersonId ? (
+                <option value={assigneePersonId}>Current assignee is no longer valid in this organization</option>
+              ) : null}
               {people.map((person) => (
                 <option key={person.id} value={person.id}>
                   {person.firstName} {person.lastName}
                 </option>
               ))}
             </select>
+            {!assigneeExists && assigneePersonId ? (
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                Reassign this task to an active person in the current organization before saving.
+              </p>
+            ) : null}
             {hasSearchParam(resolvedSearchParams, "assigneePersonIdError") ? (
               <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "assigneePersonIdError")}</p>
             ) : null}

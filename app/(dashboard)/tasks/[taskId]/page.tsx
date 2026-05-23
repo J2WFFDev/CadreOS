@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
-import { formatDateTime, formatEnumLabel } from "@/lib/follow-up-tasks";
+import { formatDateTime, formatEnumLabel, getTaskStatusBadgeClassName, isTaskOverdue } from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -51,6 +51,7 @@ export default async function TaskDetailPage({
         createdBy: { id: string; firstName: string; lastName: string };
         sourceNote: { id: string; body: string } | null;
         sourceEvent: { id: string; title: string } | null;
+        sourceInboxItem: { id: string; category: string; status: string } | null;
       }
     | null = null;
   let queryErrorMessage = "Unable to load task details right now. Please try again later.";
@@ -71,6 +72,7 @@ export default async function TaskDetailPage({
         createdBy: { select: { id: true, firstName: true, lastName: true } },
         sourceNote: { select: { id: true, body: true } },
         sourceEvent: { select: { id: true, title: true } },
+        sourceInboxItem: { select: { id: true, category: true, status: true } },
       },
     });
   } catch (error) {
@@ -99,6 +101,8 @@ export default async function TaskDetailPage({
     );
   }
 
+  const isOverdue = isTaskOverdue(task);
+
   return (
     <section className="space-y-6">
       <div className="space-y-1">
@@ -118,11 +122,23 @@ export default async function TaskDetailPage({
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="font-medium">Status</dt>
-            <dd className="text-zinc-600 dark:text-zinc-400">{formatEnumLabel(task.status)}</dd>
+            <dd className="space-x-2">
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getTaskStatusBadgeClassName(task.status)}`}>
+                {formatEnumLabel(task.status)}
+              </span>
+              {task.status === "BLOCKED" ? <span className="text-xs text-red-700 dark:text-red-300">Blocked</span> : null}
+            </dd>
           </div>
           <div>
             <dt className="font-medium">Due date</dt>
-            <dd className="text-zinc-600 dark:text-zinc-400">{formatDateTime(task.dueAt)}</dd>
+            <dd className={isOverdue ? "text-red-700 dark:text-red-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {formatDateTime(task.dueAt)}
+              {isOverdue ? (
+                <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                  Overdue
+                </span>
+              ) : null}
+            </dd>
           </div>
           <div>
             <dt className="font-medium">Assignee</dt>
@@ -159,6 +175,18 @@ export default async function TaskDetailPage({
                 <Link href={`/events/${task.sourceEvent.id}`} className="underline">
                   {task.sourceEvent.title}
                 </Link>
+              ) : (
+                "—"
+              )}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="font-medium">Source inbox routing item</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {task.sourceInboxItem ? (
+                <span>
+                  {task.sourceInboxItem.category} · {formatEnumLabel(task.sourceInboxItem.status)} (<code>{task.sourceInboxItem.id}</code>)
+                </span>
               ) : (
                 "—"
               )}

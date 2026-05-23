@@ -2,7 +2,13 @@ import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
-import { compareFollowUpTasks, formatDateTime, formatEnumLabel } from "@/lib/follow-up-tasks";
+import {
+  compareFollowUpTasks,
+  formatDateTime,
+  formatEnumLabel,
+  getTaskStatusBadgeClassName,
+  isTaskOverdue,
+} from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -57,6 +63,7 @@ export default async function NoteDetailPage({
           status: string;
           dueAt: Date | null;
           assignee: { id: string; firstName: string; lastName: string };
+          sourceEvent: { id: string; title: string } | null;
         }>;
       }
     | null = null;
@@ -85,6 +92,7 @@ export default async function NoteDetailPage({
             status: true,
             dueAt: true,
             assignee: { select: { id: true, firstName: true, lastName: true } },
+            sourceEvent: { select: { id: true, title: true } },
           },
         },
       },
@@ -224,17 +232,36 @@ export default async function NoteDetailPage({
                   <Link href={`/tasks/${task.id}`} className="font-medium underline">
                     {task.title}
                   </Link>
-                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${getTaskStatusBadgeClassName(task.status)}`}
+                  >
                     {formatEnumLabel(task.status)}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                <p
+                  className={`mt-1 text-sm ${
+                    isTaskOverdue(task) ? "text-red-700 dark:text-red-300" : "text-zinc-600 dark:text-zinc-400"
+                  }`}
+                >
                   Assignee:{" "}
                   <Link href={`/people/${task.assignee.id}`} className="underline">
                     {task.assignee.firstName} {task.assignee.lastName}
                   </Link>
                   {" · "}Due: {formatDateTime(task.dueAt)}
+                  {isTaskOverdue(task) ? (
+                    <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                      Overdue
+                    </span>
+                  ) : null}
                 </p>
+                {task.sourceEvent ? (
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    Event:{" "}
+                    <Link href={`/events/${task.sourceEvent.id}`} className="underline">
+                      {task.sourceEvent.title}
+                    </Link>
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>
