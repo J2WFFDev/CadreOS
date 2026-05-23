@@ -8,6 +8,7 @@ import {
   evaluateStaffOnlyContentAccess,
   logAuthorizationDecision,
   resolveActorRoleContext,
+  resolveStaffScopeResolution,
 } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
@@ -243,6 +244,83 @@ export default async function DashboardPage() {
     );
   }
 
+  const staffScopeResolution = resolveStaffScopeResolution(actorRoleContext);
+  if (
+    !staffScopeResolution.allowAllStaffScope &&
+    (staffScopeResolution.hasAmbiguousScopeAssignments || !staffScopeResolution.hasExplicitScopedAccess)
+  ) {
+    return (
+      <section className="space-y-6">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Operational overview for coaches and program operators.
+          </p>
+        </div>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Your role scope is incomplete for safe operational dashboard visibility. Contact an organization admin.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  const scopedEventWhere = staffScopeResolution.allowAllStaffScope
+    ? {}
+    : {
+        OR: [
+          ...(staffScopeResolution.allowedTeamIds.length > 0
+            ? [{ teamId: { in: staffScopeResolution.allowedTeamIds } }]
+            : []),
+          ...(staffScopeResolution.allowedProgramIds.length > 0
+            ? [{ programId: { in: staffScopeResolution.allowedProgramIds } }]
+            : []),
+        ],
+      };
+  const scopedNoteWhere = staffScopeResolution.allowAllStaffScope
+    ? {}
+    : {
+        OR: [
+          ...(staffScopeResolution.allowedTeamIds.length > 0
+            ? [{ teamId: { in: staffScopeResolution.allowedTeamIds } }]
+            : []),
+          ...(staffScopeResolution.allowedTeamIds.length > 0
+            ? [{ event: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+            : []),
+          ...(staffScopeResolution.allowedProgramIds.length > 0
+            ? [{ event: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
+            : []),
+          ...(staffScopeResolution.allowedProgramIds.length > 0
+            ? [{ team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
+            : []),
+        ],
+      };
+  const scopedTaskWhere = staffScopeResolution.allowAllStaffScope
+    ? {}
+    : {
+        OR: [
+          ...(staffScopeResolution.allowedTeamIds.length > 0
+            ? [{ sourceEvent: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+            : []),
+          ...(staffScopeResolution.allowedTeamIds.length > 0
+            ? [{ sourceNote: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+            : []),
+          ...(staffScopeResolution.allowedTeamIds.length > 0
+            ? [{ sourceNote: { is: { event: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } } } }]
+            : []),
+          ...(staffScopeResolution.allowedProgramIds.length > 0
+            ? [{ sourceEvent: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
+            : []),
+          ...(staffScopeResolution.allowedProgramIds.length > 0
+            ? [{ sourceNote: { is: { event: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
+            : []),
+          ...(staffScopeResolution.allowedProgramIds.length > 0
+            ? [{ sourceNote: { is: { team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
+            : []),
+        ],
+      };
+
   const guardianAccess = await resolveGuardianRelationshipAccess({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
@@ -419,18 +497,21 @@ export default async function DashboardPage() {
       db.event.count({
         where: {
           organizationId: scope.organizationId,
+          ...scopedEventWhere,
           startsAt: { gte: currentTime },
         },
       }),
       db.observationNote.count({
         where: {
           organizationId: scope.organizationId,
+          ...scopedNoteWhere,
           createdAt: { gte: recentNotesThreshold },
         },
       }),
       db.event.findMany({
         where: {
           organizationId: scope.organizationId,
+          ...scopedEventWhere,
           startsAt: { gte: currentTime },
         },
         select: {
@@ -447,6 +528,7 @@ export default async function DashboardPage() {
       db.event.findMany({
         where: {
           organizationId: scope.organizationId,
+          ...scopedEventWhere,
           startsAt: { lte: currentTime },
           teamId: { not: null },
         },
@@ -473,6 +555,7 @@ export default async function DashboardPage() {
       db.followUpTask.count({
         where: {
           organizationId: scope.organizationId,
+          ...scopedTaskWhere,
           status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS] },
           dueAt: { lt: currentTime },
         },
@@ -480,6 +563,7 @@ export default async function DashboardPage() {
       db.followUpTask.findMany({
         where: {
           organizationId: scope.organizationId,
+          ...scopedTaskWhere,
           status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS] },
           dueAt: { lt: currentTime },
         },
@@ -496,12 +580,14 @@ export default async function DashboardPage() {
       db.followUpTask.count({
         where: {
           organizationId: scope.organizationId,
+          ...scopedTaskWhere,
           status: TaskStatus.BLOCKED,
         },
       }),
       db.followUpTask.findMany({
         where: {
           organizationId: scope.organizationId,
+          ...scopedTaskWhere,
           status: TaskStatus.BLOCKED,
         },
         select: {
@@ -517,6 +603,7 @@ export default async function DashboardPage() {
       db.followUpTask.count({
         where: {
           organizationId: scope.organizationId,
+          ...scopedTaskWhere,
           status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED] },
           updatedAt: {
             lt: new Date(currentTime.getTime() - STALE_UNRESOLVED_TASK_WINDOW_DAYS * 24 * 60 * 60 * 1000),
@@ -526,6 +613,7 @@ export default async function DashboardPage() {
       db.followUpTask.findMany({
         where: {
           organizationId: scope.organizationId,
+          ...scopedTaskWhere,
           status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED] },
           updatedAt: {
             lt: new Date(currentTime.getTime() - STALE_UNRESOLVED_TASK_WINDOW_DAYS * 24 * 60 * 60 * 1000),
@@ -545,6 +633,7 @@ export default async function DashboardPage() {
       db.followUpTask.count({
         where: {
           organizationId: scope.organizationId,
+          ...scopedTaskWhere,
           status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED] },
           sourceNoteId: null,
           sourceEventId: null,
@@ -554,6 +643,7 @@ export default async function DashboardPage() {
       db.followUpTask.findMany({
         where: {
           organizationId: scope.organizationId,
+          ...scopedTaskWhere,
           status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED] },
           sourceNoteId: null,
           sourceEventId: null,
@@ -571,7 +661,7 @@ export default async function DashboardPage() {
         take: 5,
       }),
       db.observationNote.findMany({
-        where: { organizationId: scope.organizationId },
+        where: { organizationId: scope.organizationId, ...scopedNoteWhere },
         select: {
           id: true,
           body: true,
@@ -586,6 +676,7 @@ export default async function DashboardPage() {
       db.event.findMany({
         where: {
           organizationId: scope.organizationId,
+          ...scopedEventWhere,
           startsAt: {
             lte: new Date(currentTime.getTime() + EVENT_REVIEW_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000),
           },
@@ -616,6 +707,7 @@ export default async function DashboardPage() {
       db.observationNote.findMany({
         where: {
           organizationId: scope.organizationId,
+          ...scopedNoteWhere,
           updatedAt: { gte: new Date(currentTime.getTime() - RECENT_NOTE_WINDOW_DAYS * 24 * 60 * 60 * 1000) },
         },
         select: {

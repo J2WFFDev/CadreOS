@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RoleType } from "@prisma/client";
+import { NoteVisibility, RoleType } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
@@ -14,6 +14,7 @@ import {
   evaluateStaffOnlyContentAccess,
   logAuthorizationDecision,
   resolveActorRoleContext,
+  resolveStaffScopeResolution,
 } from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -30,6 +31,23 @@ function readParam(params: SearchParams, key: string): string {
   const val = params[key];
   if (Array.isArray(val)) return val[0] ?? "";
   return val ?? "";
+}
+
+const staffScopeResolution = resolveStaffScopeResolution(actorRoleContext);
+if (
+  !staffScopeResolution.allowAllStaffScope &&
+  (staffScopeResolution.hasAmbiguousScopeAssignments || !staffScopeResolution.hasExplicitScopedAccess)
+) {
+  return (
+    <section className="space-y-4">
+      <h2 className="text-2xl font-semibold tracking-tight">Notes</h2>
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Your role scope is incomplete for safe note visibility evaluation. Contact an organization admin.
+        </p>
+      </div>
+    </section>
+  );
 }
 
 function buildHref(pathname: string, filters: Record<string, string>) {
@@ -154,7 +172,7 @@ export default async function NotesPage({
     | Array<{
         id: string;
         body: string;
-        visibility: string;
+        visibility: NoteVisibility;
         createdAt: Date;
         updatedAt: Date;
         author: { id: string; firstName: string; lastName: string };
@@ -183,10 +201,32 @@ export default async function NotesPage({
   let queryErrorMessage = "Unable to load notes right now. Please try again later.";
 
   try {
-    const [fetchedNotes, fetchedTeams, fetchedPeople, fetchedEvents] = await Promise.all([
+    const noteScopeWhere =
+      staffScopeResolution.allowAllStaffScope
+        ? {}
+        : {
+            OR: [
+              ...(staffScopeResolution.allowedTeamIds.length > 0
+                ? [{ teamId: { in: staffScopeResolution.allowedTeamIds } }]
+                : []),
+              ...(staffScopeResolution.allowedTeamIds.length > 0
+                ? [{ event: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
+                : []),
+              ...(staffScopeResolution.allowedProgramIds.length > 0
+                ? [{ event: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
+                : []),
+              ...(staffScopeResolution.allowedProgramIds.length > 0
+                ? [{ team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
+                : []),
+            ],
+          };
+
+    const [fetchedNotes, fetchedTeams, fetchedEvents] = await Promise.all([
       db.observationNote.findMany({
         where: {
           organizationId: scope.organizationId,
+          visibility: NoteVisibility.STAFF_ONLY,
+          ...noteScopeWhere,
           ...(filterTeamId ? { teamId: filterTeamId } : {}),
           ...(filterAthletePersonId ? { athletePersonId: filterAthletePersonId } : {}),
           ...(filterEventId ? { eventId: filterEventId } : {}),
@@ -275,17 +315,40 @@ export default async function NotesPage({
         orderBy: [{ createdAt: "desc" }],
       }),
       db.team.findMany({
-        where: { organizationId: scope.organizationId },
+        where: {
+          organizationId: scope.organizationId,
+          ...(staffScopeResolution.allowAllStaffScope
+            ? {}
+            : {
+                OR: [
+                  ...(staffScopeResolution.allowedTeamIds.length > 0
+                    ? [{ id: { in: staffScopeResolution.allowedTeamIds } }]
+                    : []),
+                  ...(staffScopeResolution.allowedProgramIds.length > 0
+                    ? [{ programId: { in: staffScopeResolution.allowedProgramIds } }]
+                    : []),
+                ],
+              }),
+        },
         select: { id: true, name: true },
         orderBy: [{ name: "asc" }],
       }),
-      db.person.findMany({
-        where: { organizationId: scope.organizationId },
-        select: { id: true, firstName: true, lastName: true },
-        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-      }),
       db.event.findMany({
-        where: { organizationId: scope.organizationId },
+        where: {
+          organizationId: scope.organizationId,
+          ...(staffScopeResolution.allowAllStaffScope
+            ? {}
+            : {
+                OR: [
+                  ...(staffScopeResolution.allowedTeamIds.length > 0
+                    ? [{ teamId: { in: staffScopeResolution.allowedTeamIds } }]
+                    : []),
+                  ...(staffScopeResolution.allowedProgramIds.length > 0
+                    ? [{ programId: { in: staffScopeResolution.allowedProgramIds } }]
+                    : []),
+                ],
+              }),
+        },
         select: { id: true, title: true },
         orderBy: [{ startsAt: "desc" }],
         take: 100,
@@ -293,7 +356,17 @@ export default async function NotesPage({
     ]);
     notes = fetchedNotes;
     filterTeams = fetchedTeams;
-    filterPeople = fetchedPeople;
+    const peopleMap = new Map<string, { id: string; firstName: string; lastName: string }>();
+    for (const note of fetchedNotes) {
+      peopleMap.set(note.author.id, note.author);
+      if (note.athlete) {
+        peopleMap.set(note.athlete.id, note.athlete);
+      }
+    }
+    filterPeople = [...peopleMap.values()].sort(
+      (left, right) =>
+        left.lastName.localeCompare(right.lastName) || left.firstName.localeCompare(right.firstName),
+    );
     filterEvents = fetchedEvents;
   } catch (error) {
     notes = null;

@@ -93,7 +93,8 @@ export default async function TaskDetailPage({
               id: string;
               body: string;
               teamId: string | null;
-              event: { teamId: string | null } | null;
+              team: { programId: string } | null;
+              event: { teamId: string | null; programId: string } | null;
               athlete: {
                 id: string;
                 firstName: string;
@@ -108,7 +109,7 @@ export default async function TaskDetailPage({
               } | null;
             }
           | null;
-        sourceEvent: { id: string; title: string; teamId: string | null } | null;
+        sourceEvent: { id: string; title: string; teamId: string | null; programId: string } | null;
         sourceInboxItem: { id: string; category: string; status: string } | null;
       }
     | null = null;
@@ -133,7 +134,8 @@ export default async function TaskDetailPage({
             id: true,
             body: true,
             teamId: true,
-            event: { select: { teamId: true } },
+            team: { select: { programId: true } },
+            event: { select: { teamId: true, programId: true } },
             athlete: {
               select: {
                 id: true,
@@ -162,7 +164,7 @@ export default async function TaskDetailPage({
             },
           },
         },
-        sourceEvent: { select: { id: true, title: true, teamId: true } },
+        sourceEvent: { select: { id: true, title: true, teamId: true, programId: true } },
         sourceInboxItem: { select: { id: true, category: true, status: true } },
       },
     });
@@ -221,7 +223,9 @@ export default async function TaskDetailPage({
 
   if (actorRoleContext.isStaffMember) {
     const taskTeamId = task.sourceEvent?.teamId ?? task.sourceNote?.teamId ?? task.sourceNote?.event?.teamId ?? null;
-    const teamAccessDecision = evaluateTeamScopedContentAccess(actorRoleContext, taskTeamId);
+    const taskTeamProgramId =
+      task.sourceEvent?.programId ?? task.sourceNote?.team?.programId ?? task.sourceNote?.event?.programId ?? null;
+    const teamAccessDecision = evaluateTeamScopedContentAccess(actorRoleContext, taskTeamId, taskTeamProgramId);
     logAuthorizationDecision(teamAccessDecision, {
       workflow: "tasks.detail.team-scope",
       entityType: "followUpTask",

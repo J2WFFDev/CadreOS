@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RoleType } from "@prisma/client";
+import { NoteVisibility, RoleType } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
@@ -16,6 +16,7 @@ import {
   formatGuardianOperationalIndicator,
 } from "@/lib/guardian-operational-context";
 import {
+  canReadObservationNoteByVisibility,
   evaluateStaffOnlyContentAccess,
   evaluateTeamScopedContentAccess,
   logAuthorizationDecision,
@@ -63,7 +64,7 @@ export default async function NoteDetailPage({
     | {
         id: string;
         body: string;
-        visibility: string;
+        visibility: NoteVisibility;
         createdAt: Date;
         updatedAt: Date;
         author: { id: string; firstName: string; lastName: string };
@@ -81,8 +82,8 @@ export default async function NoteDetailPage({
               }>;
             }
           | null;
-        team: { id: string; name: string } | null;
-        event: { id: string; title: string; teamId: string | null } | null;
+        team: { id: string; name: string; programId: string } | null;
+        event: { id: string; title: string; teamId: string | null; programId: string } | null;
         tasks: Array<{
           id: string;
           title: string;
@@ -158,8 +159,8 @@ export default async function NoteDetailPage({
             },
           },
         },
-        team: { select: { id: true, name: true } },
-        event: { select: { id: true, title: true, teamId: true } },
+        team: { select: { id: true, name: true, programId: true } },
+        event: { select: { id: true, title: true, teamId: true, programId: true } },
         tasks: {
           select: {
             id: true,
@@ -199,8 +200,22 @@ export default async function NoteDetailPage({
     );
   }
 
+  if (!canReadObservationNoteByVisibility(actorRoleContext, note.visibility)) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Note</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            You do not have access to this note visibility category.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   const noteTeamId = note.team?.id ?? note.event?.teamId ?? null;
-  const teamAccessDecision = evaluateTeamScopedContentAccess(actorRoleContext, noteTeamId);
+  const noteTeamProgramId = note.team?.programId ?? note.event?.programId ?? null;
+  const teamAccessDecision = evaluateTeamScopedContentAccess(actorRoleContext, noteTeamId, noteTeamProgramId);
   logAuthorizationDecision(teamAccessDecision, {
     workflow: "notes.detail.team-scope",
     entityType: "observationNote",

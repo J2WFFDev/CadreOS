@@ -1,4 +1,4 @@
-import { TaskStatus, Prisma } from "@prisma/client";
+import { NoteVisibility, TaskStatus, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
@@ -155,7 +155,7 @@ export async function POST(request: Request) {
           id: parsed.data.sourceNoteId,
           organizationId: scope.organizationId,
         },
-        select: { id: true },
+        select: { id: true, eventId: true, visibility: true },
       });
 
       if (!sourceNote) {
@@ -164,6 +164,30 @@ export async function POST(request: Request) {
             values,
             fieldErrors: { sourceNoteId: "Select a valid note in the active organization." },
             error: "Source note selection is invalid.",
+          }),
+          303,
+        );
+      }
+
+      if (sourceNote.visibility !== NoteVisibility.STAFF_ONLY) {
+        return NextResponse.redirect(
+          buildErrorRedirectUrl(request.url, {
+            values,
+            fieldErrors: { sourceNoteId: "Selected note visibility is not supported for task linkage." },
+            error: "Source note visibility is unsupported.",
+          }),
+          303,
+        );
+      }
+
+      if (parsed.data.sourceEventId && sourceNote.eventId !== parsed.data.sourceEventId) {
+        return NextResponse.redirect(
+          buildErrorRedirectUrl(request.url, {
+            values,
+            fieldErrors: {
+              sourceEventId: "Selected event must match the source note event context.",
+            },
+            error: "Source note/event context is ambiguous.",
           }),
           303,
         );

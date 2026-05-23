@@ -147,7 +147,7 @@ export async function POST(request: Request) {
           id: parsed.data.eventId,
           organizationId: scope.organizationId,
         },
-        select: { id: true },
+        select: { id: true, teamId: true },
       });
 
       if (!event) {
@@ -156,6 +156,17 @@ export async function POST(request: Request) {
             values,
             fieldErrors: { eventId: "Select a valid event in the active organization." },
             error: "Event selection is invalid.",
+          }),
+          303,
+        );
+      }
+
+      if (parsed.data.teamId && parsed.data.teamId !== event.teamId) {
+        return NextResponse.redirect(
+          buildErrorRedirectUrl(request.url, {
+            values,
+            fieldErrors: { teamId: "Selected team must match the linked event team." },
+            error: "Team and event context is ambiguous.",
           }),
           303,
         );
