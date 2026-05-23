@@ -2,6 +2,7 @@ import { RoleType, ScopeType } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
+import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
 import { db } from "@/lib/db";
 import {
   deriveGuardianOperationalContext,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/guardian-operational-context";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { getOperationalHistory } from "@/lib/operational-history";
 import { selectSeededOrCurrentSeason } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
@@ -353,6 +355,12 @@ export default async function TeamDetailsPage({
     readSearchParam(resolvedSearchParams, "teamRolePersonId") || organizationPeople[0]?.id || "";
   const selectedTeamRoleType =
     (readSearchParam(resolvedSearchParams, "teamRoleType") || RoleType.COACH) as RoleType;
+  const teamOperationalHistory = await getOperationalHistory({
+    organizationId: scope.organizationId,
+    teamId: team.id,
+    limit: 10,
+    sinceDays: 45,
+  });
 
   return (
     <section className="space-y-6">
@@ -625,6 +633,21 @@ export default async function TeamDetailsPage({
           </p>
         )}
       </div>
+
+      <OperationalHistoryPanel
+        id="operational-history"
+        title="Operational history"
+        description="Recent team-linked activity derived from roster, assignment, event, note, task, and attendance workflows."
+        emptyMessage="No recent team-linked operational history was found in the current review window."
+        items={teamOperationalHistory}
+        action={{ href: `/notes?teamId=${team.id}`, label: "Open team notes" }}
+        footer={
+          <>
+            Team history reflects current roster memberships and role assignments. Removals and full audit reconstruction
+            are intentionally deferred until dedicated audit/Entry history work exists.
+          </>
+        }
+      />
 
       <div id="add-roster-member" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Add roster member</h3>

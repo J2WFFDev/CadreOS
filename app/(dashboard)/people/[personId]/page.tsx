@@ -2,9 +2,11 @@ import { RoleType, ScopeType } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
+import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
 import { db } from "@/lib/db";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { getOperationalHistory } from "@/lib/operational-history";
 
 export const dynamic = "force-dynamic";
 
@@ -300,6 +302,12 @@ export default async function PersonDetailsPage({
     (link) => link.guardian._count.userAccounts > 0 && link.guardian.roles.length === 0,
   );
   const hasPendingOrIncompleteRelationshipSupport = hasGuardianAccountLinkGap || hasInactiveGuardianAccountSignal;
+  const personOperationalHistory = await getOperationalHistory({
+    organizationId: scope.organizationId,
+    personId: person.id,
+    limit: 10,
+    sinceDays: 45,
+  });
 
   return (
     <section className="space-y-6">
@@ -515,6 +523,21 @@ export default async function PersonDetailsPage({
           </ul>
         )}
       </div>
+
+      <OperationalHistoryPanel
+        id="operational-history"
+        title="Operational history"
+        description="Recent person-linked activity derived from tasks, notes, attendance, roster membership, and role assignment context."
+        emptyMessage="No recent person-linked operational history was found in the current review window."
+        items={personOperationalHistory}
+        action={{ href: `/tasks?assigneePersonId=${person.id}`, label: "Open assigned tasks" }}
+        footer={
+          <>
+            Person history includes items where this person is the assignee, creator/author, participant, or direct
+            roster/role subject when that context is derivable from current records.
+          </>
+        }
+      />
     </section>
   );
 }
