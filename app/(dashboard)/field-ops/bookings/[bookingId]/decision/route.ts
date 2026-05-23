@@ -82,6 +82,7 @@ export async function POST(
         teamId: true,
         eventId: true,
         approvalStatus: true,
+        status: true,
       },
     });
 
@@ -108,6 +109,20 @@ export async function POST(
         buildErrorRedirectUrl(request.url, bookingId, {
           decision,
           error: "Only pending booking requests can be approved or denied.",
+        }),
+        303,
+      );
+    }
+
+    if (
+      booking.status === BookingStatus.COMPLETED ||
+      booking.status === BookingStatus.CANCELED ||
+      booking.status === BookingStatus.DENIED
+    ) {
+      return NextResponse.redirect(
+        buildErrorRedirectUrl(request.url, bookingId, {
+          decision,
+          error: "Approval actions are unavailable for completed, canceled, or denied bookings.",
         }),
         303,
       );

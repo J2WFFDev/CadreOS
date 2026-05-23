@@ -11,6 +11,14 @@ import { isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
+function getStatusBadgeClass(status: string) {
+  if (status === "ACTIVE") {
+    return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200";
+  }
+
+  return "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200";
+}
+
 export default async function FieldOpsFacilitiesPage() {
   const scope = await getOrganizationScope();
 
@@ -48,30 +56,40 @@ export default async function FieldOpsFacilitiesPage() {
         _count: { resources: number; bookings: number };
       }>
     | null = null;
+  let activeResourceCount = 0;
   let queryErrorMessage = "Unable to load FieldOps facilities right now. Please try again later.";
 
   try {
-    facilities = await db.facility.findMany({
-      where: { organizationId: scope.organizationId },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        addressLine1: true,
-        addressLine2: true,
-        city: true,
-        state: true,
-        postalCode: true,
-        status: true,
-        _count: {
-          select: {
-            resources: true,
-            bookings: true,
+    [facilities, activeResourceCount] = await Promise.all([
+      db.facility.findMany({
+        where: { organizationId: scope.organizationId },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          addressLine1: true,
+          addressLine2: true,
+          city: true,
+          state: true,
+          postalCode: true,
+          status: true,
+          _count: {
+            select: {
+              resources: true,
+              bookings: true,
+            },
           },
         },
-      },
-      orderBy: [{ name: "asc" }],
-    });
+        orderBy: [{ name: "asc" }],
+      }),
+      db.facilityResource.count({
+        where: {
+          organizationId: scope.organizationId,
+          status: "ACTIVE",
+          facility: { status: "ACTIVE" },
+        },
+      }),
+    ]);
   } catch (error) {
     if (isSchemaUnavailableError(error)) {
       queryErrorMessage = "Database schema is not available yet. Run database setup before loading FieldOps facilities.";
@@ -94,14 +112,18 @@ export default async function FieldOpsFacilitiesPage() {
         description="Read-only view of facilities, resources, and bookings for the active organization."
       />
       <FieldOpsSubnav current="facilities" />
-      <div className="flex justify-end">
-        <Link
-          href="/field-ops/bookings/new"
-          className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-        >
-          New booking request
-        </Link>
-      </div>
+      {activeResourceCount > 0 ? (
+        <div className="flex justify-end">
+          <Link
+            href="/field-ops/bookings/new"
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            New booking request
+          </Link>
+        </div>
+      ) : (
+        <EmptyState message="No active resources are available for new booking requests." />
+      )}
 
       {facilities.length === 0 ? (
         <EmptyState message="No FieldOps facilities have been added for this organization yet." />
@@ -120,10 +142,16 @@ export default async function FieldOpsFacilitiesPage() {
                     {facility.description ?? "No facility description has been recorded yet."}
                   </p>
                 </div>
-                <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(facility.status)}`}>
                   {formatFieldOpsEnum(facility.status)}
                 </span>
               </div>
+
+              {facility.status !== "ACTIVE" ? (
+                <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">
+                  This facility is inactive and should not receive new booking requests.
+                </p>
+              ) : null}
 
               <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
                 <div className="sm:col-span-3">

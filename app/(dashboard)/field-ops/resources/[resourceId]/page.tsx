@@ -12,6 +12,14 @@ import { isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
+function getStatusBadgeClass(status: string) {
+  if (status === "ACTIVE") {
+    return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200";
+  }
+
+  return "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200";
+}
+
 export default async function ResourceDetailsPage({
   params,
 }: {
@@ -48,7 +56,7 @@ export default async function ResourceDetailsPage({
         description: string | null;
         capacity: number | null;
         status: string;
-        facility: { id: string; name: string };
+        facility: { id: string; name: string; status: string };
         bookings: Array<{
           id: string;
           title: string;
@@ -86,6 +94,7 @@ export default async function ResourceDetailsPage({
           select: {
             id: true,
             name: true,
+            status: true,
           },
         },
         bookings: {
@@ -148,7 +157,7 @@ export default async function ResourceDetailsPage({
             {resource.facility.name}
           </Link>
         </div>
-        <FieldOpsSubnav current="facilities" />
+        <FieldOpsSubnav current="resources" />
       </div>
 
       <div className="space-y-1">
@@ -159,13 +168,23 @@ export default async function ResourceDetailsPage({
               {resource.description ?? "No resource description has been recorded yet."}
             </p>
           </div>
-          <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(resource.status)}`}>
             {formatFieldOpsEnum(resource.status)}
           </span>
         </div>
+        {resource.status !== "ACTIVE" ? (
+          <p className="text-sm text-amber-700 dark:text-amber-300">
+            This resource is inactive and should not receive new booking requests.
+          </p>
+        ) : null}
+        {resource.facility.status !== "ACTIVE" ? (
+          <p className="text-sm text-amber-700 dark:text-amber-300">
+            The parent facility is inactive, so new booking requests are unavailable.
+          </p>
+        ) : null}
       </div>
 
-      <dl className="grid gap-3 rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900 sm:grid-cols-3">
+      <dl className="grid gap-3 rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900 sm:grid-cols-4">
         <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Facility</dt>
           <dd className="text-zinc-600 dark:text-zinc-400">
@@ -173,6 +192,10 @@ export default async function ResourceDetailsPage({
               {resource.facility.name}
             </Link>
           </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Facility status</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">{formatFieldOpsEnum(resource.facility.status)}</dd>
         </div>
         <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Type</dt>
@@ -194,12 +217,18 @@ export default async function ResourceDetailsPage({
             >
               View all bookings
             </Link>
-            <Link
-              href={`/field-ops/bookings/new?facilityId=${resource.facility.id}&resourceId=${resource.id}`}
-              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-            >
-              New booking request
-            </Link>
+            {resource.status === "ACTIVE" && resource.facility.status === "ACTIVE" ? (
+              <Link
+                href={`/field-ops/bookings/new?facilityId=${resource.facility.id}&resourceId=${resource.id}`}
+                className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              >
+                New booking request
+              </Link>
+            ) : (
+              <span className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+                New requests unavailable while resource or facility is inactive
+              </span>
+            )}
           </div>
         </div>
         {resource.bookings.length === 0 ? (

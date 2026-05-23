@@ -27,6 +27,38 @@ function hasSearchParam(searchParams: SearchParams, key: string) {
   return readSearchParam(searchParams, key).length > 0;
 }
 
+function getBookingStatusBadgeClass(status: string) {
+  if (status === "APPROVED") {
+    return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200";
+  }
+
+  if (status === "DENIED" || status === "CANCELED") {
+    return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200";
+  }
+
+  if (status === "COMPLETED") {
+    return "bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100";
+  }
+
+  return "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200";
+}
+
+function getApprovalBadgeClass(approvalStatus: string) {
+  if (approvalStatus === "APPROVED") {
+    return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200";
+  }
+
+  if (approvalStatus === "DENIED") {
+    return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200";
+  }
+
+  if (approvalStatus === "PENDING") {
+    return "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200";
+  }
+
+  return "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200";
+}
+
 export default async function BookingDetailsPage({
   params,
   searchParams,
@@ -70,8 +102,8 @@ export default async function BookingDetailsPage({
         approvalStatus: string;
         requestedBy: { id: string; firstName: string; lastName: string };
         approvedBy: { id: string; firstName: string; lastName: string } | null;
-        facility: { id: string; name: string };
-        resource: { id: string; name: string };
+        facility: { id: string; name: string; status: string };
+        resource: { id: string; name: string; status: string };
         program: { id: string; name: string } | null;
         team: { id: string; name: string } | null;
         event: { id: string; title: string } | null;
@@ -117,8 +149,8 @@ export default async function BookingDetailsPage({
             lastName: true,
           },
         },
-        facility: { select: { id: true, name: true } },
-        resource: { select: { id: true, name: true } },
+        facility: { select: { id: true, name: true, status: true } },
+        resource: { select: { id: true, name: true, status: true } },
         program: { select: { id: true, name: true } },
         team: { select: { id: true, name: true } },
         event: { select: { id: true, title: true } },
@@ -171,6 +203,9 @@ export default async function BookingDetailsPage({
   const hasConflictWarning = booking.conflicts.length > 0;
   const hasBlockingConflict = booking.conflicts.some((conflict) => conflict.severity === "BLOCKING");
   const isPendingApproval = booking.approvalStatus === "PENDING";
+  const isDecisionLockedByStatus = ["COMPLETED", "CANCELED", "DENIED"].includes(booking.status);
+  const canShowApprovalActions = isPendingApproval && !isDecisionLockedByStatus;
+  const hasInactiveContext = booking.facility.status !== "ACTIVE" || booking.resource.status !== "ACTIVE";
   const canApproveOrDeny =
     scope.auth.clerkUserId &&
     (await Promise.all([
@@ -196,7 +231,7 @@ export default async function BookingDetailsPage({
     <section className="space-y-6">
       <div className="space-y-3">
         <BackLink href="/field-ops/bookings" label="Bookings" />
-        <FieldOpsSubnav current="bookings" />
+        <FieldOpsSubnav current={booking.approvalStatus === "PENDING" ? "approvals" : "bookings"} />
       </div>
 
       <div className="space-y-1">
@@ -213,13 +248,23 @@ export default async function BookingDetailsPage({
               </Link>
             </p>
           </div>
-          <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-            {formatFieldOpsEnum(booking.status)}
-          </span>
+          <div className="flex flex-wrap gap-2">
+            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getBookingStatusBadgeClass(booking.status)}`}>
+              Status: {formatFieldOpsEnum(booking.status)}
+            </span>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getApprovalBadgeClass(booking.approvalStatus)}`}>
+              Approval: {formatFieldOpsEnum(booking.approvalStatus)}
+            </span>
+          </div>
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {booking.description ?? "No booking description has been provided."}
         </p>
+        {hasInactiveContext ? (
+          <p className="text-sm text-amber-700 dark:text-amber-300">
+            Inactive facility/resource context is attached to this booking.
+          </p>
+        ) : null}
       </div>
 
       {readSearchParam(resolvedSearchParams, "decisionOutcome") === "approved" ? (
@@ -251,7 +296,7 @@ export default async function BookingDetailsPage({
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-lg font-medium">Approval decision</h3>
-        {isPendingApproval ? (
+        {canShowApprovalActions ? (
           canApproveOrDeny ? (
             <div className="mt-3 space-y-3">
               {hasBlockingConflict ? (
@@ -286,6 +331,10 @@ export default async function BookingDetailsPage({
               You do not have permission to approve or deny this booking request.
             </p>
           )
+        ) : isDecisionLockedByStatus ? (
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            Approval actions are unavailable once a booking is denied, canceled, or completed.
+          </p>
         ) : (
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
             This booking request has already been decided.
@@ -304,11 +353,22 @@ export default async function BookingDetailsPage({
         </div>
         <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Precheck</dt>
-          <dd className="text-zinc-600 dark:text-zinc-400">{formatFieldOpsEnum(booking.precheckStatus)}</dd>
+          <dd className="text-zinc-600 dark:text-zinc-400">
+            {formatFieldOpsEnum(booking.precheckStatus)}
+            {booking.conflicts.length > 0 ? ` (${booking.conflicts.length} conflict${booking.conflicts.length === 1 ? "" : "s"})` : ""}
+          </dd>
         </div>
         <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Approval</dt>
           <dd className="text-zinc-600 dark:text-zinc-400">{formatFieldOpsEnum(booking.approvalStatus)}</dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Facility status</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">{formatFieldOpsEnum(booking.facility.status)}</dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Resource status</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">{formatFieldOpsEnum(booking.resource.status)}</dd>
         </div>
         <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Requested by</dt>

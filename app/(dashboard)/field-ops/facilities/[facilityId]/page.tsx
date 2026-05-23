@@ -11,6 +11,14 @@ import { isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
+function getStatusBadgeClass(status: string) {
+  if (status === "ACTIVE") {
+    return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200";
+  }
+
+  return "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200";
+}
+
 export default async function FacilityDetailsPage({
   params,
 }: {
@@ -128,6 +136,9 @@ export default async function FacilityDetailsPage({
     );
   }
 
+  const activeFacilityResources = facility.resources.filter((resource) => resource.status === "ACTIVE");
+  const canRequestForFacility = facility.status === "ACTIVE" && activeFacilityResources.length > 0;
+
   return (
     <section className="space-y-6">
       <div className="space-y-3">
@@ -143,11 +154,16 @@ export default async function FacilityDetailsPage({
               {facility.description ?? "No facility description has been recorded yet."}
             </p>
           </div>
-          <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(facility.status)}`}>
             {formatFieldOpsEnum(facility.status)}
           </span>
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">{formatFacilityAddress(facility)}</p>
+        {facility.status !== "ACTIVE" ? (
+          <p className="text-sm text-amber-700 dark:text-amber-300">
+            This facility is inactive and booking requests should not be submitted here.
+          </p>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -157,12 +173,18 @@ export default async function FacilityDetailsPage({
         >
           View facility bookings
         </Link>
-        <Link
-          href={`/field-ops/bookings/new?facilityId=${facility.id}`}
-          className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-        >
-          New booking request
-        </Link>
+        {canRequestForFacility ? (
+          <Link
+            href={`/field-ops/bookings/new?facilityId=${facility.id}`}
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            New booking request
+          </Link>
+        ) : (
+          <span className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+            New requests unavailable: no active resources
+          </span>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -184,10 +206,16 @@ export default async function FacilityDetailsPage({
                       {resource.description ?? "No resource description has been recorded yet."}
                     </p>
                   </div>
-                  <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(resource.status)}`}>
                     {formatFieldOpsEnum(resource.status)}
                   </span>
                 </div>
+
+                {resource.status !== "ACTIVE" ? (
+                  <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">
+                    This resource is inactive and should not receive new booking requests.
+                  </p>
+                ) : null}
 
                 <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
                   <div>
