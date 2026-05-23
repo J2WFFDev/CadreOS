@@ -1,3 +1,4 @@
+import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
 import { NavSidebar } from "@/components/nav-sidebar";
@@ -13,7 +14,10 @@ export default function DashboardLayout({
         <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
           CadreOS
         </Link>
-        <span className="text-sm text-zinc-500 dark:text-zinc-400">Auth deferred (Phase 0)</span>
+        <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+          <span>Protected dashboard</span>
+          <UserButton />
+        </div>
       </header>
       <div className="flex min-h-[calc(100vh-49px)]">
         <NavSidebar />

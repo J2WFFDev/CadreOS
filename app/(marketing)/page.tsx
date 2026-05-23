@@ -9,13 +9,13 @@ export default function MarketingPage() {
       </p>
 
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Authentication is intentionally deferred for Phase 0 foundation work.
+        Sign in to access the protected dashboard experience.
       </p>
       <Link
-        href="/dashboard"
+        href="/sign-in"
         className="rounded-md bg-black px-4 py-2 text-white dark:bg-white dark:text-black"
       >
-        Open dashboard shell
+        Sign in
       </Link>
     </main>
   );
