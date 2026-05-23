@@ -9,6 +9,8 @@ import { getOrganizationScope } from "@/lib/organization-context";
 import { selectSeededOrCurrentSeason } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
+const STALE_TEAM_GAP_WINDOW_DAYS = 14;
+const RECENT_TEAM_ACTIVITY_WINDOW_HOURS = 72;
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -40,6 +42,14 @@ export default async function TeamsPage({
     assignmentSignalFilterParam === "inactive_or_unassigned_roles"
       ? assignmentSignalFilterParam
       : "all";
+  const operationalIndicatorFilterParam = readSearchParam(resolvedSearchParams, "operationalIndicator");
+  const operationalIndicatorFilter =
+    operationalIndicatorFilterParam === "recently_active" ||
+    operationalIndicatorFilterParam === "stale" ||
+    operationalIndicatorFilterParam === "needs_review" ||
+    operationalIndicatorFilterParam === "unresolved_too_long"
+      ? operationalIndicatorFilterParam
+      : "all";
 
   if (!scope.databaseReady) {
     return (
@@ -67,6 +77,7 @@ export default async function TeamsPage({
     | Array<{
         id: string;
         name: string;
+        updatedAt: Date;
         program: {
           id: string;
           name: string;
@@ -131,6 +142,9 @@ export default async function TeamsPage({
       </section>
     );
   }
+  const now = new Date();
+  const staleGapCutoff = new Date(now.getTime() - STALE_TEAM_GAP_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const recentActivityCutoff = new Date(now.getTime() - RECENT_TEAM_ACTIVITY_WINDOW_HOURS * 60 * 60 * 1000);
 
   return (
     <section className="space-y-4">
@@ -149,7 +163,7 @@ export default async function TeamsPage({
       ) : (
         <>
           <form method="GET" className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-4">
               <div className="space-y-1">
                 <label htmlFor="readiness" className="text-sm font-medium">
                   Readiness state
@@ -175,11 +189,28 @@ export default async function TeamsPage({
                   <option value="inactive_or_unassigned_roles">Inactive/unassigned role assignments</option>
                 </select>
               </div>
+              <div className="space-y-1">
+                <label htmlFor="operationalIndicator" className="text-sm font-medium">
+                  Operational indicator
+                </label>
+                <select
+                  id="operationalIndicator"
+                  name="operationalIndicator"
+                  defaultValue={operationalIndicatorFilter}
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                >
+                  <option value="all">All operational indicators</option>
+                  <option value="recently_active">Recently active</option>
+                  <option value="stale">Stale</option>
+                  <option value="needs_review">Needs review</option>
+                  <option value="unresolved_too_long">Unresolved too long</option>
+                </select>
+              </div>
               <div className="flex items-end gap-2">
                 <button type="submit" className="rounded-md border px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
                   Apply
                 </button>
-                {readinessFilter !== "all" || assignmentSignalFilter !== "all" ? (
+                {readinessFilter !== "all" || assignmentSignalFilter !== "all" || operationalIndicatorFilter !== "all" ? (
                   <Link href="/teams" className="rounded-md border px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
                     Clear
                   </Link>
@@ -205,6 +236,9 @@ export default async function TeamsPage({
                 ).length;
                 const hasRosterGap = seasonRoster.length === 0;
                 const needsAttention = hasRosterGap || roleAssignmentGapCount > 0 || inactiveRoleAssignmentCount > 0;
+                const stale = needsAttention && team.updatedAt.getTime() < staleGapCutoff.getTime();
+                const recentlyActive = team.updatedAt.getTime() >= recentActivityCutoff.getTime();
+                const unresolvedTooLong = needsAttention && stale;
                 return {
                   team,
                   selectedSeason,
@@ -214,6 +248,9 @@ export default async function TeamsPage({
                   inactiveRoleAssignmentCount,
                   needsAttention,
                   hasRosterGap,
+                  stale,
+                  recentlyActive,
+                  unresolvedTooLong,
                 };
               })
               .filter((entry) => {
@@ -230,6 +267,18 @@ export default async function TeamsPage({
                   assignmentSignalFilter === "inactive_or_unassigned_roles" &&
                   entry.inactiveRoleAssignmentCount === 0
                 ) {
+                  return false;
+                }
+                if (operationalIndicatorFilter === "recently_active" && !entry.recentlyActive) {
+                  return false;
+                }
+                if (operationalIndicatorFilter === "stale" && !entry.stale) {
+                  return false;
+                }
+                if (operationalIndicatorFilter === "needs_review" && !entry.needsAttention) {
+                  return false;
+                }
+                if (operationalIndicatorFilter === "unresolved_too_long" && !entry.unresolvedTooLong) {
                   return false;
                 }
                 return true;
@@ -249,6 +298,21 @@ export default async function TeamsPage({
                         Operationally clear
                       </span>
                     )}
+                    {entry.recentlyActive ? (
+                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                        Recently active
+                      </span>
+                    ) : null}
+                    {entry.stale ? (
+                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                        Stale
+                      </span>
+                    ) : null}
+                    {entry.unresolvedTooLong ? (
+                      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                        Unresolved too long
+                      </span>
+                    ) : null}
                   </div>
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                     Program:{" "}
@@ -269,6 +333,9 @@ export default async function TeamsPage({
                     Role-assignment gaps: {entry.roleAssignmentGapCount}
                     {" · "}
                     Inactive/unassigned role signals: {entry.inactiveRoleAssignmentCount}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    Last operational change: {entry.team.updatedAt.toISOString().slice(0, 16).replace("T", " ")} UTC
                   </p>
                   {entry.hasRosterGap ? (
                     <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">

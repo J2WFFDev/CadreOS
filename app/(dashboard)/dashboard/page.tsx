@@ -20,17 +20,17 @@ const OPERATIONAL_REVIEW_CADENCE = [
   {
     title: "Weekly coach review",
     description: "Review overdue and stale unresolved follow-up items with recent operational changes.",
-    href: "/tasks?resolution=unresolved",
+    href: "/tasks?resolution=unresolved&ownershipIndicator=stale_unresolved",
   },
   {
     title: "Event readiness review",
     description: "Check upcoming events with unresolved attendance or task concerns.",
-    href: "/events?status=SCHEDULED&links=follow_up_required",
+    href: "/events?status=SCHEDULED&operationalIndicator=upcoming_operational_concern",
   },
   {
-    title: "Unresolved operational follow-up review",
-    description: "Focus unresolved and overdue follow-up work requiring action this week.",
-    href: "/tasks?resolution=unresolved&dueWindow=overdue",
+    title: "Operational notes readiness review",
+    description: "Review stale notes and unresolved note-linked follow-up that needs attention.",
+    href: "/notes?readinessIndicator=needs_review",
   },
   {
     title: "Ownership accountability review",
@@ -40,7 +40,7 @@ const OPERATIONAL_REVIEW_CADENCE = [
   {
     title: "Roster readiness review",
     description: "Confirm teams with selected-season roster or assignment gaps are addressed.",
-    href: "/teams?readiness=needs_attention",
+    href: "/teams?readiness=needs_attention&operationalIndicator=unresolved_too_long",
   },
 ] as const;
 
@@ -913,7 +913,7 @@ export default async function DashboardPage() {
               {
                 label: "Attendance needing review",
                 value: dashboardData.counts.attendanceNeedingReview,
-                href: "/events?attendance=missing",
+                href: "/events?operationalIndicator=attendance_not_reviewed_recently",
               },
               {
                 label: "Overdue follow-up tasks",
@@ -928,7 +928,7 @@ export default async function DashboardPage() {
               {
                 label: "Stale unresolved tasks",
                 value: dashboardData.counts.staleUnreviewedTasks,
-                href: "/tasks?resolution=unresolved",
+                href: "/tasks?resolution=unresolved&ownershipIndicator=stale_unresolved",
                 sublabel: `No updates in ${STALE_UNRESOLVED_TASK_WINDOW_DAYS}+ days`,
               },
               {
@@ -959,7 +959,7 @@ export default async function DashboardPage() {
               {
                 label: "Teams with roster/assignment gaps",
                 value: dashboardData.counts.teamsWithOperationalGaps,
-                href: "/teams",
+                href: "/teams?readiness=needs_attention",
               },
             ].map((metric) => (
               <Link
@@ -1009,7 +1009,7 @@ export default async function DashboardPage() {
             <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-base font-medium">Attendance needing review</h3>
-                <Link href="/events?attendance=missing" className="text-sm underline">
+                <Link href="/events?operationalIndicator=attendance_not_reviewed_recently" className="text-sm underline">
                   Review events
                 </Link>
               </div>
@@ -1019,8 +1019,8 @@ export default async function DashboardPage() {
                   : dashboardData.attendanceNeedingReview.map((event) => {
                       const reviewFilterHref =
                         event.capturedAttendanceCount === 0
-                          ? "/events?attendance=missing"
-                          : "/events?attendance=partial";
+                          ? "/events?operationalIndicator=attendance_not_reviewed_recently&attendance=missing"
+                          : "/events?operationalIndicator=needs_review&attendance=partial";
 
                       return (
                         <div key={event.id} className="border-b pb-4 last:border-b-0 last:pb-0">
@@ -1117,7 +1117,7 @@ export default async function DashboardPage() {
             <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-base font-medium">Stale unresolved follow-up items</h3>
-                <Link href="/tasks?resolution=unresolved" className="text-sm underline">
+                <Link href="/tasks?resolution=unresolved&ownershipIndicator=stale_unresolved" className="text-sm underline">
                   Review unresolved
                 </Link>
               </div>
@@ -1437,7 +1437,7 @@ export default async function DashboardPage() {
               description="Recent unresolved follow-up across existing task, note, attendance, and event workflows."
               emptyMessage="No unresolved recent operational activity is currently flagged."
               items={dashboardData.unresolvedOperationalHistory}
-              action={{ href: "/tasks?resolution=unresolved", label: "Review unresolved workflow" }}
+              action={{ href: "/tasks?resolution=unresolved&ownershipIndicator=stale_unresolved", label: "Review unresolved workflow" }}
             />
           </div>
         </>

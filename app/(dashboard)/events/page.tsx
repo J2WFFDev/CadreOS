@@ -11,6 +11,10 @@ type SearchParams = Record<string, string | string[] | undefined>;
 type AttendanceCoverage = "complete" | "partial" | "missing" | "captured" | "not_applicable";
 
 export const dynamic = "force-dynamic";
+const STALE_CONCERN_WINDOW_DAYS = 14;
+const RECENT_ACTIVITY_WINDOW_HOURS = 72;
+const UPCOMING_CONCERN_LOOKAHEAD_DAYS = 14;
+const ATTENDANCE_REVIEW_STALE_DAYS = 7;
 
 function formatEnumLabel(value: string) {
   return value
@@ -134,6 +138,16 @@ export default async function EventsPage({
     accountabilityFilterParam === "unresolved_follow_up" || accountabilityFilterParam === "missing_responsible_team"
       ? accountabilityFilterParam
       : "";
+  const operationalIndicatorParam = readSearchParam(resolvedSearchParams, "operationalIndicator");
+  const operationalIndicatorFilter =
+    operationalIndicatorParam === "recently_active" ||
+    operationalIndicatorParam === "stale" ||
+    operationalIndicatorParam === "needs_review" ||
+    operationalIndicatorParam === "unresolved_too_long" ||
+    operationalIndicatorParam === "upcoming_operational_concern" ||
+    operationalIndicatorParam === "attendance_not_reviewed_recently"
+      ? operationalIndicatorParam
+      : "";
 
   let events:
     | Array<{
@@ -142,6 +156,7 @@ export default async function EventsPage({
         eventType: string;
         status: string;
         startsAt: Date;
+        updatedAt: Date;
         endsAt: Date | null;
         location: string | null;
         createdBy: { id: string; firstName: string; lastName: string };
@@ -230,6 +245,11 @@ export default async function EventsPage({
   }
 
   const displayedEvents = events.filter((event) => {
+    const now = new Date();
+    const staleConcernCutoff = new Date(now.getTime() - STALE_CONCERN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    const recentActivityCutoff = new Date(now.getTime() - RECENT_ACTIVITY_WINDOW_HOURS * 60 * 60 * 1000);
+    const upcomingConcernCutoff = new Date(now.getTime() + UPCOMING_CONCERN_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
+    const attendanceReviewStaleCutoff = new Date(now.getTime() - ATTENDANCE_REVIEW_STALE_DAYS * 24 * 60 * 60 * 1000);
     const expectedAttendanceCount = new Set(event.team?.roster.map((membership) => membership.personId) ?? []).size;
     const capturedAttendanceCount = event._count.attendance;
     const missingAttendanceCount = Math.max(expectedAttendanceCount - capturedAttendanceCount, 0);
@@ -240,6 +260,17 @@ export default async function EventsPage({
     );
     const openTaskCount = event.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
     const followUpRequired = missingAttendanceCount > 0 || openTaskCount > 0;
+    const hasAttendanceNeedingReview = expectedAttendanceCount > 0 && missingAttendanceCount > 0;
+    const attendanceNotReviewedRecently =
+      hasAttendanceNeedingReview && event.startsAt.getTime() < attendanceReviewStaleCutoff.getTime();
+    const recentlyActive = event.updatedAt.getTime() >= recentActivityCutoff.getTime();
+    const stale = followUpRequired && event.updatedAt.getTime() < staleConcernCutoff.getTime();
+    const needsReview = followUpRequired || attendanceNotReviewedRecently;
+    const unresolvedTooLong = followUpRequired && stale;
+    const upcomingOperationalConcern =
+      followUpRequired &&
+      event.startsAt.getTime() >= now.getTime() &&
+      event.startsAt.getTime() <= upcomingConcernCutoff.getTime();
 
     if (attendanceFilter && attendanceCoverage !== attendanceFilter) {
       return false;
@@ -268,12 +299,36 @@ export default async function EventsPage({
     if (accountabilityFilter === "missing_responsible_team" && (event.team || !followUpRequired)) {
       return false;
     }
+    if (operationalIndicatorFilter === "recently_active" && !recentlyActive) {
+      return false;
+    }
+    if (operationalIndicatorFilter === "stale" && !stale) {
+      return false;
+    }
+    if (operationalIndicatorFilter === "needs_review" && !needsReview) {
+      return false;
+    }
+    if (operationalIndicatorFilter === "unresolved_too_long" && !unresolvedTooLong) {
+      return false;
+    }
+    if (operationalIndicatorFilter === "upcoming_operational_concern" && !upcomingOperationalConcern) {
+      return false;
+    }
+    if (operationalIndicatorFilter === "attendance_not_reviewed_recently" && !attendanceNotReviewedRecently) {
+      return false;
+    }
 
     return true;
   });
 
   const hasActiveFilters = Boolean(
-    statusFilter || teamIdFilter || ownerPersonIdFilter || attendanceFilter || linkFilter || accountabilityFilter,
+    statusFilter ||
+      teamIdFilter ||
+      ownerPersonIdFilter ||
+      attendanceFilter ||
+      linkFilter ||
+      accountabilityFilter ||
+      operationalIndicatorFilter,
   );
 
   return (
@@ -289,7 +344,7 @@ export default async function EventsPage({
       />
 
       <form method="GET" className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
-        <div className="grid gap-3 md:grid-cols-6">
+        <div className="grid gap-3 md:grid-cols-7">
           <div className="space-y-1">
             <label htmlFor="status" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
               Status
@@ -378,6 +433,25 @@ export default async function EventsPage({
               <option value="missing_responsible_team">Missing responsible team context</option>
             </select>
           </div>
+          <div className="space-y-1">
+            <label htmlFor="operationalIndicator" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              Operational indicator
+            </label>
+            <select
+              id="operationalIndicator"
+              name="operationalIndicator"
+              defaultValue={operationalIndicatorFilter}
+              className="w-full rounded-md border px-2 py-1.5 text-sm"
+            >
+              <option value="">All operational indicators</option>
+              <option value="recently_active">Recently active</option>
+              <option value="stale">Stale</option>
+              <option value="needs_review">Needs review</option>
+              <option value="unresolved_too_long">Unresolved too long</option>
+              <option value="upcoming_operational_concern">Upcoming operational concern</option>
+              <option value="attendance_not_reviewed_recently">Attendance not reviewed recently</option>
+            </select>
+          </div>
         </div>
 
         <div className="mt-3 flex gap-2">
@@ -421,6 +495,11 @@ export default async function EventsPage({
             </thead>
             <tbody>
               {displayedEvents.map((event) => {
+                const now = new Date();
+                const staleConcernCutoff = new Date(now.getTime() - STALE_CONCERN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+                const recentActivityCutoff = new Date(now.getTime() - RECENT_ACTIVITY_WINDOW_HOURS * 60 * 60 * 1000);
+                const upcomingConcernCutoff = new Date(now.getTime() + UPCOMING_CONCERN_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
+                const attendanceReviewStaleCutoff = new Date(now.getTime() - ATTENDANCE_REVIEW_STALE_DAYS * 24 * 60 * 60 * 1000);
                 const expectedAttendanceCount = new Set(event.team?.roster.map((membership) => membership.personId) ?? []).size;
                 const capturedAttendanceCount = event._count.attendance;
                 const missingAttendanceCount = Math.max(expectedAttendanceCount - capturedAttendanceCount, 0);
@@ -431,6 +510,17 @@ export default async function EventsPage({
                 );
                 const openTaskCount = event.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
                 const followUpRequired = missingAttendanceCount > 0 || openTaskCount > 0;
+                const hasAttendanceNeedingReview = expectedAttendanceCount > 0 && missingAttendanceCount > 0;
+                const attendanceNotReviewedRecently =
+                  hasAttendanceNeedingReview && event.startsAt.getTime() < attendanceReviewStaleCutoff.getTime();
+                const recentlyActive = event.updatedAt.getTime() >= recentActivityCutoff.getTime();
+                const stale = followUpRequired && event.updatedAt.getTime() < staleConcernCutoff.getTime();
+                const needsReview = followUpRequired || attendanceNotReviewedRecently;
+                const unresolvedTooLong = followUpRequired && stale;
+                const upcomingOperationalConcern =
+                  followUpRequired &&
+                  event.startsAt.getTime() >= now.getTime() &&
+                  event.startsAt.getTime() <= upcomingConcernCutoff.getTime();
 
                 return (
                   <tr key={event.id} className="border-b align-top last:border-b-0">
@@ -479,6 +569,36 @@ export default async function EventsPage({
                         {followUpRequired && !event.team ? (
                           <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
                             Missing responsible team
+                          </span>
+                        ) : null}
+                        {recentlyActive ? (
+                          <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                            Recently active
+                          </span>
+                        ) : null}
+                        {stale ? (
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            Stale
+                          </span>
+                        ) : null}
+                        {needsReview ? (
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            Needs review
+                          </span>
+                        ) : null}
+                        {unresolvedTooLong ? (
+                          <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                            Unresolved too long
+                          </span>
+                        ) : null}
+                        {upcomingOperationalConcern ? (
+                          <span className="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">
+                            Upcoming operational concern
+                          </span>
+                        ) : null}
+                        {attendanceNotReviewedRecently ? (
+                          <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                            Attendance not reviewed recently
                           </span>
                         ) : null}
                       </div>
