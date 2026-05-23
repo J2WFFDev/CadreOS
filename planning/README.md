@@ -39,6 +39,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 4D Route Protection Auth Cleanup](./PHASE_4D_ROUTE_PROTECTION_AUTH_CLEANUP.md)
 - [Phase 4E Basic Authorization](./PHASE_4E_BASIC_AUTHORIZATION.md)
 - [Phase 4F Mock Auth Fallback Hardening](./PHASE_4F_MOCK_AUTH_FALLBACK_HARDENING.md)
+- [Phase 5A MVP Pilot Test Plan](./PHASE_5A_MVP_PILOT_TEST_PLAN.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
 - [Chat Transcript](./CHAT_TRANSCRIPT.md)
@@ -54,4 +55,4 @@ CadreOS is an **Athlete Program Operating System**.
 - Entry/Inbox model: unified Entry is the long-term direction; default type is Task; default container is Inbox
 - Communication routing: messaging surfaces are future-only; Entry routing by audience/visibility/type/role is the intended design
 - FieldOps direction: pre-checks and recommendations before human approval; MVP starts with resource booking and conflict detection
-- Pilot scope: whole organization; first validation is a one-day scripted scenario test; feedback categories are Observation, Friction, Bug, Missing Feature, Decision Needed, Follow-up Task
+- Pilot scope: whole organization; first validation is a one-day scripted scenario test; feedback categories are Bug, Friction, Missing Feature, Workflow Confusion, Decision Needed, Follow-up Task, Nice-to-Have
