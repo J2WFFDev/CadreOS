@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { writeObservationNoteEntryRuntimeRef } from "@/lib/entry-runtime";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
@@ -198,8 +199,25 @@ export async function POST(request: Request) {
         teamId: parsed.data.teamId,
         eventId: parsed.data.eventId,
       },
-      select: { id: true },
+      select: {
+        id: true,
+        organizationId: true,
+        authorPersonId: true,
+        visibility: true,
+        athletePersonId: true,
+        teamId: true,
+        eventId: true,
+      },
     });
+
+    try {
+      await writeObservationNoteEntryRuntimeRef({
+        organizationId: scope.organizationId,
+        note: createdNote,
+      });
+    } catch {
+      // Phase 10A sidecar writes are intentionally non-authoritative and fail-safe.
+    }
 
     return NextResponse.redirect(new URL(`/notes/${createdNote.id}`, request.url), 303);
   } catch (error) {

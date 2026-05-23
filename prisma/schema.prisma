@@ -25,6 +25,18 @@ enum NoteVisibility {
   STAFF_ONLY
 }
 
+enum EntryRuntimeSourceModelType {
+  OBSERVATION_NOTE
+}
+
+enum EntryRuntimeKind {
+  NOTE
+}
+
+enum EntryRuntimeVisibilityClass {
+  STAFF_ONLY
+}
+
 enum EventType {
   PRACTICE
   GAME
@@ -167,6 +179,7 @@ model Organization {
   rsvps                       RSVP[]
   attendanceRecords           AttendanceRecord[]
   followUpTasks               FollowUpTask[]
+  entryRuntimeRefs            EntryRuntimeRef[]
   inboxRoutingItems           InboxRoutingItem[]
   auditEvents                 AuditEvent[]
   facilities                  Facility[]
@@ -268,6 +281,7 @@ model Person {
   markedAttendanceRecords    AttendanceRecord[]           @relation("AttendanceMarkedBy")
   assignedTasks              FollowUpTask[]               @relation("TaskAssignee")
   createdTasks               FollowUpTask[]               @relation("TaskCreator")
+  authoredEntryRuntimeRefs   EntryRuntimeRef[]            @relation("EntryRuntimeRefAuthor")
   guardianLinks              AthleteGuardianRelationship[] @relation("GuardianSide")
   athleteLinks               AthleteGuardianRelationship[] @relation("AthleteSide")
   ownedInboxRoutingItems     InboxRoutingItem[]           @relation("InboxOwner")
@@ -362,6 +376,31 @@ model ObservationNote {
   @@index([organizationId, createdAt])
   @@index([organizationId, athletePersonId, createdAt])
   @@index([organizationId, teamId, createdAt])
+}
+
+model EntryRuntimeRef {
+  id               String                          @id @default(cuid())
+  organizationId   String
+  sourceModelType  EntryRuntimeSourceModelType
+  sourceModelId    String
+  entryKind        EntryRuntimeKind
+  authorPersonId   String
+  visibilityClass  EntryRuntimeVisibilityClass
+  athletePersonId  String?
+  teamId           String?
+  eventId          String?
+  createdAt        DateTime                        @default(now())
+  updatedAt        DateTime                        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  author       Person       @relation("EntryRuntimeRefAuthor", fields: [authorPersonId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, sourceModelType, sourceModelId])
+  @@index([organizationId, entryKind, createdAt])
+  @@index([organizationId, authorPersonId, createdAt])
+  @@index([organizationId, athletePersonId, createdAt])
+  @@index([organizationId, teamId, createdAt])
+  @@index([organizationId, eventId, createdAt])
 }
 
 model Event {
