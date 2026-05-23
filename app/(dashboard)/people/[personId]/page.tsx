@@ -1,4 +1,4 @@
-import { RoleType, ScopeType } from "@prisma/client";
+import { AttendanceStatus, RoleType, ScopeType, TaskStatus } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
@@ -33,6 +33,10 @@ function formatEnumLabel(value: string) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function isUnresolvedTaskStatus(status: string) {
+  return status === TaskStatus.OPEN || status === TaskStatus.IN_PROGRESS || status === TaskStatus.BLOCKED;
+}
+
 export default async function PersonDetailsPage({
   params,
   searchParams,
@@ -61,7 +65,7 @@ export default async function PersonDetailsPage({
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Person</h2>
-        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div id="relationship-summary" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             No organization context is available yet.
           </p>
@@ -308,6 +312,106 @@ export default async function PersonDetailsPage({
     limit: 10,
     sinceDays: 45,
   });
+  const rosterTeamIds = [...new Set(person.roster.map((membership) => membership.team.id))];
+  const now = new Date();
+  const upcomingWindowEndsAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const [relatedTasks, relatedNotes, relatedAttendance, upcomingTeamEvents] = await Promise.all([
+    db.followUpTask.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        OR: [
+          { assigneePersonId: person.id },
+          { createdByPersonId: person.id },
+          { sourceNote: { is: { athletePersonId: person.id } } },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        dueAt: true,
+        updatedAt: true,
+        sourceEvent: { select: { id: true, title: true } },
+        sourceNote: {
+          select: {
+            id: true,
+            event: { select: { id: true, title: true } },
+          },
+        },
+      },
+      orderBy: [{ updatedAt: "desc" }],
+      take: 8,
+    }),
+    db.observationNote.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        OR: [{ athletePersonId: person.id }, { authorPersonId: person.id }],
+      },
+      select: {
+        id: true,
+        body: true,
+        updatedAt: true,
+        event: { select: { id: true, title: true } },
+        tasks: { select: { status: true } },
+      },
+      orderBy: [{ updatedAt: "desc" }],
+      take: 8,
+    }),
+    db.attendanceRecord.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        personId: person.id,
+      },
+      select: {
+        id: true,
+        status: true,
+        markedAt: true,
+        event: {
+          select: {
+            id: true,
+            title: true,
+            startsAt: true,
+            team: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: [{ markedAt: "desc" }],
+      take: 6,
+    }),
+    rosterTeamIds.length === 0
+      ? Promise.resolve([])
+      : db.event.findMany({
+          where: {
+            organizationId: scope.organizationId,
+            teamId: { in: rosterTeamIds },
+            startsAt: { gte: now, lte: upcomingWindowEndsAt },
+          },
+          select: {
+            id: true,
+            title: true,
+            startsAt: true,
+            status: true,
+            team: { select: { id: true, name: true } },
+            tasks: { select: { status: true } },
+          },
+          orderBy: [{ startsAt: "asc" }],
+          take: 6,
+        }),
+  ]);
+  const unresolvedRelatedTaskCount = relatedTasks.filter((task) => isUnresolvedTaskStatus(task.status)).length;
+  const unresolvedRelatedNoteTaskCount = relatedNotes.reduce(
+    (count, note) => count + note.tasks.filter((task) => isUnresolvedTaskStatus(task.status)).length,
+    0,
+  );
+  const attendanceConcernCount = relatedAttendance.filter(
+    (record) => record.status !== AttendanceStatus.PRESENT,
+  ).length;
+  const upcomingEventsWithOpenTasks = upcomingTeamEvents
+    .map((event) => ({
+      ...event,
+      unresolvedTaskCount: event.tasks.filter((task) => isUnresolvedTaskStatus(task.status)).length,
+    }))
+    .filter((event) => event.unresolvedTaskCount > 0);
 
   return (
     <section className="space-y-6">
@@ -321,6 +425,71 @@ export default async function PersonDetailsPage({
         <Link href={`/people/${person.id}/edit`} className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
           Edit person
         </Link>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="text-lg font-medium">Operational relationship summary</h3>
+        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="font-medium">Related notes</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{relatedNotes.length}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Related follow-up tasks</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{relatedTasks.length}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Unresolved related items</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {unresolvedRelatedTaskCount + unresolvedRelatedNoteTaskCount}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Recent attendance context</dt>
+            <dd className={attendanceConcernCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {relatedAttendance.length} records ({attendanceConcernCount} concerns)
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Upcoming team events (14 days)</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{upcomingTeamEvents.length}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Upcoming events with unresolved tasks</dt>
+            <dd className={upcomingEventsWithOpenTasks.length > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {upcomingEventsWithOpenTasks.length}
+            </dd>
+          </div>
+        </dl>
+        <div className="mt-3 flex flex-wrap gap-2 text-sm">
+          <Link href={`/notes?athletePersonId=${person.id}`} className="rounded-full border px-2 py-1">
+            Person notes
+          </Link>
+          <Link href={`/tasks?assigneePersonId=${person.id}&resolution=unresolved`} className="rounded-full border px-2 py-1">
+            Unresolved person tasks
+          </Link>
+          <Link href={`/events?ownerPersonId=${person.id}`} className="rounded-full border px-2 py-1">
+            Person-created events
+          </Link>
+          <Link href={`/tasks?assigneePersonId=${person.id}&changedWindow=last_7d`} className="rounded-full border px-2 py-1">
+            Recent related activity
+          </Link>
+        </div>
+        {relatedAttendance.length > 0 ? (
+          <ul className="mt-3 space-y-2 text-sm">
+            {relatedAttendance.slice(0, 3).map((record) => (
+              <li key={record.id} className="rounded-md border p-2">
+                <Link href={`/events/${record.event.id}#attendance-workflow`} className="font-medium underline">
+                  {record.event.title}
+                </Link>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  {formatEnumLabel(record.status)} · {record.event.team ? `Team: ${record.event.team.name}` : "No team"} ·{" "}
+                  {record.markedAt.toISOString().slice(0, 16).replace("T", " ")} UTC
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
