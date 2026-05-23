@@ -30,3 +30,14 @@ CadreOS relies on role-aware authorization plus relationship-aware visibility bo
   - Athlete view assumptions are based on self-access and role/scope.
   - Guardian view assumptions require `AthleteGuardianRelationship` linkage plus explicit visibility policy.
 - Guardian onboarding/invitation and messaging workflows remain deferred and out of scope.
+
+## Phase 8A guardrail clarification
+
+- Guardian relationship details are visible only to staff-role viewers (`ORGANIZATION_ADMIN`, `PROGRAM_DIRECTOR`, `COACH`, `ASSISTANT_COACH`).
+- Non-staff viewers should not see private guardian linkage diagnostics.
+- Linkage-adjacent edits remain limited to existing authorized write routes (person, roster, role assignment) and are not a dedicated guardian-management runtime.
+- Operational status indicators should remain diagnostic-only:
+  - linked guardian
+  - missing guardian
+  - inactive guardian account signal
+  - pending/incomplete relationship support
