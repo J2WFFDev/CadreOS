@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AttendanceStatus, RSVPStatus } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { compareFollowUpTasks, formatDateTime, formatEnumLabel } from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/phase1c/workflows";
 
@@ -17,21 +18,6 @@ function readSearchParam(searchParams: SearchParams, key: string): string {
   }
 
   return value ?? "";
-}
-
-function formatEnumLabel(value: string) {
-  return value
-    .replaceAll("_", " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function formatDateTime(value: Date | null) {
-  if (!value) {
-    return "—";
-  }
-
-  return `${value.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
 export default async function EventDetailsPage({
@@ -82,6 +68,13 @@ export default async function EventDetailsPage({
         program: { id: string; name: string };
         team: { id: string; name: string; roster: Array<{ personId: string }> } | null;
         createdBy: { id: string; firstName: string; lastName: string } | null;
+        tasks: Array<{
+          id: string;
+          title: string;
+          status: string;
+          dueAt: Date | null;
+          assignee: { id: string; firstName: string; lastName: string };
+        }>;
         rsvps: Array<{
           id: string;
           status: RSVPStatus;
@@ -123,6 +116,15 @@ export default async function EventDetailsPage({
             },
           },
           createdBy: { select: { id: true, firstName: true, lastName: true } },
+          tasks: {
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              dueAt: true,
+              assignee: { select: { id: true, firstName: true, lastName: true } },
+            },
+          },
           rsvps: {
             select: {
               id: true,
@@ -223,6 +225,7 @@ export default async function EventDetailsPage({
   const attendanceReasonCode = readSearchParam(resolvedSearchParams, "attendanceReasonCode");
   const attendanceError = readSearchParam(resolvedSearchParams, "attendanceError");
   const rosterPersonIds = new Set(event.team?.roster.map((membership) => membership.personId) ?? []);
+  const eventTasks = [...event.tasks].sort(compareFollowUpTasks);
   const attendancePeople = [...people].sort((a, b) => {
     const rosterWeightA = rosterPersonIds.has(a.id) ? 0 : 1;
     const rosterWeightB = rosterPersonIds.has(b.id) ? 0 : 1;
@@ -256,6 +259,12 @@ export default async function EventDetailsPage({
             className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Edit event
+          </Link>
+          <Link
+            href={`/tasks/new?sourceEventId=${event.id}`}
+            className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Create follow-up task
           </Link>
           <Link
             href={`/notes/new?eventId=${event.id}`}
@@ -303,6 +312,38 @@ export default async function EventDetailsPage({
             </dd>
           </div>
         </dl>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-lg font-semibold">Related tasks</h3>
+          <Link href={`/tasks/new?sourceEventId=${event.id}`} className="text-sm underline">
+            Create follow-up task
+          </Link>
+        </div>
+        {eventTasks.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">No follow-up tasks are linked to this event yet.</p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {eventTasks.map((task) => (
+              <li key={task.id} className="rounded-md border p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Link href={`/tasks/${task.id}`} className="font-medium underline">
+                    {task.title}
+                  </Link>
+                  <span className="text-sm text-zinc-600 dark:text-zinc-400">{formatEnumLabel(task.status)}</span>
+                </div>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                  Assignee:{" "}
+                  <Link href={`/people/${task.assignee.id}`} className="underline">
+                    {task.assignee.firstName} {task.assignee.lastName}
+                  </Link>
+                  {" · "}Due: {formatDateTime(task.dueAt)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">

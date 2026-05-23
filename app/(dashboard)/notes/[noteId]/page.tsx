@@ -1,21 +1,11 @@
 import Link from "next/link";
 
 import { db } from "@/lib/db";
+import { compareFollowUpTasks, formatDateTime, formatEnumLabel } from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/phase1c/workflows";
 
 export const dynamic = "force-dynamic";
-
-function formatDateTime(value: Date) {
-  return `${value.toISOString().slice(0, 16).replace("T", " ")} UTC`;
-}
-
-function formatEnumLabel(value: string) {
-  return value
-    .replaceAll("_", " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
 
 export default async function NoteDetailPage({
   params,
@@ -60,6 +50,13 @@ export default async function NoteDetailPage({
         athlete: { id: string; firstName: string; lastName: string } | null;
         team: { id: string; name: string } | null;
         event: { id: string; title: string } | null;
+        tasks: Array<{
+          id: string;
+          title: string;
+          status: string;
+          dueAt: Date | null;
+          assignee: { id: string; firstName: string; lastName: string };
+        }>;
       }
     | null = null;
   let queryErrorMessage = "Unable to load note details right now. Please try again later.";
@@ -80,8 +77,18 @@ export default async function NoteDetailPage({
         athlete: { select: { id: true, firstName: true, lastName: true } },
         team: { select: { id: true, name: true } },
         event: { select: { id: true, title: true } },
+        tasks: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            dueAt: true,
+            assignee: { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
       },
     });
+    note?.tasks.sort(compareFollowUpTasks);
   } catch (error) {
     if (isSchemaUnavailableError(error)) {
       queryErrorMessage = "Database schema is not available yet. Run database setup before loading notes.";
@@ -124,6 +131,12 @@ export default async function NoteDetailPage({
             className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Edit note
+          </Link>
+          <Link
+            href={`/tasks/new?sourceNoteId=${note.id}`}
+            className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Create follow-up task
           </Link>
         </div>
       </div>
@@ -192,6 +205,38 @@ export default async function NoteDetailPage({
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-lg font-semibold">Note body</h3>
         <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-300">{note.body}</p>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-lg font-semibold">Related tasks</h3>
+          <Link href={`/tasks/new?sourceNoteId=${note.id}`} className="text-sm underline">
+            Create follow-up task
+          </Link>
+        </div>
+        {note.tasks.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">No follow-up tasks are linked to this note yet.</p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {note.tasks.map((task) => (
+              <li key={task.id} className="rounded-md border p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Link href={`/tasks/${task.id}`} className="font-medium underline">
+                    {task.title}
+                  </Link>
+                  <span className="text-sm text-zinc-600 dark:text-zinc-400">{formatEnumLabel(task.status)}</span>
+                </div>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                  Assignee:{" "}
+                  <Link href={`/people/${task.assignee.id}`} className="underline">
+                    {task.assignee.firstName} {task.assignee.lastName}
+                  </Link>
+                  {" · "}Due: {formatDateTime(task.dueAt)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   );
