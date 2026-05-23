@@ -694,6 +694,8 @@ export function evaluateFollowUpTaskAccess(
   context: ActorRoleContext,
   _task: { assigneePersonId: string; createdByPersonId: string },
 ): AuthorizationDecision {
+  void _task;
+
   if (context.isStaffMember) {
     return {
       helper: "canAccessFollowUpTask",
