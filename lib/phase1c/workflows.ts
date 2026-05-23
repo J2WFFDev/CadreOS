@@ -49,6 +49,14 @@ export const teamWorkflowSchema = z.object({
   programId: z.string().trim().min(1, "Program selection is required."),
 });
 
+export const programWorkflowSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Program name is required.")
+    .max(MAX_NAME_LENGTH, `Program name must be ${MAX_NAME_LENGTH} characters or less.`),
+});
+
 export const rosterMembershipWorkflowSchema = z.object({
   personId: z.string().trim().min(1, "Person selection is required."),
   rosterRole: z.nativeEnum(RoleType, {
@@ -121,6 +129,7 @@ export const roleAssignmentWorkflowSchema = z
 
 export type PersonWorkflowInput = z.output<typeof personWorkflowSchema>;
 export type TeamWorkflowInput = z.output<typeof teamWorkflowSchema>;
+export type ProgramWorkflowInput = z.output<typeof programWorkflowSchema>;
 export type RosterMembershipWorkflowInput = z.output<typeof rosterMembershipWorkflowSchema>;
 export type RoleAssignmentWorkflowInput = z.output<typeof roleAssignmentWorkflowSchema>;
 
@@ -140,6 +149,8 @@ export function isSchemaUnavailableError(error: unknown): boolean {
 export async function requirePhase1CMutationPermission(input: {
   organizationId: string;
   action:
+    | "program.create"
+    | "program.update"
     | "person.create"
     | "person.update"
     | "team.create"
