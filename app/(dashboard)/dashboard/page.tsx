@@ -1,10 +1,11 @@
-import { TaskStatus } from "@prisma/client";
+import { ApprovalStatus, RoleType, ScopeType, TaskStatus } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
+import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { isSchemaUnavailableError } from "@/lib/workflows";
+import { isSchemaUnavailableError, selectSeededOrCurrentSeason } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -168,6 +169,12 @@ export default async function DashboardPage() {
     redirect("/account/link-person");
   }
 
+  const guardianAccess = await resolveGuardianRelationshipAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const canViewGuardianRelationshipDetails = guardianAccess.canViewGuardianRelationshipDetails;
+
   const currentTime = new Date();
   const recentNotesThreshold = new Date(
     currentTime.getTime() - RECENT_NOTE_WINDOW_DAYS * 24 * 60 * 60 * 1000,
@@ -180,8 +187,12 @@ export default async function DashboardPage() {
           teams: number;
           people: number;
           upcomingEvents: number;
-          openTasks: number;
+          attendanceNeedingReview: number;
+          overdueTasks: number;
           recentNotes: number;
+          pendingFieldOpsApprovals: number;
+          athletesMissingGuardianLinkage: number;
+          teamsWithOperationalGaps: number;
         };
         upcomingEvents: Array<{
           id: string;
@@ -191,7 +202,17 @@ export default async function DashboardPage() {
           program: { id: string; name: string };
           team: { id: string; name: string } | null;
         }>;
-        openTasks: Array<{
+        attendanceNeedingReview: Array<{
+          id: string;
+          title: string;
+          startsAt: Date;
+          status: string;
+          team: { id: string; name: string };
+          expectedAttendanceCount: number;
+          capturedAttendanceCount: number;
+          missingAttendanceCount: number;
+        }>;
+        overdueTasks: Array<{
           id: string;
           title: string;
           status: string;
@@ -206,18 +227,27 @@ export default async function DashboardPage() {
           team: { id: string; name: string } | null;
           event: { id: string; title: string } | null;
         }>;
-        recentRsvpEvent: {
+        athletesMissingGuardianLinkage: Array<{
+          id: string;
+          firstName: string;
+          lastName: string;
+          roster: Array<{ team: { id: string; name: string } }>;
+        }>;
+        teamOperationalGaps: Array<{
+          id: string;
+          name: string;
+          selectedSeasonName: string | null;
+          selectedSeasonRosterCount: number;
+          membersMissingAssignments: number;
+        }>;
+        pendingFieldOpsApprovals: Array<{
           id: string;
           title: string;
           startsAt: Date;
-          _count: { rsvps: number };
-        } | null;
-        recentAttendanceEvent: {
-          id: string;
-          title: string;
-          startsAt: Date;
-          _count: { attendance: number };
-        } | null;
+          status: string;
+          facility: { id: string; name: string };
+          resource: { id: string; name: string };
+        }>;
       }
     | null = null;
   let queryErrorMessage = "Unable to load dashboard data right now. Please try again later.";
@@ -228,13 +258,17 @@ export default async function DashboardPage() {
       teamCount,
       peopleCount,
       upcomingEventCount,
-      openTaskCount,
       recentNoteCount,
       upcomingEvents,
-      openTasks,
+      attendanceReviewEvents,
+      overdueTaskCount,
+      overdueTasks,
       recentNotes,
-      recentRsvpEvent,
-      recentAttendanceEvent,
+      athletesMissingGuardianLinkageCount,
+      athletesMissingGuardianLinkage,
+      teamsForGapReview,
+      pendingFieldOpsApprovalsCount,
+      pendingFieldOpsApprovals,
     ] = await Promise.all([
       db.program.count({
         where: { organizationId: scope.organizationId },
@@ -249,12 +283,6 @@ export default async function DashboardPage() {
         where: {
           organizationId: scope.organizationId,
           startsAt: { gte: currentTime },
-        },
-      }),
-      db.followUpTask.count({
-        where: {
-          organizationId: scope.organizationId,
-          status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS] },
         },
       }),
       db.observationNote.count({
@@ -279,10 +307,44 @@ export default async function DashboardPage() {
         orderBy: [{ startsAt: "asc" }],
         take: 5,
       }),
+      db.event.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          startsAt: { lte: currentTime },
+          teamId: { not: null },
+        },
+        select: {
+          id: true,
+          title: true,
+          startsAt: true,
+          status: true,
+          team: {
+            select: {
+              id: true,
+              name: true,
+              roster: {
+                where: { organizationId: scope.organizationId, rosterRole: RoleType.ATHLETE },
+                select: { personId: true },
+              },
+            },
+          },
+          _count: { select: { attendance: true } },
+        },
+        orderBy: [{ startsAt: "desc" }],
+        take: 30,
+      }),
+      db.followUpTask.count({
+        where: {
+          organizationId: scope.organizationId,
+          status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS] },
+          dueAt: { lt: currentTime },
+        },
+      }),
       db.followUpTask.findMany({
         where: {
           organizationId: scope.organizationId,
           status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS] },
+          dueAt: { lt: currentTime },
         },
         select: {
           id: true,
@@ -291,7 +353,8 @@ export default async function DashboardPage() {
           dueAt: true,
           assignee: { select: { id: true, firstName: true, lastName: true } },
         },
-        take: 25,
+        orderBy: [{ dueAt: "asc" }, { createdAt: "asc" }],
+        take: 5,
       }),
       db.observationNote.findMany({
         where: { organizationId: scope.organizationId },
@@ -306,33 +369,166 @@ export default async function DashboardPage() {
         orderBy: [{ createdAt: "desc" }],
         take: 5,
       }),
-      db.event.findFirst({
-        where: {
-          organizationId: scope.organizationId,
-          rsvps: { some: {} },
-        },
+      canViewGuardianRelationshipDetails
+        ? db.person.count({
+            where: {
+              organizationId: scope.organizationId,
+              roster: { some: { organizationId: scope.organizationId, rosterRole: RoleType.ATHLETE } },
+              athleteLinks: { none: { organizationId: scope.organizationId } },
+            },
+          })
+        : Promise.resolve(0),
+      canViewGuardianRelationshipDetails
+        ? db.person.findMany({
+            where: {
+              organizationId: scope.organizationId,
+              roster: { some: { organizationId: scope.organizationId, rosterRole: RoleType.ATHLETE } },
+              athleteLinks: { none: { organizationId: scope.organizationId } },
+            },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              roster: {
+                where: { organizationId: scope.organizationId, rosterRole: RoleType.ATHLETE },
+                select: {
+                  team: { select: { id: true, name: true } },
+                },
+              },
+            },
+            orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+            take: 5,
+          })
+        : Promise.resolve([]),
+      db.team.findMany({
+        where: { organizationId: scope.organizationId },
         select: {
           id: true,
-          title: true,
-          startsAt: true,
-          _count: { select: { rsvps: true } },
+          name: true,
+          program: {
+            select: {
+              seasons: {
+                where: { organizationId: scope.organizationId },
+                select: { id: true, name: true, startDate: true, endDate: true },
+                orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
+              },
+            },
+          },
+          roster: {
+            where: { organizationId: scope.organizationId },
+            select: { seasonId: true, personId: true },
+          },
+          roles: {
+            where: { scopeType: ScopeType.TEAM },
+            select: { personId: true },
+          },
         },
-        orderBy: [{ startsAt: "desc" }],
+        orderBy: [{ name: "asc" }],
       }),
-      db.event.findFirst({
+      db.resourceBooking.count({
         where: {
           organizationId: scope.organizationId,
-          attendance: { some: {} },
+          approvalStatus: ApprovalStatus.PENDING,
+        },
+      }),
+      db.resourceBooking.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          approvalStatus: ApprovalStatus.PENDING,
         },
         select: {
           id: true,
           title: true,
           startsAt: true,
-          _count: { select: { attendance: true } },
+          status: true,
+          facility: { select: { id: true, name: true } },
+          resource: { select: { id: true, name: true } },
         },
-        orderBy: [{ startsAt: "desc" }],
+        orderBy: [{ startsAt: "asc" }, { createdAt: "asc" }],
+        take: 5,
       }),
     ]);
+
+    const attendanceNeedingReview: Array<{
+      id: string;
+      title: string;
+      startsAt: Date;
+      status: string;
+      team: { id: string; name: string };
+      expectedAttendanceCount: number;
+      capturedAttendanceCount: number;
+      missingAttendanceCount: number;
+    }> = [];
+    for (const event of attendanceReviewEvents) {
+      if (!event.team) {
+        continue;
+      }
+
+      const expectedAttendanceCount = new Set(event.team.roster.map((membership) => membership.personId)).size;
+      const capturedAttendanceCount = event._count.attendance;
+      const missingAttendanceCount = Math.max(expectedAttendanceCount - capturedAttendanceCount, 0);
+
+      if (expectedAttendanceCount === 0 || missingAttendanceCount === 0) {
+        continue;
+      }
+
+      attendanceNeedingReview.push({
+        id: event.id,
+        title: event.title,
+        startsAt: event.startsAt,
+        status: event.status,
+        team: { id: event.team.id, name: event.team.name },
+        expectedAttendanceCount,
+        capturedAttendanceCount,
+        missingAttendanceCount,
+      });
+    }
+
+    attendanceNeedingReview.sort((left, right) => {
+      if (left.missingAttendanceCount !== right.missingAttendanceCount) {
+        return right.missingAttendanceCount - left.missingAttendanceCount;
+      }
+
+      return right.startsAt.getTime() - left.startsAt.getTime();
+    });
+
+    if (attendanceNeedingReview.length > 5) {
+      attendanceNeedingReview.length = 5;
+    }
+
+    const teamOperationalGaps = teamsForGapReview
+      .map((team) => {
+        const selectedSeason = selectSeededOrCurrentSeason(team.program.seasons);
+        const selectedSeasonRoster = selectedSeason
+          ? team.roster.filter((membership) => membership.seasonId === selectedSeason.id)
+          : [];
+        const selectedSeasonRosterPersonIds = new Set(selectedSeasonRoster.map((membership) => membership.personId));
+        const roleAssignmentPersonIds = new Set(team.roles.map((assignment) => assignment.personId));
+
+        let membersMissingAssignments = 0;
+        selectedSeasonRosterPersonIds.forEach((personId) => {
+          if (!roleAssignmentPersonIds.has(personId)) {
+            membersMissingAssignments += 1;
+          }
+        });
+
+        return {
+          id: team.id,
+          name: team.name,
+          selectedSeasonName: selectedSeason?.name ?? null,
+          selectedSeasonRosterCount: selectedSeasonRosterPersonIds.size,
+          membersMissingAssignments,
+        };
+      })
+      .filter((team) => team.selectedSeasonRosterCount === 0 || team.membersMissingAssignments > 0)
+      .sort((left, right) => {
+        if (left.membersMissingAssignments !== right.membersMissingAssignments) {
+          return right.membersMissingAssignments - left.membersMissingAssignments;
+        }
+
+        return left.name.localeCompare(right.name);
+      })
+      .slice(0, 5);
 
     dashboardData = {
       counts: {
@@ -340,14 +536,20 @@ export default async function DashboardPage() {
         teams: teamCount,
         people: peopleCount,
         upcomingEvents: upcomingEventCount,
-        openTasks: openTaskCount,
+        attendanceNeedingReview: attendanceNeedingReview.length,
+        overdueTasks: overdueTaskCount,
         recentNotes: recentNoteCount,
+        pendingFieldOpsApprovals: pendingFieldOpsApprovalsCount,
+        athletesMissingGuardianLinkage: athletesMissingGuardianLinkageCount,
+        teamsWithOperationalGaps: teamOperationalGaps.length,
       },
       upcomingEvents,
-      openTasks: sortOpenTasks(openTasks).slice(0, 5),
+      attendanceNeedingReview,
+      overdueTasks: sortOpenTasks(overdueTasks),
       recentNotes,
-      recentRsvpEvent,
-      recentAttendanceEvent,
+      athletesMissingGuardianLinkage,
+      teamOperationalGaps,
+      pendingFieldOpsApprovals,
     };
   } catch (error) {
     if (isSchemaUnavailableError(error)) {
@@ -361,7 +563,7 @@ export default async function DashboardPage() {
         <div className="space-y-1">
           <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Operational overview for coaches and program operators.
+            Lightweight coach/admin operational dashboard using current CadreOS workflows.
           </p>
         </div>
         <div className="rounded-lg border bg-white px-4 py-3 text-sm dark:bg-zinc-900">
@@ -381,30 +583,67 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {[
-              { label: "Programs", value: dashboardData.counts.programs, sublabel: null },
-              { label: "Teams", value: dashboardData.counts.teams, sublabel: null },
-              { label: "People", value: dashboardData.counts.people, sublabel: null },
-              { label: "Upcoming events", value: dashboardData.counts.upcomingEvents, sublabel: null },
-              { label: "Open tasks", value: dashboardData.counts.openTasks, sublabel: null },
+              { label: "Programs", value: dashboardData.counts.programs, href: "/programs" },
+              { label: "Teams", value: dashboardData.counts.teams, href: "/teams" },
+              { label: "People", value: dashboardData.counts.people, href: "/people" },
+              {
+                label: "Upcoming events",
+                value: dashboardData.counts.upcomingEvents,
+                href: "/events",
+              },
+              {
+                label: "Attendance needing review",
+                value: dashboardData.counts.attendanceNeedingReview,
+                href: "/events?attendance=missing",
+              },
+              {
+                label: "Overdue follow-up tasks",
+                value: dashboardData.counts.overdueTasks,
+                href: "/tasks?dueWindow=overdue",
+              },
               {
                 label: "Recent notes",
                 value: dashboardData.counts.recentNotes,
+                href: "/notes",
                 sublabel: `Last ${RECENT_NOTE_WINDOW_DAYS} days`,
               },
+              {
+                label: "FieldOps pending approvals",
+                value: dashboardData.counts.pendingFieldOpsApprovals,
+                href: "/field-ops/bookings?approvalStatus=PENDING",
+              },
+              ...(canViewGuardianRelationshipDetails
+                ? [
+                    {
+                      label: "Athletes missing guardian linkage",
+                      value: dashboardData.counts.athletesMissingGuardianLinkage,
+                      href: "/people",
+                    },
+                  ]
+                : []),
+              {
+                label: "Teams with roster/assignment gaps",
+                value: dashboardData.counts.teamsWithOperationalGaps,
+                href: "/teams",
+              },
             ].map((metric) => (
-              <div key={metric.label} className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <Link
+                key={metric.label}
+                href={metric.href}
+                className="rounded-lg border bg-white p-4 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+              >
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">{metric.label}</p>
                 <p className="mt-2 text-2xl font-semibold">{metric.value}</p>
                 {metric.sublabel ? (
                   <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{metric.sublabel}</p>
                 ) : null}
-              </div>
+              </Link>
             ))}
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-3">
+          <div className="grid gap-4 xl:grid-cols-2">
             <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-base font-medium">Upcoming events</h3>
@@ -414,23 +653,20 @@ export default async function DashboardPage() {
               </div>
               <div className="mt-4 space-y-4">
                 {dashboardData.upcomingEvents.length === 0
-                  ? renderEmptyList("No upcoming events are scheduled for this organization.")
+                  ? renderEmptyList("No upcoming events are scheduled. Create one from the Events workflow.")
                   : dashboardData.upcomingEvents.map((event) => (
                       <div key={event.id} className="border-b pb-4 last:border-b-0 last:pb-0">
                         <Link href={`/events/${event.id}`} className="font-medium underline">
                           {event.title}
                         </Link>
                         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                          {formatDateTime(event.startsAt)}
+                          {formatDateTime(event.startsAt)} · {formatEnumLabel(event.status)}
                         </p>
                         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                           Program: {event.program.name}
                         </p>
                         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                           Team: {event.team ? event.team.name : "Unassigned"}
-                        </p>
-                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                          Status: {formatEnumLabel(event.status)}
                         </p>
                       </div>
                     ))}
@@ -439,15 +675,57 @@ export default async function DashboardPage() {
 
             <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-base font-medium">Open follow-up tasks</h3>
-                <Link href="/tasks" className="text-sm underline">
-                  View all
+                <h3 className="text-base font-medium">Attendance needing review</h3>
+                <Link href="/events?attendance=missing" className="text-sm underline">
+                  Review events
                 </Link>
               </div>
               <div className="mt-4 space-y-4">
-                {dashboardData.openTasks.length === 0
-                  ? renderEmptyList("No open or in-progress tasks are assigned right now.")
-                  : dashboardData.openTasks.map((task) => (
+                {dashboardData.attendanceNeedingReview.length === 0
+                  ? renderEmptyList("No attendance gaps detected for completed/past team events.")
+                  : dashboardData.attendanceNeedingReview.map((event) => {
+                      const reviewFilterHref =
+                        event.capturedAttendanceCount === 0
+                          ? "/events?attendance=missing"
+                          : "/events?attendance=partial";
+
+                      return (
+                        <div key={event.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                          <Link href={`/events/${event.id}`} className="font-medium underline">
+                            {event.title}
+                          </Link>
+                          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                            {formatDateTime(event.startsAt)} · Team: {event.team.name}
+                          </p>
+                          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                            Attendance captured: {event.capturedAttendanceCount}/{event.expectedAttendanceCount} ({event.missingAttendanceCount} missing)
+                          </p>
+                          <div className="mt-2 flex gap-2 text-sm">
+                            <Link href={reviewFilterHref} className="underline">
+                              Open attendance filter
+                            </Link>
+                            <span className="text-zinc-500 dark:text-zinc-400">•</span>
+                            <Link href={`/events/${event.id}/attendance`} className="underline">
+                              Capture attendance
+                            </Link>
+                          </div>
+                        </div>
+                      );
+                    })}
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-medium">Overdue follow-up tasks</h3>
+                <Link href="/tasks?dueWindow=overdue" className="text-sm underline">
+                  Review overdue
+                </Link>
+              </div>
+              <div className="mt-4 space-y-4">
+                {dashboardData.overdueTasks.length === 0
+                  ? renderEmptyList("No overdue open/in-progress follow-up tasks right now.")
+                  : dashboardData.overdueTasks.map((task) => (
                       <div key={task.id} className="border-b pb-4 last:border-b-0 last:pb-0">
                         <Link href={`/tasks/${task.id}`} className="font-medium underline">
                           {task.title}
@@ -471,14 +749,14 @@ export default async function DashboardPage() {
 
             <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-base font-medium">Recent notes</h3>
+                <h3 className="text-base font-medium">Recent operational notes</h3>
                 <Link href="/notes" className="text-sm underline">
                   View all
                 </Link>
               </div>
               <div className="mt-4 space-y-4">
                 {dashboardData.recentNotes.length === 0
-                  ? renderEmptyList("No notes have been recorded for this organization yet.")
+                  ? renderEmptyList("No notes have been recorded yet.")
                   : dashboardData.recentNotes.map((note) => (
                       <div key={note.id} className="border-b pb-4 last:border-b-0 last:pb-0">
                         <Link href={`/notes/${note.id}`} className="font-medium underline">
@@ -511,52 +789,104 @@ export default async function DashboardPage() {
                     ))}
               </div>
             </div>
-          </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-              <h3 className="text-base font-medium">RSVP snapshot</h3>
-              {dashboardData.recentRsvpEvent ? (
-                <div className="mt-4 space-y-1">
-                  <Link href={`/events/${dashboardData.recentRsvpEvent.id}`} className="font-medium underline">
-                    {dashboardData.recentRsvpEvent.title}
-                  </Link>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Event date: {formatDateTime(dashboardData.recentRsvpEvent.startsAt)}
-                  </p>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    RSVP count: {dashboardData.recentRsvpEvent._count.rsvps}
-                  </p>
-                </div>
-              ) : (
-                <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
-                  No RSVP activity has been recorded yet.
-                </p>
-              )}
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-medium">Athletes missing guardian linkage</h3>
+                <Link href="/people" className="text-sm underline">
+                  Open people
+                </Link>
+              </div>
+              <div className="mt-4 space-y-4">
+                {!canViewGuardianRelationshipDetails
+                  ? renderEmptyList("Guardian relationship detail visibility is staff-role-gated for this account.")
+                  : dashboardData.athletesMissingGuardianLinkage.length === 0
+                    ? renderEmptyList("No athlete guardian-linkage gaps detected.")
+                    : dashboardData.athletesMissingGuardianLinkage.map((person) => {
+                        const teamLinks = person.roster
+                          .map((membership) => membership.team)
+                          .filter((team, index, teams) => teams.findIndex((item) => item.id === team.id) === index)
+                          .slice(0, 3);
+
+                        return (
+                          <div key={person.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                            <Link href={`/people/${person.id}`} className="font-medium underline">
+                              {person.firstName} {person.lastName}
+                            </Link>
+                            <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                              {teamLinks.length === 0 ? (
+                                <span className="text-zinc-600 dark:text-zinc-400">No current team membership context.</span>
+                              ) : (
+                                teamLinks.map((team) => (
+                                  <Link
+                                    key={team.id}
+                                    href={`/teams/${team.id}?guardianFilter=missing_guardian_linkage`}
+                                    className="rounded-full border px-2 py-1"
+                                  >
+                                    Team: {team.name}
+                                  </Link>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+              </div>
             </div>
 
             <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-              <h3 className="text-base font-medium">Attendance snapshot</h3>
-              {dashboardData.recentAttendanceEvent ? (
-                <div className="mt-4 space-y-1">
-                  <Link
-                    href={`/events/${dashboardData.recentAttendanceEvent.id}`}
-                    className="font-medium underline"
-                  >
-                    {dashboardData.recentAttendanceEvent.title}
-                  </Link>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Event date: {formatDateTime(dashboardData.recentAttendanceEvent.startsAt)}
-                  </p>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Attendance count: {dashboardData.recentAttendanceEvent._count.attendance}
-                  </p>
-                </div>
-              ) : (
-                <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
-                  No attendance records have been captured yet.
-                </p>
-              )}
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-medium">Team roster and assignment gaps</h3>
+                <Link href="/teams" className="text-sm underline">
+                  Open teams
+                </Link>
+              </div>
+              <div className="mt-4 space-y-4">
+                {dashboardData.teamOperationalGaps.length === 0
+                  ? renderEmptyList("No selected-season roster or assignment gaps detected.")
+                  : dashboardData.teamOperationalGaps.map((team) => (
+                      <div key={team.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                        <Link href={`/teams/${team.id}`} className="font-medium underline">
+                          {team.name}
+                        </Link>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          Season: {team.selectedSeasonName ?? "No season context"}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          Selected-season roster members: {team.selectedSeasonRosterCount}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          Role assignment gaps: {team.membersMissingAssignments}
+                        </p>
+                      </div>
+                    ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-medium">Pending FieldOps approvals</h3>
+                <Link href="/field-ops/bookings?approvalStatus=PENDING" className="text-sm underline">
+                  Review pending
+                </Link>
+              </div>
+              <div className="mt-4 space-y-4">
+                {dashboardData.pendingFieldOpsApprovals.length === 0
+                  ? renderEmptyList("No pending FieldOps approval requests.")
+                  : dashboardData.pendingFieldOpsApprovals.map((booking) => (
+                      <div key={booking.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                        <Link href={`/field-ops/bookings/${booking.id}`} className="font-medium underline">
+                          {booking.title}
+                        </Link>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          {formatDateTime(booking.startsAt)} · {formatEnumLabel(booking.status)}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          {booking.facility.name} · {booking.resource.name}
+                        </p>
+                      </div>
+                    ))}
+              </div>
             </div>
           </div>
         </>

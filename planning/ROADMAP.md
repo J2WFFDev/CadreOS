@@ -170,6 +170,28 @@ This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the
 - FieldOps expansion.
 - Advanced attendance/event analytics and reporting.
 
+## Phase 8E output summary (implemented lightweight coach operational dashboard slice)
+
+- `/dashboard` now consolidates lightweight operational summaries using existing workflows for:
+  - upcoming events
+  - attendance needing review
+  - overdue follow-up tasks
+  - recent operational notes
+  - athletes missing guardian linkage (staff-gated visibility)
+  - roster/assignment gaps
+  - pending FieldOps approvals
+- Dashboard sections include safe links into existing routes and existing low-risk filters (events/tasks/teams/FieldOps booking views).
+- Dashboard empty states were updated for coach/admin operational clarity and immediate next-step navigation.
+- Implementation remains organization-scoped and uses existing auth/data access patterns with no schema redesign.
+
+### Still deferred after 8E
+
+- Messaging/chat/notifications/reminders and other communication runtime behavior.
+- Parent-facing portal/dashboard behavior.
+- Feed/Inbox/Journal runtime behavior and Entry migration implementation.
+- FieldOps functional expansion beyond existing approval workflow visibility.
+- Advanced BI/reporting infrastructure and predictive analytics.
+
 ---
 
 ## PR Summary (directional)
