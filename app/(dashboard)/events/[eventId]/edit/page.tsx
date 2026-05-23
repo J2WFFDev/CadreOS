@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { formatDateTimeInputValue } from "@/lib/phase1c/workflows";
+import { formatDateTimeInputValue } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 

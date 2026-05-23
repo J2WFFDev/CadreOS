@@ -8,7 +8,7 @@ import {
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
   rosterMembershipWorkflowSchema,
-} from "@/lib/phase1c/workflows";
+} from "@/lib/workflows";
 
 function buildErrorRedirectUrl(requestUrl: string, teamId: string, input: {
   values: { personId: string; seasonId: string; rosterRole: string };

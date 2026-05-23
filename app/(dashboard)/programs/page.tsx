@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { ErrorMessage } from "@/components/dashboard/error-message";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -12,11 +15,7 @@ export default async function ProgramsPage() {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Programs</h2>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">
-            {scope.errorMessage ?? "Unable to query programs right now."}
-          </p>
-        </div>
+        <ErrorMessage message={scope.errorMessage ?? "Unable to query programs right now."} />
       </section>
     );
   }
@@ -69,39 +68,25 @@ export default async function ProgramsPage() {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Programs</h2>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">
-            Unable to load programs right now. Please try again later.
-          </p>
-        </div>
+        <ErrorMessage message="Unable to load programs right now. Please try again later." />
       </section>
     );
   }
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-semibold tracking-tight">Programs</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Organize your programs, seasons, and team groupings.
-          </p>
-        </div>
-        <Link href="/programs/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-          New program
-        </Link>
-      </div>
+      <PageHeader
+        title="Programs"
+        description="Organize your programs, seasons, and team groupings."
+        actions={
+          <Link href="/programs/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+            New program
+          </Link>
+        }
+      />
 
       {programs.length === 0 ? (
-        <div className="rounded-lg border bg-white p-6 text-center dark:bg-zinc-900">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">No programs have been created yet.</p>
-          <Link
-            href="/programs/new"
-            className="mt-3 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-          >
-            Create the first program
-          </Link>
-        </div>
+        <EmptyState message="No programs have been created yet." actionHref="/programs/new" actionLabel="Create the first program" />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {programs.map((program) => (

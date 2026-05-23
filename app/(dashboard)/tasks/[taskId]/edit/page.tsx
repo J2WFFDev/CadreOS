@@ -3,7 +3,7 @@ import { TaskStatus } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { formatDateTimeInputValue, isSchemaUnavailableError } from "@/lib/phase1c/workflows";
+import { formatDateTimeInputValue, isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 

@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { ErrorMessage } from "@/components/dashboard/error-message";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -56,11 +59,7 @@ export default async function PeoplePage() {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">People</h2>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">
-            {scope.errorMessage ?? "Unable to query people right now."}
-          </p>
-        </div>
+        <ErrorMessage message={scope.errorMessage ?? "Unable to query people right now."} />
       </section>
     );
   }
@@ -129,39 +128,25 @@ export default async function PeoplePage() {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">People</h2>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">
-            Unable to load people right now. Please try again later.
-          </p>
-        </div>
+        <ErrorMessage message="Unable to load people right now. Please try again later." />
       </section>
     );
   }
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-semibold tracking-tight">People</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Manage athletes, guardians, coaches, and other personnel in your organization.
-          </p>
-        </div>
-        <Link href="/people/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-          New person
-        </Link>
-      </div>
+      <PageHeader
+        title="People"
+        description="Manage athletes, guardians, coaches, and other personnel in your organization."
+        actions={
+          <Link href="/people/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+            New person
+          </Link>
+        }
+      />
 
       {people.length === 0 ? (
-        <div className="rounded-lg border bg-white p-6 text-center dark:bg-zinc-900">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">No people have been added yet.</p>
-          <Link
-            href="/people/new"
-            className="mt-3 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-          >
-            Add the first person
-          </Link>
-        </div>
+        <EmptyState message="No people have been added yet." actionHref="/people/new" actionLabel="Add the first person" />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
           <table className="min-w-full text-left text-sm">
