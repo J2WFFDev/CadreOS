@@ -894,6 +894,30 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="text-base font-medium">Relationship summary continuity</h3>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Continue review workflows from dashboard into person, team, and event relationship summaries.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2 text-sm">
+          <Link href="/people" className="rounded-full border px-2 py-1">
+            Person summaries
+          </Link>
+          <Link href="/teams?readiness=needs_attention" className="rounded-full border px-2 py-1">
+            Team summaries
+          </Link>
+          <Link href="/events?links=notes_or_tasks" className="rounded-full border px-2 py-1">
+            Event summaries
+          </Link>
+          <Link href="/tasks?resolution=unresolved" className="rounded-full border px-2 py-1">
+            Unresolved related items
+          </Link>
+          <Link href="/events?operationalIndicator=recently_active" className="rounded-full border px-2 py-1">
+            Recent related activity
+          </Link>
+        </div>
+      </div>
+
       {!dashboardData ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
           <p className="text-sm text-amber-900 dark:text-amber-200">{queryErrorMessage}</p>
@@ -989,7 +1013,7 @@ export default async function DashboardPage() {
                   ? renderEmptyList("No upcoming events are scheduled. Create one from the Events workflow.")
                   : dashboardData.upcomingEvents.map((event) => (
                       <div key={event.id} className="border-b pb-4 last:border-b-0 last:pb-0">
-                        <Link href={`/events/${event.id}`} className="font-medium underline">
+                        <Link href={`/events/${event.id}#relationship-summary`} className="font-medium underline">
                           {event.title}
                         </Link>
                         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -1024,7 +1048,7 @@ export default async function DashboardPage() {
 
                       return (
                         <div key={event.id} className="border-b pb-4 last:border-b-0 last:pb-0">
-                          <Link href={`/events/${event.id}`} className="font-medium underline">
+                          <Link href={`/events/${event.id}#relationship-summary`} className="font-medium underline">
                             {event.title}
                           </Link>
                           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -1302,7 +1326,7 @@ export default async function DashboardPage() {
 
                         return (
                           <div key={person.id} className="border-b pb-4 last:border-b-0 last:pb-0">
-                            <Link href={`/people/${person.id}`} className="font-medium underline">
+                            <Link href={`/people/${person.id}#relationship-summary`} className="font-medium underline">
                               {person.firstName} {person.lastName}
                             </Link>
                             <div className="mt-2 flex flex-wrap gap-2 text-sm">
@@ -1338,7 +1362,7 @@ export default async function DashboardPage() {
                   ? renderEmptyList("No selected-season roster or assignment gaps detected.")
                   : dashboardData.teamOperationalGaps.map((team) => (
                       <div key={team.id} className="border-b pb-4 last:border-b-0 last:pb-0">
-                        <Link href={`/teams/${team.id}`} className="font-medium underline">
+                        <Link href={`/teams/${team.id}#relationship-summary`} className="font-medium underline">
                           {team.name}
                         </Link>
                         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -1367,7 +1391,7 @@ export default async function DashboardPage() {
                   ? renderEmptyList("No unresolved event-level attendance/task concerns in the current review window.")
                   : dashboardData.unresolvedEventConcerns.map((event) => (
                       <div key={event.id} className="border-b pb-4 last:border-b-0 last:pb-0">
-                        <Link href={`/events/${event.id}`} className="font-medium underline">
+                        <Link href={`/events/${event.id}#relationship-summary`} className="font-medium underline">
                           {event.title}
                         </Link>
                         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">

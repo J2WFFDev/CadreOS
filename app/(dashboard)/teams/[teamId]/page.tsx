@@ -1,4 +1,4 @@
-import { RoleType, ScopeType } from "@prisma/client";
+import { RoleType, ScopeType, TaskStatus } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
@@ -32,6 +32,10 @@ function formatEnumLabel(value: string) {
     .replaceAll("_", " ")
     .toLowerCase()
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function isUnresolvedTaskStatus(status: string) {
+  return status === TaskStatus.OPEN || status === TaskStatus.IN_PROGRESS || status === TaskStatus.BLOCKED;
 }
 
 function buildTeamViewHref(teamId: string, filters: { seasonId?: string; roleFilter?: string; guardianFilter?: string }) {
@@ -81,7 +85,7 @@ export default async function TeamDetailsPage({
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Team</h2>
-        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div id="relationship-summary" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No organization context is available yet.</p>
         </div>
       </section>
@@ -361,6 +365,77 @@ export default async function TeamDetailsPage({
     limit: 10,
     sinceDays: 45,
   });
+  const now = new Date();
+  const upcomingWindowEndsAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const [teamRelatedTasks, teamRelatedNotes, teamUpcomingEvents] = await Promise.all([
+    db.followUpTask.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        OR: [
+          { sourceEvent: { is: { teamId: team.id } } },
+          { sourceNote: { is: { teamId: team.id } } },
+          { sourceNote: { is: { event: { is: { teamId: team.id } } } } },
+        ],
+      },
+      select: {
+        id: true,
+        status: true,
+      },
+      orderBy: [{ updatedAt: "desc" }],
+      take: 8,
+    }),
+    db.observationNote.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        OR: [{ teamId: team.id }, { event: { is: { teamId: team.id } } }],
+      },
+      select: {
+        id: true,
+        tasks: { select: { status: true } },
+      },
+      orderBy: [{ updatedAt: "desc" }],
+      take: 8,
+    }),
+    db.event.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        teamId: team.id,
+        startsAt: { gte: now, lte: upcomingWindowEndsAt },
+      },
+      select: {
+        id: true,
+        title: true,
+        startsAt: true,
+        status: true,
+        _count: { select: { attendance: true } },
+        tasks: { select: { status: true } },
+      },
+      orderBy: [{ startsAt: "asc" }],
+      take: 8,
+    }),
+  ]);
+  const unresolvedTeamTaskCount = teamRelatedTasks.filter((task) => isUnresolvedTaskStatus(task.status)).length;
+  const unresolvedTeamNoteTaskCount = teamRelatedNotes.reduce(
+    (count, note) => count + note.tasks.filter((task) => isUnresolvedTaskStatus(task.status)).length,
+    0,
+  );
+  const selectedSeasonExpectedAttendanceCount = new Set(
+    selectedSeasonRosterMembers.map((membership) => membership.person.id),
+  ).size;
+  const upcomingEventConcerns = teamUpcomingEvents
+    .map((event) => {
+      const unresolvedTaskCount = event.tasks.filter((task) => isUnresolvedTaskStatus(task.status)).length;
+      const missingAttendanceCount =
+        selectedSeasonExpectedAttendanceCount > 0
+          ? Math.max(selectedSeasonExpectedAttendanceCount - event._count.attendance, 0)
+          : 0;
+      return {
+        ...event,
+        unresolvedTaskCount,
+        missingAttendanceCount,
+      };
+    })
+    .filter((event) => event.unresolvedTaskCount > 0 || event.missingAttendanceCount > 0);
 
   return (
     <section className="space-y-6">
@@ -632,6 +707,67 @@ export default async function TeamDetailsPage({
             Guardian relationship diagnostics are hidden for non-staff viewers to protect private relationship details.
           </p>
         )}
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="text-lg font-medium">Operational relationship summary</h3>
+        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="font-medium">Related notes</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{teamRelatedNotes.length}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Related follow-up tasks</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{teamRelatedTasks.length}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Unresolved related items</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {unresolvedTeamTaskCount + unresolvedTeamNoteTaskCount}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Upcoming team events (14 days)</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{teamUpcomingEvents.length}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Upcoming operational concerns</dt>
+            <dd className={upcomingEventConcerns.length > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {upcomingEventConcerns.length}
+            </dd>
+          </div>
+        </dl>
+        <div className="mt-3 flex flex-wrap gap-2 text-sm">
+          <Link href={`/notes?teamId=${team.id}`} className="rounded-full border px-2 py-1">
+            Team notes
+          </Link>
+          <Link href={`/tasks?teamId=${team.id}&resolution=unresolved`} className="rounded-full border px-2 py-1">
+            Team unresolved tasks
+          </Link>
+          <Link href={`/events?teamId=${team.id}&operationalIndicator=upcoming_operational_concern`} className="rounded-full border px-2 py-1">
+            Upcoming concern events
+          </Link>
+          <Link href={`/events?teamId=${team.id}&operationalIndicator=recently_active`} className="rounded-full border px-2 py-1">
+            Recent related activity
+          </Link>
+        </div>
+        {upcomingEventConcerns.length > 0 ? (
+          <ul className="mt-3 space-y-2 text-sm">
+            {upcomingEventConcerns.slice(0, 3).map((event) => (
+              <li key={event.id} className="rounded-md border p-2">
+                <Link href={`/events/${event.id}`} className="font-medium underline">
+                  {event.title}
+                </Link>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  {event.startsAt.toISOString().slice(0, 16).replace("T", " ")} UTC · {formatEnumLabel(event.status)}
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Missing attendance: {event.missingAttendanceCount} · Unresolved tasks: {event.unresolvedTaskCount}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
 
       <OperationalHistoryPanel

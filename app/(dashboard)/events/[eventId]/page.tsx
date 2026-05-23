@@ -57,7 +57,7 @@ export default async function EventDetailsPage({
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Event</h2>
-        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div id="relationship-summary" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No organization context is available yet.</p>
         </div>
       </section>
@@ -494,6 +494,35 @@ export default async function EventDetailsPage({
             .
           </p>
         ) : null}
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="text-lg font-medium">Relationship workflow navigation</h3>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Use these links to continue event-linked attendance, note, and follow-up workflows without leaving operational context.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2 text-sm">
+          <Link href="#attendance-workflow" className="rounded-full border px-2 py-1">
+            Attendance workflow
+          </Link>
+          <Link href={`/notes?eventId=${event.id}`} className="rounded-full border px-2 py-1">
+            Event notes
+          </Link>
+          <Link href={`/tasks?eventId=${event.id}&resolution=unresolved`} className="rounded-full border px-2 py-1">
+            Unresolved event tasks
+          </Link>
+          <Link href={`/tasks?eventId=${event.id}&changedWindow=last_7d`} className="rounded-full border px-2 py-1">
+            Recent related activity
+          </Link>
+          {event.team ? (
+            <Link
+              href={`/events?teamId=${event.team.id}&operationalIndicator=upcoming_operational_concern`}
+              className="rounded-full border px-2 py-1"
+            >
+              Team upcoming concerns
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <OperationalHistoryPanel
