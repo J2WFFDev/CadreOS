@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
+  isPermissionDeniedError,
   isSchemaUnavailableError,
   noteWorkflowSchema,
   requirePhase1CMutationPermission,
@@ -95,6 +96,8 @@ export async function POST(request: Request) {
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
       action: "note.create",
+      teamId: parsed.data.teamId,
+      eventId: parsed.data.eventId,
     });
 
     if (parsed.data.athletePersonId) {
@@ -204,9 +207,11 @@ export async function POST(request: Request) {
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, {
         values,
-        error: isSchemaUnavailableError(error)
-          ? "Database schema is not available yet. Run database setup before creating notes."
-          : "Unable to create note right now. Please try again.",
+        error: isPermissionDeniedError(error)
+          ? error.message
+          : isSchemaUnavailableError(error)
+            ? "Database schema is not available yet. Run database setup before creating notes."
+            : "Unable to create note right now. Please try again.",
       }),
       303,
     );

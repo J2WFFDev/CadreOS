@@ -7,6 +7,7 @@ import { getOrganizationScope } from "@/lib/organization-context";
 import {
   eventWorkflowSchema,
   getStringField,
+  isPermissionDeniedError,
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
 } from "@/lib/workflows";
@@ -131,6 +132,8 @@ export async function POST(request: Request) {
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
       action: "event.create",
+      programId: parsed.data.programId,
+      teamId: parsed.data.teamId,
     });
 
     const program = await db.program.findFirst({
@@ -226,9 +229,11 @@ export async function POST(request: Request) {
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, {
         values,
-        error: isSchemaUnavailableError(error)
-          ? "Database schema is not available yet. Run database setup before creating events."
-          : "Unable to create event right now. Please try again.",
+        error: isPermissionDeniedError(error)
+          ? error.message
+          : isSchemaUnavailableError(error)
+            ? "Database schema is not available yet. Run database setup before creating events."
+            : "Unable to create event right now. Please try again.",
       }),
       303,
     );

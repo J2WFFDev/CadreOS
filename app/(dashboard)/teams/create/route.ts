@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
+  isPermissionDeniedError,
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
   teamWorkflowSchema,
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
       action: "team.create",
+      programId: parsed.data.programId,
     });
 
     const program = await db.program.findFirst({
@@ -135,9 +137,11 @@ export async function POST(request: Request) {
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, {
         values,
-        error: isSchemaUnavailableError(error)
-          ? "Database schema is not available yet. Run database setup before creating teams."
-          : "Unable to create team right now. Please try again.",
+        error: isPermissionDeniedError(error)
+          ? error.message
+          : isSchemaUnavailableError(error)
+            ? "Database schema is not available yet. Run database setup before creating teams."
+            : "Unable to create team right now. Please try again.",
       }),
       303,
     );

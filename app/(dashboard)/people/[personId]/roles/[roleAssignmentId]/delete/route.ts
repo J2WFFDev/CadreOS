@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
+  isPermissionDeniedError,
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
 } from "@/lib/workflows";
@@ -42,6 +43,7 @@ export async function POST(
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
       action: "roleAssignment.delete",
+      roleAssignmentId,
     });
 
     const deleted = await db.roleAssignment.deleteMany({
@@ -69,9 +71,11 @@ export async function POST(
       buildErrorRedirectUrl(
         request.url,
         personId,
-        isSchemaUnavailableError(error)
-          ? "Database schema is not available yet. Run database setup before removing roles."
-          : "Unable to remove role right now. Please try again.",
+        isPermissionDeniedError(error)
+          ? error.message
+          : isSchemaUnavailableError(error)
+            ? "Database schema is not available yet. Run database setup before removing roles."
+            : "Unable to remove role right now. Please try again.",
       ),
       303,
     );

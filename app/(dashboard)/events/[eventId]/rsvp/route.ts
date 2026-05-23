@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
+  isPermissionDeniedError,
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
   rsvpWorkflowSchema,
@@ -97,6 +98,7 @@ export async function POST(
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
       action: "rsvp.upsert",
+      eventId,
     });
 
     const event = await db.event.findFirst({
@@ -182,9 +184,11 @@ export async function POST(
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, eventId, {
         values,
-        error: isSchemaUnavailableError(error)
-          ? "Database schema is not available yet. Run database setup before saving RSVPs."
-          : "Unable to save RSVP right now. Please try again.",
+        error: isPermissionDeniedError(error)
+          ? error.message
+          : isSchemaUnavailableError(error)
+            ? "Database schema is not available yet. Run database setup before saving RSVPs."
+            : "Unable to save RSVP right now. Please try again.",
       }),
       303,
     );

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
+  isPermissionDeniedError,
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
   rosterMembershipWorkflowSchema,
@@ -97,6 +98,7 @@ export async function POST(
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
       action: "rosterMembership.create",
+      teamId,
     });
 
     const team = await db.team.findFirst({
@@ -214,9 +216,11 @@ export async function POST(
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, teamId, {
         values,
-        error: isSchemaUnavailableError(error)
-          ? "Database schema is not available yet. Run database setup before adding roster members."
-          : "Unable to add roster member right now. Please try again.",
+        error: isPermissionDeniedError(error)
+          ? error.message
+          : isSchemaUnavailableError(error)
+            ? "Database schema is not available yet. Run database setup before adding roster members."
+            : "Unable to add roster member right now. Please try again.",
       }),
       303,
     );

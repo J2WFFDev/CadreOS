@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
+  isPermissionDeniedError,
   isSchemaUnavailableError,
   programWorkflowSchema,
   requirePhase1CMutationPermission,
@@ -83,6 +84,7 @@ export async function POST(
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
       action: "program.update",
+      programId,
     });
 
     const existingProgram = await db.program.findFirst({
@@ -147,9 +149,11 @@ export async function POST(
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, programId, {
         values,
-        error: isSchemaUnavailableError(error)
-          ? "Database schema is not available yet. Run database setup before editing programs."
-          : "Unable to update program right now. Please try again.",
+        error: isPermissionDeniedError(error)
+          ? error.message
+          : isSchemaUnavailableError(error)
+            ? "Database schema is not available yet. Run database setup before editing programs."
+            : "Unable to update program right now. Please try again.",
       }),
       303,
     );

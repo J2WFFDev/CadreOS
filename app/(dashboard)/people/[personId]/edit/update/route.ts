@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
+  isPermissionDeniedError,
   isSchemaUnavailableError,
   personWorkflowSchema,
   requirePhase1CMutationPermission,
@@ -133,9 +134,11 @@ export async function POST(
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, personId, {
         values,
-        error: isSchemaUnavailableError(error)
-          ? "Database schema is not available yet. Run database setup before editing people."
-          : "Unable to update person right now. Please try again.",
+        error: isPermissionDeniedError(error)
+          ? error.message
+          : isSchemaUnavailableError(error)
+            ? "Database schema is not available yet. Run database setup before editing people."
+            : "Unable to update person right now. Please try again.",
       }),
       303,
     );

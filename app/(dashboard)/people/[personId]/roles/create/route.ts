@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
+  isPermissionDeniedError,
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
   roleAssignmentWorkflowSchema,
@@ -104,6 +105,8 @@ export async function POST(
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
       action: "roleAssignment.create",
+      programId: parsed.data.programId,
+      teamId: parsed.data.teamId,
     });
 
     const person = await db.person.findFirst({
@@ -248,9 +251,11 @@ export async function POST(
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, personId, {
         values,
-        error: isSchemaUnavailableError(error)
-          ? "Database schema is not available yet. Run database setup before assigning roles."
-          : "Unable to assign role right now. Please try again.",
+        error: isPermissionDeniedError(error)
+          ? error.message
+          : isSchemaUnavailableError(error)
+            ? "Database schema is not available yet. Run database setup before assigning roles."
+            : "Unable to assign role right now. Please try again.",
       }),
       303,
     );

@@ -7,6 +7,7 @@ import { getOrganizationScope } from "@/lib/organization-context";
 import {
   attendanceWorkflowSchema,
   getStringField,
+  isPermissionDeniedError,
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
 } from "@/lib/workflows";
@@ -99,6 +100,7 @@ export async function POST(
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
       action: "attendance.upsert",
+      eventId,
     });
 
     const event = await db.event.findFirst({
@@ -203,9 +205,11 @@ export async function POST(
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, eventId, {
         values,
-        error: isSchemaUnavailableError(error)
-          ? "Database schema is not available yet. Run database setup before saving attendance."
-          : "Unable to save attendance right now. Please try again.",
+        error: isPermissionDeniedError(error)
+          ? error.message
+          : isSchemaUnavailableError(error)
+            ? "Database schema is not available yet. Run database setup before saving attendance."
+            : "Unable to save attendance right now. Please try again.",
       }),
       303,
     );
