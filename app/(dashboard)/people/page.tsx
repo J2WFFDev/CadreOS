@@ -16,6 +16,39 @@ function formatRoleSummary(roleTypes: string[]) {
     .join(", ");
 }
 
+function formatAssignmentSummary(assignments: Array<{
+  roleType: string;
+  scopeType: string;
+  program: { name: string } | null;
+  team: { name: string; program: { name: string } | null } | null;
+}>) {
+  if (assignments.length === 0) {
+    return "No roles assigned";
+  }
+
+  const summaries = assignments.map((assignment) => {
+    const roleLabel = formatRoleSummary([assignment.roleType]);
+    const scopeLabel = assignment.scopeType.replaceAll("_", " ").toLowerCase();
+    const titledScopeLabel = scopeLabel.replace(/\b\w/g, (char) => char.toUpperCase());
+
+    if (assignment.scopeType === "PROGRAM") {
+      return `${roleLabel} (${titledScopeLabel}${assignment.program ? `: ${assignment.program.name}` : ""})`;
+    }
+
+    if (assignment.scopeType === "TEAM") {
+      if (assignment.team?.program?.name) {
+        return `${roleLabel} (${titledScopeLabel}: ${assignment.team.name} · ${assignment.team.program.name})`;
+      }
+
+      return `${roleLabel} (${titledScopeLabel}${assignment.team ? `: ${assignment.team.name}` : ""})`;
+    }
+
+    return `${roleLabel} (${titledScopeLabel})`;
+  });
+
+  return [...new Set(summaries)].join(", ");
+}
+
 export default async function PeoplePage() {
   const scope = await getOrganizationScope();
 
@@ -51,7 +84,12 @@ export default async function PeoplePage() {
         firstName: string;
         lastName: string;
         email: string | null;
-        roles: Array<{ roleType: string }>;
+        roles: Array<{
+          roleType: string;
+          scopeType: string;
+          program: { name: string } | null;
+          team: { name: string; program: { name: string } | null } | null;
+        }>;
       }>
     | null = null;
 
@@ -60,7 +98,25 @@ export default async function PeoplePage() {
       where: { organizationId: scope.organizationId },
       include: {
         roles: {
-          select: { roleType: true },
+          select: {
+            roleType: true,
+            scopeType: true,
+            program: {
+              select: {
+                name: true,
+              },
+            },
+            team: {
+              select: {
+                name: true,
+                program: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
         },
       },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
@@ -115,8 +171,6 @@ export default async function PeoplePage() {
             </thead>
             <tbody>
               {people.map((person) => {
-                const uniqueRoleTypes = [...new Set(person.roles.map((role) => role.roleType))];
-
                 return (
                   <tr key={person.id} className="border-b last:border-b-0">
                     <td className="px-4 py-3">
@@ -127,7 +181,7 @@ export default async function PeoplePage() {
                     <td className="px-4 py-3">{person.lastName}</td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{person.email ?? "—"}</td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                      {formatRoleSummary(uniqueRoleTypes)}
+                      {formatAssignmentSummary(person.roles)}
                     </td>
                   </tr>
                 );

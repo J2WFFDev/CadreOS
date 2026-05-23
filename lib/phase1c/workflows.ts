@@ -1,4 +1,4 @@
-import { Prisma, RoleType } from "@prisma/client";
+import { Prisma, RoleType, ScopeType } from "@prisma/client";
 import { z } from "zod";
 
 import { requireAuthContext } from "@/lib/auth";
@@ -56,9 +56,73 @@ export const rosterMembershipWorkflowSchema = z.object({
   }),
 });
 
+export const roleAssignmentWorkflowSchema = z
+  .object({
+    roleType: z.nativeEnum(RoleType, {
+      message: "Role type must use an existing role value.",
+    }),
+    scopeType: z.nativeEnum(ScopeType, {
+      message: "Scope type must use an existing scope value.",
+    }),
+    programId: z.string().trim(),
+    teamId: z.string().trim(),
+  })
+  .superRefine((value, context) => {
+    if (value.scopeType === ScopeType.ORGANIZATION) {
+      if (value.programId.length > 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["programId"],
+          message: "Program is not allowed for organization scope.",
+        });
+      }
+
+      if (value.teamId.length > 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["teamId"],
+          message: "Team is not allowed for organization scope.",
+        });
+      }
+    }
+
+    if (value.scopeType === ScopeType.PROGRAM) {
+      if (value.programId.length === 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["programId"],
+          message: "Program selection is required for program scope.",
+        });
+      }
+
+      if (value.teamId.length > 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["teamId"],
+          message: "Team is not allowed for program scope.",
+        });
+      }
+    }
+
+    if (value.scopeType === ScopeType.TEAM && value.teamId.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["teamId"],
+        message: "Team selection is required for team scope.",
+      });
+    }
+  })
+  .transform((value) => ({
+    roleType: value.roleType,
+    scopeType: value.scopeType,
+    programId: value.programId.length === 0 ? null : value.programId,
+    teamId: value.teamId.length === 0 ? null : value.teamId,
+  }));
+
 export type PersonWorkflowInput = z.output<typeof personWorkflowSchema>;
 export type TeamWorkflowInput = z.output<typeof teamWorkflowSchema>;
 export type RosterMembershipWorkflowInput = z.output<typeof rosterMembershipWorkflowSchema>;
+export type RoleAssignmentWorkflowInput = z.output<typeof roleAssignmentWorkflowSchema>;
 
 export function getStringField(formData: FormData, field: string): string {
   const rawValue = formData.get(field);
@@ -79,7 +143,9 @@ export async function requirePhase1CMutationPermission(input: {
     | "person.create"
     | "person.update"
     | "team.create"
-    | "rosterMembership.create";
+    | "rosterMembership.create"
+    | "roleAssignment.create"
+    | "roleAssignment.delete";
 }): Promise<void> {
   const authContext = await requireAuthContext();
 
