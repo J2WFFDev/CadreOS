@@ -1,8 +1,11 @@
-import { TaskStatus, Prisma } from "@prisma/client";
+import { NoteVisibility, TaskStatus, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { classifyObservationNoteOperationalVisibility } from "@/lib/operational-visibility";
+import {
+  classifyFollowUpTaskOperationalVisibility,
+  classifyObservationNoteOperationalVisibility,
+} from "@/lib/operational-visibility";
 import { resolveFollowUpTaskCreatorPersonId } from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
@@ -150,13 +153,30 @@ export async function POST(request: Request) {
       );
     }
 
+    let sourceNote:
+      | {
+          id: string;
+          eventId: string | null;
+          visibility: NoteVisibility;
+          teamId: string | null;
+          team: { programId: string } | null;
+          event: { teamId: string | null; programId: string } | null;
+        }
+      | null = null;
     if (parsed.data.sourceNoteId) {
-      const sourceNote = await db.observationNote.findFirst({
+      sourceNote = await db.observationNote.findFirst({
         where: {
           id: parsed.data.sourceNoteId,
           organizationId: scope.organizationId,
         },
-        select: { id: true, eventId: true, visibility: true },
+        select: {
+          id: true,
+          eventId: true,
+          visibility: true,
+          teamId: true,
+          team: { select: { programId: true } },
+          event: { select: { teamId: true, programId: true } },
+        },
       });
 
       if (!sourceNote) {
@@ -172,20 +192,74 @@ export async function POST(request: Request) {
 
       const sourceNoteVisibility = classifyObservationNoteOperationalVisibility({
         visibility: sourceNote.visibility,
+        teamId: sourceNote.teamId,
+        eventTeamId: sourceNote.event?.teamId ?? null,
+        teamProgramId: sourceNote.team?.programId ?? null,
+        eventProgramId: sourceNote.event?.programId ?? null,
       });
 
       if (sourceNoteVisibility.visibilityClass === "UNRESOLVED") {
         return NextResponse.redirect(
           buildErrorRedirectUrl(request.url, {
             values,
-            fieldErrors: { sourceNoteId: "Selected note visibility is not supported for task linkage." },
-            error: "Source note visibility is unsupported.",
+            fieldErrors: { sourceNoteId: "Selected note visibility context is unresolved for task linkage." },
+            error: "Source note visibility is unresolved.",
+          }),
+          303,
+        );
+      }
+    }
+
+    const sourceEvent = parsed.data.sourceEventId
+      ? await db.event.findFirst({
+        where: {
+          id: parsed.data.sourceEventId,
+          organizationId: scope.organizationId,
+        },
+        select: { id: true, teamId: true, programId: true },
+      })
+      : null;
+
+    if (parsed.data.sourceEventId && !sourceEvent) {
+      return NextResponse.redirect(
+        buildErrorRedirectUrl(request.url, {
+          values,
+          fieldErrors: { sourceEventId: "Select a valid event in the active organization." },
+          error: "Source event selection is invalid.",
+        }),
+        303,
+      );
+    }
+
+    if (sourceNote) {
+      const linkedVisibility = classifyFollowUpTaskOperationalVisibility({
+        sourceNoteId: sourceNote.id,
+        sourceEventId: sourceEvent?.id ?? null,
+        sourceNoteVisibility: sourceNote.visibility,
+        sourceNoteEventId: sourceNote.eventId,
+        sourceNoteTeamId: sourceNote.teamId,
+        sourceNoteEventTeamId: sourceNote.event?.teamId ?? null,
+        sourceEventTeamId: sourceEvent?.teamId ?? null,
+        sourceNoteTeamProgramId: sourceNote.team?.programId ?? null,
+        sourceNoteEventProgramId: sourceNote.event?.programId ?? null,
+        sourceEventProgramId: sourceEvent?.programId ?? null,
+      });
+
+      if (linkedVisibility.visibilityClass === "UNRESOLVED") {
+        return NextResponse.redirect(
+          buildErrorRedirectUrl(request.url, {
+            values,
+            fieldErrors: {
+              sourceNoteId: "Selected source-note linkage has unresolved visibility context.",
+              sourceEventId: sourceEvent ? "Selected source-event linkage conflicts with source-note visibility context." : undefined,
+            },
+            error: "Source note/event visibility context is ambiguous.",
           }),
           303,
         );
       }
 
-      if (parsed.data.sourceEventId && sourceNote.eventId !== parsed.data.sourceEventId) {
+      if (parsed.data.sourceEventId && sourceNote.eventId && sourceNote.eventId !== parsed.data.sourceEventId) {
         return NextResponse.redirect(
           buildErrorRedirectUrl(request.url, {
             values,
@@ -193,27 +267,6 @@ export async function POST(request: Request) {
               sourceEventId: "Selected event must match the source note event context.",
             },
             error: "Source note/event context is ambiguous.",
-          }),
-          303,
-        );
-      }
-    }
-
-    if (parsed.data.sourceEventId) {
-      const sourceEvent = await db.event.findFirst({
-        where: {
-          id: parsed.data.sourceEventId,
-          organizationId: scope.organizationId,
-        },
-        select: { id: true },
-      });
-
-      if (!sourceEvent) {
-        return NextResponse.redirect(
-          buildErrorRedirectUrl(request.url, {
-            values,
-            fieldErrors: { sourceEventId: "Select a valid event in the active organization." },
-            error: "Source event selection is invalid.",
           }),
           303,
         );
