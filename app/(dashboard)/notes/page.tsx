@@ -631,6 +631,7 @@ export default async function NotesPage({
                 const hasUpcomingOperationalConcern = hasUpcomingEventContext && hasUnresolvedFollowUp;
                 const unresolvedTooLong = hasUnresolvedFollowUp && isStale;
                 const needsReview = hasUnresolvedFollowUp || isStale;
+                const isContextFree = !note.athlete && !note.team && !note.event;
 
                 return (
                   <tr key={note.id} className="border-b last:border-b-0">
@@ -691,6 +692,11 @@ export default async function NotesPage({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
+                        {isContextFree ? (
+                          <span className="inline-flex items-center rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
+                            No context
+                          </span>
+                        ) : null}
                         {isRecentlyActive ? (
                           <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
                             Recently active

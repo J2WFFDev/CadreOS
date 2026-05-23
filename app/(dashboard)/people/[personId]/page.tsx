@@ -1,9 +1,10 @@
-import { AttendanceStatus, RoleType, ScopeType, TaskStatus } from "@prisma/client";
+import { AttendanceStatus, RoleType, ScopeType } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
 import { db } from "@/lib/db";
+import { isUnresolvedTaskStatus } from "@/lib/follow-up-tasks";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { getOperationalHistory } from "@/lib/operational-history";
@@ -31,10 +32,6 @@ function formatEnumLabel(value: string) {
     .replaceAll("_", " ")
     .toLowerCase()
     .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function isUnresolvedTaskStatus(status: string) {
-  return status === TaskStatus.OPEN || status === TaskStatus.IN_PROGRESS || status === TaskStatus.BLOCKED;
 }
 
 export default async function PersonDetailsPage({

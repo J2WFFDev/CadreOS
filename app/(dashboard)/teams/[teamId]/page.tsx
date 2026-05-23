@@ -1,4 +1,4 @@
-import { RoleType, ScopeType, TaskStatus } from "@prisma/client";
+import { RoleType, ScopeType } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
@@ -9,6 +9,7 @@ import {
   formatGuardianOperationalIndicator,
 } from "@/lib/guardian-operational-context";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import { isUnresolvedTaskStatus } from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { getOperationalHistory } from "@/lib/operational-history";
 import { selectSeededOrCurrentSeason } from "@/lib/workflows";
@@ -32,10 +33,6 @@ function formatEnumLabel(value: string) {
     .replaceAll("_", " ")
     .toLowerCase()
     .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function isUnresolvedTaskStatus(status: string) {
-  return status === TaskStatus.OPEN || status === TaskStatus.IN_PROGRESS || status === TaskStatus.BLOCKED;
 }
 
 function buildTeamViewHref(teamId: string, filters: { seasonId?: string; roleFilter?: string; guardianFilter?: string }) {

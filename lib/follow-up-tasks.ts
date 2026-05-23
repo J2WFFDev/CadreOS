@@ -55,6 +55,10 @@ export function getTaskStatusBadgeClassName(status: string) {
   return "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300";
 }
 
+export function isUnresolvedTaskStatus(status: string): boolean {
+  return status === "OPEN" || status === "IN_PROGRESS" || status === "BLOCKED";
+}
+
 export function compareFollowUpTasks<T extends { status: string; dueAt: Date | null; title: string }>(
   left: T,
   right: T,

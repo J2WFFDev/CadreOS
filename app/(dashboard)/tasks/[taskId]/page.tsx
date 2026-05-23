@@ -167,6 +167,8 @@ export default async function TaskDetailPage({
       ? deriveGuardianOperationalContext(task.sourceNote.athlete.athleteLinks ?? [])
       : null;
   const hasUnresolvedOperationalItem = task.status !== "DONE" && task.status !== "CANCELLED";
+  const hasNoSourceContext = !task.sourceNote && !task.sourceEvent && !task.sourceInboxItem;
+  const isOrphanedWorkflowState = hasUnresolvedOperationalItem && task.status === "BLOCKED" && hasNoSourceContext;
   const operationalReason =
     task.sourceNote && task.sourceEvent
       ? "Task exists to follow up on a note and event context."
@@ -204,6 +206,11 @@ export default async function TaskDetailPage({
               {task.status === "BLOCKED" ? <span className="text-xs text-red-700 dark:text-red-300">Blocked</span> : null}
               {hasUnresolvedOperationalItem ? (
                 <span className="text-xs text-amber-700 dark:text-amber-300">Unresolved operational item</span>
+              ) : null}
+              {isOrphanedWorkflowState ? (
+                <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                  Orphaned workflow state — blocked with no source context
+                </span>
               ) : null}
             </dd>
           </div>
