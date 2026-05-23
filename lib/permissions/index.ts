@@ -20,7 +20,8 @@ type SupportedAction =
   | "note.create"
   | "note.update"
   | "task.create"
-  | "task.update";
+  | "task.update"
+  | "booking.create";
 
 type PermissionReason =
   | "UNAUTHENTICATED"
@@ -55,6 +56,7 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "note.update",
     "task.create",
     "task.update",
+    "booking.create",
   ]),
   [RoleType.PROGRAM_DIRECTOR]: new Set<SupportedAction>([
     "season.create",
@@ -69,6 +71,7 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "note.update",
     "task.create",
     "task.update",
+    "booking.create",
   ]),
   [RoleType.COACH]: new Set<SupportedAction>([
     "rosterMembership.create",
@@ -80,6 +83,7 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "note.update",
     "task.create",
     "task.update",
+    "booking.create",
   ]),
   [RoleType.ASSISTANT_COACH]: new Set<SupportedAction>([
     "attendance.upsert",
@@ -105,6 +109,7 @@ const SCOPED_ACTIONS = new Set<SupportedAction>([
   "note.update",
   "task.create",
   "task.update",
+  "booking.create",
 ]);
 
 const SUPPORTED_ACTIONS = new Set<SupportedAction>([
@@ -126,6 +131,7 @@ const SUPPORTED_ACTIONS = new Set<SupportedAction>([
   "note.update",
   "task.create",
   "task.update",
+  "booking.create",
 ]);
 
 export type PermissionCheckInput = {

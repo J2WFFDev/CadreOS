@@ -185,12 +185,20 @@ export default async function ResourceDetailsPage({
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-lg font-medium">Bookings</h3>
-          <Link
-            href={`/field-ops/bookings?resourceId=${resource.id}`}
-            className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-          >
-            View all bookings
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/field-ops/bookings?resourceId=${resource.id}`}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              View all bookings
+            </Link>
+            <Link
+              href={`/field-ops/bookings/new?facilityId=${resource.facility.id}&resourceId=${resource.id}`}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              New booking request
+            </Link>
+          </div>
         </div>
         {resource.bookings.length === 0 ? (
           <EmptyState message="No bookings have been recorded for this resource yet." />

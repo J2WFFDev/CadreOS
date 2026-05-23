@@ -53,6 +53,7 @@ export default async function FieldOpsBookingsPage({
 
   const facilityId = readSearchParam(resolvedSearchParams, "facilityId");
   const resourceId = readSearchParam(resolvedSearchParams, "resourceId");
+  const created = readSearchParam(resolvedSearchParams, "created");
 
   let bookings:
     | Array<{
@@ -145,6 +146,22 @@ export default async function FieldOpsBookingsPage({
         description="Read-only booking schedule across facilities and resources."
       />
       <FieldOpsSubnav current="bookings" />
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">Need to submit a new booking request?</p>
+        <Link
+          href={resourceId ? `/field-ops/bookings/new?resourceId=${resourceId}` : "/field-ops/bookings/new"}
+          className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+        >
+          New booking request
+        </Link>
+      </div>
+
+      {created === "1" ? (
+        <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-700 dark:bg-emerald-950/40">
+          <p className="text-sm text-emerald-800 dark:text-emerald-200">Booking request created successfully.</p>
+        </div>
+      ) : null}
 
       {hasFilters ? (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">

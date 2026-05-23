@@ -94,6 +94,14 @@ export default async function FieldOpsFacilitiesPage() {
         description="Read-only view of facilities, resources, and bookings for the active organization."
       />
       <FieldOpsSubnav current="facilities" />
+      <div className="flex justify-end">
+        <Link
+          href="/field-ops/bookings/new"
+          className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+        >
+          New booking request
+        </Link>
+      </div>
 
       {facilities.length === 0 ? (
         <EmptyState message="No FieldOps facilities have been added for this organization yet." />

@@ -3,6 +3,7 @@ import Link from "next/link";
 const FIELD_OPS_LINKS = [
   { href: "/field-ops/facilities", label: "Facilities", key: "facilities" },
   { href: "/field-ops/bookings", label: "Bookings", key: "bookings" },
+  { href: "/field-ops/bookings/new", label: "New booking request", key: "new-booking" },
 ] as const;
 
 export function FieldOpsSubnav({
