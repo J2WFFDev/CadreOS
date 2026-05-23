@@ -157,6 +157,12 @@ export default async function FacilityDetailsPage({
         >
           View facility bookings
         </Link>
+        <Link
+          href={`/field-ops/bookings/new?facilityId=${facility.id}`}
+          className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+        >
+          New booking request
+        </Link>
       </div>
 
       <div className="space-y-3">

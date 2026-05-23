@@ -1,7 +1,10 @@
 import {
+  ApprovalStatus,
   AttendanceStatus,
+  BookingStatus,
   EventStatus,
   EventType,
+  PrecheckStatus,
   Prisma,
   RoleType,
   RSVPStatus,
@@ -18,6 +21,8 @@ const MAX_EMAIL_LENGTH = 320;
 const MAX_PHONE_LENGTH = 32;
 const MAX_EVENT_TITLE_LENGTH = 160;
 const MAX_EVENT_LOCATION_LENGTH = 200;
+const MAX_BOOKING_TITLE_LENGTH = 160;
+const MAX_BOOKING_DESCRIPTION_LENGTH = 4000;
 const MAX_RSVP_REASON_LENGTH = 500;
 const MAX_ATTENDANCE_REASON_CODE_LENGTH = 120;
 const MAX_NOTE_BODY_LENGTH = 4000;
@@ -353,6 +358,72 @@ export const followUpTaskWorkflowSchema = z
     sourceEventId: value.sourceEventId.length === 0 ? null : value.sourceEventId,
   }));
 
+export const bookingRequestWorkflowSchema = z
+  .object({
+    facilityId: z.string().trim(),
+    resourceId: z.string().trim().min(1, "Resource selection is required."),
+    title: z
+      .string()
+      .trim()
+      .min(1, "Booking title is required.")
+      .max(MAX_BOOKING_TITLE_LENGTH, `Booking title must be ${MAX_BOOKING_TITLE_LENGTH} characters or less.`),
+    description: z
+      .string()
+      .trim()
+      .max(
+        MAX_BOOKING_DESCRIPTION_LENGTH,
+        `Description must be ${MAX_BOOKING_DESCRIPTION_LENGTH} characters or less.`,
+      ),
+    startsAt: z.string().trim().min(1, "Start date/time is required."),
+    endsAt: z.string().trim().min(1, "End date/time is required."),
+    programId: z.string().trim(),
+    teamId: z.string().trim(),
+    eventId: z.string().trim(),
+  })
+  .superRefine((value, context) => {
+    if (!DATETIME_LOCAL_INPUT_PATTERN.test(value.startsAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startsAt"],
+        message: "Start date/time must use YYYY-MM-DDTHH:mm format.",
+      });
+    }
+
+    if (!DATETIME_LOCAL_INPUT_PATTERN.test(value.endsAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["endsAt"],
+        message: "End date/time must use YYYY-MM-DDTHH:mm format.",
+      });
+    }
+
+    if (
+      DATETIME_LOCAL_INPUT_PATTERN.test(value.startsAt) &&
+      DATETIME_LOCAL_INPUT_PATTERN.test(value.endsAt) &&
+      value.endsAt <= value.startsAt
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["endsAt"],
+        message: "End date/time must be after start date/time.",
+      });
+    }
+  })
+  .transform((value) => ({
+    facilityId: value.facilityId.length === 0 ? null : value.facilityId,
+    resourceId: value.resourceId,
+    title: value.title,
+    description: value.description.length === 0 ? null : value.description,
+    startsAt: dateTimeInputToUtcDate(value.startsAt),
+    endsAt: dateTimeInputToUtcDate(value.endsAt),
+    programId: value.programId.length === 0 ? null : value.programId,
+    teamId: value.teamId.length === 0 ? null : value.teamId,
+    eventId: value.eventId.length === 0 ? null : value.eventId,
+    status: BookingStatus.REQUESTED,
+    precheckStatus: PrecheckStatus.NOT_RUN,
+    approvalStatus: ApprovalStatus.PENDING,
+  }));
+
 export type PersonWorkflowInput = z.output<typeof personWorkflowSchema>;
 export type TeamWorkflowInput = z.output<typeof teamWorkflowSchema>;
 export type ProgramWorkflowInput = z.output<typeof programWorkflowSchema>;
@@ -364,6 +435,7 @@ export type RsvpWorkflowInput = z.output<typeof rsvpWorkflowSchema>;
 export type AttendanceWorkflowInput = z.output<typeof attendanceWorkflowSchema>;
 export type NoteWorkflowInput = z.output<typeof noteWorkflowSchema>;
 export type FollowUpTaskWorkflowInput = z.output<typeof followUpTaskWorkflowSchema>;
+export type BookingRequestWorkflowInput = z.output<typeof bookingRequestWorkflowSchema>;
 
 export function getStringField(formData: FormData, field: string): string {
   const rawValue = formData.get(field);
@@ -424,6 +496,7 @@ export async function requirePhase1CMutationPermission(input: {
     | "note.update"
     | "task.create"
     | "task.update"
+    | "booking.create"
     | "rosterMembership.create"
     | "roleAssignment.create"
     | "roleAssignment.delete";
