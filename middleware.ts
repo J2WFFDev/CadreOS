@@ -8,6 +8,7 @@ const isDashboardRoute = createRouteMatcher([
   "/events(.*)",
   "/notes(.*)",
   "/tasks(.*)",
+  "/account(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {

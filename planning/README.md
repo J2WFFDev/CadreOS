@@ -35,6 +35,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 3A Navigation UX Cleanup](./PHASE_3A_NAVIGATION_UX_CLEANUP.md)
 - [Phase 4A Auth Integration Plan](./PHASE_4A_AUTH_INTEGRATION_PLAN.md)
 - [Phase 4B Clerk Provider Setup](./PHASE_4B_CLERK_PROVIDER_SETUP.md)
+- [Phase 4C UserAccount Person Linking](./PHASE_4C_USERACCOUNT_PERSON_LINKING.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
 - [Chat Transcript](./CHAT_TRANSCRIPT.md)

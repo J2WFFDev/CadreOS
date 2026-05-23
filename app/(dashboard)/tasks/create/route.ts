@@ -190,7 +190,11 @@ export async function POST(request: Request) {
     }
 
     const authContext = await requireAuthContext();
-    const createdByPersonId = await resolveFollowUpTaskCreatorPersonId(scope.organizationId, authContext.userId);
+    const createdByPersonId = await resolveFollowUpTaskCreatorPersonId(
+      scope.organizationId,
+      authContext.clerkUserId,
+      scope.auth.personId,
+    );
 
     if (!createdByPersonId) {
       return NextResponse.redirect(

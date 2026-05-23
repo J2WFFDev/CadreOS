@@ -1,6 +1,4 @@
-import { RoleType, ScopeType } from "@prisma/client";
-
-import { db } from "@/lib/db";
+import { resolveActorPersonId } from "@/lib/user-account";
 
 const TASK_STATUS_SORT_WEIGHT: Record<string, number> = {
   OPEN: 0,
@@ -49,40 +47,12 @@ export function compareFollowUpTasks<T extends { status: string; dueAt: Date | n
 
 export async function resolveFollowUpTaskCreatorPersonId(
   organizationId: string,
-  actorUserId: string,
+  clerkUserId: string | null,
+  preferredPersonId?: string | null,
 ): Promise<string | null> {
-  const linkedUserAccount = await db.userAccount.findFirst({
-    where: {
-      organizationId,
-      clerkUserId: actorUserId,
-      personId: { not: null },
-    },
-    select: { personId: true },
+  return resolveActorPersonId({
+    organizationId,
+    clerkUserId,
+    preferredPersonId,
   });
-
-  if (linkedUserAccount?.personId) {
-    return linkedUserAccount.personId;
-  }
-
-  const organizationAdminAssignment = await db.roleAssignment.findFirst({
-    where: {
-      organizationId,
-      roleType: RoleType.ORGANIZATION_ADMIN,
-      scopeType: ScopeType.ORGANIZATION,
-    },
-    select: { personId: true },
-    orderBy: [{ createdAt: "asc" }],
-  });
-
-  if (organizationAdminAssignment?.personId) {
-    return organizationAdminAssignment.personId;
-  }
-
-  const firstPerson = await db.person.findFirst({
-    where: { organizationId },
-    select: { id: true },
-    orderBy: [{ createdAt: "asc" }],
-  });
-
-  return firstPerson?.id ?? null;
 }

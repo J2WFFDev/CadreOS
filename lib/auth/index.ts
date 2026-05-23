@@ -2,11 +2,17 @@ import { auth } from "@clerk/nextjs/server";
 
 export type AuthContext = {
   userId: string;
+  clerkUserId: string | null;
+  userAccountId: string | null;
+  personId: string | null;
   organizationId: string | null;
 };
 
 const PHASE_0_MOCK_AUTH_CONTEXT: AuthContext = {
   userId: "phase0-mock-user",
+  clerkUserId: null,
+  userAccountId: null,
+  personId: null,
   organizationId: "phase0-mock-org",
 };
 
@@ -27,6 +33,9 @@ async function getClerkAuthContext(): Promise<AuthContext | null> {
 
   return {
     userId,
+    clerkUserId: userId,
+    userAccountId: null,
+    personId: null,
     organizationId: orgId ?? null,
   };
 }
