@@ -16,8 +16,9 @@ import {
   formatGuardianOperationalIndicator,
 } from "@/lib/guardian-operational-context";
 import {
-  canReadStaffOnlyContent,
-  canReadTeamScopedContent,
+  evaluateStaffOnlyContentAccess,
+  evaluateTeamScopedContentAccess,
+  logAuthorizationDecision,
   resolveActorRoleContext,
 } from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
@@ -97,7 +98,14 @@ export default async function NoteDetailPage({
     actorPersonId: scope.auth.personId,
   });
 
-  if (!canReadStaffOnlyContent(actorRoleContext)) {
+  const staffAccessDecision = evaluateStaffOnlyContentAccess(actorRoleContext);
+  logAuthorizationDecision(staffAccessDecision, {
+    workflow: "notes.detail.access",
+    entityType: "observationNote",
+    entityId: noteId,
+  });
+
+  if (!staffAccessDecision.allowed) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Note</h2>
@@ -192,7 +200,15 @@ export default async function NoteDetailPage({
   }
 
   const noteTeamId = note.team?.id ?? note.event?.teamId ?? null;
-  if (!canReadTeamScopedContent(actorRoleContext, noteTeamId)) {
+  const teamAccessDecision = evaluateTeamScopedContentAccess(actorRoleContext, noteTeamId);
+  logAuthorizationDecision(teamAccessDecision, {
+    workflow: "notes.detail.team-scope",
+    entityType: "observationNote",
+    entityId: note.id,
+    metadata: { noteTeamId },
+  });
+
+  if (!teamAccessDecision.allowed) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Note</h2>

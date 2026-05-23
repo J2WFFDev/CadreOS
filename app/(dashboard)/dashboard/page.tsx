@@ -4,7 +4,11 @@ import { redirect } from "next/navigation";
 
 import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
 import { ReviewFocusPanel } from "@/components/dashboard/review-focus-panel";
-import { canReadStaffOnlyContent, resolveActorRoleContext } from "@/lib/authorization";
+import {
+  evaluateStaffOnlyContentAccess,
+  logAuthorizationDecision,
+  resolveActorRoleContext,
+} from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -209,7 +213,13 @@ export default async function DashboardPage() {
     actorPersonId: scope.auth.personId,
   });
 
-  if (!canReadStaffOnlyContent(actorRoleContext)) {
+  const staffAccessDecision = evaluateStaffOnlyContentAccess(actorRoleContext);
+  logAuthorizationDecision(staffAccessDecision, {
+    workflow: "dashboard.access",
+    entityType: "operationalDashboard",
+  });
+
+  if (!staffAccessDecision.allowed) {
     return (
       <section className="space-y-6">
         <div className="space-y-1">
