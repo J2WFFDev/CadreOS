@@ -1,4 +1,4 @@
-import { EventStatus, EventType, Prisma, RoleType, RSVPStatus, ScopeType } from "@prisma/client";
+import { AttendanceStatus, EventStatus, EventType, Prisma, RoleType, RSVPStatus, ScopeType } from "@prisma/client";
 import { z } from "zod";
 
 import { requireAuthContext } from "@/lib/auth";
@@ -9,6 +9,7 @@ const MAX_PHONE_LENGTH = 32;
 const MAX_EVENT_TITLE_LENGTH = 160;
 const MAX_EVENT_LOCATION_LENGTH = 200;
 const MAX_RSVP_REASON_LENGTH = 500;
+const MAX_ATTENDANCE_REASON_CODE_LENGTH = 120;
 const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DATETIME_LOCAL_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
 
@@ -260,6 +261,26 @@ export const rsvpWorkflowSchema = z
     reason: value.reason.length === 0 ? null : value.reason,
   }));
 
+export const attendanceWorkflowSchema = z
+  .object({
+    personId: z.string().trim().min(1, "Person selection is required."),
+    status: z.nativeEnum(AttendanceStatus, {
+      message: "Attendance status must use an existing attendance status value.",
+    }),
+    reasonCode: z
+      .string()
+      .trim()
+      .max(
+        MAX_ATTENDANCE_REASON_CODE_LENGTH,
+        `Reason code must be ${MAX_ATTENDANCE_REASON_CODE_LENGTH} characters or less.`,
+      ),
+  })
+  .transform((value) => ({
+    personId: value.personId,
+    status: value.status,
+    reasonCode: value.reasonCode.length === 0 ? null : value.reasonCode,
+  }));
+
 export type PersonWorkflowInput = z.output<typeof personWorkflowSchema>;
 export type TeamWorkflowInput = z.output<typeof teamWorkflowSchema>;
 export type ProgramWorkflowInput = z.output<typeof programWorkflowSchema>;
@@ -268,6 +289,7 @@ export type SeasonWorkflowInput = z.output<typeof seasonWorkflowSchema>;
 export type RoleAssignmentWorkflowInput = z.output<typeof roleAssignmentWorkflowSchema>;
 export type EventWorkflowInput = z.output<typeof eventWorkflowSchema>;
 export type RsvpWorkflowInput = z.output<typeof rsvpWorkflowSchema>;
+export type AttendanceWorkflowInput = z.output<typeof attendanceWorkflowSchema>;
 
 export function getStringField(formData: FormData, field: string): string {
   const rawValue = formData.get(field);
@@ -319,6 +341,7 @@ export async function requirePhase1CMutationPermission(input: {
     | "event.create"
     | "event.update"
     | "rsvp.upsert"
+    | "attendance.upsert"
     | "rosterMembership.create"
     | "roleAssignment.create"
     | "roleAssignment.delete";
