@@ -1,9 +1,23 @@
-import { ScopeType } from "@prisma/client";
+import { RoleType, ScopeType } from "@prisma/client";
+import Link from "next/link";
 
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { selectSeededOrCurrentSeason } from "@/lib/phase1c/workflows";
 
 export const dynamic = "force-dynamic";
+
+type SearchParams = Record<string, string | string[] | undefined>;
+
+function readSearchParam(searchParams: SearchParams, key: string): string {
+  const value = searchParams[key];
+
+  if (Array.isArray(value)) {
+    return value[0] ?? "";
+  }
+
+  return value ?? "";
+}
 
 function formatEnumLabel(value: string) {
   return value
@@ -14,10 +28,13 @@ function formatEnumLabel(value: string) {
 
 export default async function TeamDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ teamId: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const { teamId } = await params;
+  const resolvedSearchParams = await searchParams;
   const scope = await getOrganizationScope();
 
   if (!scope.databaseReady) {
@@ -38,9 +55,7 @@ export default async function TeamDetailsPage({
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Team</h2>
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            No organization context is available yet.
-          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">No organization context is available yet.</p>
         </div>
       </section>
     );
@@ -51,7 +66,11 @@ export default async function TeamDetailsPage({
     | {
         id: string;
         name: string;
-        program: { id: string; name: string };
+        program: {
+          id: string;
+          name: string;
+          seasons: Array<{ id: string; name: string; startDate: Date | null; endDate: Date | null }>;
+        };
         roles: Array<{
           id: string;
           roleType: string;
@@ -65,55 +84,84 @@ export default async function TeamDetailsPage({
         }>;
       }
     | null = null;
+  let organizationPeople: Array<{ id: string; firstName: string; lastName: string }> = [];
 
   try {
-    team = await db.team.findFirst({
-      where: {
-        id: teamId,
-        organizationId: scope.organizationId,
-      },
-      include: {
-        program: {
-          select: { id: true, name: true },
+    [team, organizationPeople] = await Promise.all([
+      db.team.findFirst({
+        where: {
+          id: teamId,
+          organizationId: scope.organizationId,
         },
-        roles: {
-          where: {
-            scopeType: ScopeType.TEAM,
-          },
-          include: {
-            person: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
+        include: {
+          program: {
+            select: {
+              id: true,
+              name: true,
+              seasons: {
+                where: {
+                  organizationId: scope.organizationId,
+                },
+                select: {
+                  id: true,
+                  name: true,
+                  startDate: true,
+                  endDate: true,
+                },
+                orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
               },
             },
           },
-          orderBy: [{ roleType: "asc" }, { createdAt: "asc" }],
-        },
-        roster: {
-          include: {
-            person: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
+          roles: {
+            where: {
+              scopeType: ScopeType.TEAM,
+            },
+            include: {
+              person: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                },
               },
             },
-            season: {
-              select: {
-                id: true,
-                name: true,
-                startDate: true,
-                endDate: true,
-              },
-            },
+            orderBy: [{ roleType: "asc" }, { createdAt: "asc" }],
           },
-          orderBy: [{ createdAt: "desc" }],
+          roster: {
+            include: {
+              person: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+              season: {
+                select: {
+                  id: true,
+                  name: true,
+                  startDate: true,
+                  endDate: true,
+                },
+              },
+            },
+            orderBy: [{ createdAt: "desc" }],
+          },
         },
-      },
-    });
+      }),
+      db.person.findMany({
+        where: {
+          organizationId: scope.organizationId,
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+        },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      }),
+    ]);
   } catch {
     queryFailed = true;
   }
@@ -136,39 +184,26 @@ export default async function TeamDetailsPage({
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Team</h2>
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Team not found in the selected organization.
-          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">Team not found in the selected organization.</p>
         </div>
       </section>
     );
   }
 
-  const now = new Date();
-  const activeRosterMembership = team.roster.find((membership) => {
-    if (!membership.season.startDate) {
-      return false;
-    }
+  const selectedSeason = selectSeededOrCurrentSeason(team.program.seasons);
+  const selectedSeasonRosterMembers = selectedSeason
+    ? team.roster.filter((membership) => membership.season.id === selectedSeason.id)
+    : [];
+  const selectedSeasonRosterPersonIds = new Set(selectedSeasonRosterMembers.map((membership) => membership.person.id));
+  const availablePeople = organizationPeople.filter((person) => !selectedSeasonRosterPersonIds.has(person.id));
 
-    if (membership.season.startDate > now) {
-      return false;
-    }
-
-    if (membership.season.endDate && membership.season.endDate < now) {
-      return false;
-    }
-
-    return true;
-  });
-
-  const demoRosterMembership = team.roster.find((membership) =>
-    membership.season.name.toLowerCase().includes("demo"),
-  );
-
-  const selectedSeasonId =
-    activeRosterMembership?.season.id ?? demoRosterMembership?.season.id ?? team.roster[0]?.season.id;
-  const selectedSeasonName = team.roster.find((membership) => membership.season.id === selectedSeasonId)?.season.name;
-  const selectedSeasonRosterMembers = team.roster.filter((membership) => membership.season.id === selectedSeasonId);
+  const rosterError = readSearchParam(resolvedSearchParams, "rosterError");
+  const rosterPersonIdError = readSearchParam(resolvedSearchParams, "rosterPersonIdError");
+  const rosterRoleError = readSearchParam(resolvedSearchParams, "rosterRoleError");
+  const selectedRosterPersonId =
+    readSearchParam(resolvedSearchParams, "rosterPersonId") || availablePeople[0]?.id || "";
+  const selectedRosterRole =
+    readSearchParam(resolvedSearchParams, "rosterRole") || RoleType.ATHLETE;
 
   return (
     <section className="space-y-6">
@@ -178,16 +213,22 @@ export default async function TeamDetailsPage({
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Organization: {scope.organizationName ?? scope.organizationId}
         </p>
+        <Link
+          href="#add-roster-member"
+          className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+        >
+          Add roster member
+        </Link>
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Roster members</h3>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-          Season: {selectedSeasonName ?? "No season available"}
+          Season: {selectedSeason?.name ?? "No season available"}
         </p>
         {selectedSeasonRosterMembers.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            No roster members found for the active/demo season.
+            No roster members found for the seeded/current season.
           </p>
         ) : (
           <ul className="space-y-2 text-sm">
@@ -199,6 +240,69 @@ export default async function TeamDetailsPage({
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
+      <div id="add-roster-member" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="mb-3 text-lg font-medium">Add roster member</h3>
+        <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+          Target season: {selectedSeason?.name ?? "No seeded/current season available"}
+        </p>
+
+        {rosterError ? <p className="mb-3 text-sm text-red-600">{rosterError}</p> : null}
+
+        {!selectedSeason ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Add or seed a season for this program before adding roster members.
+          </p>
+        ) : availablePeople.length === 0 ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            All organization people are already on this team for the selected season.
+          </p>
+        ) : (
+          <form action={`/teams/${team.id}/roster`} method="post" className="space-y-3">
+            <div className="space-y-1">
+              <label htmlFor="personId" className="text-sm font-medium">
+                Person
+              </label>
+              <select
+                id="personId"
+                name="personId"
+                defaultValue={selectedRosterPersonId}
+                className="w-full rounded-md border px-3 py-2 text-sm"
+              >
+                {availablePeople.map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.firstName} {person.lastName}
+                  </option>
+                ))}
+              </select>
+              {rosterPersonIdError ? <p className="text-sm text-red-600">{rosterPersonIdError}</p> : null}
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="rosterRole" className="text-sm font-medium">
+                Roster role
+              </label>
+              <select
+                id="rosterRole"
+                name="rosterRole"
+                defaultValue={selectedRosterRole}
+                className="w-full rounded-md border px-3 py-2 text-sm"
+              >
+                {Object.values(RoleType).map((roleType) => (
+                  <option key={roleType} value={roleType}>
+                    {formatEnumLabel(roleType)}
+                  </option>
+                ))}
+              </select>
+              {rosterRoleError ? <p className="text-sm text-red-600">{rosterRoleError}</p> : null}
+            </div>
+
+            <button type="submit" className="rounded-md bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black">
+              Add member
+            </button>
+          </form>
         )}
       </div>
 
