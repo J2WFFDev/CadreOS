@@ -5,33 +5,46 @@ export type AuthContext = {
   organizationId: string | null;
 };
 
-export async function getAuthContext(): Promise<AuthContext | null> {
-  const authState = await auth();
+const PHASE_0_MOCK_AUTH_CONTEXT: AuthContext = {
+  userId: "phase0-mock-user",
+  organizationId: "phase0-mock-org",
+};
 
-  if (!authState.userId) {
+function isClerkConfigured(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY);
+}
+
+async function getClerkAuthContext(): Promise<AuthContext | null> {
+  if (!isClerkConfigured()) {
     return null;
   }
 
-  return {
-    userId: authState.userId,
-    organizationId: authState.orgId ?? null,
-  };
-}
-
-export async function requireAuthContext(): Promise<AuthContext> {
-  const authState = await auth();
-  const userId = authState.userId;
+  const { userId, orgId } = await auth();
 
   if (!userId) {
-    return authState.redirectToSignIn();
+    throw new Error("Unauthenticated request.");
   }
 
   return {
     userId,
-    organizationId: authState.orgId ?? null,
+    organizationId: orgId ?? null,
   };
 }
 
+// Phase 4B baseline: use Clerk identity when available; keep Phase 0 fallback for non-configured environments.
+export async function requireAuthContext(): Promise<AuthContext> {
+  if (isClerkConfigured()) {
+    const clerkAuthContext = await getClerkAuthContext();
+
+    if (clerkAuthContext) {
+      return clerkAuthContext;
+    }
+  }
+
+  return PHASE_0_MOCK_AUTH_CONTEXT;
+}
+
+// Phase 4B baseline: mirror auth context for organization resolution until explicit org authorization is introduced.
 export async function requireOrganizationContext(): Promise<AuthContext> {
   return requireAuthContext();
 }

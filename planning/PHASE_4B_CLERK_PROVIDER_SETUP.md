@@ -1,29 +1,34 @@
 # Phase 4B: Clerk Provider Setup
 
 ## Goal
-- Add the minimum Clerk wiring needed to protect dashboard routes and establish real authenticated identity.
-- Keep current dashboard workflows functional while broader authorization and account-linking work remains deferred.
+- Establish Clerk as the authentication provider foundation for App Router.
+- Protect dashboard routes with authentication redirects.
+- Keep current business workflows and mock-dependent attribution behavior stable.
 
-## Implemented Scope
-- Added `@clerk/nextjs`.
-- Wrapped the root app tree with `ClerkProvider`.
-- Added Clerk App Router routes:
+## Scope Delivered in 4B
+- Add `@clerk/nextjs` dependency.
+- Add Clerk environment variable placeholders to `.env.example`.
+- Wrap app root with `ClerkProvider`.
+- Add Clerk hosted route entry points:
   - `/sign-in/[[...sign-in]]`
   - `/sign-up/[[...sign-up]]`
-- Added Clerk middleware protection for dashboard route families:
+- Protect dashboard route families in middleware:
   - `/dashboard`
+  - `/programs`
+  - `/people`
   - `/teams`
   - `/events`
-  - `/tasks`
-  - `/programs`
   - `/notes`
-  - `/people`
-- Updated `lib/auth` so authenticated requests return the real Clerk `userId` and active Clerk `orgId` when present.
-- Kept app business-context fallbacks conservative by leaving existing organization and actor-person fallback resolution in place.
+  - `/tasks`
+- Update auth context helpers to return real Clerk `userId` when available, with conservative fallback when Clerk is not configured.
 
-## Required Environment Variables
+## Explicit Non-Scope
+- Full role authorization enforcement.
+- UserAccount linking automation and linking UX.
+- Prisma schema changes.
+- New product workflows.
 
-### Local and Vercel
+## Required Environment Variables (Vercel + Local)
 - `DATABASE_URL`
 - `NEXT_PUBLIC_APP_URL`
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
@@ -34,30 +39,17 @@
 - `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL`
 
 ## Manual Clerk Setup Steps
-1. Create or open the CadreOS Clerk application.
-2. Copy the publishable key into `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`.
-3. Copy the secret key into `CLERK_SECRET_KEY`.
-4. In Clerk, configure the application URLs for local and Vercel environments.
-5. Set the sign-in URL to `/sign-in`.
-6. Set the sign-up URL to `/sign-up`.
-7. Set the post-sign-in redirect URL to `/dashboard`.
-8. Set the post-sign-up redirect URL to `/dashboard`.
-9. Add the same values to the Vercel project environment variables for Preview and Production.
-10. Redeploy after Vercel environment variables are saved.
+1. Create or open a Clerk application for CadreOS.
+2. In Clerk dashboard, configure allowed redirect URLs for local and production domains.
+3. Copy the publishable key and secret key into local `.env.local` and Vercel project environment variables.
+4. Configure sign-in and sign-up paths in Clerk to match:
+   - Sign in: `/sign-in`
+   - Sign up: `/sign-up`
+5. Configure post-auth redirects:
+   - After sign-in: `/dashboard`
+   - After sign-up: `/dashboard`
+6. In Vercel, redeploy after setting env vars so middleware and server auth contexts use live Clerk configuration.
 
-## Current Behavior
-- The marketing landing page remains public.
-- Dashboard route families now require an authenticated Clerk session.
-- Unauthenticated dashboard access is redirected to sign-in.
-- Existing mutation flows continue to rely on current workflow permission placeholders and person-attribution fallbacks.
-
-## Explicit Non-Scope
-- No role-based authorization enforcement yet.
-- No `UserAccount` linking or upsert flow yet.
-- No Prisma schema changes.
-- No new product workflows.
-
-## Known Limitations
-- Organization selection still falls back to existing app-side logic when a Clerk organization is not yet mapped to CadreOS data.
-- Authenticated users without a linked `UserAccount.personId` still rely on existing fallback actor attribution.
-- Authorization remains permissive beyond the new authentication gate until later Phase 4 work lands.
+## Notes for Next Phase
+- Phase 4C should implement first-login `UserAccount` upsert/linking and reduce fallback identity assumptions.
+- Phase 4D+ should tighten unauthenticated handling in route handlers and enforce authorization checks in permission helpers.
