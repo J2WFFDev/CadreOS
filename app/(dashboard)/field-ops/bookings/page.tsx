@@ -136,7 +136,7 @@ export default async function FieldOpsBookingsPage({
     );
   }
 
-  const hasFilters = Boolean(filterContext.facility || filterContext.resource);
+  const hasFilters = Boolean(facilityId || resourceId);
 
   return (
     <section className="space-y-4">
