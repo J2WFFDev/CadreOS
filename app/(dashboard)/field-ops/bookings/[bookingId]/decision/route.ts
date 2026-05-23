@@ -114,7 +114,11 @@ export async function POST(
       );
     }
 
-    if ([BookingStatus.COMPLETED, BookingStatus.CANCELED, BookingStatus.DENIED].includes(booking.status)) {
+    if (
+      booking.status === BookingStatus.COMPLETED ||
+      booking.status === BookingStatus.CANCELED ||
+      booking.status === BookingStatus.DENIED
+    ) {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, bookingId, {
           decision,

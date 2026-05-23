@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ApprovalStatus, BookingStatus, PrecheckStatus, Prisma } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
@@ -14,20 +15,28 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-const STATUS_FILTERS = [
-  "DRAFT",
-  "REQUESTED",
-  "PRECHECK_PASSED",
-  "CONFLICT_FOUND",
-  "RECOMMENDED",
-  "APPROVED",
-  "DENIED",
-  "CANCELED",
-  "COMPLETED",
-] as const;
+const STATUS_FILTERS = Object.values(BookingStatus);
+const APPROVAL_FILTERS = Object.values(ApprovalStatus);
+const PRECHECK_FILTERS = Object.values(PrecheckStatus);
+const BOOKING_LIST_SELECT = {
+  id: true,
+  title: true,
+  startsAt: true,
+  endsAt: true,
+  status: true,
+  precheckStatus: true,
+  approvalStatus: true,
+  facility: { select: { id: true, name: true, status: true } },
+  resource: { select: { id: true, name: true, status: true } },
+  program: { select: { id: true, name: true } },
+  team: { select: { id: true, name: true } },
+  event: { select: { id: true, title: true } },
+  _count: { select: { conflicts: true } },
+} satisfies Prisma.ResourceBookingSelect;
 
-const APPROVAL_FILTERS = ["PENDING", "APPROVED", "DENIED", "NOT_REQUIRED"] as const;
-const PRECHECK_FILTERS = ["NOT_RUN", "PASSED", "WARNING", "FAILED"] as const;
+type BookingListItem = Prisma.ResourceBookingGetPayload<{
+  select: typeof BOOKING_LIST_SELECT;
+}>;
 
 function readSearchParam(searchParams: SearchParams, key: string) {
   const value = searchParams[key];
@@ -82,33 +91,27 @@ export default async function FieldOpsBookingsPage({
 
   const facilityId = readSearchParam(resolvedSearchParams, "facilityId");
   const resourceId = readSearchParam(resolvedSearchParams, "resourceId");
-  const approvalStatus = readSearchParam(resolvedSearchParams, "approvalStatus");
-  const precheckStatus = readSearchParam(resolvedSearchParams, "precheckStatus");
+  const rawApprovalStatus = readSearchParam(resolvedSearchParams, "approvalStatus");
+  const rawPrecheckStatus = readSearchParam(resolvedSearchParams, "precheckStatus");
   const timeframe = readSearchParam(resolvedSearchParams, "timeframe") || "all";
   const hasConflicts = readSearchParam(resolvedSearchParams, "hasConflicts");
   const created = readSearchParam(resolvedSearchParams, "created");
-  const statusValues = readSearchParamValues(resolvedSearchParams, "status");
+  const statusValues = readSearchParamValues(resolvedSearchParams, "status").filter((value): value is BookingStatus =>
+    STATUS_FILTERS.includes(value as BookingStatus),
+  );
   const selectedStatus = statusValues[0] ?? "";
+  const approvalStatus = APPROVAL_FILTERS.includes(rawApprovalStatus as ApprovalStatus)
+    ? (rawApprovalStatus as ApprovalStatus)
+    : "";
+  const precheckStatus = PRECHECK_FILTERS.includes(rawPrecheckStatus as PrecheckStatus)
+    ? (rawPrecheckStatus as PrecheckStatus)
+    : "";
   const now = new Date();
 
   let queryErrorMessage = "Unable to load FieldOps bookings right now. Please try again later.";
   let data:
     | {
-        bookings: Array<{
-          id: string;
-          title: string;
-          startsAt: Date;
-          endsAt: Date;
-          status: string;
-          precheckStatus: string;
-          approvalStatus: string;
-          facility: { id: string; name: string; status: string };
-          resource: { id: string; name: string; status: string };
-          program: { id: string; name: string } | null;
-          team: { id: string; name: string } | null;
-          event: { id: string; title: string } | null;
-          _count: { conflicts: number };
-        }>;
+        bookings: BookingListItem[];
         facilities: Array<{ id: string; name: string }>;
         resources: Array<{ id: string; name: string; facilityId: string }>;
         activeResourceCount: number;
@@ -116,55 +119,43 @@ export default async function FieldOpsBookingsPage({
     | null = null;
 
   try {
+    const bookingWhere: Prisma.ResourceBookingWhereInput = {
+      organizationId: scope.organizationId,
+      ...(facilityId ? { facilityId } : {}),
+      ...(resourceId ? { resourceId } : {}),
+      ...(statusValues.length > 0 ? { status: { in: statusValues } } : {}),
+      ...(approvalStatus ? { approvalStatus } : {}),
+      ...(precheckStatus ? { precheckStatus } : {}),
+      ...(hasConflicts === "yes"
+        ? {
+            conflicts: {
+              some: {},
+            },
+          }
+        : {}),
+      ...(hasConflicts === "no"
+        ? {
+            conflicts: {
+              none: {},
+            },
+          }
+        : {}),
+      ...(timeframe === "upcoming"
+        ? {
+            startsAt: { gte: now },
+          }
+        : {}),
+      ...(timeframe === "past"
+        ? {
+            startsAt: { lt: now },
+          }
+        : {}),
+    };
+
     const [bookings, facilities, resources, activeResourceCount] = await Promise.all([
       db.resourceBooking.findMany({
-        where: {
-          organizationId: scope.organizationId,
-          ...(facilityId ? { facilityId } : {}),
-          ...(resourceId ? { resourceId } : {}),
-          ...(statusValues.length > 0 ? { status: { in: statusValues } } : {}),
-          ...(approvalStatus ? { approvalStatus } : {}),
-          ...(precheckStatus ? { precheckStatus } : {}),
-          ...(hasConflicts === "yes"
-            ? {
-                conflicts: {
-                  some: {},
-                },
-              }
-            : {}),
-          ...(hasConflicts === "no"
-            ? {
-                conflicts: {
-                  none: {},
-                },
-              }
-            : {}),
-          ...(timeframe === "upcoming"
-            ? {
-                startsAt: { gte: now },
-              }
-            : {}),
-          ...(timeframe === "past"
-            ? {
-                startsAt: { lt: now },
-              }
-            : {}),
-        },
-        select: {
-          id: true,
-          title: true,
-          startsAt: true,
-          endsAt: true,
-          status: true,
-          precheckStatus: true,
-          approvalStatus: true,
-          facility: { select: { id: true, name: true, status: true } },
-          resource: { select: { id: true, name: true, status: true } },
-          program: { select: { id: true, name: true } },
-          team: { select: { id: true, name: true } },
-          event: { select: { id: true, title: true } },
-          _count: { select: { conflicts: true } },
-        },
+        where: bookingWhere,
+        select: BOOKING_LIST_SELECT,
         orderBy: [{ startsAt: "asc" }, { createdAt: "asc" }],
       }),
       db.facility.findMany({
