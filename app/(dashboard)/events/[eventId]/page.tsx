@@ -73,7 +73,15 @@ export default async function EventDetailsPage({
         endsAt: Date | null;
         location: string | null;
         program: { id: string; name: string };
-        team: { id: string; name: string; roster: Array<{ personId: string }> } | null;
+        team:
+          | {
+              id: string;
+              name: string;
+              roster: Array<{
+                person: { id: string; firstName: string; lastName: string };
+              }>;
+            }
+          | null;
         createdBy: { id: string; firstName: string; lastName: string } | null;
         tasks: Array<{
           id: string;
@@ -82,6 +90,13 @@ export default async function EventDetailsPage({
           dueAt: Date | null;
           assignee: { id: string; firstName: string; lastName: string };
           sourceNote: { id: string; body: string } | null;
+        }>;
+        notes: Array<{
+          id: string;
+          body: string;
+          createdAt: Date;
+          author: { id: string; firstName: string; lastName: string };
+          tasks: Array<{ id: string; status: string }>;
         }>;
         rsvps: Array<{
           id: string;
@@ -117,8 +132,15 @@ export default async function EventDetailsPage({
               id: true,
               name: true,
               roster: {
+                where: { organizationId: scope.organizationId },
                 select: {
-                  personId: true,
+                  person: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                    },
+                  },
                 },
               },
             },
@@ -133,6 +155,16 @@ export default async function EventDetailsPage({
               assignee: { select: { id: true, firstName: true, lastName: true } },
               sourceNote: { select: { id: true, body: true } },
             },
+          },
+          notes: {
+            select: {
+              id: true,
+              body: true,
+              createdAt: true,
+              author: { select: { id: true, firstName: true, lastName: true } },
+              tasks: { select: { id: true, status: true } },
+            },
+            orderBy: [{ createdAt: "desc" }],
           },
           rsvps: {
             select: {
@@ -200,9 +232,7 @@ export default async function EventDetailsPage({
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Event</h2>
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm text-amber-900 dark:text-amber-200">
-            {queryErrorMessage}
-          </p>
+          <p className="text-sm text-amber-900 dark:text-amber-200">{queryErrorMessage}</p>
         </div>
       </section>
     );
@@ -233,8 +263,25 @@ export default async function EventDetailsPage({
     : AttendanceStatus.PRESENT;
   const attendanceReasonCode = readSearchParam(resolvedSearchParams, "attendanceReasonCode");
   const attendanceError = readSearchParam(resolvedSearchParams, "attendanceError");
-  const rosterPersonIds = new Set(event.team?.roster.map((membership) => membership.personId) ?? []);
+  const attendanceViewParam = readSearchParam(resolvedSearchParams, "attendanceView");
+  const attendanceView =
+    attendanceViewParam === "all" ||
+    attendanceViewParam === "present" ||
+    attendanceViewParam === "late" ||
+    attendanceViewParam === "excused_absent" ||
+    attendanceViewParam === "unexcused_absent"
+      ? attendanceViewParam
+      : "all";
+  const rosterMembers = Array.from(
+    new Map(
+      (event.team?.roster ?? []).map((membership) => [membership.person.id, membership.person]),
+    ).values(),
+  );
+  const rosterPersonIds = new Set(rosterMembers.map((person) => person.id));
+  const attendanceByPersonId = new Map(event.attendance.map((record) => [record.person.id, record]));
+  const missingRosterAttendance = rosterMembers.filter((person) => !attendanceByPersonId.has(person.id));
   const eventTasks = [...event.tasks].sort(compareFollowUpTasks);
+  const eventNotes = [...event.notes].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
   const attendancePeople = [...people].sort((a, b) => {
     const rosterWeightA = rosterPersonIds.has(a.id) ? 0 : 1;
     const rosterWeightB = rosterPersonIds.has(b.id) ? 0 : 1;
@@ -251,6 +298,37 @@ export default async function EventDetailsPage({
 
     return a.firstName.localeCompare(b.firstName);
   });
+  const filteredAttendance = event.attendance.filter((record) => {
+    if (attendanceView === "all") {
+      return true;
+    }
+
+    if (attendanceView === "present") {
+      return record.status === AttendanceStatus.PRESENT;
+    }
+
+    if (attendanceView === "late") {
+      return record.status === AttendanceStatus.LATE;
+    }
+
+    if (attendanceView === "excused_absent") {
+      return record.status === AttendanceStatus.EXCUSED_ABSENT;
+    }
+
+    return record.status === AttendanceStatus.UNEXCUSED_ABSENT;
+  });
+  const attendanceCapturedCount = event.attendance.length;
+  const expectedAttendanceCount = rosterMembers.length;
+  const attendanceMissingCount = missingRosterAttendance.length;
+  const openTaskCount = eventTasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
+  const followUpRequired = attendanceMissingCount > 0 || openTaskCount > 0;
+  const attendanceIndicator = expectedAttendanceCount === 0
+    ? attendanceCapturedCount > 0
+      ? "Attendance captured (no team roster expectation)"
+      : "Attendance expectation not set (event has no team roster context)"
+    : attendanceMissingCount > 0
+      ? "Attendance missing for part of team roster"
+      : "Attendance captured for all currently rostered team members";
 
   return (
     <section className="space-y-6">
@@ -295,7 +373,15 @@ export default async function EventDetailsPage({
           </div>
           <div>
             <dt className="font-medium">Team</dt>
-            <dd className="text-zinc-600 dark:text-zinc-400">{event.team?.name ?? "—"}</dd>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {event.team ? (
+                <Link href={`/teams/${event.team.id}`} className="underline">
+                  {event.team.name}
+                </Link>
+              ) : (
+                "—"
+              )}
+            </dd>
           </div>
           <div>
             <dt className="font-medium">Starts</dt>
@@ -316,6 +402,88 @@ export default async function EventDetailsPage({
             </dd>
           </div>
         </dl>
+      </div>
+
+      <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-700 dark:bg-zinc-800/40">
+        <h3 className="text-lg font-semibold">Operational alignment summary</h3>
+        <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div>
+            <dt className="font-medium">Attendance captured</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{attendanceCapturedCount}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Expected team attendance</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{expectedAttendanceCount || "Not set"}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Attendance missing</dt>
+            <dd className={attendanceMissingCount > 0 ? "text-red-700 dark:text-red-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {attendanceMissingCount}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Linked notes / tasks</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {eventNotes.length} notes · {eventTasks.length} tasks
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Open linked tasks</dt>
+            <dd className={openTaskCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {openTaskCount}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Operational indicator</dt>
+            <dd>
+              {followUpRequired ? (
+                <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                  Follow-up required
+                </span>
+              ) : (
+                <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                  Operationally clear
+                </span>
+              )}
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-xs text-zinc-600 dark:text-zinc-400">{attendanceIndicator}.</p>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-lg font-semibold">Related notes</h3>
+          <Link href={`/notes/new?eventId=${event.id}`} className="text-sm underline">
+            Add note
+          </Link>
+        </div>
+        {eventNotes.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">No observation notes are linked to this event yet.</p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {eventNotes.map((note) => {
+              const openLinkedTaskCount = note.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
+              return (
+                <li key={note.id} className="rounded-md border p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Link href={`/notes/${note.id}`} className="font-medium underline">
+                      {note.body.length > 120 ? `${note.body.slice(0, 120)}…` : note.body}
+                    </Link>
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                      {formatDateTime(note.createdAt)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    Author: <Link href={`/people/${note.author.id}`} className="underline">{note.author.firstName} {note.author.lastName}</Link>
+                    {" · "}Linked tasks: {note.tasks.length}
+                    {openLinkedTaskCount > 0 ? ` (${openLinkedTaskCount} open)` : ""}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
@@ -391,7 +559,11 @@ export default async function EventDetailsPage({
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {event.rsvps.map((rsvp) => (
                   <tr key={rsvp.id}>
-                    <td className="py-2 pr-4">{rsvp.person.firstName} {rsvp.person.lastName}</td>
+                    <td className="py-2 pr-4">
+                      <Link href={`/people/${rsvp.person.id}`} className="underline">
+                        {rsvp.person.firstName} {rsvp.person.lastName}
+                      </Link>
+                    </td>
                     <td className="py-2 pr-4">{formatEnumLabel(rsvp.status)}</td>
                     <td className="py-2 pr-4 text-zinc-600 dark:text-zinc-400">{rsvp.reason ?? "—"}</td>
                     <td className="py-2 text-zinc-600 dark:text-zinc-400">{formatDateTime(rsvp.respondedAt)}</td>
@@ -404,10 +576,51 @@ export default async function EventDetailsPage({
       </div>
 
       <div className="rounded-lg border border-emerald-200 bg-emerald-50/30 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
-        <h3 className="text-lg font-semibold">Attendance (Actual Participation)</h3>
-        {event.attendance.length === 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-lg font-semibold">Attendance (Actual Participation)</h3>
+          <form method="get" className="flex items-center gap-2 text-sm">
+            <input type="hidden" name="rsvpPersonId" value={rsvpPersonId} />
+            <input type="hidden" name="rsvpStatus" value={rsvpStatus} />
+            <input type="hidden" name="rsvpReason" value={rsvpReason} />
+            <input type="hidden" name="attendancePersonId" value={attendancePersonId} />
+            <input type="hidden" name="attendanceStatus" value={attendanceStatus} />
+            <input type="hidden" name="attendanceReasonCode" value={attendanceReasonCode} />
+            <label htmlFor="attendanceView" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              Attendance filter
+            </label>
+            <select
+              id="attendanceView"
+              name="attendanceView"
+              defaultValue={attendanceView}
+              className="rounded-md border px-2 py-1.5 text-sm"
+            >
+              <option value="all">All</option>
+              <option value="present">Present</option>
+              <option value="late">Late</option>
+              <option value="excused_absent">Excused absent</option>
+              <option value="unexcused_absent">Unexcused absent</option>
+            </select>
+            <button type="submit" className="rounded-md border px-2 py-1.5 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Apply
+            </button>
+            {attendanceView !== "all" ? (
+              <Link href={`/events/${event.id}`} className="rounded-md border px-2 py-1.5 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                Clear
+              </Link>
+            ) : null}
+          </form>
+        </div>
+
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          Captured records: {attendanceCapturedCount}
+          {expectedAttendanceCount > 0 ? ` · Missing from team roster: ${attendanceMissingCount}` : " · Team roster expectation not configured"}
+        </p>
+
+        {filteredAttendance.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            No attendance has been marked for this event yet.
+            {attendanceView === "all"
+              ? "No attendance has been marked for this event yet."
+              : "No attendance records match the selected attendance filter."}
           </p>
         ) : (
           <div className="mt-3 overflow-x-auto">
@@ -422,18 +635,24 @@ export default async function EventDetailsPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {event.attendance.map((attendanceRecord) => (
+                {filteredAttendance.map((attendanceRecord) => (
                   <tr key={attendanceRecord.id}>
                     <td className="py-2 pr-4">
-                      {attendanceRecord.person.firstName} {attendanceRecord.person.lastName}
+                      <Link href={`/people/${attendanceRecord.person.id}`} className="underline">
+                        {attendanceRecord.person.firstName} {attendanceRecord.person.lastName}
+                      </Link>
                     </td>
                     <td className="py-2 pr-4">{formatEnumLabel(attendanceRecord.status)}</td>
                     <td className="py-2 pr-4 text-zinc-600 dark:text-zinc-400">{attendanceRecord.reasonCode ?? "—"}</td>
                     <td className="py-2 pr-4 text-zinc-600 dark:text-zinc-400">{formatDateTime(attendanceRecord.markedAt)}</td>
                     <td className="py-2 text-zinc-600 dark:text-zinc-400">
-                      {attendanceRecord.markedBy
-                        ? `${attendanceRecord.markedBy.firstName} ${attendanceRecord.markedBy.lastName}`
-                        : "—"}
+                      {attendanceRecord.markedBy ? (
+                        <Link href={`/people/${attendanceRecord.markedBy.id}`} className="underline">
+                          {attendanceRecord.markedBy.firstName} {attendanceRecord.markedBy.lastName}
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -441,12 +660,31 @@ export default async function EventDetailsPage({
             </table>
           </div>
         )}
+
+        {expectedAttendanceCount > 0 ? (
+          <div className="mt-4 rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800/40">
+            <h4 className="text-sm font-medium">Missing attendance from current team roster</h4>
+            {missingRosterAttendance.length === 0 ? (
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">No roster-linked attendance is missing.</p>
+            ) : (
+              <ul className="mt-2 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+                {missingRosterAttendance.map((person) => (
+                  <li key={person.id}>
+                    <Link href={`/people/${person.id}`} className="underline">
+                      {person.firstName} {person.lastName}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-lg font-semibold">Add or update RSVP</h3>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Submit availability intent now; attendance will be recorded in a later phase.
+          Submit availability intent now; attendance will be recorded separately.
         </p>
 
         {rsvpError ? (
@@ -605,6 +843,10 @@ export default async function EventDetailsPage({
             </button>
           </form>
         )}
+      </div>
+
+      <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/40 dark:text-zinc-400">
+        <strong className="font-medium">Current limitations:</strong> Attendance expectations are inferred from current team roster membership when a team is linked. Season/date-aware roster snapshots, approval flows, reminders, and notifications remain deferred.
       </div>
     </section>
   );

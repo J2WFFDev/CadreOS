@@ -155,6 +155,21 @@ This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the
 - Entry/Inbox/Feed runtime migration and unified Entry implementation.
 - FieldOps runtime expansion.
 
+## Phase 8D output summary (implemented event/attendance operational alignment slice)
+
+- `/events` list now surfaces operational attendance coverage and event-linked note/task visibility with lightweight filters for status, team, attendance coverage, and follow-up-linked context.
+- `/events/[eventId]` now surfaces attendance capture/missing indicators, related event-linked notes, and filtered attendance views to improve coach/admin operational readability.
+- Attendance-to-person and event-linked note/task relationships are more visible through direct links and per-event operational summaries.
+- The current workflow remains operational and coach-focused on existing models (`Event`, `AttendanceRecord`, `ObservationNote`, `FollowUpTask`) with no schema redesign.
+
+### Still deferred after 8D
+
+- Notifications, reminders, messaging/chat, Feed, and Journal behavior.
+- Parent portal, consent, and attendance approval workflows.
+- Entry/Inbox migration implementation.
+- FieldOps expansion.
+- Advanced attendance/event analytics and reporting.
+
 ---
 
 ## PR Summary (directional)
