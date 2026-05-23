@@ -8,6 +8,7 @@ import { getOrganizationScope } from "@/lib/organization-context";
 import {
   followUpTaskWorkflowSchema,
   getStringField,
+  isPermissionDeniedError,
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
 } from "@/lib/workflows";
@@ -126,6 +127,8 @@ export async function POST(request: Request) {
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
       action: "task.create",
+      noteId: parsed.data.sourceNoteId,
+      eventId: parsed.data.sourceEventId,
     });
 
     const assignee = await db.person.findFirst({
@@ -236,9 +239,11 @@ export async function POST(request: Request) {
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, {
         values,
-        error: isSchemaUnavailableError(error)
-          ? "Database schema is not available yet. Run database setup before creating tasks."
-          : "Unable to create task right now. Please try again.",
+        error: isPermissionDeniedError(error)
+          ? error.message
+          : isSchemaUnavailableError(error)
+            ? "Database schema is not available yet. Run database setup before creating tasks."
+            : "Unable to create task right now. Please try again.",
       }),
       303,
     );

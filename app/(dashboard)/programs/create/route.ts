@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
+  isPermissionDeniedError,
   isSchemaUnavailableError,
   programWorkflowSchema,
   requirePhase1CMutationPermission,
@@ -127,9 +128,11 @@ export async function POST(request: Request) {
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, {
         values,
-        error: isSchemaUnavailableError(error)
-          ? "Database schema is not available yet. Run database setup before creating programs."
-          : "Unable to create program right now. Please try again.",
+        error: isPermissionDeniedError(error)
+          ? error.message
+          : isSchemaUnavailableError(error)
+            ? "Database schema is not available yet. Run database setup before creating programs."
+            : "Unable to create program right now. Please try again.",
       }),
       303,
     );

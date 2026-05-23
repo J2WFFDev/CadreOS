@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
+  isPermissionDeniedError,
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
   seasonWorkflowSchema,
@@ -97,6 +98,8 @@ export async function POST(
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
       action: "season.update",
+      programId,
+      seasonId,
     });
 
     const season = await db.season.findFirst({
@@ -188,9 +191,11 @@ export async function POST(
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, { programId, seasonId }, {
         values,
-        error: isSchemaUnavailableError(error)
-          ? "Database schema is not available yet. Run database setup before editing seasons."
-          : "Unable to update season right now. Please try again.",
+        error: isPermissionDeniedError(error)
+          ? error.message
+          : isSchemaUnavailableError(error)
+            ? "Database schema is not available yet. Run database setup before editing seasons."
+            : "Unable to update season right now. Please try again.",
       }),
       303,
     );

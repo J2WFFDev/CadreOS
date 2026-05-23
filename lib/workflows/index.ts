@@ -11,6 +11,7 @@ import {
 import { z } from "zod";
 
 import { requireAuthContext } from "@/lib/auth";
+import { PermissionDeniedError, requirePermission } from "@/lib/permissions";
 
 const MAX_NAME_LENGTH = 100;
 const MAX_EMAIL_LENGTH = 320;
@@ -377,6 +378,10 @@ export function isSchemaUnavailableError(error: unknown): boolean {
   );
 }
 
+export function isPermissionDeniedError(error: unknown): error is PermissionDeniedError {
+  return error instanceof PermissionDeniedError;
+}
+
 export function dateInputToUtcDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
 }
@@ -422,13 +427,28 @@ export async function requirePhase1CMutationPermission(input: {
     | "rosterMembership.create"
     | "roleAssignment.create"
     | "roleAssignment.delete";
+  programId?: string | null;
+  teamId?: string | null;
+  seasonId?: string | null;
+  eventId?: string | null;
+  noteId?: string | null;
+  taskId?: string | null;
+  roleAssignmentId?: string | null;
 }): Promise<void> {
   const authContext = await requireAuthContext();
 
-  void authContext;
-  void input;
-
-  // Auth and policy enforcement intentionally deferred; keep centralized for future phase.
+  await requirePermission({
+    actorUserId: authContext.clerkUserId,
+    organizationId: input.organizationId,
+    action: input.action,
+    programId: input.programId,
+    teamId: input.teamId,
+    seasonId: input.seasonId,
+    eventId: input.eventId,
+    noteId: input.noteId,
+    taskId: input.taskId,
+    roleAssignmentId: input.roleAssignmentId,
+  });
 }
 
 type SeasonLike = {
