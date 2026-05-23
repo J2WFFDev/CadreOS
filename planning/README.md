@@ -23,6 +23,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 1C Controlled Create/Edit](./PHASE_1C_CONTROLLED_CREATE_EDIT.md)
 - [Phase 1D Role Assignment Management](./PHASE_1D_ROLE_ASSIGNMENT_MANAGEMENT.md)
 - [Phase 1E Program Management](./PHASE_1E_PROGRAM_MANAGEMENT.md)
+- [Phase 1F Season Management](./PHASE_1F_SEASON_MANAGEMENT.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
 - [Chat Transcript](./CHAT_TRANSCRIPT.md)
 

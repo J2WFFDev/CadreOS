@@ -6,6 +6,7 @@ import { requireAuthContext } from "@/lib/auth";
 const MAX_NAME_LENGTH = 100;
 const MAX_EMAIL_LENGTH = 320;
 const MAX_PHONE_LENGTH = 32;
+const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const emailValidator = z.string().email();
 
@@ -59,10 +60,58 @@ export const programWorkflowSchema = z.object({
 
 export const rosterMembershipWorkflowSchema = z.object({
   personId: z.string().trim().min(1, "Person selection is required."),
+  seasonId: z.string().trim().min(1, "Season selection is required."),
   rosterRole: z.nativeEnum(RoleType, {
     message: "Roster role must use an existing role value.",
   }),
 });
+
+export const seasonWorkflowSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "Season name is required.")
+      .max(MAX_NAME_LENGTH, `Season name must be ${MAX_NAME_LENGTH} characters or less.`),
+    startDate: z.string().trim(),
+    endDate: z.string().trim(),
+  })
+  .superRefine((value, context) => {
+    if (value.startDate.length > 0 && !DATE_INPUT_PATTERN.test(value.startDate)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startDate"],
+        message: "Start date must use YYYY-MM-DD format.",
+      });
+    }
+
+    if (value.endDate.length > 0 && !DATE_INPUT_PATTERN.test(value.endDate)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["endDate"],
+        message: "End date must use YYYY-MM-DD format.",
+      });
+    }
+
+    if (
+      value.startDate.length > 0 &&
+      value.endDate.length > 0 &&
+      DATE_INPUT_PATTERN.test(value.startDate) &&
+      DATE_INPUT_PATTERN.test(value.endDate) &&
+      value.endDate < value.startDate
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["endDate"],
+        message: "End date cannot be before start date.",
+      });
+    }
+  })
+  .transform((value) => ({
+    name: value.name,
+    startDate: value.startDate.length === 0 ? null : dateInputToUtcDate(value.startDate),
+    endDate: value.endDate.length === 0 ? null : dateInputToUtcDate(value.endDate),
+  }));
 
 export const roleAssignmentWorkflowSchema = z
   .object({
@@ -131,6 +180,7 @@ export type PersonWorkflowInput = z.output<typeof personWorkflowSchema>;
 export type TeamWorkflowInput = z.output<typeof teamWorkflowSchema>;
 export type ProgramWorkflowInput = z.output<typeof programWorkflowSchema>;
 export type RosterMembershipWorkflowInput = z.output<typeof rosterMembershipWorkflowSchema>;
+export type SeasonWorkflowInput = z.output<typeof seasonWorkflowSchema>;
 export type RoleAssignmentWorkflowInput = z.output<typeof roleAssignmentWorkflowSchema>;
 
 export function getStringField(formData: FormData, field: string): string {
@@ -146,6 +196,18 @@ export function isSchemaUnavailableError(error: unknown): boolean {
   );
 }
 
+export function dateInputToUtcDate(value: string): Date {
+  return new Date(`${value}T00:00:00.000Z`);
+}
+
+export function formatDateInputValue(value: Date | null): string {
+  if (!value) {
+    return "";
+  }
+
+  return value.toISOString().slice(0, 10);
+}
+
 export async function requirePhase1CMutationPermission(input: {
   organizationId: string;
   action:
@@ -154,6 +216,8 @@ export async function requirePhase1CMutationPermission(input: {
     | "person.create"
     | "person.update"
     | "team.create"
+    | "season.create"
+    | "season.update"
     | "rosterMembership.create"
     | "roleAssignment.create"
     | "roleAssignment.delete";
