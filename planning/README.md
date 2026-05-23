@@ -78,6 +78,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 8M Operational Priority Focus and Visibility](./PHASE_8M_OPERATIONAL_PRIORITY_FOCUS.md)
 - [Phase 8N Operational Summary and Review Usability](./PHASE_8N_OPERATIONAL_SUMMARY_REVIEW_USABILITY.md)
 - [Phase 8O Operational Edge-Case Hardening and Workflow Stability Review](./PHASE_8O_OPERATIONAL_EDGE_CASE_HARDENING.md)
+- [Phase 8P Operational Foundation MVP Closeout and Strategic Decision Options](./PHASE_8P_OPERATIONAL_FOUNDATION_MVP_CLOSEOUT.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -121,7 +122,26 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 8M Operational Priority Focus and Visibility](./PHASE_8M_OPERATIONAL_PRIORITY_FOCUS.md)
 - [Phase 8N Operational Summary and Review Usability](./PHASE_8N_OPERATIONAL_SUMMARY_REVIEW_USABILITY.md)
 - [Phase 8O Operational Edge-Case Hardening and Workflow Stability Review](./PHASE_8O_OPERATIONAL_EDGE_CASE_HARDENING.md)
+- [Phase 8P Operational Foundation MVP Closeout and Strategic Decision Options](./PHASE_8P_OPERATIONAL_FOUNDATION_MVP_CLOSEOUT.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
+
+## Operational Foundation MVP Phase Sequence (8A–8P)
+- [Phase 8A Parent/Guardian Workflow Foundation](./PHASE_8A_GUARDIAN_WORKFLOW_FOUNDATION.md)
+- [Phase 8B Guardian-Aware Operational Context](./PHASE_8B_GUARDIAN_OPERATIONAL_CONTEXT.md)
+- Phase 8C was intentionally not used in the current sequence.
+- [Phase 8D Event/Attendance Operational Alignment](./PHASE_8D_EVENT_ATTENDANCE_OPERATIONAL_ALIGNMENT.md)
+- [Phase 8E Coach Operational Dashboard](./PHASE_8E_COACH_OPERATIONAL_DASHBOARD.md)
+- [Phase 8F Operational Workflow Continuity](./PHASE_8F_OPERATIONAL_WORKFLOW_CONTINUITY.md)
+- [Phase 8G Operational Readiness Visibility and Status Tracking](./PHASE_8G_OPERATIONAL_READINESS_STATUS_TRACKING.md)
+- [Phase 8H Operational Review Cadence Workflows](./PHASE_8H_OPERATIONAL_REVIEW_CADENCE_WORKFLOWS.md)
+- [Phase 8I Operational History Visibility and Activity Context](./PHASE_8I_OPERATIONAL_HISTORY_VISIBILITY.md)
+- [Phase 8J Operational Ownership and Accountability Visibility](./PHASE_8J_OPERATIONAL_OWNERSHIP_ACCOUNTABILITY_VISIBILITY.md)
+- [Phase 8K Operational Stale-State and Readiness Trend Visibility](./PHASE_8K_OPERATIONAL_STALE_STATE_AND_READINESS_TRENDS.md)
+- [Phase 8L Operational Relationship Summary Visibility](./PHASE_8L_OPERATIONAL_RELATIONSHIP_SUMMARY_VISIBILITY.md)
+- [Phase 8M Operational Priority Focus and Visibility](./PHASE_8M_OPERATIONAL_PRIORITY_FOCUS.md)
+- [Phase 8N Operational Summary and Review Usability](./PHASE_8N_OPERATIONAL_SUMMARY_REVIEW_USABILITY.md)
+- [Phase 8O Operational Edge-Case Hardening and Workflow Stability Review](./PHASE_8O_OPERATIONAL_EDGE_CASE_HARDENING.md)
+- [Phase 8P Operational Foundation MVP Closeout and Strategic Decision Options](./PHASE_8P_OPERATIONAL_FOUNDATION_MVP_CLOSEOUT.md)
 
 ## Decision Log Summary
 - Product name: **CadreOS**
