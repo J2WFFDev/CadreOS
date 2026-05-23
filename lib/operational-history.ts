@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { formatDateTime, formatEnumLabel } from "@/lib/follow-up-tasks";
 import {
   buildSupportedTaskSourceNoteVisibilityWhere,
+  hasResolvedFollowUpTaskOperationalVisibility,
   SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
 } from "@/lib/operational-visibility";
 
@@ -169,12 +170,15 @@ export async function getOperationalHistory(input: {
         sourceNote: {
           select: {
             id: true,
+            visibility: true,
+            eventId: true,
+            teamId: true,
             athlete: { select: { id: true, firstName: true, lastName: true } },
-            team: { select: { id: true, name: true } },
-            event: { select: { id: true, title: true, team: { select: { id: true, name: true } } } },
+            team: { select: { id: true, name: true, programId: true } },
+            event: { select: { id: true, title: true, teamId: true, programId: true, team: { select: { id: true, name: true } } } },
           },
         },
-        sourceEvent: { select: { id: true, title: true, team: { select: { id: true, name: true } } } },
+        sourceEvent: { select: { id: true, title: true, teamId: true, programId: true, team: { select: { id: true, name: true } } } },
       },
       orderBy: [{ updatedAt: "desc" }],
       take: 50,
@@ -286,7 +290,22 @@ export async function getOperationalHistory(input: {
   ]);
 
   const items: Array<OperationalHistoryItem | null> = [
-    ...tasks.map((task) => {
+    ...tasks
+      .filter((task) =>
+        hasResolvedFollowUpTaskOperationalVisibility({
+          sourceNoteId: task.sourceNote?.id ?? null,
+          sourceEventId: task.sourceEvent?.id ?? null,
+          sourceNoteVisibility: task.sourceNote?.visibility,
+          sourceNoteEventId: task.sourceNote?.eventId ?? null,
+          sourceNoteTeamId: task.sourceNote?.teamId ?? null,
+          sourceNoteEventTeamId: task.sourceNote?.event?.teamId ?? null,
+          sourceEventTeamId: task.sourceEvent?.teamId ?? null,
+          sourceNoteTeamProgramId: task.sourceNote?.team?.programId ?? null,
+          sourceNoteEventProgramId: task.sourceNote?.event?.programId ?? null,
+          sourceEventProgramId: task.sourceEvent?.programId ?? null,
+        }),
+      )
+      .map((task) => {
       const unresolved = isUnresolvedTaskStatus(task.status);
       const contexts = compactContexts([
         buildContext("Assignee", `${task.assignee.firstName} ${task.assignee.lastName}`, `/people/${task.assignee.id}`),
@@ -313,27 +332,27 @@ export async function getOperationalHistory(input: {
         ),
       ]);
 
-      return {
-        id: `task-${task.id}`,
-        kind: "task" as const,
-        href: `/tasks/${task.id}`,
-        title: task.title,
-        changeLabel: "Task update",
-        changedAt: task.updatedAt,
-        summary: [
-          `Status: ${formatEnumLabel(task.status)}`,
-          `Due: ${formatDateTime(task.dueAt)}`,
-          unresolved ? "Unresolved follow-up" : "Resolved follow-up",
-        ].join(" · "),
-        contexts,
-        actor: {
-          label: "Creator",
-          name: `${task.createdBy.firstName} ${task.createdBy.lastName}`,
-          href: `/people/${task.createdBy.id}`,
-        },
-        unresolvedLabel: unresolved ? formatEnumLabel(task.status) : null,
-      };
-    }),
+        return {
+          id: `task-${task.id}`,
+          kind: "task" as const,
+          href: `/tasks/${task.id}`,
+          title: task.title,
+          changeLabel: "Task update",
+          changedAt: task.updatedAt,
+          summary: [
+            `Status: ${formatEnumLabel(task.status)}`,
+            `Due: ${formatDateTime(task.dueAt)}`,
+            unresolved ? "Unresolved follow-up" : "Resolved follow-up",
+          ].join(" · "),
+          contexts,
+          actor: {
+            label: "Creator",
+            name: `${task.createdBy.firstName} ${task.createdBy.lastName}`,
+            href: `/people/${task.createdBy.id}`,
+          },
+          unresolvedLabel: unresolved ? formatEnumLabel(task.status) : null,
+        };
+      }),
     ...notes.flatMap((note) => {
         const unresolvedTaskCount = note.tasks.filter((task) =>
           isUnresolvedTaskStatus(task.status),

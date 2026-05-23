@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Prisma, RoleType, TaskStatus } from "@prisma/client";
+import { NoteVisibility, Prisma, RoleType, TaskStatus } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
@@ -26,7 +26,10 @@ import {
   resolveStaffScopeResolution,
 } from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
-import { buildSupportedTaskSourceNoteVisibilityWhere } from "@/lib/operational-visibility";
+import {
+  buildSupportedTaskSourceNoteVisibilityWhere,
+  hasResolvedFollowUpTaskOperationalVisibility,
+} from "@/lib/operational-visibility";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -241,7 +244,10 @@ export default async function TasksPage({
         sourceNote: {
           id: string;
           body: string;
-          team: { id: string; name: string } | null;
+          visibility: NoteVisibility;
+          eventId: string | null;
+          teamId: string | null;
+          team: { id: string; name: string; programId: string } | null;
           athlete:
             | {
                 id: string;
@@ -256,9 +262,21 @@ export default async function TasksPage({
                 }>;
               }
             | null;
-          event: { id: string; title: string; team: { id: string; name: string } | null } | null;
+          event: {
+            id: string;
+            title: string;
+            teamId: string | null;
+            programId: string;
+            team: { id: string; name: string } | null;
+          } | null;
         } | null;
-        sourceEvent: { id: string; title: string; team: { id: string; name: string } | null } | null;
+        sourceEvent: {
+          id: string;
+          title: string;
+          teamId: string | null;
+          programId: string;
+          team: { id: string; name: string } | null;
+        } | null;
         sourceInboxItem: { id: string; category: string; status: string } | null;
       }>
     | null = null;
@@ -366,7 +384,10 @@ export default async function TasksPage({
             select: {
               id: true,
               body: true,
-              team: { select: { id: true, name: true } },
+              visibility: true,
+              eventId: true,
+              teamId: true,
+              team: { select: { id: true, name: true, programId: true } },
               athlete: {
                 select: {
                   id: true,
@@ -393,10 +414,26 @@ export default async function TasksPage({
                   },
                 },
               },
-              event: { select: { id: true, title: true, team: { select: { id: true, name: true } } } },
+              event: {
+                select: {
+                  id: true,
+                  title: true,
+                  teamId: true,
+                  programId: true,
+                  team: { select: { id: true, name: true } },
+                },
+              },
             },
           },
-          sourceEvent: { select: { id: true, title: true, team: { select: { id: true, name: true } } } },
+          sourceEvent: {
+            select: {
+              id: true,
+              title: true,
+              teamId: true,
+              programId: true,
+              team: { select: { id: true, name: true } },
+            },
+          },
           sourceInboxItem: { select: { id: true, category: true, status: true } },
         },
       }),
@@ -440,6 +477,21 @@ export default async function TasksPage({
         take: 150,
       }),
     ]);
+    tasks = tasks.filter((task) =>
+      hasResolvedFollowUpTaskOperationalVisibility({
+        sourceNoteId: task.sourceNote?.id ?? null,
+        sourceEventId: task.sourceEvent?.id ?? null,
+        sourceNoteVisibility: task.sourceNote?.visibility,
+        sourceNoteEventId: task.sourceNote?.eventId ?? null,
+        sourceNoteTeamId: task.sourceNote?.teamId ?? null,
+        sourceNoteEventTeamId: task.sourceNote?.event?.teamId ?? null,
+        sourceEventTeamId: task.sourceEvent?.teamId ?? null,
+        sourceNoteTeamProgramId: task.sourceNote?.team?.programId ?? null,
+        sourceNoteEventProgramId: task.sourceNote?.event?.programId ?? null,
+        sourceEventProgramId: task.sourceEvent?.programId ?? null,
+      }),
+    );
+
     const peopleMap = new Map<string, { id: string; firstName: string; lastName: string }>();
     for (const task of tasks) {
       peopleMap.set(task.assignee.id, task.assignee);

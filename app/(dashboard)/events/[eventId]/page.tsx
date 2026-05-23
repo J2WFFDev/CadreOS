@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AttendanceStatus, RSVPStatus } from "@prisma/client";
+import { AttendanceStatus, NoteVisibility, RSVPStatus } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
@@ -20,6 +20,7 @@ import { getOrganizationScope } from "@/lib/organization-context";
 import { getOperationalHistory } from "@/lib/operational-history";
 import {
   buildSupportedTaskSourceNoteVisibilityWhere,
+  hasResolvedFollowUpTaskOperationalVisibility,
   SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
 } from "@/lib/operational-visibility";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -117,8 +118,17 @@ export default async function EventDetailsPage({
           title: string;
           status: string;
           dueAt: Date | null;
+          sourceEventId: string | null;
           assignee: { id: string; firstName: string; lastName: string };
-          sourceNote: { id: string; body: string } | null;
+          sourceNote: {
+            id: string;
+            body: string;
+            visibility: NoteVisibility;
+            eventId: string | null;
+            teamId: string | null;
+            team: { programId: string } | null;
+            event: { teamId: string | null; programId: string } | null;
+          } | null;
         }>;
         notes: Array<{
           id: string;
@@ -182,8 +192,19 @@ export default async function EventDetailsPage({
               title: true,
               status: true,
               dueAt: true,
+              sourceEventId: true,
               assignee: { select: { id: true, firstName: true, lastName: true } },
-              sourceNote: { select: { id: true, body: true } },
+              sourceNote: {
+                select: {
+                  id: true,
+                  body: true,
+                  visibility: true,
+                  eventId: true,
+                  teamId: true,
+                  team: { select: { programId: true } },
+                  event: { select: { teamId: true, programId: true } },
+                },
+              },
             },
           },
           notes: {
@@ -324,7 +345,22 @@ export default async function EventDetailsPage({
   const rosterPersonIds = new Set(rosterMembers.map((person) => person.id));
   const attendanceByPersonId = new Map(event.attendance.map((record) => [record.person.id, record]));
   const missingRosterAttendance = rosterMembers.filter((person) => !attendanceByPersonId.has(person.id));
-  const eventTasks = [...event.tasks].sort(compareFollowUpTasks);
+  const eventTasks = event.tasks
+    .filter((task) =>
+      hasResolvedFollowUpTaskOperationalVisibility({
+        sourceNoteId: task.sourceNote?.id ?? null,
+        sourceEventId: task.sourceEventId,
+        sourceNoteVisibility: task.sourceNote?.visibility,
+        sourceNoteEventId: task.sourceNote?.eventId ?? null,
+        sourceNoteTeamId: task.sourceNote?.teamId ?? null,
+        sourceNoteEventTeamId: task.sourceNote?.event?.teamId ?? null,
+        sourceEventTeamId: event.team?.id ?? null,
+        sourceNoteTeamProgramId: task.sourceNote?.team?.programId ?? null,
+        sourceNoteEventProgramId: task.sourceNote?.event?.programId ?? null,
+        sourceEventProgramId: event.program.id,
+      }),
+    )
+    .sort(compareFollowUpTasks);
   const eventNotes = [...event.notes].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
   const attendancePeople = [...people].sort((a, b) => {
     const rosterWeightA = rosterPersonIds.has(a.id) ? 0 : 1;

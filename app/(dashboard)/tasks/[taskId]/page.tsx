@@ -94,9 +94,10 @@ export default async function TaskDetailPage({
               id: string;
               body: string;
               visibility: NoteVisibility;
+              eventId: string | null;
               teamId: string | null;
               team: { programId: string } | null;
-              event: { teamId: string | null; programId: string } | null;
+              event: { id: string; teamId: string | null; programId: string } | null;
               athlete: {
                 id: string;
                 firstName: string;
@@ -136,9 +137,10 @@ export default async function TaskDetailPage({
             id: true,
             body: true,
             visibility: true,
+            eventId: true,
             teamId: true,
             team: { select: { programId: true } },
-            event: { select: { teamId: true, programId: true } },
+            event: { select: { id: true, teamId: true, programId: true } },
             athlete: {
               select: {
                 id: true,
@@ -225,7 +227,10 @@ export default async function TaskDetailPage({
   }
 
   const visibilityClassification = classifyFollowUpTaskOperationalVisibility({
+    sourceNoteId: task.sourceNote?.id ?? null,
+    sourceEventId: task.sourceEvent?.id ?? null,
     sourceNoteVisibility: task.sourceNote?.visibility,
+    sourceNoteEventId: task.sourceNote?.eventId ?? null,
     sourceEventTeamId: task.sourceEvent?.teamId ?? null,
     sourceEventProgramId: task.sourceEvent?.programId ?? null,
     sourceNoteTeamId: task.sourceNote?.teamId ?? null,
