@@ -1,19 +1,36 @@
+import { auth } from "@clerk/nextjs/server";
+
 export type AuthContext = {
   userId: string;
   organizationId: string | null;
 };
 
-const PHASE_0_MOCK_AUTH_CONTEXT: AuthContext = {
-  userId: "phase0-mock-user",
-  organizationId: "phase0-mock-org",
-};
+export async function getAuthContext(): Promise<AuthContext | null> {
+  const authState = await auth();
 
-// Phase 0 stub: real authentication and organization resolution are deferred.
-export async function requireAuthContext(): Promise<AuthContext> {
-  return PHASE_0_MOCK_AUTH_CONTEXT;
+  if (!authState.userId) {
+    return null;
+  }
+
+  return {
+    userId: authState.userId,
+    organizationId: authState.orgId ?? null,
+  };
 }
 
-// Phase 0 stub: replace with real authorization checks in the auth phase.
+export async function requireAuthContext(): Promise<AuthContext> {
+  const authState = await auth();
+
+  if (!authState.userId) {
+    authState.redirectToSignIn();
+  }
+
+  return {
+    userId: authState.userId,
+    organizationId: authState.orgId ?? null,
+  };
+}
+
 export async function requireOrganizationContext(): Promise<AuthContext> {
-  return PHASE_0_MOCK_AUTH_CONTEXT;
+  return requireAuthContext();
 }
