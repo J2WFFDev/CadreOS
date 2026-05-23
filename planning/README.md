@@ -62,6 +62,19 @@ CadreOS is an **Athlete Program Operating System**.
 - [Chat Transcript](./CHAT_TRANSCRIPT.md)
 - [**Product Decisions**](./PRODUCT_DECISIONS.md)
 
+## FieldOps MVP Phase Sequence (6A–6K)
+- [Phase 6A FieldOps Planning](./PHASE_6A_FIELDOPS_PLANNING.md)
+- [Phase 6B FieldOps Schema Draft](./PHASE_6B_FIELDOPS_SCHEMA_DRAFT.md)
+- [Phase 6C FieldOps Prisma Schema](./PHASE_6C_FIELDOPS_PRISMA_SCHEMA.md)
+- [Phase 6D FieldOps DB Update Validation](./PHASE_6D_FIELDOPS_DB_UPDATE_VALIDATION.md)
+- [Phase 6E FieldOps Read-Only Views](./PHASE_6E_FIELDOPS_READ_ONLY_VIEWS.md)
+- [Phase 6F FieldOps Booking Request Workflow](./PHASE_6F_FIELDOPS_BOOKING_REQUEST_WORKFLOW.md)
+- [Phase 6G FieldOps Conflict Prechecks](./PHASE_6G_FIELDOPS_CONFLICT_PRECHECKS.md)
+- [Phase 6H FieldOps Approval Workflow](./PHASE_6H_FIELDOPS_APPROVAL_WORKFLOW.md)
+- [Phase 6I FieldOps MVP Polish](./PHASE_6I_FIELDOPS_MVP_POLISH.md)
+- [Phase 6J FieldOps MVP Hardening](./PHASE_6J_FIELDOPS_MVP_HARDENING.md)
+- [Phase 6K FieldOps MVP Closeout and Phase 7 Decision Plan](./PHASE_6K_FIELDOPS_MVP_CLOSEOUT.md)
+
 ## Decision Log Summary
 - Product name: **CadreOS**
 - Product category: **Athlete Program Operating System**
