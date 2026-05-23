@@ -52,6 +52,7 @@ export default async function ProgramDetailsPage({
         name: string;
         organization: { id: string; name: string };
         teams: Array<{ id: string; name: string }>;
+        seasons: Array<{ id: string; name: string }>;
         roles: Array<{
           id: string;
           roleType: string;
@@ -79,6 +80,16 @@ export default async function ProgramDetailsPage({
             name: true,
           },
           orderBy: [{ name: "asc" }],
+        },
+        seasons: {
+          where: {
+            organizationId: scope.organizationId,
+          },
+          select: {
+            id: true,
+            name: true,
+          },
+          orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
         },
         roles: {
           where: {
@@ -130,12 +141,38 @@ export default async function ProgramDetailsPage({
       <div className="space-y-1">
         <h2 className="text-2xl font-semibold tracking-tight">{program.name}</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">Organization: {program.organization.name}</p>
-        <Link
-          href={`/programs/${program.id}/edit`}
-          className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-        >
-          Edit program
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/programs/${program.id}/edit`}
+            className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Edit program
+          </Link>
+          <Link
+            href={`/programs/${program.id}/seasons/new`}
+            className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            New season
+          </Link>
+        </div>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="mb-3 text-lg font-medium">Seasons</h3>
+        {program.seasons.length === 0 ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">No seasons are configured for this program yet.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {program.seasons.map((season) => (
+              <li key={season.id} className="flex flex-wrap items-center gap-2">
+                <span>{season.name}</span>
+                <Link href={`/programs/${program.id}/seasons/${season.id}/edit`} className="underline">
+                  Edit
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">

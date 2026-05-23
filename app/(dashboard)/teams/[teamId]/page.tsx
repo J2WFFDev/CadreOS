@@ -191,15 +191,21 @@ export default async function TeamDetailsPage({
   }
 
   const selectedSeason = selectSeededOrCurrentSeason(team.program.seasons);
-  const selectedSeasonRosterMembers = selectedSeason
-    ? team.roster.filter((membership) => membership.season.id === selectedSeason.id)
+  const requestedSeasonId = readSearchParam(resolvedSearchParams, "seasonId");
+  const selectedSeasonForView =
+    team.program.seasons.find((season) => season.id === requestedSeasonId) ?? selectedSeason;
+  const selectedSeasonRosterMembers = selectedSeasonForView
+    ? team.roster.filter((membership) => membership.season.id === selectedSeasonForView.id)
     : [];
   const selectedSeasonRosterPersonIds = new Set(selectedSeasonRosterMembers.map((membership) => membership.person.id));
   const availablePeople = organizationPeople.filter((person) => !selectedSeasonRosterPersonIds.has(person.id));
 
   const rosterError = readSearchParam(resolvedSearchParams, "rosterError");
   const rosterPersonIdError = readSearchParam(resolvedSearchParams, "rosterPersonIdError");
+  const rosterSeasonIdError = readSearchParam(resolvedSearchParams, "seasonIdError");
   const rosterRoleError = readSearchParam(resolvedSearchParams, "rosterRoleError");
+  const selectedRosterSeasonId =
+    readSearchParam(resolvedSearchParams, "seasonId") || selectedSeasonForView?.id || "";
   const selectedRosterPersonId =
     readSearchParam(resolvedSearchParams, "rosterPersonId") || availablePeople[0]?.id || "";
   const selectedRosterRole =
@@ -224,11 +230,26 @@ export default async function TeamDetailsPage({
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Roster members</h3>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-          Season: {selectedSeason?.name ?? "No season available"}
+          Season: {selectedSeasonForView?.name ?? "No season available"}
         </p>
+        {team.program.seasons.length > 1 ? (
+          <div className="mb-3 flex flex-wrap gap-2 text-sm">
+            {team.program.seasons.map((season) => (
+              <Link
+                key={season.id}
+                href={`/teams/${team.id}?seasonId=${season.id}`}
+                className={`rounded-md border px-2 py-1 ${
+                  selectedSeasonForView?.id === season.id ? "bg-zinc-100 dark:bg-zinc-800" : ""
+                }`}
+              >
+                {season.name}
+              </Link>
+            ))}
+          </div>
+        ) : null}
         {selectedSeasonRosterMembers.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            No roster members found for the seeded/current season.
+            No roster members found for this season.
           </p>
         ) : (
           <ul className="space-y-2 text-sm">
@@ -246,12 +267,12 @@ export default async function TeamDetailsPage({
       <div id="add-roster-member" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Add roster member</h3>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-          Target season: {selectedSeason?.name ?? "No seeded/current season available"}
+          Target season: {selectedSeasonForView?.name ?? "No season available"}
         </p>
 
         {rosterError ? <p className="mb-3 text-sm text-red-600">{rosterError}</p> : null}
 
-        {!selectedSeason ? (
+        {!selectedSeasonForView ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Add or seed a season for this program before adding roster members.
           </p>
@@ -261,6 +282,29 @@ export default async function TeamDetailsPage({
           </p>
         ) : (
           <form action={`/teams/${team.id}/roster`} method="post" className="space-y-3">
+            {team.program.seasons.length === 1 ? (
+              <input type="hidden" name="seasonId" value={selectedRosterSeasonId} />
+            ) : (
+              <div className="space-y-1">
+                <label htmlFor="seasonId" className="text-sm font-medium">
+                  Season
+                </label>
+                <select
+                  id="seasonId"
+                  name="seasonId"
+                  defaultValue={selectedRosterSeasonId}
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                >
+                  {team.program.seasons.map((season) => (
+                    <option key={season.id} value={season.id}>
+                      {season.name}
+                    </option>
+                  ))}
+                </select>
+                {rosterSeasonIdError ? <p className="text-sm text-red-600">{rosterSeasonIdError}</p> : null}
+              </div>
+            )}
+
             <div className="space-y-1">
               <label htmlFor="personId" className="text-sm font-medium">
                 Person

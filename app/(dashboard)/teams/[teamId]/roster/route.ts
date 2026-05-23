@@ -8,21 +8,25 @@ import {
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
   rosterMembershipWorkflowSchema,
-  selectSeededOrCurrentSeason,
 } from "@/lib/phase1c/workflows";
 
 function buildErrorRedirectUrl(requestUrl: string, teamId: string, input: {
-  values: { personId: string; rosterRole: string };
-  fieldErrors?: Partial<Record<"personId" | "rosterRole", string>>;
+  values: { personId: string; seasonId: string; rosterRole: string };
+  fieldErrors?: Partial<Record<"personId" | "seasonId" | "rosterRole", string>>;
   error?: string;
 }) {
   const url = new URL(`/teams/${teamId}`, requestUrl);
 
   url.searchParams.set("rosterPersonId", input.values.personId);
+  url.searchParams.set("seasonId", input.values.seasonId);
   url.searchParams.set("rosterRole", input.values.rosterRole);
 
   if (input.fieldErrors?.personId) {
     url.searchParams.set("rosterPersonIdError", input.fieldErrors.personId);
+  }
+
+  if (input.fieldErrors?.seasonId) {
+    url.searchParams.set("seasonIdError", input.fieldErrors.seasonId);
   }
 
   if (input.fieldErrors?.rosterRole) {
@@ -46,6 +50,7 @@ export async function POST(
 
   const values = {
     personId: getStringField(formData, "personId"),
+    seasonId: getStringField(formData, "seasonId"),
     rosterRole: getStringField(formData, "rosterRole"),
   };
 
@@ -79,6 +84,7 @@ export async function POST(
         values,
         fieldErrors: {
           personId: fieldErrors.personId?.[0],
+          seasonId: fieldErrors.seasonId?.[0],
           rosterRole: fieldErrors.rosterRole?.[0],
         },
         error: "Please correct the highlighted fields.",
@@ -122,13 +128,16 @@ export async function POST(
       orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
     });
 
-    const selectedSeason = selectSeededOrCurrentSeason(seasons);
+    const selectedSeason = seasons.find((season) => season.id === parsed.data.seasonId) ?? null;
 
     if (!selectedSeason) {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, teamId, {
           values,
-          error: "No seeded/current season is available for this team's program.",
+          fieldErrors: {
+            seasonId: "Select a valid season for this team's program.",
+          },
+          error: "Season selection is invalid.",
         }),
         303,
       );
