@@ -52,6 +52,18 @@ function formatAssignmentSummary(assignments: Array<{
   return [...new Set(summaries)].join(", ");
 }
 
+function formatTeamMembershipSummary(memberships: Array<{
+  team: { id: string; name: string; program: { name: string } };
+}>) {
+  if (memberships.length === 0) {
+    return "No team memberships";
+  }
+
+  const summaries = memberships.map((membership) => `${membership.team.program.name} · ${membership.team.name}`);
+
+  return [...new Set(summaries)].join(", ");
+}
+
 export default async function PeoplePage() {
   const scope = await getOrganizationScope();
 
@@ -89,6 +101,13 @@ export default async function PeoplePage() {
           program: { name: string } | null;
           team: { name: string; program: { name: string } | null } | null;
         }>;
+        roster: Array<{
+          team: { id: string; name: string; program: { name: string } };
+        }>;
+        _count: {
+          guardianLinks: number;
+          athleteLinks: number;
+        };
       }>
     | null = null;
 
@@ -115,6 +134,27 @@ export default async function PeoplePage() {
                 },
               },
             },
+          },
+        },
+        roster: {
+          select: {
+            team: {
+              select: {
+                id: true,
+                name: true,
+                program: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            guardianLinks: true,
+            athleteLinks: true,
           },
         },
       },
@@ -156,6 +196,8 @@ export default async function PeoplePage() {
                 <th className="px-4 py-3 font-medium">Last name</th>
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Roles</th>
+                <th className="px-4 py-3 font-medium">Team / Program</th>
+                <th className="px-4 py-3 font-medium">Guardian links</th>
               </tr>
             </thead>
             <tbody>
@@ -171,6 +213,13 @@ export default async function PeoplePage() {
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{person.email ?? "—"}</td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                       {formatAssignmentSummary(person.roles)}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                      {formatTeamMembershipSummary(person.roster)}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                      Guardian for {person._count.guardianLinks} athlete{person._count.guardianLinks === 1 ? "" : "s"} ·
+                      Athlete linked to {person._count.athleteLinks} guardian{person._count.athleteLinks === 1 ? "" : "s"}
                     </td>
                   </tr>
                 );

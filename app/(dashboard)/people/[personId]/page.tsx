@@ -95,7 +95,7 @@ export default async function PersonDetailsPage({
         roster: Array<{
           id: string;
           rosterRole: string;
-          team: { id: string; name: string };
+          team: { id: string; name: string; program: { id: string; name: string } };
           season: { id: string; name: string };
         }>;
       }
@@ -169,7 +169,16 @@ export default async function PersonDetailsPage({
           roster: {
             include: {
               team: {
-                select: { id: true, name: true },
+                select: {
+                  id: true,
+                  name: true,
+                  program: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
               },
               season: {
                 select: { id: true, name: true },
@@ -367,6 +376,10 @@ export default async function PersonDetailsPage({
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Guardian / athlete relationships</h3>
+        <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+          Relationship records are visible here. Dedicated create/manage guardian relationship workflows are not yet
+          exposed in this MVP slice.
+        </p>
         {person.guardianLinks.length === 0 && person.athleteLinks.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No guardian/athlete relationships.</p>
         ) : (
@@ -408,7 +421,15 @@ export default async function PersonDetailsPage({
           <ul className="space-y-2 text-sm">
             {person.roster.map((membership) => (
               <li key={membership.id}>
-                Team: {membership.team.name} · Season: {membership.season.name} · Role:{" "}
+                Program:{" "}
+                <Link href={`/programs/${membership.team.program.id}`} className="underline">
+                  {membership.team.program.name}
+                </Link>{" "}
+                · Team:{" "}
+                <Link href={`/teams/${membership.team.id}`} className="underline">
+                  {membership.team.name}
+                </Link>{" "}
+                · Season: {membership.season.name} · Role:{" "}
                 {formatEnumLabel(membership.rosterRole)}
               </li>
             ))}

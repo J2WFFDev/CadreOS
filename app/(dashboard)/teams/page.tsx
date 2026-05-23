@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ScopeType } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
@@ -38,6 +39,8 @@ export default async function TeamsPage() {
         id: string;
         name: string;
         program: { id: string; name: string };
+        roster: Array<{ id: string }>;
+        roles: Array<{ id: string }>;
       }>
     | null = null;
 
@@ -47,6 +50,19 @@ export default async function TeamsPage() {
       include: {
         program: {
           select: { id: true, name: true },
+        },
+        roster: {
+          select: {
+            id: true,
+          },
+        },
+        roles: {
+          where: {
+            scopeType: ScopeType.TEAM,
+          },
+          select: {
+            id: true,
+          },
         },
       },
       orderBy: { name: "asc" },
@@ -90,6 +106,9 @@ export default async function TeamsPage() {
                 <Link href={`/programs/${team.program.id}`} className="underline">
                   {team.program.name}
                 </Link>
+              </p>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                Roster memberships: {team.roster.length} · Team role assignments: {team.roles.length}
               </p>
             </div>
           ))}

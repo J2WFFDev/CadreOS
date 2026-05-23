@@ -80,7 +80,13 @@ export default async function TeamDetailsPage({
         roster: Array<{
           id: string;
           rosterRole: string;
-          person: { id: string; firstName: string; lastName: string; email: string | null };
+          person: {
+            id: string;
+            firstName: string;
+            lastName: string;
+            email: string | null;
+            athleteLinks: Array<{ id: string }>;
+          };
           season: { id: string; name: string; startDate: Date | null; endDate: Date | null };
         }>;
       }
@@ -136,6 +142,14 @@ export default async function TeamDetailsPage({
                   firstName: true,
                   lastName: true,
                   email: true,
+                  athleteLinks: {
+                    where: {
+                      organizationId: scope.organizationId,
+                    },
+                    select: {
+                      id: true,
+                    },
+                  },
                 },
               },
               season: {
@@ -198,6 +212,11 @@ export default async function TeamDetailsPage({
   const selectedSeasonRosterMembers = selectedSeasonForView
     ? team.roster.filter((membership) => membership.season.id === selectedSeasonForView.id)
     : [];
+  const athleteRosterMemberships = selectedSeasonRosterMembers.filter((membership) => membership.rosterRole === RoleType.ATHLETE);
+  const athleteRosterWithGuardianLinks = athleteRosterMemberships.filter(
+    (membership) => membership.person.athleteLinks.length > 0,
+  ).length;
+  const athleteRosterWithoutGuardianLinks = athleteRosterMemberships.length - athleteRosterWithGuardianLinks;
   const selectedSeasonRosterPersonIds = new Set(selectedSeasonRosterMembers.map((membership) => membership.person.id));
   const availablePeople = organizationPeople.filter((person) => !selectedSeasonRosterPersonIds.has(person.id));
 
@@ -260,13 +279,23 @@ export default async function TeamDetailsPage({
           <ul className="space-y-2 text-sm">
             {selectedSeasonRosterMembers.map((membership) => (
               <li key={membership.id}>
-                {membership.person.firstName} {membership.person.lastName}
+                <Link href={`/people/${membership.person.id}`} className="underline">
+                  {membership.person.firstName} {membership.person.lastName}
+                </Link>
                 {membership.person.email ? ` (${membership.person.email})` : ""} ·{" "}
                 {formatEnumLabel(membership.rosterRole)}
+                {membership.rosterRole === RoleType.ATHLETE
+                  ? ` · Guardian links: ${membership.person.athleteLinks.length}`
+                  : ""}
               </li>
             ))}
           </ul>
         )}
+        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+          Athlete guardian relationship coverage for this season: {athleteRosterWithGuardianLinks} athlete
+          {athleteRosterWithGuardianLinks === 1 ? "" : "s"} with guardian link
+          {athleteRosterWithGuardianLinks === 1 ? "" : "s"}, {athleteRosterWithoutGuardianLinks} without.
+        </p>
       </div>
 
       <div id="add-roster-member" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
@@ -363,7 +392,10 @@ export default async function TeamDetailsPage({
           <ul className="space-y-2 text-sm">
             {team.roles.map((role) => (
               <li key={role.id}>
-                {role.person.firstName} {role.person.lastName} · {formatEnumLabel(role.roleType)}
+                <Link href={`/people/${role.person.id}`} className="underline">
+                  {role.person.firstName} {role.person.lastName}
+                </Link>{" "}
+                · {formatEnumLabel(role.roleType)}
               </li>
             ))}
           </ul>
