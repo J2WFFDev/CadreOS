@@ -59,6 +59,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 7A Entry / Inbox Schema Design](./PHASE_7A_ENTRY_INBOX_SCHEMA_DESIGN.md)
 - [Phase 7B Team/Member Management Hardening](./PHASE_7B_TEAM_MEMBER_MANAGEMENT_HARDENING.md)
 - [Phase 7C Team/Member Roster Usability](./PHASE_7C_TEAM_MEMBER_ROSTER_USABILITY.md)
+- [Phase 7D Team/Member Assignment Workflow](./PHASE_7D_TEAM_MEMBER_ASSIGNMENT_WORKFLOW.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
 - [Chat Transcript](./CHAT_TRANSCRIPT.md)
@@ -82,6 +83,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 6K FieldOps MVP Closeout and Phase 7 Decision Plan](./PHASE_6K_FIELDOPS_MVP_CLOSEOUT.md)
 - [Phase 7B Team/Member Management Hardening](./PHASE_7B_TEAM_MEMBER_MANAGEMENT_HARDENING.md)
 - [Phase 7C Team/Member Roster Usability](./PHASE_7C_TEAM_MEMBER_ROSTER_USABILITY.md)
+- [Phase 7D Team/Member Assignment Workflow](./PHASE_7D_TEAM_MEMBER_ASSIGNMENT_WORKFLOW.md)
 
 ## Decision Log Summary
 - Product name: **CadreOS**
