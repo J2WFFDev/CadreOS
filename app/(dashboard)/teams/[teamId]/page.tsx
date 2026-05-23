@@ -292,7 +292,7 @@ export default async function TeamDetailsPage({
     );
   }
 
-  if (!canReadTeamScopedContent(actorRoleContext, team.id)) {
+  if (!canReadTeamScopedContent(actorRoleContext, team.id, team.program.id)) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Team</h2>
