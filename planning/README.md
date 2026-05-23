@@ -8,6 +8,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Feature Breakdown](./FEATURE_BREAKDOWN.md)
 - [Domain Model](./DOMAIN_MODEL.md)
 - [Roadmap](./ROADMAP.md)
+- [Roadmap: Core MVP, FieldOps, GearOps](./ROADMAP_CORE_FIELDOPS_GEAROPS.md)
+- [Notes / Inbox / Entry Model](./NOTES_INBOX_ENTRY_MODEL.md)
 - [User Stories](./USER_STORIES.md)
 - [MVP Spec](./MVP_SPEC.md)
 - [Permissions Matrix](./PERMISSIONS_MATRIX.md)
