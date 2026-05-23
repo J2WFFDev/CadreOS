@@ -1,3 +1,5 @@
+import { auth } from "@clerk/nextjs/server";
+
 export type AuthContext = {
   userId: string;
   organizationId: string | null;
@@ -8,12 +10,41 @@ const PHASE_0_MOCK_AUTH_CONTEXT: AuthContext = {
   organizationId: "phase0-mock-org",
 };
 
-// Phase 0 stub: real authentication and organization resolution are deferred.
+function isClerkConfigured(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY);
+}
+
+async function getClerkAuthContext(): Promise<AuthContext | null> {
+  if (!isClerkConfigured()) {
+    return null;
+  }
+
+  const { userId, orgId } = await auth();
+
+  if (!userId) {
+    throw new Error("Unauthenticated request.");
+  }
+
+  return {
+    userId,
+    organizationId: orgId ?? null,
+  };
+}
+
+// Phase 4B baseline: use Clerk identity when available; keep Phase 0 fallback for non-configured environments.
 export async function requireAuthContext(): Promise<AuthContext> {
+  if (isClerkConfigured()) {
+    const clerkAuthContext = await getClerkAuthContext();
+
+    if (clerkAuthContext) {
+      return clerkAuthContext;
+    }
+  }
+
   return PHASE_0_MOCK_AUTH_CONTEXT;
 }
 
-// Phase 0 stub: replace with real authorization checks in the auth phase.
+// Phase 4B baseline: mirror auth context for organization resolution until explicit org authorization is introduced.
 export async function requireOrganizationContext(): Promise<AuthContext> {
-  return PHASE_0_MOCK_AUTH_CONTEXT;
+  return requireAuthContext();
 }
