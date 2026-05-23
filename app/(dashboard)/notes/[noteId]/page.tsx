@@ -178,6 +178,7 @@ export default async function NoteDetailPage({
     canViewGuardianRelationshipDetails && note.athlete
       ? deriveGuardianOperationalContext(note.athlete.athleteLinks ?? [])
       : null;
+  const unresolvedTaskCount = note.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
 
   return (
     <section className="space-y-6">
@@ -266,11 +267,34 @@ export default async function NoteDetailPage({
             <dt className="font-medium">Event</dt>
             <dd className="text-zinc-600 dark:text-zinc-400">
               {note.event ? (
-                <Link href={`/events/${note.event.id}`} className="underline">
-                  {note.event.title}
-                </Link>
+                <span>
+                  <Link href={`/events/${note.event.id}`} className="underline">
+                    {note.event.title}
+                  </Link>
+                  {" · "}
+                  <Link href={`/events/${note.event.id}#attendance-workflow`} className="underline">
+                    Attendance workflow
+                  </Link>
+                </span>
               ) : (
                 "—"
+              )}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="font-medium">Operational status</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {unresolvedTaskCount > 0 ? (
+                <span>
+                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                    Follow-up pending
+                  </span>
+                  <span className="ml-2">{unresolvedTaskCount} unresolved linked task{unresolvedTaskCount === 1 ? "" : "s"}</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                  No unresolved linked tasks
+                </span>
               )}
             </dd>
           </div>
@@ -295,7 +319,10 @@ export default async function NoteDetailPage({
           </p>
         ) : null}
         {note.tasks.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">No follow-up tasks are linked to this note yet.</p>
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            No follow-up tasks are linked to this note yet. Create one to track unresolved operational items captured in
+            this note.
+          </p>
         ) : (
           <ul className="mt-3 space-y-3">
             {note.tasks.map((task) => (
@@ -309,6 +336,11 @@ export default async function NoteDetailPage({
                   >
                     {formatEnumLabel(task.status)}
                   </span>
+                  {task.status !== "DONE" && task.status !== "CANCELLED" ? (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                      Follow-up pending
+                    </span>
+                  ) : null}
                 </div>
                 <p
                   className={`mt-1 text-sm ${

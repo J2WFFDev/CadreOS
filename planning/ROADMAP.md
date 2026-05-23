@@ -192,6 +192,23 @@ This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the
 - FieldOps functional expansion beyond existing approval workflow visibility.
 - Advanced BI/reporting infrastructure and predictive analytics.
 
+## Phase 8F output summary (implemented operational workflow continuity slice)
+
+- Event detail workflow now includes clearer continuity between attendance, related notes, related tasks, and follow-up create actions.
+- Attendance concern visibility now includes lightweight operational concern signals (missing/late/unexcused absent) and unresolved-item guidance.
+- Dashboard attendance-review cards now route to existing event attendance workflow context and event-note context links.
+- Note detail now exposes stronger operational continuity signals (follow-up pending status, event attendance link context).
+- Task detail now exposes clearer operational context for why a task exists and whether unresolved/guardian-linkage follow-up risk is present.
+
+### Still deferred after 8F
+
+- Messaging/chat/notifications/reminders and communication runtime behavior.
+- Parent/guardian portal runtime behavior.
+- Feed/Inbox/Journal runtime behavior and Entry migration implementation.
+- Workflow automation/orchestration behavior.
+- FieldOps functional expansion.
+- Advanced reporting/analytics infrastructure.
+
 ---
 
 ## PR Summary (directional)
