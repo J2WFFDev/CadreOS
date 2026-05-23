@@ -711,6 +711,9 @@ export default async function TeamDetailsPage({
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-lg font-medium">Operational relationship summary</h3>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Review this team’s unresolved work, recent changes, and upcoming readiness concerns without leaving current team context.
+        </p>
         <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
           <div>
             <dt className="font-medium">Related notes</dt>
@@ -741,14 +744,23 @@ export default async function TeamDetailsPage({
           <Link href={`/notes?teamId=${team.id}`} className="rounded-full border px-2 py-1">
             Team notes
           </Link>
+          <Link href={`/notes?teamId=${team.id}&readinessIndicator=needs_review`} className="rounded-full border px-2 py-1">
+            Notes needing review
+          </Link>
           <Link href={`/tasks?teamId=${team.id}&resolution=unresolved`} className="rounded-full border px-2 py-1">
             Team unresolved tasks
+          </Link>
+          <Link href={`/tasks?teamId=${team.id}&ownershipIndicator=stale_unresolved`} className="rounded-full border px-2 py-1">
+            Stale unresolved tasks
           </Link>
           <Link href={`/events?teamId=${team.id}&operationalIndicator=upcoming_operational_concern`} className="rounded-full border px-2 py-1">
             Upcoming concern events
           </Link>
           <Link href={`/events?teamId=${team.id}&operationalIndicator=recently_active`} className="rounded-full border px-2 py-1">
             Recent related activity
+          </Link>
+          <Link href="#operational-history" className="rounded-full border px-2 py-1">
+            Team change history
           </Link>
         </div>
         {upcomingEventConcerns.length > 0 ? (

@@ -4,6 +4,7 @@ import { RoleType } from "@prisma/client";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { ReviewFocusPanel } from "@/components/dashboard/review-focus-panel";
 import { db } from "@/lib/db";
 import {
   deriveGuardianOperationalContext,
@@ -24,6 +25,19 @@ function readParam(params: SearchParams, key: string): string {
   const val = params[key];
   if (Array.isArray(val)) return val[0] ?? "";
   return val ?? "";
+}
+
+function buildHref(pathname: string, filters: Record<string, string>) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
+
+  const query = params.toString();
+  return query ? `${pathname}?${query}` : pathname;
 }
 
 function formatDateTime(value: Date) {
@@ -338,6 +352,38 @@ export default async function NotesPage({
     }
     return true;
   });
+  const staleNoteCount = filteredNotes.filter((note) => note.updatedAt.getTime() < staleCutoff.getTime()).length;
+  const recentlyActiveNoteCount = filteredNotes.filter(
+    (note) => note.updatedAt.getTime() >= recentlyActiveCutoff.getTime(),
+  ).length;
+  const notesNeedingReviewCount = filteredNotes.filter((note) => {
+    const unresolvedTaskCount = note.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
+    const isStale = note.updatedAt.getTime() < staleCutoff.getTime();
+    return unresolvedTaskCount > 0 || isStale;
+  }).length;
+  const upcomingConcernCount = filteredNotes.filter((note) => {
+    const unresolvedTaskCount = note.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
+    return Boolean(
+      unresolvedTaskCount > 0 &&
+        note.event &&
+        note.event.startsAt.getTime() >= now.getTime() &&
+        note.event.startsAt.getTime() <= upcomingEventCutoff.getTime(),
+    );
+  }).length;
+  const unresolvedLinkedTaskCount = filteredNotes.reduce(
+    (count, note) => count + note.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length,
+    0,
+  );
+  const buildNotesHref = (overrides: Record<string, string>) =>
+    buildHref("/notes", {
+      teamId: filterTeamId,
+      athletePersonId: filterAthletePersonId,
+      eventId: filterEventId,
+      authorPersonId: filterAuthorPersonId,
+      readinessIndicator: readinessIndicatorFilter,
+      guardianContext: canViewGuardianRelationshipDetails ? guardianContextFilter : "",
+      ...overrides,
+    });
 
   return (
     <section className="space-y-4">
@@ -349,6 +395,60 @@ export default async function NotesPage({
             New note
           </Link>
         }
+      />
+
+      <ReviewFocusPanel
+        title="Operational review focus"
+        description="Use the current note scope to review what changed recently, what is stale, and which notes still carry unresolved follow-up into upcoming operations."
+        activeFilters={activeFilterLabels}
+        defaultScope="No filters are active. Review spans all observation notes in the current organization."
+        stats={[
+          {
+            label: "Notes in current scope",
+            value: filteredNotes.length,
+            href: hasActiveFilters ? buildNotesHref({}) : "/notes",
+          },
+          {
+            label: "Need review",
+            value: notesNeedingReviewCount,
+            href: buildNotesHref({ readinessIndicator: "needs_review" }),
+            tone: notesNeedingReviewCount > 0 ? "warning" : "success",
+          },
+          {
+            label: "Stale",
+            value: staleNoteCount,
+            href: buildNotesHref({ readinessIndicator: "stale" }),
+            tone: staleNoteCount > 0 ? "warning" : "neutral",
+          },
+          {
+            label: "Upcoming concerns",
+            value: upcomingConcernCount,
+            href: buildNotesHref({ readinessIndicator: "upcoming_operational_concern" }),
+            tone: upcomingConcernCount > 0 ? "danger" : "success",
+          },
+          {
+            label: "Recently active",
+            value: recentlyActiveNoteCount,
+            href: buildNotesHref({ readinessIndicator: "recently_active" }),
+            tone: recentlyActiveNoteCount > 0 ? "info" : "neutral",
+          },
+          {
+            label: "Unresolved linked tasks",
+            value: unresolvedLinkedTaskCount,
+            href: buildNotesHref({ readinessIndicator: "needs_review" }),
+            tone: unresolvedLinkedTaskCount > 0 ? "warning" : "success",
+          },
+        ]}
+        links={[
+          { label: "Needs review in current scope", href: buildNotesHref({ readinessIndicator: "needs_review" }) },
+          { label: "Stale notes", href: buildNotesHref({ readinessIndicator: "stale" }) },
+          {
+            label: "Upcoming operational concern",
+            href: buildNotesHref({ readinessIndicator: "upcoming_operational_concern" }),
+          },
+          { label: "Recent note changes", href: buildNotesHref({ readinessIndicator: "recently_active" }) },
+        ]}
+        guidance="Readiness cues are lightweight prompts derived from existing note timestamps, linked task states, and linked event timing. Feed, Journal, and Entry runtime behavior remain deferred."
       />
 
       {/* Filter bar */}

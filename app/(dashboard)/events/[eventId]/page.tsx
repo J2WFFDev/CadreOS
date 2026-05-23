@@ -499,7 +499,7 @@ export default async function EventDetailsPage({
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-lg font-medium">Relationship workflow navigation</h3>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Use these links to continue event-linked attendance, note, and follow-up workflows without leaving operational context.
+          Use these links to continue event-linked attendance, note, follow-up, and recent-change review without leaving operational context.
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
           <Link href="#attendance-workflow" className="rounded-full border px-2 py-1">
@@ -508,11 +508,20 @@ export default async function EventDetailsPage({
           <Link href={`/notes?eventId=${event.id}`} className="rounded-full border px-2 py-1">
             Event notes
           </Link>
+          <Link href={`/notes?eventId=${event.id}&readinessIndicator=needs_review`} className="rounded-full border px-2 py-1">
+            Notes needing review
+          </Link>
           <Link href={`/tasks?eventId=${event.id}&resolution=unresolved`} className="rounded-full border px-2 py-1">
             Unresolved event tasks
           </Link>
+          <Link href={`/tasks?eventId=${event.id}&ownershipIndicator=stale_unresolved`} className="rounded-full border px-2 py-1">
+            Stale unresolved tasks
+          </Link>
           <Link href={`/tasks?eventId=${event.id}&changedWindow=last_7d`} className="rounded-full border px-2 py-1">
             Recent related activity
+          </Link>
+          <Link href="#operational-history" className="rounded-full border px-2 py-1">
+            Event change history
           </Link>
           {event.team ? (
             <Link
