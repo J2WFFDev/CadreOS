@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  },
+  "ignoredBuildStep": "if [ \"$VERCEL_GIT_COMMIT_REF\" = \"main\" ]; then exit 1; fi; if echo \"$VERCEL_GIT_COMMIT_REF\" | grep -Eiq 'copilot'; then exit 0; fi; exit 1"
+}
