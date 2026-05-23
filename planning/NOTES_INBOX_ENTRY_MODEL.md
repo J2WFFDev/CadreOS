@@ -135,7 +135,18 @@ Cons:
 - Query/index performance risk if a unified table becomes high-volume without planned indexing.
 - Rollback risk if migration is not staged with dual-read/dual-write compatibility.
 
-## 9) MVP-Safe Improvements to Current Notes (Before Large Refactor)
+## 10) Decided Entry Model Directions
+
+The following decisions have been explicitly made and must be honored in future design and implementation.
+
+- The future unified **Entry model** is the preferred long-term direction for all content capture.
+- The default captured `Entry` type is **Task**.
+- The default container for any new entry is **Inbox**.
+- Entries can carry optional links, due dates, status, and tags.
+- An Entry lives in one primary container and may link to many related entities.
+- Public/private visibility must be made obvious in the UI.
+- Entries may later be routed into feed, DM, group chat, private note, task list, event schedule, or other communication surfaces — but messaging surfaces must **not** be implemented yet.
+- The design must preserve the idea that Entries can be routed based on **audience, visibility, type, and role-based access**.
 
 - Standardize note capture prompts/tags for clearer downstream triage.
 - Add explicit follow-up marker on notes to improve conversion into tasks.

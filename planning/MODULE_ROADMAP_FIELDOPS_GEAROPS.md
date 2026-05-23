@@ -46,6 +46,12 @@ It covers:
 
 FieldOps does **not** manage people, rosters, or event content. It manages the physical context in which events occur.
 
+### Decided FieldOps Directions
+
+- FieldOps must support **pre-checks and recommendations** before a final human approval step.
+- FieldOps MVP can begin with basic resource booking and conflict detection.
+- Future FieldOps phases must add formal approval status and configurable conflict rules.
+
 ---
 
 ## 3. GearOps Module Definition

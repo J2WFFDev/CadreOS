@@ -39,9 +39,16 @@ CadreOS is an **Athlete Program Operating System**.
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
 - [Chat Transcript](./CHAT_TRANSCRIPT.md)
+- [**Product Decisions**](./PRODUCT_DECISIONS.md)
 
 ## Decision Log Summary
 - Product name: **CadreOS**
 - Product category: **Athlete Program Operating System**
 - MVP focus: people/roles, teams/rosters, notes/inbox, communication routing, event scheduling, attendance, and task workflows
 - Delivery shape: milestone-based roadmap with MVP-first issue seeding
+- Role and access model: Person + RoleAssignment + Scope; guardian access is relationship-scoped only
+- Parent/guardian model: Person-first, optional UserAccount linking; staff-only notes must not be exposed to guardians
+- Entry/Inbox model: unified Entry is the long-term direction; default type is Task; default container is Inbox
+- Communication routing: messaging surfaces are future-only; Entry routing by audience/visibility/type/role is the intended design
+- FieldOps direction: pre-checks and recommendations before human approval; MVP starts with resource booking and conflict detection
+- Pilot scope: whole organization; first validation is a one-day scripted scenario test; feedback categories are Observation, Friction, Bug, Missing Feature, Decision Needed, Follow-up Task
