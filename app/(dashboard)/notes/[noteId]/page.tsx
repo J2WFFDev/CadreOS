@@ -149,7 +149,11 @@ export default async function NoteDetailPage({
           </div>
           <div>
             <dt className="font-medium">Visibility</dt>
-            <dd className="text-zinc-600 dark:text-zinc-400">{formatEnumLabel(note.visibility)}</dd>
+            <dd className="mt-0.5">
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                {formatEnumLabel(note.visibility)}
+              </span>
+            </dd>
           </div>
           <div>
             <dt className="font-medium">Created</dt>
@@ -205,7 +209,7 @@ export default async function NoteDetailPage({
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-lg font-semibold">Related tasks</h3>
+          <h3 className="text-lg font-semibold">Related follow-up tasks</h3>
           <Link href={`/tasks/new?sourceNoteId=${note.id}`} className="text-sm underline">
             Create follow-up task
           </Link>
@@ -220,7 +224,9 @@ export default async function NoteDetailPage({
                   <Link href={`/tasks/${task.id}`} className="font-medium underline">
                     {task.title}
                   </Link>
-                  <span className="text-sm text-zinc-600 dark:text-zinc-400">{formatEnumLabel(task.status)}</span>
+                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                    {formatEnumLabel(task.status)}
+                  </span>
                 </div>
                 <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                   Assignee:{" "}
@@ -233,6 +239,10 @@ export default async function NoteDetailPage({
             ))}
           </ul>
         )}
+      </div>
+
+      <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/40 dark:text-zinc-400">
+        <strong className="font-medium">Future scope (deferred):</strong> Inbox routing, feed behavior, journal entries, and messaging are intentionally not implemented yet. Current notes use the <code>ObservationNote</code> model. A unified Entry/Inbox migration is planned but deferred.
       </div>
     </section>
   );

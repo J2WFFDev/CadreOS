@@ -110,8 +110,9 @@ This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the
 
 1. **Phase 7B:** Team/Member Management Hardening (recommended)
 2. **Phase 7C–7E:** Team/Member follow-on hardening slices, including guardian relationship visibility clarity and authorization boundaries
-3. **Later (deferred Entry/Inbox track):** Entry/Inbox schema implementation and migration planning under a separate track label to avoid overlap with Team/Member phase IDs
-4. **Then:** Reporting uplift, then deferred FieldOps/GearOps expansions as separate module tracks
+3. **Phase 7F:** Operational Notes workflow hardening — notes list filtering, visibility labeling, readability improvements, relationship clarity between notes/tasks/events, and documentation separating current `ObservationNote` workflow from future Entry direction
+4. **Later (deferred Entry/Inbox track):** Entry/Inbox schema implementation and migration planning under a separate track label to avoid overlap with Team/Member phase IDs
+5. **Then:** Reporting uplift, then deferred FieldOps/GearOps expansions as separate module tracks
 
 ---
 
