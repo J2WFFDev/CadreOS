@@ -80,6 +80,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 8O Operational Edge-Case Hardening and Workflow Stability Review](./PHASE_8O_OPERATIONAL_EDGE_CASE_HARDENING.md)
 - [Phase 8P Operational Foundation MVP Closeout and Strategic Decision Options](./PHASE_8P_OPERATIONAL_FOUNDATION_MVP_CLOSEOUT.md)
 - [Phase 9A Entry Architecture Review and Migration Strategy Assessment](./PHASE_9A_ENTRY_ARCHITECTURE_REVIEW.md)
+- [Phase 9C Entry Migration Dependency Map and Authorization Gap Review](./PHASE_9C_ENTRY_MIGRATION_DEPENDENCY_MAP.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -125,6 +126,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 8O Operational Edge-Case Hardening and Workflow Stability Review](./PHASE_8O_OPERATIONAL_EDGE_CASE_HARDENING.md)
 - [Phase 8P Operational Foundation MVP Closeout and Strategic Decision Options](./PHASE_8P_OPERATIONAL_FOUNDATION_MVP_CLOSEOUT.md)
 - [Phase 9A Entry Architecture Review and Migration Strategy Assessment](./PHASE_9A_ENTRY_ARCHITECTURE_REVIEW.md)
+- [Phase 9C Entry Migration Dependency Map and Authorization Gap Review](./PHASE_9C_ENTRY_MIGRATION_DEPENDENCY_MAP.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 
 ## Operational Foundation MVP Phase Sequence (8A–8P)
@@ -145,9 +147,10 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 8O Operational Edge-Case Hardening and Workflow Stability Review](./PHASE_8O_OPERATIONAL_EDGE_CASE_HARDENING.md)
 - [Phase 8P Operational Foundation MVP Closeout and Strategic Decision Options](./PHASE_8P_OPERATIONAL_FOUNDATION_MVP_CLOSEOUT.md)
 
-## Phase 9A Entry Architecture Review
+## Phase 9 Entry Architecture
 
 - [Phase 9A Entry Architecture Review and Migration Strategy Assessment](./PHASE_9A_ENTRY_ARCHITECTURE_REVIEW.md)
+- [Phase 9C Entry Migration Dependency Map and Authorization Gap Review](./PHASE_9C_ENTRY_MIGRATION_DEPENDENCY_MAP.md)
 
 ---
 
