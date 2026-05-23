@@ -304,6 +304,7 @@ async function resolvePermissionDecision(input: PermissionCheckInput): Promise<P
       message: "This action is not enabled in the current MVP authorization policy.",
     };
   }
+  const action: SupportedAction = input.action;
 
   const userAccount = await db.userAccount.findFirst({
     where: {
@@ -345,7 +346,7 @@ async function resolvePermissionDecision(input: PermissionCheckInput): Promise<P
   }
 
   const scope = await resolvePermissionScope(input);
-  const requiresScope = SCOPED_ACTIONS.has(input.action);
+  const requiresScope = SCOPED_ACTIONS.has(action);
 
   if (requiresScope && !scope.programId && !scope.teamId) {
     return {
@@ -359,7 +360,7 @@ async function resolvePermissionDecision(input: PermissionCheckInput): Promise<P
   const isAllowed = assignments.some((assignment) => {
     const roleActions = STAFF_ACTIONS_BY_ROLE[assignment.roleType];
 
-    if (!roleActions.has(input.action)) {
+    if (!roleActions.has(action)) {
       return false;
     }
 
