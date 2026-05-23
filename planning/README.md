@@ -88,6 +88,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 9H Authorization Boundary Hardening and Safe Visibility Defaults](./PHASE_9H_AUTHORIZATION_BOUNDARY_HARDENING.md)
 - [Phase 9I Runtime Visibility-Classification Foundation](./PHASE_9I_RUNTIME_VISIBILITY_CLASSIFICATION_FOUNDATION.md)
 - [Phase 9J Visibility Relationship Handling and Inheritance Consistency](./PHASE_9J_VISIBILITY_RELATIONSHIP_INHERITANCE_CONSISTENCY.md)
+- [Phase 9K Authorization / Visibility Validation Matrix](./PHASE_9K_AUTHORIZATION_VISIBILITY_VALIDATION_MATRIX.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -141,6 +142,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 9H Authorization Boundary Hardening and Safe Visibility Defaults](./PHASE_9H_AUTHORIZATION_BOUNDARY_HARDENING.md)
 - [Phase 9I Runtime Visibility-Classification Foundation](./PHASE_9I_RUNTIME_VISIBILITY_CLASSIFICATION_FOUNDATION.md)
 - [Phase 9J Visibility Relationship Handling and Inheritance Consistency](./PHASE_9J_VISIBILITY_RELATIONSHIP_INHERITANCE_CONSISTENCY.md)
+- [Phase 9K Authorization / Visibility Validation Matrix](./PHASE_9K_AUTHORIZATION_VISIBILITY_VALIDATION_MATRIX.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 
 ## Operational Foundation MVP Phase Sequence (8A–8P)
@@ -172,6 +174,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 9H Authorization Boundary Hardening and Safe Visibility Defaults](./PHASE_9H_AUTHORIZATION_BOUNDARY_HARDENING.md)
 - [Phase 9I Runtime Visibility-Classification Foundation](./PHASE_9I_RUNTIME_VISIBILITY_CLASSIFICATION_FOUNDATION.md)
 - [Phase 9J Visibility Relationship Handling and Inheritance Consistency](./PHASE_9J_VISIBILITY_RELATIONSHIP_INHERITANCE_CONSISTENCY.md)
+- [Phase 9K Authorization / Visibility Validation Matrix](./PHASE_9K_AUTHORIZATION_VISIBILITY_VALIDATION_MATRIX.md)
 
 ---
 
