@@ -2,9 +2,11 @@ import { ApprovalStatus, RoleType, ScopeType, TaskStatus } from "@prisma/client"
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
 import { db } from "@/lib/db";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { getOperationalHistory, type OperationalHistoryItem } from "@/lib/operational-history";
 import { isSchemaUnavailableError, selectSeededOrCurrentSeason } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
@@ -291,13 +293,8 @@ export default async function DashboardPage() {
           facility: { id: string; name: string };
           resource: { id: string; name: string };
         }>;
-        recentOperationalChanges: Array<{
-          id: string;
-          href: string;
-          label: string;
-          summary: string;
-          changedAt: Date;
-        }>;
+        recentOperationalHistory: OperationalHistoryItem[];
+        unresolvedOperationalHistory: OperationalHistoryItem[];
         unresolvedEventConcerns: Array<{
           id: string;
           title: string;
@@ -335,9 +332,6 @@ export default async function DashboardPage() {
       staleUnreviewedTaskCount,
       staleUnreviewedTasks,
       recentNotes,
-      recentlyUpdatedTasks,
-      recentlyUpdatedNotes,
-      recentlyUpdatedAttendance,
       eventOperationalConcerns,
       notesForAttentionReview,
       athletesMissingGuardianLinkageCount,
@@ -345,6 +339,8 @@ export default async function DashboardPage() {
       teamsForGapReview,
       pendingFieldOpsApprovalsCount,
       pendingFieldOpsApprovals,
+      recentOperationalHistory,
+      unresolvedOperationalHistory,
     ] = await Promise.all([
       db.program.count({
         where: { organizationId: scope.organizationId },
@@ -494,48 +490,6 @@ export default async function DashboardPage() {
         orderBy: [{ createdAt: "desc" }],
         take: 5,
       }),
-      db.followUpTask.findMany({
-        where: {
-          organizationId: scope.organizationId,
-          updatedAt: { gte: new Date(currentTime.getTime() - RECENT_OPERATIONAL_CHANGE_WINDOW_DAYS * 24 * 60 * 60 * 1000) },
-        },
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          updatedAt: true,
-        },
-        orderBy: [{ updatedAt: "desc" }],
-        take: 10,
-      }),
-      db.observationNote.findMany({
-        where: {
-          organizationId: scope.organizationId,
-          updatedAt: { gte: new Date(currentTime.getTime() - RECENT_OPERATIONAL_CHANGE_WINDOW_DAYS * 24 * 60 * 60 * 1000) },
-        },
-        select: {
-          id: true,
-          body: true,
-          updatedAt: true,
-        },
-        orderBy: [{ updatedAt: "desc" }],
-        take: 10,
-      }),
-      db.attendanceRecord.findMany({
-        where: {
-          organizationId: scope.organizationId,
-          updatedAt: { gte: new Date(currentTime.getTime() - RECENT_OPERATIONAL_CHANGE_WINDOW_DAYS * 24 * 60 * 60 * 1000) },
-        },
-        select: {
-          id: true,
-          status: true,
-          updatedAt: true,
-          person: { select: { firstName: true, lastName: true } },
-          event: { select: { id: true, title: true } },
-        },
-        orderBy: [{ updatedAt: "desc" }],
-        take: 10,
-      }),
       db.event.findMany({
         where: {
           organizationId: scope.organizationId,
@@ -660,6 +614,17 @@ export default async function DashboardPage() {
         orderBy: [{ startsAt: "asc" }, { createdAt: "asc" }],
         take: 5,
       }),
+      getOperationalHistory({
+        organizationId: scope.organizationId,
+        limit: 8,
+        sinceDays: RECENT_OPERATIONAL_CHANGE_WINDOW_DAYS,
+      }),
+      getOperationalHistory({
+        organizationId: scope.organizationId,
+        limit: 6,
+        sinceDays: 30,
+        unresolvedOnly: true,
+      }),
     ]);
 
     const attendanceNeedingReview: Array<{
@@ -708,32 +673,6 @@ export default async function DashboardPage() {
     if (attendanceNeedingReview.length > 5) {
       attendanceNeedingReview.length = 5;
     }
-
-    const recentOperationalChanges = [
-      ...recentlyUpdatedTasks.map((task) => ({
-        id: `task-${task.id}`,
-        href: `/tasks/${task.id}`,
-        label: "Task update",
-        summary: `${task.title} · ${formatEnumLabel(task.status)}`,
-        changedAt: task.updatedAt,
-      })),
-      ...recentlyUpdatedNotes.map((note) => ({
-        id: `note-${note.id}`,
-        href: `/notes/${note.id}`,
-        label: "Note update",
-        summary: note.body.length > 100 ? `${note.body.slice(0, 100)}…` : note.body,
-        changedAt: note.updatedAt,
-      })),
-      ...recentlyUpdatedAttendance.map((attendance) => ({
-        id: `attendance-${attendance.id}`,
-        href: `/events/${attendance.event.id}#attendance-workflow`,
-        label: "Attendance update",
-        summary: `${attendance.event.title} · ${attendance.person.firstName} ${attendance.person.lastName} · ${formatEnumLabel(attendance.status)}`,
-        changedAt: attendance.updatedAt,
-      })),
-    ]
-      .sort((left, right) => right.changedAt.getTime() - left.changedAt.getTime())
-      .slice(0, 8);
 
     const unresolvedEventConcerns = eventOperationalConcerns
       .map((event) => {
@@ -839,7 +778,8 @@ export default async function DashboardPage() {
       athletesMissingGuardianLinkage,
       teamOperationalGaps,
       pendingFieldOpsApprovals,
-      recentOperationalChanges,
+      recentOperationalHistory,
+      unresolvedOperationalHistory,
       unresolvedEventConcerns,
       notesNeedingAttention,
     };
@@ -1357,27 +1297,26 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-base font-medium">Recently changed operational items</h3>
-                <Link href="/tasks?changedWindow=last_7d" className="text-sm underline">
-                  Open recent task updates
-                </Link>
-              </div>
-              <div className="mt-4 space-y-4">
-                {dashboardData.recentOperationalChanges.length === 0
-                  ? renderEmptyList(`No changes captured in the last ${RECENT_OPERATIONAL_CHANGE_WINDOW_DAYS} days.`)
-                  : dashboardData.recentOperationalChanges.map((item) => (
-                      <div key={item.id} className="border-b pb-4 last:border-b-0 last:pb-0">
-                        <Link href={item.href} className="font-medium underline">
-                          {item.label}
-                        </Link>
-                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{item.summary}</p>
-                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{formatDateTime(item.changedAt)}</p>
-                      </div>
-                    ))}
-              </div>
-            </div>
+            <OperationalHistoryPanel
+              title="Recent operational history"
+              description="Recent task, note, attendance, event, roster, and assignment changes using current workflow timestamps."
+              emptyMessage={`No changes captured in the last ${RECENT_OPERATIONAL_CHANGE_WINDOW_DAYS} days.`}
+              items={dashboardData.recentOperationalHistory}
+              action={{ href: "/tasks?changedWindow=last_7d", label: "Open recent task updates" }}
+              footer={
+                <>
+                  Roster and role-assignment history reflects current records only. Removal events and true last-updater
+                  attribution remain deferred until dedicated audit/Entry-style history work is introduced.
+                </>
+              }
+            />
+            <OperationalHistoryPanel
+              title="Unresolved operational history"
+              description="Recent unresolved follow-up across existing task, note, attendance, and event workflows."
+              emptyMessage="No unresolved recent operational activity is currently flagged."
+              items={dashboardData.unresolvedOperationalHistory}
+              action={{ href: "/tasks?resolution=unresolved", label: "Review unresolved workflow" }}
+            />
           </div>
         </>
       )}

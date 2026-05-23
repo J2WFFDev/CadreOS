@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AttendanceStatus, RSVPStatus } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
+import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
 import { db } from "@/lib/db";
 import {
   compareFollowUpTasks,
@@ -11,6 +12,7 @@ import {
   isTaskOverdue,
 } from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { getOperationalHistory } from "@/lib/operational-history";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
@@ -327,6 +329,21 @@ export default async function EventDetailsPage({
   const attendanceConcernCount = attendanceMissingCount + lateAttendanceCount + unexcusedAbsentAttendanceCount;
   const openTaskCount = eventTasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
   const followUpRequired = attendanceMissingCount > 0 || openTaskCount > 0;
+  const [eventOperationalHistory, unresolvedEventOperationalHistory] = await Promise.all([
+    getOperationalHistory({
+      organizationId: scope.organizationId,
+      eventId: event.id,
+      limit: 8,
+      sinceDays: 30,
+    }),
+    getOperationalHistory({
+      organizationId: scope.organizationId,
+      eventId: event.id,
+      limit: 5,
+      sinceDays: 30,
+      unresolvedOnly: true,
+    }),
+  ]);
   const attendanceIndicator = expectedAttendanceCount === 0
     ? attendanceCapturedCount > 0
       ? "Attendance captured (no team roster expectation)"
@@ -478,6 +495,25 @@ export default async function EventDetailsPage({
           </p>
         ) : null}
       </div>
+
+      <OperationalHistoryPanel
+        id="operational-history"
+        title="Operational history"
+        description="Recent event-linked activity across attendance, notes, tasks, and event updates."
+        emptyMessage="No recent event-linked operational history was found in the current review window."
+        items={eventOperationalHistory}
+        action={{ href: `/tasks?eventId=${event.id}&resolution=unresolved`, label: "Open event tasks" }}
+        footer={
+          unresolvedEventOperationalHistory.length > 0 ? (
+            <span>
+              Unresolved recent activity: {unresolvedEventOperationalHistory.length}. Use this event history with the
+              attendance, notes, and task sections below to maintain continuity.
+            </span>
+          ) : (
+            <span>No unresolved recent event activity is currently flagged.</span>
+          )
+        }
+      />
 
       <div id="related-notes" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <div className="flex flex-wrap items-center justify-between gap-3">

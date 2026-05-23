@@ -312,6 +312,27 @@ export default async function TaskDetailPage({
             <dt className="font-medium">Why this task exists</dt>
             <dd className="text-zinc-600 dark:text-zinc-400">{operationalReason}</dd>
           </div>
+          <div className="sm:col-span-2">
+            <dt className="font-medium">Related history views</dt>
+            <dd className="flex flex-wrap gap-2 text-zinc-600 dark:text-zinc-400">
+              <Link href={`/people/${task.assignee.id}#operational-history`} className="rounded-full border px-2 py-1 text-sm">
+                Assignee history
+              </Link>
+              {task.sourceNote?.athlete ? (
+                <Link
+                  href={`/people/${task.sourceNote.athlete.id}#operational-history`}
+                  className="rounded-full border px-2 py-1 text-sm"
+                >
+                  Related person history
+                </Link>
+              ) : null}
+              {task.sourceEvent ? (
+                <Link href={`/events/${task.sourceEvent.id}#operational-history`} className="rounded-full border px-2 py-1 text-sm">
+                  Event history
+                </Link>
+              ) : null}
+            </dd>
+          </div>
         </dl>
       </div>
 

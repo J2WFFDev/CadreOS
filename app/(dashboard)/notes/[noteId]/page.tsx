@@ -298,6 +298,27 @@ export default async function NoteDetailPage({
               )}
             </dd>
           </div>
+          <div className="sm:col-span-2">
+            <dt className="font-medium">Related history views</dt>
+            <dd className="flex flex-wrap gap-2 text-zinc-600 dark:text-zinc-400">
+              {note.athlete ? (
+                <Link href={`/people/${note.athlete.id}#operational-history`} className="rounded-full border px-2 py-1 text-sm">
+                  Person history
+                </Link>
+              ) : null}
+              {note.team ? (
+                <Link href={`/teams/${note.team.id}#operational-history`} className="rounded-full border px-2 py-1 text-sm">
+                  Team history
+                </Link>
+              ) : null}
+              {note.event ? (
+                <Link href={`/events/${note.event.id}#operational-history`} className="rounded-full border px-2 py-1 text-sm">
+                  Event history
+                </Link>
+              ) : null}
+              {!note.athlete && !note.team && !note.event ? "—" : null}
+            </dd>
+          </div>
         </dl>
       </div>
 

@@ -209,6 +209,22 @@ This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the
 - FieldOps functional expansion.
 - Advanced reporting/analytics infrastructure.
 
+## Phase 8I output summary (implemented operational history visibility slice)
+
+- Added shared operational history visibility derived from existing task, note, attendance, event, roster membership, and role assignment timestamps.
+- `/dashboard` now includes richer recent and unresolved operational history panels with contextual team/event/person links where derivable.
+- `/events/[eventId]`, `/teams/[teamId]`, and `/people/[personId]` now expose scoped operational history views to preserve continuity into existing workflows.
+- Note/task detail pages now link into related person/team/event history views without introducing Feed, Entry migration, or audit-log redesign.
+
+### Still deferred after 8I
+
+- Feed/Journal/Entry runtime behavior and Entry migration work.
+- Messaging/chat/notification/reminder runtime behavior.
+- Full audit-event-backed change reconstruction and deletion history.
+- Parent-facing workflow/portal behavior.
+- Workflow automation/orchestration engines.
+- FieldOps expansion and advanced reporting/analytics infrastructure.
+
 ---
 
 ## PR Summary (directional)
