@@ -92,14 +92,25 @@ export default async function TasksPage({
   const statusParam = readSearchParam(resolvedSearchParams, "status");
   const assigneePersonIdParam = readSearchParam(resolvedSearchParams, "assigneePersonId");
   const teamIdParam = readSearchParam(resolvedSearchParams, "teamId");
+  const eventIdParam = readSearchParam(resolvedSearchParams, "eventId");
+  const resolutionParam = readSearchParam(resolvedSearchParams, "resolution");
   const dueWindowParam = readSearchParam(resolvedSearchParams, "dueWindow");
+  const changedWindowParam = readSearchParam(resolvedSearchParams, "changedWindow");
   const guardianFollowUpParam = readSearchParam(resolvedSearchParams, "guardianFollowUp");
   const statusFilter = Object.values(TaskStatus).includes(statusParam as TaskStatus)
     ? (statusParam as TaskStatus)
     : "";
+  const resolutionFilter =
+    resolutionParam === "unresolved" || resolutionParam === "resolved" || resolutionParam === "all"
+      ? resolutionParam
+      : "all";
   const dueWindowFilter =
     dueWindowParam === "overdue" || dueWindowParam === "upcoming" || dueWindowParam === "all"
       ? dueWindowParam
+      : "all";
+  const changedWindowFilter =
+    changedWindowParam === "last_24h" || changedWindowParam === "last_7d" || changedWindowParam === "all"
+      ? changedWindowParam
       : "all";
   const guardianFollowUpFilter =
     guardianFollowUpParam === "involving_guardian" || guardianFollowUpParam === "missing_guardian_linkage"
@@ -138,6 +149,7 @@ export default async function TasksPage({
         title: string;
         status: string;
         dueAt: Date | null;
+        updatedAt: Date;
         assignee: { id: string; firstName: string; lastName: string };
         createdBy: { id: string; firstName: string; lastName: string };
         sourceNote: {
@@ -158,7 +170,7 @@ export default async function TasksPage({
                 }>;
               }
             | null;
-          event: { team: { id: string; name: string } | null } | null;
+          event: { id: string; title: string; team: { id: string; name: string } | null } | null;
         } | null;
         sourceEvent: { id: string; title: string; team: { id: string; name: string } | null } | null;
         sourceInboxItem: { id: string; category: string; status: string } | null;
@@ -166,6 +178,7 @@ export default async function TasksPage({
     | null = null;
   let people: Array<{ id: string; firstName: string; lastName: string }> = [];
   let teams: Array<{ id: string; name: string }> = [];
+  let events: Array<{ id: string; title: string }> = [];
   let queryErrorMessage = "Unable to load tasks right now. Please try again later.";
 
   try {
@@ -173,6 +186,26 @@ export default async function TasksPage({
       organizationId: scope.organizationId,
       ...(statusFilter ? { status: statusFilter } : {}),
       ...(assigneePersonIdParam ? { assigneePersonId: assigneePersonIdParam } : {}),
+      ...(!statusFilter && resolutionFilter === "unresolved"
+        ? { status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED] } }
+        : {}),
+      ...(!statusFilter && resolutionFilter === "resolved"
+        ? { status: { in: [TaskStatus.DONE, TaskStatus.CANCELLED] } }
+        : {}),
+      ...(eventIdParam
+        ? {
+            OR: [
+              { sourceEventId: eventIdParam },
+              { sourceNote: { is: { eventId: eventIdParam } } },
+            ],
+          }
+        : {}),
+      ...(changedWindowFilter === "last_24h"
+        ? { updatedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }
+        : {}),
+      ...(changedWindowFilter === "last_7d"
+        ? { updatedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }
+        : {}),
       ...(canViewGuardianRelationshipDetails && guardianFollowUpFilter === "involving_guardian"
         ? {
             sourceNote: {
@@ -207,7 +240,7 @@ export default async function TasksPage({
         : {}),
     };
 
-    [tasks, people, teams] = await Promise.all([
+    [tasks, people, teams, events] = await Promise.all([
       db.followUpTask.findMany({
         where,
         select: {
@@ -215,6 +248,7 @@ export default async function TasksPage({
           title: true,
           status: true,
           dueAt: true,
+          updatedAt: true,
           assignee: { select: { id: true, firstName: true, lastName: true } },
           createdBy: { select: { id: true, firstName: true, lastName: true } },
           sourceNote: {
@@ -248,7 +282,7 @@ export default async function TasksPage({
                   },
                 },
               },
-              event: { select: { team: { select: { id: true, name: true } } } },
+              event: { select: { id: true, title: true, team: { select: { id: true, name: true } } } },
             },
           },
           sourceEvent: { select: { id: true, title: true, team: { select: { id: true, name: true } } } },
@@ -264,6 +298,12 @@ export default async function TasksPage({
         where: { organizationId: scope.organizationId },
         select: { id: true, name: true },
         orderBy: [{ name: "asc" }],
+      }),
+      db.event.findMany({
+        where: { organizationId: scope.organizationId },
+        select: { id: true, title: true },
+        orderBy: [{ startsAt: "desc" }],
+        take: 150,
       }),
     ]);
   } catch (error) {
@@ -289,8 +329,15 @@ export default async function TasksPage({
         sourceEvent: task.sourceEvent,
         sourceNote: task.sourceNote,
       });
-
       if (teamIdParam && !taskTeams.some((team) => team.id === teamIdParam)) {
+        return false;
+      }
+
+      if (eventIdParam && !task.sourceEvent && !task.sourceNote?.event) {
+        return false;
+      }
+
+      if (eventIdParam && task.sourceEvent?.id !== eventIdParam && task.sourceNote?.event?.id !== eventIdParam) {
         return false;
       }
 
@@ -317,7 +364,10 @@ export default async function TasksPage({
     Boolean(statusFilter) ||
     Boolean(assigneePersonIdParam) ||
     Boolean(teamIdParam) ||
+    Boolean(eventIdParam) ||
+    resolutionFilter !== "all" ||
     dueWindowFilter !== "all" ||
+    changedWindowFilter !== "all" ||
     (canViewGuardianRelationshipDetails && Boolean(guardianFollowUpFilter));
 
   return (
@@ -333,7 +383,7 @@ export default async function TasksPage({
       />
 
       <form method="get" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <div className="grid gap-3 md:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-7">
           <div className="space-y-1">
             <label htmlFor="status" className="text-sm font-medium">
               Status
@@ -366,6 +416,16 @@ export default async function TasksPage({
             </select>
           </div>
           <div className="space-y-1">
+            <label htmlFor="resolution" className="text-sm font-medium">
+              Resolution
+            </label>
+            <select id="resolution" name="resolution" defaultValue={resolutionFilter} className="w-full rounded-md border px-3 py-2 text-sm">
+              <option value="all">All resolution states</option>
+              <option value="unresolved">Unresolved only</option>
+              <option value="resolved">Resolved only</option>
+            </select>
+          </div>
+          <div className="space-y-1">
             <label htmlFor="teamId" className="text-sm font-medium">
               Team context
             </label>
@@ -379,6 +439,19 @@ export default async function TasksPage({
             </select>
           </div>
           <div className="space-y-1">
+            <label htmlFor="eventId" className="text-sm font-medium">
+              Event context
+            </label>
+            <select id="eventId" name="eventId" defaultValue={eventIdParam} className="w-full rounded-md border px-3 py-2 text-sm">
+              <option value="">All events</option>
+              {events.map((event) => (
+                <option key={event.id} value={event.id}>
+                  {event.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
             <label htmlFor="dueWindow" className="text-sm font-medium">
               Due window
             </label>
@@ -386,6 +459,21 @@ export default async function TasksPage({
               <option value="all">All due windows</option>
               <option value="overdue">Overdue</option>
               <option value="upcoming">Upcoming (next 7 days)</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="changedWindow" className="text-sm font-medium">
+              Recently changed
+            </label>
+            <select
+              id="changedWindow"
+              name="changedWindow"
+              defaultValue={changedWindowFilter}
+              className="w-full rounded-md border px-3 py-2 text-sm"
+            >
+              <option value="all">All updates</option>
+              <option value="last_24h">Updated in last 24 hours</option>
+              <option value="last_7d">Updated in last 7 days</option>
             </select>
           </div>
           {canViewGuardianRelationshipDetails ? (
@@ -441,6 +529,8 @@ export default async function TasksPage({
                 <th className="px-4 py-3 font-medium">Creator</th>
                 <th className="px-4 py-3 font-medium">Due date</th>
                 <th className="px-4 py-3 font-medium">Team context</th>
+                <th className="px-4 py-3 font-medium">Event context</th>
+                <th className="px-4 py-3 font-medium">Last updated</th>
                 <th className="px-4 py-3 font-medium">Guardian context</th>
                 <th className="px-4 py-3 font-medium">Source</th>
               </tr>
@@ -494,6 +584,27 @@ export default async function TasksPage({
                     </td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                       {taskTeams.length === 0 ? "—" : taskTeams.map((team) => team.name).join(", ")}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                      {task.sourceEvent ? (
+                        <Link href={`/events/${task.sourceEvent.id}`} className="underline">
+                          {task.sourceEvent.title}
+                        </Link>
+                      ) : task.sourceNote?.event ? (
+                        <Link href={`/events/${task.sourceNote.event.id}`} className="underline">
+                          {task.sourceNote.event.title}
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                      {formatDateTime(task.updatedAt)}
+                      {task.updatedAt.getTime() >= now.getTime() - 24 * 60 * 60 * 1000 ? (
+                        <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                          Recent
+                        </span>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                       {!task.sourceNote?.athlete ? (
