@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
+import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -95,6 +96,7 @@ export default async function PersonDetailsPage({
             firstName: string;
             lastName: string;
             _count: { userAccounts: number };
+            roles: Array<{ id: string }>;
           };
         }>;
         roster: Array<{
@@ -107,6 +109,12 @@ export default async function PersonDetailsPage({
     | null = null;
   let programs: Array<{ id: string; name: string }> = [];
   let teams: Array<{ id: string; name: string; program: { id: string; name: string } }> = [];
+  const guardianAccess = await resolveGuardianRelationshipAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const canViewGuardianRelationshipDetails = guardianAccess.canViewGuardianRelationshipDetails;
+  const canEditGuardianLinkageWhereSupported = guardianAccess.canEditGuardianLinkageWhereSupported;
 
   try {
     [person, programs, teams] = await Promise.all([
@@ -166,6 +174,16 @@ export default async function PersonDetailsPage({
                     select: {
                       userAccounts: true,
                     },
+                  },
+                  roles: {
+                    where: {
+                      organizationId: scope.organizationId,
+                      roleType: RoleType.PARENT_GUARDIAN,
+                    },
+                    select: {
+                      id: true,
+                    },
+                    take: 1,
                   },
                 },
               },
@@ -274,10 +292,14 @@ export default async function PersonDetailsPage({
   const isAthleteProfile =
     person.roles.some((role) => role.roleType === RoleType.ATHLETE) ||
     person.roster.some((membership) => membership.rosterRole === RoleType.ATHLETE);
-  const hasGuardianRelationship = person.athleteLinks.length > 0;
+  const hasGuardianRelationship = canViewGuardianRelationshipDetails && person.athleteLinks.length > 0;
   const hasGuardianAccountLinkGap = person.athleteLinks.some(
     (link) => link.guardian._count.userAccounts === 0,
   );
+  const hasInactiveGuardianAccountSignal = person.athleteLinks.some(
+    (link) => link.guardian._count.userAccounts > 0 && link.guardian.roles.length === 0,
+  );
+  const hasPendingOrIncompleteRelationshipSupport = hasGuardianAccountLinkGap || hasInactiveGuardianAccountSignal;
 
   return (
     <section className="space-y-6">
@@ -401,23 +423,36 @@ export default async function PersonDetailsPage({
           Relationship indicators on this page are staff-facing visibility diagnostics only. They do not grant guardian
           access to staff-only data, and onboarding/invitation workflows remain intentionally deferred.
         </p>
-        {isAthleteProfile ? (
+        <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+          View access: staff role assignments (Org Admin, Program Director, Coach, Assistant Coach). Edit support where
+          available:{" "}
+          {canEditGuardianLinkageWhereSupported
+            ? "you have staff write coverage via existing person/roster/role assignment routes."
+            : "staff write permissions are required via existing person/roster/role assignment routes."}
+        </p>
+        {!canViewGuardianRelationshipDetails ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Guardian relationship details are hidden for this account to prevent private relationship visibility leaks.
+          </p>
+        ) : isAthleteProfile ? (
           <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
             Athlete relationship status:{" "}
             {!hasGuardianRelationship
               ? "Missing guardian relationship."
-              : hasGuardianAccountLinkGap
-                ? "Guardian relationship exists, but at least one linked guardian user/account is missing."
-                : "Guardian relationship linked and guardian user/account link detected."}
+              : hasPendingOrIncompleteRelationshipSupport
+                ? "Guardian relationship exists, but pending/incomplete relationship support remains (missing link and/or inactive guardian account signal)."
+                : "Guardian relationship linked and active guardian account signal detected."}
           </p>
         ) : (
           <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
             Relationship visibility is intentionally limited for non-athlete profiles.
           </p>
         )}
-        {person.guardianLinks.length === 0 && person.athleteLinks.length === 0 ? (
+        {canViewGuardianRelationshipDetails &&
+        person.guardianLinks.length === 0 &&
+        person.athleteLinks.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No guardian/athlete relationships.</p>
-        ) : (
+        ) : canViewGuardianRelationshipDetails ? (
           <div className="space-y-3 text-sm">
             {person.guardianLinks.length > 0 ? (
               <div>
@@ -439,16 +474,22 @@ export default async function PersonDetailsPage({
                   {person.athleteLinks.map((link) => (
                     <li key={link.id}>
                       {link.guardian.firstName} {link.guardian.lastName} ({formatEnumLabel(link.relationshipType)}) ·{" "}
-                      {link.guardian._count.userAccounts > 0
-                        ? "Guardian account linked"
-                        : "Guardian account link missing"}
+                      {link.guardian._count.userAccounts === 0
+                        ? "Guardian account link missing"
+                        : link.guardian.roles.length === 0
+                          ? "Inactive guardian account signal (linked account, parent/guardian role assignment missing)"
+                          : "Guardian account linked and active"}{" "}
+                      ·{" "}
+                      {link.guardian._count.userAccounts > 0 && link.guardian.roles.length > 0
+                        ? "Relationship support complete"
+                        : "Pending/incomplete relationship support"}
                     </li>
                   ))}
                 </ul>
               </div>
             ) : null}
           </div>
-        )}
+        ) : null}
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">

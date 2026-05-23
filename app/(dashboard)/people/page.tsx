@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
+import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +89,12 @@ export default async function PeoplePage() {
       </section>
     );
   }
+
+  const guardianAccess = await resolveGuardianRelationshipAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const canViewGuardianRelationshipDetails = guardianAccess.canViewGuardianRelationshipDetails;
 
   let people:
     | Array<{
@@ -197,7 +204,9 @@ export default async function PeoplePage() {
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Roles</th>
                 <th className="px-4 py-3 font-medium">Team / Program</th>
-                <th className="px-4 py-3 font-medium">Guardian links</th>
+                {canViewGuardianRelationshipDetails ? (
+                  <th className="px-4 py-3 font-medium">Guardian links</th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -217,10 +226,12 @@ export default async function PeoplePage() {
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                       {formatTeamMembershipSummary(person.roster)}
                     </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                      Guardian for {person._count.guardianLinks} athlete{person._count.guardianLinks === 1 ? "" : "s"} ·
-                      Athlete linked to {person._count.athleteLinks} guardian{person._count.athleteLinks === 1 ? "" : "s"}
-                    </td>
+                    {canViewGuardianRelationshipDetails ? (
+                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                        Guardian for {person._count.guardianLinks} athlete{person._count.guardianLinks === 1 ? "" : "s"} ·
+                        Athlete linked to {person._count.athleteLinks} guardian{person._count.athleteLinks === 1 ? "" : "s"}
+                      </td>
+                    ) : null}
                   </tr>
                 );
               })}
@@ -228,6 +239,11 @@ export default async function PeoplePage() {
           </table>
         </div>
       )}
+      {!canViewGuardianRelationshipDetails ? (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Guardian relationship diagnostics are limited to staff role assignments for youth privacy.
+        </p>
+      ) : null}
     </section>
   );
 }

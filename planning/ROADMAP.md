@@ -118,6 +118,27 @@ This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the
 
 ---
 
+## Phase 8A output summary (implemented guardrail slice)
+
+- Parent/guardian workflow foundation is now clarified as an authorization/visibility slice using existing models.
+- Team/person guardian diagnostics are explicitly staff-facing and hidden for non-staff viewers.
+- Safe operational indicators now distinguish:
+  - linked guardian relationship
+  - missing guardian relationship
+  - inactive guardian account signal (linked user account but missing parent/guardian role assignment)
+  - pending/incomplete relationship support
+- Existing organization-scoped auth patterns remain intact.
+
+### Still deferred after 8A
+
+- Parent messaging/notifications/announcements.
+- Guardian onboarding/invitations and parent portal runtime.
+- Consent and attendance approval workflows.
+- Unified Entry runtime migration.
+- FieldOps expansion.
+
+---
+
 ## PR Summary (directional)
 
 This Phase 7A roadmap update formally marks FieldOps as MVP-complete and shifts immediate priority to Team/Member Management Hardening for Phase 7B. The recommendation emphasizes high day-to-day coach value, parent/guardian-adjacent complexity readiness, and low redesign risk by building on existing models in small PRs. Future module expansion items are explicitly parked to prevent scope creep while keeping a clear, decision-ready backlog.
