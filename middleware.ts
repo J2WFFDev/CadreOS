@@ -1,8 +1,20 @@
-import { NextResponse } from "next/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-export default function middleware() {
-  return NextResponse.next();
-}
+const isDashboardRoute = createRouteMatcher([
+  "/dashboard(.*)",
+  "/programs(.*)",
+  "/people(.*)",
+  "/teams(.*)",
+  "/events(.*)",
+  "/notes(.*)",
+  "/tasks(.*)",
+]);
+
+export default clerkMiddleware(async (auth, request) => {
+  if (isDashboardRoute(request)) {
+    await auth.protect();
+  }
+});
 
 export const config = {
   matcher: [
