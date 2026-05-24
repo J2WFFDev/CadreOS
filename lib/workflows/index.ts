@@ -4,6 +4,9 @@ import {
   BookingStatus,
   EventStatus,
   EventType,
+  GearConditionStatus,
+  GearInventoryType,
+  GearItemLifecycleStatus,
   PrecheckStatus,
   Prisma,
   RoleType,
@@ -28,6 +31,10 @@ const MAX_ATTENDANCE_REASON_CODE_LENGTH = 120;
 const MAX_NOTE_BODY_LENGTH = 4000;
 const MAX_TASK_TITLE_LENGTH = 160;
 const MAX_TASK_DESCRIPTION_LENGTH = 4000;
+const MAX_GEAR_DESCRIPTION_LENGTH = 1000;
+const MAX_GEAR_NOTES_LENGTH = 4000;
+const MAX_SKU_LENGTH = 100;
+const MAX_SERIAL_NUMBER_LENGTH = 100;
 const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DATETIME_LOCAL_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
 
@@ -424,6 +431,105 @@ export const bookingRequestWorkflowSchema = z
     approvalStatus: ApprovalStatus.PENDING,
   }));
 
+export const gearCategoryWorkflowSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Category name is required.")
+    .max(MAX_NAME_LENGTH, `Category name must be ${MAX_NAME_LENGTH} characters or less.`),
+  inventoryType: z.nativeEnum(GearInventoryType, {
+    message: "Inventory type must be DURABLE or CONSUMABLE.",
+  }),
+  description: z
+    .string()
+    .trim()
+    .max(MAX_GEAR_DESCRIPTION_LENGTH, `Description must be ${MAX_GEAR_DESCRIPTION_LENGTH} characters or less.`),
+}).transform((value) => ({
+  name: value.name,
+  inventoryType: value.inventoryType,
+  description: value.description.length === 0 ? null : value.description,
+}));
+
+export const gearItemWorkflowSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "Item name is required.")
+      .max(MAX_NAME_LENGTH, `Item name must be ${MAX_NAME_LENGTH} characters or less.`),
+    gearCategoryId: z.string().trim().min(1, "Category selection is required."),
+    inventoryType: z.nativeEnum(GearInventoryType, {
+      message: "Inventory type must be DURABLE or CONSUMABLE.",
+    }),
+    programId: z.string().trim(),
+    sku: z
+      .string()
+      .trim()
+      .max(MAX_SKU_LENGTH, `SKU must be ${MAX_SKU_LENGTH} characters or less.`),
+    serialNumber: z
+      .string()
+      .trim()
+      .max(MAX_SERIAL_NUMBER_LENGTH, `Serial number must be ${MAX_SERIAL_NUMBER_LENGTH} characters or less.`),
+    quantityOnHand: z.string().trim(),
+    quantityMin: z.string().trim(),
+    lifecycleStatus: z.nativeEnum(GearItemLifecycleStatus, {
+      message: "Lifecycle status must use an existing status value.",
+    }),
+    conditionStatus: z.string().trim(),
+    notes: z
+      .string()
+      .trim()
+      .max(MAX_GEAR_NOTES_LENGTH, `Notes must be ${MAX_GEAR_NOTES_LENGTH} characters or less.`),
+  })
+  .superRefine((value, context) => {
+    const qty = value.quantityOnHand.length === 0 ? 0 : Number(value.quantityOnHand);
+    if (!Number.isInteger(qty) || qty < 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["quantityOnHand"],
+        message: "Quantity on hand must be a whole number of 0 or more.",
+      });
+    }
+
+    if (value.quantityMin.length > 0) {
+      const qtyMin = Number(value.quantityMin);
+      if (!Number.isInteger(qtyMin) || qtyMin < 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["quantityMin"],
+          message: "Minimum stock quantity must be a whole number of 0 or more.",
+        });
+      }
+    }
+
+    if (value.conditionStatus.length > 0) {
+      const valid = Object.values(GearConditionStatus) as string[];
+      if (!valid.includes(value.conditionStatus)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["conditionStatus"],
+          message: "Condition status must use an existing condition value.",
+        });
+      }
+    }
+  })
+  .transform((value) => ({
+    name: value.name,
+    gearCategoryId: value.gearCategoryId,
+    inventoryType: value.inventoryType,
+    programId: value.programId.length === 0 ? null : value.programId,
+    sku: value.sku.length === 0 ? null : value.sku,
+    serialNumber: value.serialNumber.length === 0 ? null : value.serialNumber,
+    quantityOnHand: value.quantityOnHand.length === 0 ? 0 : Number(value.quantityOnHand),
+    quantityMin: value.quantityMin.length === 0 ? null : Number(value.quantityMin),
+    lifecycleStatus: value.lifecycleStatus,
+    conditionStatus:
+      value.conditionStatus.length === 0
+        ? null
+        : (value.conditionStatus as GearConditionStatus),
+    notes: value.notes.length === 0 ? null : value.notes,
+  }));
+
 export type PersonWorkflowInput = z.output<typeof personWorkflowSchema>;
 export type TeamWorkflowInput = z.output<typeof teamWorkflowSchema>;
 export type ProgramWorkflowInput = z.output<typeof programWorkflowSchema>;
@@ -436,6 +542,8 @@ export type AttendanceWorkflowInput = z.output<typeof attendanceWorkflowSchema>;
 export type NoteWorkflowInput = z.output<typeof noteWorkflowSchema>;
 export type FollowUpTaskWorkflowInput = z.output<typeof followUpTaskWorkflowSchema>;
 export type BookingRequestWorkflowInput = z.output<typeof bookingRequestWorkflowSchema>;
+export type GearCategoryWorkflowInput = z.output<typeof gearCategoryWorkflowSchema>;
+export type GearItemWorkflowInput = z.output<typeof gearItemWorkflowSchema>;
 
 export function getStringField(formData: FormData, field: string): string {
   const rawValue = formData.get(field);
@@ -502,7 +610,11 @@ export async function requirePhase1CMutationPermission(input: {
     | "rosterMembership.create"
     | "rosterMembership.delete"
     | "roleAssignment.create"
-    | "roleAssignment.delete";
+    | "roleAssignment.delete"
+    | "gearCategory.create"
+    | "gearCategory.update"
+    | "gearItem.create"
+    | "gearItem.update";
   programId?: string | null;
   teamId?: string | null;
   seasonId?: string | null;

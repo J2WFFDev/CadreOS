@@ -126,6 +126,15 @@ export default async function GearOpsCategoriesPage() {
       <PageHeader title="GearOps categories" description="Read-only category and linked item visibility." />
       <GearOpsSubnav current="categories" />
 
+      <div className="flex justify-end">
+        <Link
+          href="/gear-ops/categories/new"
+          className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black"
+        >
+          New category
+        </Link>
+      </div>
+
       {categories.length === 0 ? (
         <EmptyState
           message="No GearOps categories are visible yet."

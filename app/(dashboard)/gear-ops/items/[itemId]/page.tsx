@@ -271,6 +271,12 @@ export default async function GearOpsItemDetailsPage({
             <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getGearConditionBadgeClass(item.conditionStatus)}`}>
               Condition: {item.conditionStatus ? formatGearOpsEnum(item.conditionStatus) : "—"}
             </span>
+            <Link
+              href={`/gear-ops/items/${item.id}/edit`}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Edit
+            </Link>
           </div>
         </div>
       </div>
