@@ -174,19 +174,16 @@ export default async function EditGearAssignmentPage({
   }
 
   const status = readSearchParam(resolvedSearchParams, "status") || assignment.status;
-  const assignedToPersonId =
-    readSearchParam(resolvedSearchParams, "assignedToPersonId") ?? assignment.assignedToPersonId ?? "";
-  const assignedToTeamId =
-    readSearchParam(resolvedSearchParams, "assignedToTeamId") ?? assignment.assignedToTeamId ?? "";
-  const assignedToEventId =
-    readSearchParam(resolvedSearchParams, "assignedToEventId") ?? assignment.assignedToEventId ?? "";
+  const assignedToPersonId = readSearchParam(resolvedSearchParams, "assignedToPersonId") || assignment.assignedToPersonId || "";
+  const assignedToTeamId = readSearchParam(resolvedSearchParams, "assignedToTeamId") || assignment.assignedToTeamId || "";
+  const assignedToEventId = readSearchParam(resolvedSearchParams, "assignedToEventId") || assignment.assignedToEventId || "";
   const expectedReturnAt =
     readSearchParam(resolvedSearchParams, "expectedReturnAt") ||
     formatDateTimeInputValue(assignment.expectedReturnAt);
   const returnedAt =
     readSearchParam(resolvedSearchParams, "returnedAt") ||
     formatDateTimeInputValue(assignment.returnedAt);
-  const notes = readSearchParam(resolvedSearchParams, "notes") ?? assignment.notes ?? "";
+  const notes = readSearchParam(resolvedSearchParams, "notes") || assignment.notes || "";
   const generalError = readSearchParam(resolvedSearchParams, "error");
 
   return (
@@ -233,7 +230,7 @@ export default async function EditGearAssignmentPage({
         </div>
 
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Select one assignment context below (person, team, or event). All are optional.
+          Select exactly one assignment context below (person, team, or event).
         </p>
 
         <div className="space-y-1">

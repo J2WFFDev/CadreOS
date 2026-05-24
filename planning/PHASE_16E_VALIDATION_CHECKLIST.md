@@ -29,6 +29,7 @@
 - [ ] `GearAssignmentStatus` imported in workflows module
 - [ ] `requirePhase1CMutationPermission` action union includes `gearAssignment.create` and `gearAssignment.update`
 - [ ] `status` field validates against `GearAssignmentStatus` enum
+- [ ] Exactly one assignment context is required across person/team/event
 - [ ] `expectedReturnAt` validates YYYY-MM-DDTHH:mm pattern if provided
 - [ ] `returnedAt` validates YYYY-MM-DDTHH:mm pattern if provided
 - [ ] `notes` max 4000 characters
@@ -44,7 +45,7 @@
 - [ ] Shows "Assign gear item" heading
 - [ ] All dropdowns populated: persons, teams, events
 - [ ] Status dropdown shows all `GearAssignmentStatus` values
-- [ ] All context fields are optional (empty default available)
+- [ ] Form UI presents person/team/event selectors with a clear single-context expectation
 - [ ] Form posts to `/gear-ops/items/[itemId]/assign/create`
 - [ ] Cancel link navigates back to item detail
 - [ ] Form pre-fills values from search params on validation error redirect
@@ -117,7 +118,9 @@
 - [ ] "Assign gear" button links to `/gear-ops/items/[itemId]/assign`
 - [ ] "Edit" link visible on each assignment card
 - [ ] "Edit" link navigates to correct `/gear-ops/items/[itemId]/assignments/[assignmentId]/edit`
-- [ ] Assignments section empty state unchanged when no assignments
+- [ ] Current assignments and assignment history sections are both shown when assignments exist
+- [ ] Assignment cards show labeled person/team/event/program context values when present
+- [ ] Assignments section empty state remains safe when no assignments exist
 
 ---
 

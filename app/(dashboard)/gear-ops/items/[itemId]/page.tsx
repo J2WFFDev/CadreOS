@@ -93,8 +93,8 @@ export default async function GearOpsItemDetailsPage({
           notes: string | null;
           assignedBy: { id: string; firstName: string; lastName: string };
           assignedTo: { id: string; firstName: string; lastName: string } | null;
-          assignedTeam: { id: string; name: string } | null;
-          assignedEvent: { id: string; title: string } | null;
+          assignedTeam: { id: string; name: string; program: { id: string; name: string } | null } | null;
+          assignedEvent: { id: string; title: string; program: { id: string; name: string } | null } | null;
         }>;
         checkouts: Array<{
           id: string;
@@ -163,8 +163,8 @@ export default async function GearOpsItemDetailsPage({
             notes: true,
             assignedBy: { select: { id: true, firstName: true, lastName: true } },
             assignedTo: { select: { id: true, firstName: true, lastName: true } },
-            assignedTeam: { select: { id: true, name: true } },
-            assignedEvent: { select: { id: true, title: true } },
+            assignedTeam: { select: { id: true, name: true, program: { select: { id: true, name: true } } } },
+            assignedEvent: { select: { id: true, title: true, program: { select: { id: true, name: true } } } },
           },
           orderBy: [{ assignedAt: "desc" }, { createdAt: "desc" }],
           take: 8,
@@ -240,6 +240,80 @@ export default async function GearOpsItemDetailsPage({
           <p className="text-sm text-zinc-600 dark:text-zinc-400">Gear item not found in the selected organization scope.</p>
         </div>
       </section>
+    );
+  }
+
+  const gearItem = item;
+  const currentAssignmentStatuses = new Set<GearAssignmentStatus>([
+    GearAssignmentStatus.PENDING,
+    GearAssignmentStatus.ACTIVE,
+    GearAssignmentStatus.OVERDUE,
+  ]);
+  const currentAssignments = gearItem.assignments.filter((assignment) => currentAssignmentStatuses.has(assignment.status));
+  const assignmentHistory = gearItem.assignments.filter((assignment) => !currentAssignmentStatuses.has(assignment.status));
+
+  function renderAssignmentCard(assignment: (typeof gearItem.assignments)[number]) {
+    const assignmentProgram = assignment.assignedEvent?.program ?? assignment.assignedTeam?.program ?? gearItem.program;
+
+    return (
+      <article key={assignment.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <p className="font-medium">
+            {formatGearOpsEnum(assignment.status)} · Assigned {formatGearOpsDateTime(assignment.assignedAt)}
+          </p>
+          <Link
+            href={`/gear-ops/items/${gearItem.id}/assignments/${assignment.id}/edit`}
+            className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Edit
+          </Link>
+        </div>
+        <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+          Assigned by{" "}
+          <Link href={`/people/${assignment.assignedBy.id}`} className="underline">
+            {assignment.assignedBy.firstName} {assignment.assignedBy.lastName}
+          </Link>
+        </p>
+        <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+          Person:{" "}
+          {assignment.assignedTo ? (
+            <Link href={`/people/${assignment.assignedTo.id}`} className="underline">
+              {assignment.assignedTo.firstName} {assignment.assignedTo.lastName}
+            </Link>
+          ) : (
+            "—"
+          )}
+          {" · "}Team:{" "}
+          {assignment.assignedTeam ? (
+            <Link href={`/teams/${assignment.assignedTeam.id}`} className="underline">
+              {assignment.assignedTeam.name}
+            </Link>
+          ) : (
+            "—"
+          )}
+          {" · "}Event:{" "}
+          {assignment.assignedEvent ? (
+            <Link href={`/events/${assignment.assignedEvent.id}`} className="underline">
+              {assignment.assignedEvent.title}
+            </Link>
+          ) : (
+            "—"
+          )}
+          {" · "}Program:{" "}
+          {assignmentProgram ? (
+            <Link href={`/programs/${assignmentProgram.id}`} className="underline">
+              {assignmentProgram.name}
+            </Link>
+          ) : (
+            "—"
+          )}
+        </p>
+        <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+          Expected return: {formatGearOpsDateTime(assignment.expectedReturnAt)} · Returned:{" "}
+          {formatGearOpsDateTime(assignment.returnedAt)}
+        </p>
+        {assignment.notes ? <p className="mt-1 text-zinc-600 dark:text-zinc-400">{assignment.notes}</p> : null}
+      </article>
     );
   }
 
@@ -320,50 +394,28 @@ export default async function GearOpsItemDetailsPage({
         {item.assignments.length === 0 ? (
           <EmptyState message="No assignment records are currently visible for this item." />
         ) : (
-          <div className="space-y-3">
-            {item.assignments.map((assignment) => (
-              <article key={assignment.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <p className="font-medium">
-                    {formatGearOpsEnum(assignment.status)} · Assigned {formatGearOpsDateTime(assignment.assignedAt)}
-                  </p>
-                  <Link
-                    href={`/gear-ops/items/${item.id}/assignments/${assignment.id}/edit`}
-                    className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                  >
-                    Edit
-                  </Link>
-                </div>
-                <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-                  Assigned by{" "}
-                  <Link href={`/people/${assignment.assignedBy.id}`} className="underline">
-                    {assignment.assignedBy.firstName} {assignment.assignedBy.lastName}
-                  </Link>
-                  {" · "}
-                  Context:{" "}
-                  {assignment.assignedTo ? (
-                    <Link href={`/people/${assignment.assignedTo.id}`} className="underline">
-                      {assignment.assignedTo.firstName} {assignment.assignedTo.lastName}
-                    </Link>
-                  ) : assignment.assignedTeam ? (
-                    <Link href={`/teams/${assignment.assignedTeam.id}`} className="underline">
-                      {assignment.assignedTeam.name}
-                    </Link>
-                  ) : assignment.assignedEvent ? (
-                    <Link href={`/events/${assignment.assignedEvent.id}`} className="underline">
-                      {assignment.assignedEvent.title}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </p>
-                <p className="mt-1 text-zinc-500 dark:text-zinc-400">
-                  Expected return: {formatGearOpsDateTime(assignment.expectedReturnAt)} · Returned:{" "}
-                  {formatGearOpsDateTime(assignment.returnedAt)}
-                </p>
-                {assignment.notes ? <p className="mt-1 text-zinc-600 dark:text-zinc-400">{assignment.notes}</p> : null}
-              </article>
-            ))}
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Current assignments
+              </h4>
+              {currentAssignments.length === 0 ? (
+                <EmptyState message="No active assignment records are currently visible for this item." />
+              ) : (
+                <div className="space-y-3">{currentAssignments.map((assignment) => renderAssignmentCard(assignment))}</div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Assignment history
+              </h4>
+              {assignmentHistory.length === 0 ? (
+                <EmptyState message="No assignment history is currently visible for this item." />
+              ) : (
+                <div className="space-y-3">{assignmentHistory.map((assignment) => renderAssignmentCard(assignment))}</div>
+              )}
+            </div>
           </div>
         )}
       </div>
