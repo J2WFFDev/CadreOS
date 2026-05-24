@@ -86,6 +86,7 @@ export default async function NewTaskPage({
     | Array<{
         id: string;
         body: string;
+        eventId: string | null;
         athlete:
           | {
               id: string;
@@ -117,6 +118,7 @@ export default async function NewTaskPage({
         select: {
           id: true,
           body: true,
+          eventId: true,
           athlete: {
             select: {
               id: true,
@@ -179,6 +181,7 @@ export default async function NewTaskPage({
   const sourceEventId = readSearchParam(resolvedSearchParams, "sourceEventId");
   const generalError = readSearchParam(resolvedSearchParams, "error");
   const selectedSourceNote = notes.find((note) => note.id === sourceNoteId) ?? null;
+  const resolvedSourceEventId = sourceEventId || selectedSourceNote?.eventId || "";
   const selectedSourceNoteGuardianContext =
     canViewGuardianRelationshipDetails && selectedSourceNote?.athlete
       ? deriveGuardianOperationalContext(selectedSourceNote.athlete.athleteLinks ?? [])
@@ -332,7 +335,7 @@ export default async function NewTaskPage({
               <select
                 id="sourceEventId"
                 name="sourceEventId"
-                defaultValue={sourceEventId}
+                defaultValue={resolvedSourceEventId}
                 className="w-full rounded-md border px-3 py-2 text-sm"
               >
                 <option value="">No source event</option>
@@ -344,6 +347,10 @@ export default async function NewTaskPage({
               </select>
               {hasSearchParam(resolvedSearchParams, "sourceEventIdError") ? (
                 <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "sourceEventIdError")}</p>
+              ) : !sourceEventId && selectedSourceNote?.eventId ? (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Source event prefilled from selected note context.
+                </p>
               ) : null}
             </div>
           </div>

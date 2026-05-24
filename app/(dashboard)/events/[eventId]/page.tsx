@@ -461,6 +461,7 @@ export default async function EventDetailsPage({
     : attendanceMissingCount > 0
       ? `Attendance missing for part of ${selectedAttendanceSeason ? `${selectedAttendanceSeason.name} ` : ""}team roster`
       : `Attendance captured for all ${selectedAttendanceSeason ? `${selectedAttendanceSeason.name} ` : ""}rostered team members`;
+  const fieldOpsBookingHref = `/field-ops/bookings/new?eventId=${event.id}`;
 
   return (
     <section className="space-y-6">
@@ -470,24 +471,27 @@ export default async function EventDetailsPage({
         <div className="flex flex-wrap gap-2">
           <Link
             href={`/events/${event.id}/edit`}
-            className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            className="inline-flex min-h-9 items-center rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Edit event
           </Link>
-          <Link href="#attendance-workflow" className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+          <Link href="#attendance-workflow" className="inline-flex min-h-9 items-center rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
             Attendance workflow
           </Link>
           <Link
             href={`/tasks/new?sourceEventId=${event.id}`}
-            className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            className="inline-flex min-h-9 items-center rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Create follow-up task
           </Link>
           <Link
             href={`/notes/new?eventId=${event.id}`}
-            className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            className="inline-flex min-h-9 items-center rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Add note
+          </Link>
+          <Link href={fieldOpsBookingHref} className="inline-flex min-h-9 items-center rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Request FieldOps booking
           </Link>
         </div>
       </div>
@@ -629,6 +633,12 @@ export default async function EventDetailsPage({
           </Link>
           <Link href={`/tasks?eventId=${event.id}&changedWindow=last_7d`} className="rounded-full border px-2 py-1">
             Recent related activity
+          </Link>
+          <Link href={`/notes/new?eventId=${event.id}`} className="rounded-full border px-2 py-1">
+            Add event note
+          </Link>
+          <Link href={`/tasks/new?sourceEventId=${event.id}`} className="rounded-full border px-2 py-1">
+            New event follow-up
           </Link>
           <Link href="#operational-history" className="rounded-full border px-2 py-1">
             Event change history
@@ -918,9 +928,23 @@ export default async function EventDetailsPage({
               <>
                 <ul className="mt-2 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
                   {missingRosterAttendance.map((person) => (
-                    <li key={person.id}>
+                    <li key={person.id} className="flex flex-wrap items-center gap-2">
                       <Link href={`/people/${person.id}`} className="underline">
                         {person.firstName} {person.lastName}
+                      </Link>
+                      <span className="text-zinc-400 dark:text-zinc-500">•</span>
+                      <Link
+                        href={`/events/${event.id}?attendancePersonId=${person.id}&attendanceStatus=${AttendanceStatus.PRESENT}#attendance-capture-form`}
+                        className="underline"
+                      >
+                        Mark present
+                      </Link>
+                      <span className="text-zinc-400 dark:text-zinc-500">•</span>
+                      <Link
+                        href={`/events/${event.id}?attendancePersonId=${person.id}&attendanceStatus=${AttendanceStatus.UNEXCUSED_ABSENT}#attendance-capture-form`}
+                        className="underline"
+                      >
+                        Mark absent
                       </Link>
                     </li>
                   ))}
@@ -1041,7 +1065,7 @@ export default async function EventDetailsPage({
             No people are available in the active organization yet.
           </p>
         ) : (
-          <form action={`/events/${event.id}/attendance`} method="post" className="mt-3 space-y-4">
+          <form id="attendance-capture-form" action={`/events/${event.id}/attendance`} method="post" className="mt-3 space-y-4">
             <div className="space-y-1">
               <label htmlFor="attendancePersonId" className="text-sm font-medium">
                 Person

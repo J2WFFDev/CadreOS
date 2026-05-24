@@ -121,6 +121,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 13E Operational Intelligence Stabilization and Arc Closeout](./PHASE_13E_OPERATIONAL_INTELLIGENCE_STABILIZATION_CLOSEOUT.md)
 - [Phase 13E Validation Checklist](./PHASE_13E_VALIDATION_CHECKLIST.md)
 - [Phase 14A Mobile & Rapid Capture Architecture Boundaries](./PHASE_14A_MOBILE_RAPID_CAPTURE_ARCHITECTURE_BOUNDARIES.md)
+- [Phase 14B Lightweight Rapid Operational Capture Optimizations](./PHASE_14B_LIGHTWEIGHT_RAPID_OPERATIONAL_CAPTURE_OPTIMIZATIONS.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)

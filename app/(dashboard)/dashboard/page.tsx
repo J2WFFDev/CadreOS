@@ -110,6 +110,29 @@ const NAVIGATION_CARDS = [
   },
 ] as const;
 
+const RAPID_CAPTURE_ACTIONS = [
+  {
+    href: "/notes/new",
+    label: "Rapid note capture",
+    description: "Capture an operational observation with minimal navigation.",
+  },
+  {
+    href: "/tasks/new",
+    label: "Rapid follow-up capture",
+    description: "Create follow-up directly when unresolved work is identified.",
+  },
+  {
+    href: "/events?operationalIndicator=attendance_not_reviewed_recently",
+    label: "Attendance capture lane",
+    description: "Open event attendance gaps and capture updates in context.",
+  },
+  {
+    href: "/field-ops/bookings/new",
+    label: "Rapid FieldOps request",
+    description: "Create a booking request with current scoped context.",
+  },
+] as const;
+
 const TASK_STATUS_SORT_WEIGHT: Record<string, number> = {
   OPEN: 0,
   IN_PROGRESS: 1,
@@ -172,6 +195,23 @@ function renderNavigationCards() {
 
 function renderEmptyList(message: string) {
   return <p className="text-sm text-zinc-600 dark:text-zinc-400">{message}</p>;
+}
+
+function renderRapidCaptureActions() {
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      {RAPID_CAPTURE_ACTIONS.map((action) => (
+        <Link
+          key={action.href}
+          href={action.href}
+          className="rounded-lg border bg-white p-3 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+        >
+          <p className="text-sm font-medium">{action.label}</p>
+          <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">{action.description}</p>
+        </Link>
+      ))}
+    </div>
+  );
 }
 
 function buildScopedProgramWhere(
@@ -268,6 +308,14 @@ export default async function DashboardPage() {
         <div className="space-y-3">
           <h3 className="text-base font-medium">Quick links</h3>
           {renderNavigationCards()}
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-base font-medium">Rapid operational capture</h3>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Quick-entry shortcuts for current staff-scoped workflows. No offline, messaging, or automation runtime is added.
+          </p>
+          {renderRapidCaptureActions()}
         </div>
       </section>
     );
@@ -1482,8 +1530,8 @@ export default async function DashboardPage() {
                               Capture attendance
                             </Link>
                             <span className="text-zinc-500 dark:text-zinc-400">•</span>
-                            <Link href={`/notes?eventId=${event.id}`} className="underline">
-                              Event notes
+                            <Link href={`/notes/new?eventId=${event.id}`} className="underline">
+                              Capture event note
                             </Link>
                           </div>
                         </div>
@@ -1826,6 +1874,10 @@ export default async function DashboardPage() {
                           <span className="text-zinc-500 dark:text-zinc-400">•</span>
                           <Link href={`/tasks?eventId=${event.id}&resolution=unresolved`} className="underline">
                             Event unresolved tasks
+                          </Link>
+                          <span className="text-zinc-500 dark:text-zinc-400">•</span>
+                          <Link href={`/tasks/new?sourceEventId=${event.id}`} className="underline">
+                            Create follow-up task
                           </Link>
                         </div>
                       </div>
