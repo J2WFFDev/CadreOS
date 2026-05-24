@@ -223,6 +223,15 @@ export default async function GearOpsItemsPage({
       <PageHeader title="GearOps items" description="Read-only inventory item catalog with assignment, custody, and maintenance context." />
       <GearOpsSubnav current="items" />
 
+      <div className="flex justify-end">
+        <Link
+          href="/gear-ops/items/new"
+          className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black"
+        >
+          New item
+        </Link>
+      </div>
+
       {hasFilters ? (
         <div className="rounded-lg border bg-white p-3 text-sm dark:bg-zinc-900">
           <p className="text-zinc-600 dark:text-zinc-400">

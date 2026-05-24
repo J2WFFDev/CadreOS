@@ -149,9 +149,17 @@ export default async function GearOpsCategoryDetailsPage({
               {category.description ?? "No category description has been recorded yet."}
             </p>
           </div>
-          <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-            {formatGearOpsEnum(category.inventoryType)}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+              {formatGearOpsEnum(category.inventoryType)}
+            </span>
+            <Link
+              href={`/gear-ops/categories/${category.id}/edit`}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Edit
+            </Link>
+          </div>
         </div>
       </div>
 
