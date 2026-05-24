@@ -6,9 +6,12 @@ import {
 } from "@prisma/client";
 
 import {
+  classifyCommunicationCategoryNotificationCandidate,
   classifyEntryRuntimeCommunicationCategory,
   getInternalCommunicationEventClassification,
+  getInternalNotificationCandidateEvaluation,
   type InternalCommunicationEventClassification,
+  type InternalNotificationCandidateEvaluation,
 } from "@/lib/communication-classification";
 import { db } from "@/lib/db";
 import { classifyFollowUpTaskOperationalVisibility } from "@/lib/operational-visibility";
@@ -19,6 +22,7 @@ export type ObservationNoteEntryRuntimeSummary =
   | {
       status: "linked";
       communicationClassification: InternalCommunicationEventClassification;
+      notificationCandidateEvaluation: InternalNotificationCandidateEvaluation;
       entryRuntimeRef: {
         id: string;
         sourceModelType: EntryRuntimeSourceModelType;
@@ -42,6 +46,7 @@ export type FollowUpTaskEntryRuntimeSummary =
   | {
       status: "linked";
       communicationClassification: InternalCommunicationEventClassification;
+      notificationCandidateEvaluation: InternalNotificationCandidateEvaluation;
       entryRuntimeRef: {
         id: string;
         sourceModelType: EntryRuntimeSourceModelType;
@@ -162,10 +167,12 @@ export async function getObservationNoteEntryRuntimeSummary(input: {
     };
   }
 
+  const communicationCategory = classifyEntryRuntimeCommunicationCategory(entryRuntimeRef.sourceModelType);
   return {
     status: "linked",
-    communicationClassification: getInternalCommunicationEventClassification(
-      classifyEntryRuntimeCommunicationCategory(entryRuntimeRef.sourceModelType),
+    communicationClassification: getInternalCommunicationEventClassification(communicationCategory),
+    notificationCandidateEvaluation: getInternalNotificationCandidateEvaluation(
+      classifyCommunicationCategoryNotificationCandidate(communicationCategory),
     ),
     entryRuntimeRef,
   };
@@ -285,10 +292,12 @@ export async function getFollowUpTaskEntryRuntimeSummary(input: {
     };
   }
 
+  const communicationCategory = classifyEntryRuntimeCommunicationCategory(entryRuntimeRef.sourceModelType);
   return {
     status: "linked",
-    communicationClassification: getInternalCommunicationEventClassification(
-      classifyEntryRuntimeCommunicationCategory(entryRuntimeRef.sourceModelType),
+    communicationClassification: getInternalCommunicationEventClassification(communicationCategory),
+    notificationCandidateEvaluation: getInternalNotificationCandidateEvaluation(
+      classifyCommunicationCategoryNotificationCandidate(communicationCategory),
     ),
     entryRuntimeRef,
   };

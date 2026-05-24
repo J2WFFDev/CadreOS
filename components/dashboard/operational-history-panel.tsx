@@ -66,6 +66,11 @@ export function OperationalHistoryPanel(props: {
                 <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                   {item.communicationClassification.categoryLabel}
                 </span>
+                {item.notificationCandidateEvaluation.isCandidate ? (
+                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                    {item.notificationCandidateEvaluation.candidateLabel}
+                  </span>
+                ) : null}
                 {item.unresolvedLabel ? (
                   <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                     {item.unresolvedLabel}
