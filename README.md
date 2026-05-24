@@ -3,5 +3,5 @@
 
 ## Deployment policy
 - `main` keeps normal Vercel deployments enabled.
-- Branches with `copilot` in the git ref are ignored by Vercel preview builds.
-- All other branches continue normal deployment behavior.
+- All non-`main` branches are disabled for automatic Vercel deployments.
+- Copilot branches do not create Vercel previews because all non-`main` branches are disabled.
