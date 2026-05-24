@@ -2,6 +2,7 @@ import { ApprovalStatus, Prisma, RoleType, ScopeType, TaskStatus } from "@prisma
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { OperationalAwarenessPanel } from "@/components/dashboard/operational-awareness-panel";
 import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
 import { ReviewFocusPanel } from "@/components/dashboard/review-focus-panel";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@/lib/operational-visibility";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { getOperationalHistory, type OperationalHistoryItem } from "@/lib/operational-history";
+import { buildOperationalAwarenessView, type OperationalAwarenessView } from "@/lib/operational-awareness";
 import { isSchemaUnavailableError, selectSeededOrCurrentSeason } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
@@ -505,6 +507,7 @@ export default async function DashboardPage() {
         }>;
         recentOperationalHistory: OperationalHistoryItem[];
         unresolvedOperationalHistory: OperationalHistoryItem[];
+        operationalAwarenessView: OperationalAwarenessView;
         unresolvedEventConcerns: Array<{
           id: string;
           title: string;
@@ -1079,6 +1082,12 @@ export default async function DashboardPage() {
       pendingFieldOpsApprovals,
       recentOperationalHistory,
       unresolvedOperationalHistory,
+      operationalAwarenessView: buildOperationalAwarenessView([
+        ...recentOperationalHistory,
+        ...unresolvedOperationalHistory.filter(
+          (item) => !recentOperationalHistory.some((r) => r.id === item.id),
+        ),
+      ]),
       unresolvedEventConcerns,
       notesNeedingAttention,
       eventsMissingResponsibleTeam,
@@ -1848,6 +1857,7 @@ export default async function DashboardPage() {
               action={{ href: "/tasks?resolution=unresolved&ownershipIndicator=stale_unresolved", label: "Review unresolved workflow" }}
             />
           </div>
+          <OperationalAwarenessPanel awarenessView={dashboardData.operationalAwarenessView} />
         </>
       )}
     </section>

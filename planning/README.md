@@ -107,6 +107,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 11C Pilot Stability Closeout and Operational Readiness Review](./PHASE_11C_PILOT_STABILITY_CLOSEOUT_OPERATIONAL_READINESS_REVIEW.md)
 - [Phase 12A Communication & Coordination Architecture Boundaries](./PHASE_12A_COMMUNICATION_COORDINATION_ARCHITECTURE_BOUNDARIES.md)
 - [Phase 12B Internal Communication/Notification Classification Foundation](./PHASE_12B_INTERNAL_COMMUNICATION_NOTIFICATION_CLASSIFICATION_FOUNDATION.md)
+- [Phase 12C Internal Notification-Candidate Evaluation Foundation](./PHASE_12C_INTERNAL_NOTIFICATION_CANDIDATE_EVALUATION_FOUNDATION.md)
+- [Phase 12D Internal Operational Awareness View](./PHASE_12D_INTERNAL_OPERATIONAL_AWARENESS_VIEW.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
