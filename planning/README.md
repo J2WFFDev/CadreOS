@@ -109,6 +109,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 12B Internal Communication/Notification Classification Foundation](./PHASE_12B_INTERNAL_COMMUNICATION_NOTIFICATION_CLASSIFICATION_FOUNDATION.md)
 - [Phase 12C Internal Notification-Candidate Evaluation Foundation](./PHASE_12C_INTERNAL_NOTIFICATION_CANDIDATE_EVALUATION_FOUNDATION.md)
 - [Phase 12D Internal Operational Awareness View](./PHASE_12D_INTERNAL_OPERATIONAL_AWARENESS_VIEW.md)
+- [Phase 12E Communication & Coordination Stabilization and Arc Closeout](./PHASE_12E_COMMUNICATION_AWARENESS_STABILIZATION_CLOSEOUT.md)
+- [Phase 12E Validation Checklist](./PHASE_12E_VALIDATION_CHECKLIST.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -248,6 +250,12 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: implements lightweight internal-only communication/notification event classification metadata across existing operational surfaces while keeping all delivery, messaging, Feed/Inbox, guardian runtime communication, and automation behavior deferred.
 - [Phase 12C Internal Notification-Candidate Evaluation Foundation](./PHASE_12C_INTERNAL_NOTIFICATION_CANDIDATE_EVALUATION_FOUNDATION.md)
   - Summary: adds lightweight internal-only notification-candidate evaluation metadata for overdue/unresolved/attendance/readiness/assignment contexts while keeping runtime delivery, messaging, Feed/Inbox, guardian communication, and automation behavior deferred.
+- [Phase 12D Internal Operational Awareness View](./PHASE_12D_INTERNAL_OPERATIONAL_AWARENESS_VIEW.md)
+  - Summary: adds `lib/operational-awareness.ts` and `OperationalAwarenessPanel` to group existing Phase 12B/12C candidate-classified history items into a read-only, informational, staff-only dashboard section; explicitly non-Inbox, non-Feed, non-delivery; no new DB queries; no messaging/chat, guardian communication, or escalation introduced.
+- [Phase 12E Communication & Coordination Stabilization and Arc Closeout](./PHASE_12E_COMMUNICATION_AWARENESS_STABILIZATION_CLOSEOUT.md)
+  - Summary: stabilizes and closes Arc 12 with consolidated scope documentation, deferred-behavior boundaries, "Do Not Build Yet" section, Arc 13 safe/unsafe scope recommendations, production risk areas (communication fatigue, authorization leakage, awareness overload, misclassification), and a validation checklist.
+- [Phase 12E Validation Checklist](./PHASE_12E_VALIDATION_CHECKLIST.md)
+  - Summary: covers awareness-view visibility, classification behavior, notification-candidate behavior, authorization boundaries, organization scoping, no-delivery/no-messaging confirmations, no-Feed/Inbox confirmations, no-guardian-runtime confirmations, workflow continuity, and documentation completeness.
 
 ---
 
@@ -314,6 +322,8 @@ Milestones delivered:
 - [Phase 12A Communication & Coordination Architecture Boundaries](./PHASE_12A_COMMUNICATION_COORDINATION_ARCHITECTURE_BOUNDARIES.md) (communication categories, consent/authorization boundary framing, delivery expectations, failure/audit guidance, and runtime blockers).
 - [Phase 12B Internal Communication/Notification Classification Foundation](./PHASE_12B_INTERNAL_COMMUNICATION_NOTIFICATION_CLASSIFICATION_FOUNDATION.md) (internal-only event categorization metadata on operational surfaces with delivery/messaging/guardian communication/feed/inbox behavior still deferred).
 - [Phase 12C Internal Notification-Candidate Evaluation Foundation](./PHASE_12C_INTERNAL_NOTIFICATION_CANDIDATE_EVALUATION_FOUNDATION.md) (internal-only candidate evaluation metadata for operational concerns with all runtime communication and automation behavior still deferred).
+- [Phase 12D Internal Operational Awareness View](./PHASE_12D_INTERNAL_OPERATIONAL_AWARENESS_VIEW.md) (read-only, staff-only operational awareness grouping panel derived from existing history data; explicitly non-Inbox, non-Feed, non-delivery; no guardian communication or automation).
+- [Phase 12E Communication & Coordination Stabilization and Arc Closeout](./PHASE_12E_COMMUNICATION_AWARENESS_STABILIZATION_CLOSEOUT.md) (arc closeout with consolidated scope documentation, deferred-behavior boundaries, "Do Not Build Yet" section, Arc 13 scope recommendations, and production risk areas). **Arc 12 closed.**
 
 ### Track 4 — AI / Automation (deferred)
 
