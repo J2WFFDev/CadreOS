@@ -105,6 +105,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 11A Pilot Validation Plan and Build/Deployment Verification](./PHASE_11A_PILOT_VALIDATION_PLAN.md)
 - [Phase 11B Operational Workflow Friction and Stability Remediation](./PHASE_11B_OPERATIONAL_WORKFLOW_FRICTION_STABILITY_REMEDIATION.md)
 - [Phase 11C Pilot Stability Closeout and Operational Readiness Review](./PHASE_11C_PILOT_STABILITY_CLOSEOUT_OPERATIONAL_READINESS_REVIEW.md)
+- [Phase 12A Communication & Coordination Architecture Boundaries](./PHASE_12A_COMMUNICATION_COORDINATION_ARCHITECTURE_BOUNDARIES.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -238,6 +239,8 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: remediates attendance and entry relationship operational friction from pilot validation, improving continuity and clarity without expanding runtime scope.
 - [Phase 11C Pilot Stability Closeout and Operational Readiness Review](./PHASE_11C_PILOT_STABILITY_CLOSEOUT_OPERATIONAL_READINESS_REVIEW.md)
   - Summary: closes out Arc 11 pilot hardening with an operational readiness review, pilot-safe workflow boundaries, production risk tracking, and Arc 12 communication architecture recommendations.
+- [Phase 12A Communication & Coordination Architecture Boundaries](./PHASE_12A_COMMUNICATION_COORDINATION_ARCHITECTURE_BOUNDARIES.md)
+  - Summary: defines communication categories, boundary separations, communication risk controls, deferred runtime scope, a safe-first internal staff communication slice, and a blocking checklist before runtime messaging.
 
 ---
 
@@ -300,7 +303,7 @@ Do not implement any delivery channel runtime behavior until:
 - Parent/guardian boundary policies are defined
 - Consent and opt-out infrastructure is designed
 
-Suggested first milestone: Communication architecture boundaries document (notification event taxonomy, consent gating, delivery strategy, failure handling). See Phase 8P Option C.
+First milestone delivered: [Phase 12A Communication & Coordination Architecture Boundaries](./PHASE_12A_COMMUNICATION_COORDINATION_ARCHITECTURE_BOUNDARIES.md) (communication categories, consent/authorization boundary framing, delivery expectations, failure/audit guidance, and runtime blockers).
 
 ### Track 4 — AI / Automation (deferred)
 
