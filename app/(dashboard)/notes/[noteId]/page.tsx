@@ -504,6 +504,14 @@ export default async function NoteDetailPage({
                 {formatDateTime(entryRuntimeSummary.entryRuntimeRef.updatedAt)}
               </dd>
             </div>
+            <div className="sm:col-span-2">
+              <dt className="font-medium">Relationship detail view</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">
+                <Link href={`/entry-runtime/${entryRuntimeSummary.entryRuntimeRef.id}`} className="underline">
+                  Open read-only Entry relationship detail
+                </Link>
+              </dd>
+            </div>
           </dl>
         ) : (
           <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
