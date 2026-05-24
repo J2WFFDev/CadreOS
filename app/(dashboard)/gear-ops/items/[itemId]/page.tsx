@@ -308,16 +308,32 @@ export default async function GearOpsItemDetailsPage({
       </dl>
 
       <div className="space-y-3">
-        <h3 className="text-lg font-medium">Assignments</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-lg font-medium">Assignments</h3>
+          <Link
+            href={`/gear-ops/items/${item.id}/assign`}
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Assign gear
+          </Link>
+        </div>
         {item.assignments.length === 0 ? (
           <EmptyState message="No assignment records are currently visible for this item." />
         ) : (
           <div className="space-y-3">
             {item.assignments.map((assignment) => (
               <article key={assignment.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-                <p className="font-medium">
-                  {formatGearOpsEnum(assignment.status)} · Assigned {formatGearOpsDateTime(assignment.assignedAt)}
-                </p>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="font-medium">
+                    {formatGearOpsEnum(assignment.status)} · Assigned {formatGearOpsDateTime(assignment.assignedAt)}
+                  </p>
+                  <Link
+                    href={`/gear-ops/items/${item.id}/assignments/${assignment.id}/edit`}
+                    className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                  >
+                    Edit
+                  </Link>
+                </div>
                 <p className="mt-1 text-zinc-600 dark:text-zinc-400">
                   Assigned by{" "}
                   <Link href={`/people/${assignment.assignedBy.id}`} className="underline">
