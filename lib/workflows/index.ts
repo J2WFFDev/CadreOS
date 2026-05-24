@@ -4,6 +4,7 @@ import {
   BookingStatus,
   EventStatus,
   EventType,
+  GearAssignmentStatus,
   GearConditionStatus,
   GearInventoryType,
   GearItemLifecycleStatus,
@@ -530,6 +531,48 @@ export const gearItemWorkflowSchema = z
     notes: value.notes.length === 0 ? null : value.notes,
   }));
 
+export const gearAssignmentWorkflowSchema = z
+  .object({
+    status: z.nativeEnum(GearAssignmentStatus, {
+      message: "Assignment status must use a valid status value.",
+    }),
+    assignedToPersonId: z.string().trim(),
+    assignedToTeamId: z.string().trim(),
+    assignedToEventId: z.string().trim(),
+    expectedReturnAt: z.string().trim(),
+    returnedAt: z.string().trim(),
+    notes: z
+      .string()
+      .trim()
+      .max(MAX_GEAR_NOTES_LENGTH, `Notes must be ${MAX_GEAR_NOTES_LENGTH} characters or less.`),
+  })
+  .superRefine((value, context) => {
+    if (value.expectedReturnAt.length > 0 && !DATETIME_LOCAL_INPUT_PATTERN.test(value.expectedReturnAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["expectedReturnAt"],
+        message: "Expected return must use YYYY-MM-DDTHH:mm format.",
+      });
+    }
+
+    if (value.returnedAt.length > 0 && !DATETIME_LOCAL_INPUT_PATTERN.test(value.returnedAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["returnedAt"],
+        message: "Returned at must use YYYY-MM-DDTHH:mm format.",
+      });
+    }
+  })
+  .transform((value) => ({
+    status: value.status,
+    assignedToPersonId: value.assignedToPersonId.length === 0 ? null : value.assignedToPersonId,
+    assignedToTeamId: value.assignedToTeamId.length === 0 ? null : value.assignedToTeamId,
+    assignedToEventId: value.assignedToEventId.length === 0 ? null : value.assignedToEventId,
+    expectedReturnAt: value.expectedReturnAt.length === 0 ? null : dateTimeInputToUtcDate(value.expectedReturnAt),
+    returnedAt: value.returnedAt.length === 0 ? null : dateTimeInputToUtcDate(value.returnedAt),
+    notes: value.notes.length === 0 ? null : value.notes,
+  }));
+
 export type PersonWorkflowInput = z.output<typeof personWorkflowSchema>;
 export type TeamWorkflowInput = z.output<typeof teamWorkflowSchema>;
 export type ProgramWorkflowInput = z.output<typeof programWorkflowSchema>;
@@ -544,6 +587,7 @@ export type FollowUpTaskWorkflowInput = z.output<typeof followUpTaskWorkflowSche
 export type BookingRequestWorkflowInput = z.output<typeof bookingRequestWorkflowSchema>;
 export type GearCategoryWorkflowInput = z.output<typeof gearCategoryWorkflowSchema>;
 export type GearItemWorkflowInput = z.output<typeof gearItemWorkflowSchema>;
+export type GearAssignmentWorkflowInput = z.output<typeof gearAssignmentWorkflowSchema>;
 
 export function getStringField(formData: FormData, field: string): string {
   const rawValue = formData.get(field);
@@ -614,7 +658,9 @@ export async function requirePhase1CMutationPermission(input: {
     | "gearCategory.create"
     | "gearCategory.update"
     | "gearItem.create"
-    | "gearItem.update";
+    | "gearItem.update"
+    | "gearAssignment.create"
+    | "gearAssignment.update";
   programId?: string | null;
   teamId?: string | null;
   seasonId?: string | null;
