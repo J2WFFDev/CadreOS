@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { OperationalAwarenessPanel } from "@/components/dashboard/operational-awareness-panel";
+import { OperationalSummaryClassificationPanel } from "@/components/dashboard/operational-summary-classification-panel";
 import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
 import { ReviewFocusPanel } from "@/components/dashboard/review-focus-panel";
 import {
@@ -20,6 +21,10 @@ import {
 import { getOrganizationScope } from "@/lib/organization-context";
 import { getOperationalHistory, type OperationalHistoryItem } from "@/lib/operational-history";
 import { buildOperationalAwarenessView, type OperationalAwarenessView } from "@/lib/operational-awareness";
+import {
+  buildOperationalSummaryClassificationView,
+  type OperationalSummaryClassificationView,
+} from "@/lib/operational-summary-classification";
 import { isSchemaUnavailableError, selectSeededOrCurrentSeason } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
@@ -508,6 +513,7 @@ export default async function DashboardPage() {
         recentOperationalHistory: OperationalHistoryItem[];
         unresolvedOperationalHistory: OperationalHistoryItem[];
         operationalAwarenessView: OperationalAwarenessView;
+        operationalSummaryClassificationView: OperationalSummaryClassificationView;
         unresolvedEventConcerns: Array<{
           id: string;
           title: string;
@@ -1054,6 +1060,11 @@ export default async function DashboardPage() {
       })
       .slice(0, 5);
 
+    const combinedOperationalHistory = [
+      ...recentOperationalHistory,
+      ...unresolvedOperationalHistory.filter((item) => !recentOperationalHistory.some((recent) => recent.id === item.id)),
+    ];
+
     dashboardData = {
       counts: {
         programs: programCount,
@@ -1082,12 +1093,8 @@ export default async function DashboardPage() {
       pendingFieldOpsApprovals,
       recentOperationalHistory,
       unresolvedOperationalHistory,
-      operationalAwarenessView: buildOperationalAwarenessView([
-        ...recentOperationalHistory,
-        ...unresolvedOperationalHistory.filter(
-          (item) => !recentOperationalHistory.some((r) => r.id === item.id),
-        ),
-      ]),
+      operationalAwarenessView: buildOperationalAwarenessView(combinedOperationalHistory),
+      operationalSummaryClassificationView: buildOperationalSummaryClassificationView(combinedOperationalHistory),
       unresolvedEventConcerns,
       notesNeedingAttention,
       eventsMissingResponsibleTeam,
@@ -1857,6 +1864,9 @@ export default async function DashboardPage() {
               action={{ href: "/tasks?resolution=unresolved&ownershipIndicator=stale_unresolved", label: "Review unresolved workflow" }}
             />
           </div>
+          <OperationalSummaryClassificationPanel
+            summaryView={dashboardData.operationalSummaryClassificationView}
+          />
           <OperationalAwarenessPanel awarenessView={dashboardData.operationalAwarenessView} />
         </>
       )}
