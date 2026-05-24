@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { OperationalAwarenessPanel } from "@/components/dashboard/operational-awareness-panel";
+import { OperationalIntelligenceAwarenessPanel } from "@/components/dashboard/operational-intelligence-awareness-panel";
 import { OperationalReadinessEvaluationPanel } from "@/components/dashboard/operational-readiness-evaluation-panel";
 import { OperationalSummaryClassificationPanel } from "@/components/dashboard/operational-summary-classification-panel";
 import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
@@ -22,6 +23,10 @@ import {
 import { getOrganizationScope } from "@/lib/organization-context";
 import { getOperationalHistory, type OperationalHistoryItem } from "@/lib/operational-history";
 import { buildOperationalAwarenessView, type OperationalAwarenessView } from "@/lib/operational-awareness";
+import {
+  buildOperationalIntelligenceAwarenessView,
+  type OperationalIntelligenceAwarenessView,
+} from "@/lib/operational-intelligence-awareness";
 import {
   buildOperationalReadinessEvaluationView,
   type OperationalReadinessEvaluationView,
@@ -520,6 +525,7 @@ export default async function DashboardPage() {
         operationalAwarenessView: OperationalAwarenessView;
         operationalSummaryClassificationView: OperationalSummaryClassificationView;
         operationalReadinessEvaluationView: OperationalReadinessEvaluationView;
+        operationalIntelligenceAwarenessView: OperationalIntelligenceAwarenessView;
         unresolvedEventConcerns: Array<{
           id: string;
           title: string;
@@ -1072,6 +1078,14 @@ export default async function DashboardPage() {
     ];
 
     const operationalSummaryClassificationView = buildOperationalSummaryClassificationView(combinedOperationalHistory);
+    const operationalReadinessEvaluationView = buildOperationalReadinessEvaluationView({
+      items: combinedOperationalHistory,
+      summaryView: operationalSummaryClassificationView,
+    });
+    const operationalIntelligenceAwarenessView = buildOperationalIntelligenceAwarenessView({
+      summaryView: operationalSummaryClassificationView,
+      readinessView: operationalReadinessEvaluationView,
+    });
 
     dashboardData = {
       counts: {
@@ -1103,10 +1117,8 @@ export default async function DashboardPage() {
       unresolvedOperationalHistory,
       operationalAwarenessView: buildOperationalAwarenessView(combinedOperationalHistory),
       operationalSummaryClassificationView,
-      operationalReadinessEvaluationView: buildOperationalReadinessEvaluationView({
-        items: combinedOperationalHistory,
-        summaryView: operationalSummaryClassificationView,
-      }),
+      operationalReadinessEvaluationView,
+      operationalIntelligenceAwarenessView,
       unresolvedEventConcerns,
       notesNeedingAttention,
       eventsMissingResponsibleTeam,
@@ -1881,6 +1893,9 @@ export default async function DashboardPage() {
           />
           <OperationalReadinessEvaluationPanel
             readinessView={dashboardData.operationalReadinessEvaluationView}
+          />
+          <OperationalIntelligenceAwarenessPanel
+            awarenessView={dashboardData.operationalIntelligenceAwarenessView}
           />
           <OperationalAwarenessPanel awarenessView={dashboardData.operationalAwarenessView} />
         </>
