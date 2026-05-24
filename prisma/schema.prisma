@@ -163,6 +163,63 @@ enum ConflictSeverity {
   BLOCKING
 }
 
+// GearOps enums
+
+enum GearInventoryType {
+  DURABLE
+  CONSUMABLE
+}
+
+enum GearItemLifecycleStatus {
+  ACTIVE
+  ASSIGNED
+  CHECKED_OUT
+  MAINTENANCE
+  RETIRED
+  LOST
+}
+
+enum GearConditionStatus {
+  NEW
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+  RETIRED
+}
+
+enum GearAssignmentStatus {
+  PENDING
+  ACTIVE
+  RETURNED
+  TRANSFERRED
+  CANCELLED
+  OVERDUE
+}
+
+enum GearCheckoutStatus {
+  OPEN
+  RETURNED
+  OVERDUE
+  LOST
+}
+
+enum GearMaintenanceType {
+  INSPECTION
+  REPAIR
+  CLEANING
+  REPLACEMENT
+  RETIREMENT
+}
+
+enum ConsumableTransactionType {
+  RECEIVED
+  USED
+  DISTRIBUTED
+  DISPOSED
+  ADJUSTED
+}
+
 model Organization {
   id        String    @id @default(cuid())
   name      String
@@ -190,6 +247,12 @@ model Organization {
   facilityResources           FacilityResource[]
   resourceBookings            ResourceBooking[]
   bookingConflicts            BookingConflict[]
+  gearCategories              GearCategory[]
+  gearItems                   GearItem[]
+  gearAssignments             GearAssignment[]
+  gearCheckouts               GearCheckout[]
+  gearMaintenanceLogs         GearMaintenanceLog[]
+  consumableTransactions      ConsumableTransaction[]
 }
 
 model Program {
@@ -206,6 +269,7 @@ model Program {
   events       Event[]
   auditEvents  AuditEvent[]
   resourceBookings ResourceBooking[]
+  gearItems    GearItem[]
 
   @@index([organizationId])
   @@unique([organizationId, name])
@@ -227,6 +291,7 @@ model Team {
   events       Event[]
   auditEvents  AuditEvent[]
   resourceBookings ResourceBooking[]
+  gearAssignments GearAssignment[]
 
   @@index([organizationId, programId])
   @@unique([programId, name])
@@ -294,6 +359,14 @@ model Person {
   actorAuditEvents           AuditEvent[]                 @relation("AuditActor")
   requestedBookings          ResourceBooking[]            @relation("BookingRequestedBy")
   approvedBookings           ResourceBooking[]            @relation("BookingApprovedBy")
+  assignedGear               GearAssignment[]             @relation("GearAssignmentToPerson")
+  createdGearAssignments     GearAssignment[]             @relation("GearAssignmentByPerson")
+  checkedOutGear             GearCheckout[]               @relation("GearCheckoutTakenBy")
+  issuedGear                 GearCheckout[]               @relation("GearCheckoutIssuedBy")
+  returnedGear               GearCheckout[]               @relation("GearCheckoutReturnedBy")
+  receivedGear               GearCheckout[]               @relation("GearCheckoutReceivedBy")
+  gearMaintenanceLogs        GearMaintenanceLog[]
+  recordedConsumableTransactions ConsumableTransaction[]
 
   @@index([organizationId])
   @@index([organizationId, lastName, firstName])
@@ -431,6 +504,9 @@ model Event {
   notes        ObservationNote[]
   tasks        FollowUpTask[]
   resourceBookings ResourceBooking[]
+  gearAssignments GearAssignment[]
+  gearCheckouts   GearCheckout[]
+  consumableTransactions ConsumableTransaction[]
 
   @@index([organizationId, startsAt])
   @@index([organizationId, teamId, startsAt])
@@ -655,4 +731,162 @@ model BookingConflict {
   @@index([bookingId])
   @@index([organizationId, bookingId])
   @@index([relatedBookingId])
+}
+
+// GearOps models
+
+model GearCategory {
+  id             String            @id @default(cuid())
+  organizationId String
+  name           String
+  inventoryType  GearInventoryType
+  description    String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  gearItems     GearItem[]
+
+  @@index([organizationId, inventoryType])
+  @@unique([organizationId, name])
+}
+
+model GearItem {
+  id                  String                 @id @default(cuid())
+  organizationId      String
+  programId           String?
+  gearCategoryId      String
+  name                String
+  inventoryType       GearInventoryType
+  sku                 String?
+  serialNumber        String?
+  quantityOnHand      Int                    @default(0)
+  quantityMin         Int?
+  lifecycleStatus     GearItemLifecycleStatus @default(ACTIVE)
+  conditionStatus     GearConditionStatus?
+  notes               String?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  organization           Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  program                Program?                @relation(fields: [programId], references: [id], onDelete: SetNull)
+  category               GearCategory            @relation(fields: [gearCategoryId], references: [id], onDelete: Restrict)
+  assignments            GearAssignment[]
+  checkouts              GearCheckout[]
+  maintenanceLogs        GearMaintenanceLog[]
+  consumableTransactions ConsumableTransaction[]
+
+  @@index([organizationId, gearCategoryId])
+  @@index([organizationId, programId])
+  @@index([organizationId, inventoryType, lifecycleStatus])
+  @@unique([organizationId, serialNumber])
+}
+
+model GearAssignment {
+  id                 String               @id @default(cuid())
+  organizationId     String
+  gearItemId         String
+  assignedToPersonId String?
+  assignedToTeamId   String?
+  assignedToEventId  String?
+  assignedByPersonId String
+  assignedAt         DateTime             @default(now())
+  expectedReturnAt   DateTime?
+  returnedAt         DateTime?
+  status             GearAssignmentStatus @default(PENDING)
+  notes              String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  gearItem      GearItem      @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  assignedTo    Person?       @relation("GearAssignmentToPerson", fields: [assignedToPersonId], references: [id], onDelete: SetNull)
+  assignedTeam  Team?         @relation(fields: [assignedToTeamId], references: [id], onDelete: SetNull)
+  assignedEvent Event?        @relation(fields: [assignedToEventId], references: [id], onDelete: SetNull)
+  assignedBy    Person        @relation("GearAssignmentByPerson", fields: [assignedByPersonId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, gearItemId, status])
+  @@index([organizationId, assignedToPersonId, status])
+  @@index([organizationId, assignedToTeamId, status])
+  @@index([organizationId, assignedToEventId, status])
+  @@index([organizationId, expectedReturnAt, status])
+}
+
+model GearCheckout {
+  id                 String             @id @default(cuid())
+  organizationId     String
+  gearItemId         String
+  eventId            String?
+  checkedOutById     String
+  issuedById         String
+  returnedById       String?
+  receivedById       String?
+  checkedOutAt       DateTime           @default(now())
+  expectedReturnAt   DateTime?
+  returnedAt         DateTime?
+  status             GearCheckoutStatus @default(OPEN)
+  conditionOnReturn  GearConditionStatus?
+  purposeNotes       String?
+  returnNotes        String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  gearItem      GearItem      @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  event         Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  checkedOutBy  Person        @relation("GearCheckoutTakenBy", fields: [checkedOutById], references: [id], onDelete: Restrict)
+  issuedBy      Person        @relation("GearCheckoutIssuedBy", fields: [issuedById], references: [id], onDelete: Restrict)
+  returnedBy    Person?       @relation("GearCheckoutReturnedBy", fields: [returnedById], references: [id], onDelete: SetNull)
+  receivedBy    Person?       @relation("GearCheckoutReceivedBy", fields: [receivedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, gearItemId, status])
+  @@index([organizationId, checkedOutById, status])
+  @@index([organizationId, issuedById, status])
+  @@index([organizationId, eventId, status])
+  @@index([organizationId, expectedReturnAt, status])
+}
+
+model GearMaintenanceLog {
+  id                  String              @id @default(cuid())
+  organizationId      String
+  gearItemId          String
+  performedByPersonId String
+  maintenanceType     GearMaintenanceType
+  performedAt         DateTime            @default(now())
+  conditionBefore     GearConditionStatus?
+  conditionAfter      GearConditionStatus?
+  notes               String
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  gearItem      GearItem      @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  performedBy   Person        @relation(fields: [performedByPersonId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, gearItemId, performedAt])
+  @@index([organizationId, performedByPersonId, performedAt])
+  @@index([organizationId, maintenanceType, performedAt])
+}
+
+model ConsumableTransaction {
+  id                  String                    @id @default(cuid())
+  organizationId      String
+  gearItemId          String
+  transactionType     ConsumableTransactionType
+  quantityDelta       Int
+  recordedByPersonId  String
+  eventId             String?
+  recordedAt          DateTime                  @default(now())
+  notes               String?
+  createdAt           DateTime                  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  gearItem      GearItem      @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  recordedBy    Person        @relation(fields: [recordedByPersonId], references: [id], onDelete: Restrict)
+  event         Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, gearItemId, recordedAt])
+  @@index([organizationId, transactionType, recordedAt])
+  @@index([organizationId, recordedByPersonId, recordedAt])
+  @@index([organizationId, eventId, recordedAt])
 }
