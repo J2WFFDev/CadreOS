@@ -123,6 +123,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 14A Mobile & Rapid Capture Architecture Boundaries](./PHASE_14A_MOBILE_RAPID_CAPTURE_ARCHITECTURE_BOUNDARIES.md)
 - [Phase 14B Lightweight Rapid Operational Capture Optimizations](./PHASE_14B_LIGHTWEIGHT_RAPID_OPERATIONAL_CAPTURE_OPTIMIZATIONS.md)
 - [Phase 14C Operational Context Continuity & Fast-Entry Optimizations](./PHASE_14C_OPERATIONAL_CONTEXT_CONTINUITY_FAST_ENTRY_OPTIMIZATIONS.md)
+- [Phase 14D Mobile & Capture Optimization Stabilization and Arc Closeout](./PHASE_14D_MOBILE_CAPTURE_OPTIMIZATION_STABILIZATION_CLOSEOUT.md)
+- [Phase 14D Validation Checklist](./PHASE_14D_VALIDATION_CHECKLIST.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -292,6 +294,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: delivers low-risk rapid-capture improvements for event attendance, note/task context prefills, dashboard shortcuts, and FieldOps booking prefills while preserving existing authorization/scoping boundaries and deferring offline/mobile-native/Feed/Inbox/messaging/automation runtime behavior.
 - [Phase 14C Operational Context Continuity & Fast-Entry Optimizations](./PHASE_14C_OPERATIONAL_CONTEXT_CONTINUITY_FAST_ENTRY_OPTIMIZATIONS.md)
   - Summary: adds safe return-path continuity across note/task create+update and FieldOps booking create+decision workflows, improves filtered review continuity in dashboard/events/notes/tasks/FieldOps surfaces, and introduces attendance continue-capture mode for repetitive entry while preserving authorization/scoping behavior and deferring offline/mobile-native/Feed/Inbox/messaging/automation runtime behavior.
+- [Phase 14D Mobile & Capture Optimization Stabilization and Arc Closeout](./PHASE_14D_MOBILE_CAPTURE_OPTIMIZATION_STABILIZATION_CLOSEOUT.md)
+  - Summary: closes Arc 14 with consolidated mobile/capture runtime-boundary verification and operational-speed validation, confirms current staff-scoped rapid-capture behavior, documents explicit deferred scope (offline sync/local queues/native mobile/push/messaging/Feed/Inbox/guardian runtime), adds “Do Not Build Yet” and production risk tracking, and records post-arc strategic options.
+- [Phase 14D Validation Checklist](./PHASE_14D_VALIDATION_CHECKLIST.md)
+  - Summary: validates mobile responsiveness, rapid-capture continuity, operational context preservation, authorization boundaries, organization scoping, and explicit non-implementation of offline/native mobile/push/Feed/Inbox/messaging runtime behavior.
 
 ---
 
