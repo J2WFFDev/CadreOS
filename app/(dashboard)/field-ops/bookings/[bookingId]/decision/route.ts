@@ -2,6 +2,7 @@ import { ApprovalStatus, BookingStatus, ConflictSeverity, Prisma } from "@prisma
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
@@ -13,15 +14,15 @@ import { resolveActorPersonId } from "@/lib/user-account";
 
 type DecisionValue = "approve" | "deny";
 
-function buildErrorRedirectUrl(requestUrl: string, bookingId: string, input: { decision: string; error: string }) {
-  const url = new URL(`/field-ops/bookings/${bookingId}`, requestUrl);
+function buildErrorRedirectUrl(requestUrl: string, bookingId: string, input: { decision: string; error: string; returnTo: string }) {
+  const url = new URL(resolveSafeReturnPath(input.returnTo, `/field-ops/bookings/${bookingId}`), requestUrl);
   url.searchParams.set("decision", input.decision);
   url.searchParams.set("decisionError", input.error);
   return url;
 }
 
-function buildSuccessRedirectUrl(requestUrl: string, bookingId: string, outcome: "approved" | "denied") {
-  const url = new URL(`/field-ops/bookings/${bookingId}`, requestUrl);
+function buildSuccessRedirectUrl(requestUrl: string, bookingId: string, outcome: "approved" | "denied", returnTo: string) {
+  const url = new URL(resolveSafeReturnPath(returnTo, `/field-ops/bookings/${bookingId}`), requestUrl);
   url.searchParams.set("decisionOutcome", outcome);
   return url;
 }
@@ -38,6 +39,7 @@ export async function POST(
   const scope = await getOrganizationScope();
   const formData = await request.formData();
   const rawDecision = getStringField(formData, "decision");
+  const returnTo = getStringField(formData, "returnTo");
   const decision = parseDecisionValue(rawDecision);
 
   if (!scope.databaseReady) {
@@ -45,6 +47,7 @@ export async function POST(
       buildErrorRedirectUrl(request.url, bookingId, {
         decision: rawDecision,
         error: scope.errorMessage ?? "Unable to update booking approval right now.",
+        returnTo,
       }),
       303,
     );
@@ -55,6 +58,7 @@ export async function POST(
       buildErrorRedirectUrl(request.url, bookingId, {
         decision: rawDecision,
         error: "No organization context is available yet.",
+        returnTo,
       }),
       303,
     );
@@ -65,6 +69,7 @@ export async function POST(
       buildErrorRedirectUrl(request.url, bookingId, {
         decision: rawDecision,
         error: "Decision action is invalid.",
+        returnTo,
       }),
       303,
     );
@@ -91,6 +96,7 @@ export async function POST(
         buildErrorRedirectUrl(request.url, bookingId, {
           decision,
           error: "Booking not found in the selected organization.",
+          returnTo,
         }),
         303,
       );
@@ -109,6 +115,7 @@ export async function POST(
         buildErrorRedirectUrl(request.url, bookingId, {
           decision,
           error: "Only pending booking requests can be approved or denied.",
+          returnTo,
         }),
         303,
       );
@@ -123,6 +130,7 @@ export async function POST(
         buildErrorRedirectUrl(request.url, bookingId, {
           decision,
           error: "Approval actions are unavailable for completed, canceled, or denied bookings.",
+          returnTo,
         }),
         303,
       );
@@ -144,6 +152,7 @@ export async function POST(
             decision,
             error:
               "This booking has blocking conflicts and cannot be approved under current policy. Resolve conflicts before approving.",
+            returnTo,
           }),
           303,
         );
@@ -161,6 +170,7 @@ export async function POST(
         buildErrorRedirectUrl(request.url, bookingId, {
           decision,
           error: "No organization person is available for booking decision attribution yet.",
+          returnTo,
         }),
         303,
       );
@@ -181,13 +191,17 @@ export async function POST(
             },
     });
 
-    return NextResponse.redirect(buildSuccessRedirectUrl(request.url, booking.id, decision === "approve" ? "approved" : "denied"), 303);
+    return NextResponse.redirect(
+      buildSuccessRedirectUrl(request.url, booking.id, decision === "approve" ? "approved" : "denied", returnTo),
+      303,
+    );
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, bookingId, {
           decision,
           error: "Booking decision references are invalid for the selected organization.",
+          returnTo,
         }),
         303,
       );
@@ -201,6 +215,7 @@ export async function POST(
           : isSchemaUnavailableError(error)
             ? "Database schema is not available yet. Run database setup before updating bookings."
             : "Unable to update booking approval right now. Please try again.",
+        returnTo,
       }),
       303,
     );

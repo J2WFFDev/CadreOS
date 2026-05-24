@@ -6,6 +6,7 @@ import { FormActions } from "@/components/dashboard/form-actions";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { FieldOpsSubnav } from "@/components/field-ops/subnav";
 import { db } from "@/lib/db";
+import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -162,6 +163,7 @@ export default async function NewFieldOpsBookingRequestPage({
   const programId = readSearchParam(resolvedSearchParams, "programId");
   const teamId = readSearchParam(resolvedSearchParams, "teamId");
   const eventId = readSearchParam(resolvedSearchParams, "eventId");
+  const returnTo = resolveSafeReturnPath(readSearchParam(resolvedSearchParams, "returnTo"), "/field-ops/bookings");
   const selectedEventForContext = events.find((event) => event.id === eventId) ?? null;
   const resolvedTitle = title || (selectedEventForContext ? `Booking for ${selectedEventForContext.title}` : "");
   const resolvedStartsAt = startsAt || toDateTimeLocalValue(selectedEventForContext?.startsAt ?? null);
@@ -194,6 +196,7 @@ export default async function NewFieldOpsBookingRequestPage({
           method="post"
           className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900"
         >
+          <input type="hidden" name="returnTo" value={returnTo} />
           <div className="space-y-1">
             <label htmlFor="facilityId" className="text-sm font-medium">
               Facility
@@ -350,13 +353,13 @@ export default async function NewFieldOpsBookingRequestPage({
             are available from booking details.
           </p>
 
-          <FormActions submitLabel="Create booking request" cancelHref="/field-ops/bookings" />
+          <FormActions submitLabel="Create booking request" cancelHref={returnTo} />
         </form>
       )}
 
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         Need to review availability first?{" "}
-        <Link href="/field-ops/bookings" className="underline">
+        <Link href={returnTo} className="underline">
           Return to bookings
         </Link>
         .

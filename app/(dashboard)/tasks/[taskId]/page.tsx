@@ -19,6 +19,7 @@ import {
   resolveActorRoleContext,
 } from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import { appendReturnToParam, resolveSafeReturnPath } from "@/lib/navigation-context";
 import { classifyFollowUpTaskOperationalVisibility } from "@/lib/operational-visibility";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -27,10 +28,13 @@ export const dynamic = "force-dynamic";
 
 export default async function TaskDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ taskId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { taskId } = await params;
+  const resolvedSearchParams = await searchParams;
   const scope = await getOrganizationScope();
 
   if (!scope.databaseReady) {
@@ -312,6 +316,10 @@ export default async function TaskDetailPage({
           : task.sourceInboxItem
             ? "Task exists from an inbox routing source item."
             : "Task was created as a standalone follow-up action.";
+  const returnToRaw = resolvedSearchParams.returnTo;
+  const returnToValue = Array.isArray(returnToRaw) ? (returnToRaw[0] ?? "") : (returnToRaw ?? "");
+  const returnTo = resolveSafeReturnPath(returnToValue, "/tasks");
+  const editTaskHref = appendReturnToParam(`/tasks/${task.id}/edit`, `/tasks/${task.id}?returnTo=${encodeURIComponent(returnTo)}`);
   let entryRuntimeSummary: Awaited<ReturnType<typeof getFollowUpTaskEntryRuntimeSummary>> | null = null;
   let entryRuntimeSummaryUnavailable = false;
 
@@ -327,11 +335,11 @@ export default async function TaskDetailPage({
   return (
     <section className="space-y-6">
       <div className="space-y-1">
-        <BackLink href="/tasks" label="Tasks" />
+        <BackLink href={returnTo} label="Tasks" />
         <h2 className="text-2xl font-semibold tracking-tight">{task.title}</h2>
         <div className="flex flex-wrap gap-2">
           <Link
-            href={`/tasks/${task.id}/edit`}
+            href={editTaskHref}
             className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Edit task

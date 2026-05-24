@@ -5,6 +5,7 @@ import { ErrorMessage } from "@/components/dashboard/error-message";
 import { FieldOpsSubnav } from "@/components/field-ops/subnav";
 import { db } from "@/lib/db";
 import { formatFieldOpsDateTime, formatFieldOpsEnum } from "@/lib/field-ops";
+import { appendReturnToParam, resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { canPerformAction } from "@/lib/permissions";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -206,6 +207,8 @@ export default async function BookingDetailsPage({
   const isDecisionLockedByStatus = ["COMPLETED", "CANCELED", "DENIED"].includes(booking.status);
   const canShowApprovalActions = isPendingApproval && !isDecisionLockedByStatus;
   const hasInactiveContext = booking.facility.status !== "ACTIVE" || booking.resource.status !== "ACTIVE";
+  const returnTo = resolveSafeReturnPath(readSearchParam(resolvedSearchParams, "returnTo"), "/field-ops/bookings");
+  const decisionReturnTo = appendReturnToParam(`/field-ops/bookings/${booking.id}`, returnTo);
   const canApproveOrDeny =
     scope.auth.clerkUserId &&
     (await Promise.all([
@@ -230,7 +233,7 @@ export default async function BookingDetailsPage({
   return (
     <section className="space-y-6">
       <div className="space-y-3">
-        <BackLink href="/field-ops/bookings" label="Bookings" />
+        <BackLink href={returnTo} label="Bookings" />
         <FieldOpsSubnav current={booking.approvalStatus === "PENDING" ? "approvals" : "bookings"} />
       </div>
 
@@ -307,6 +310,7 @@ export default async function BookingDetailsPage({
               <div className="flex flex-col gap-2 sm:flex-row">
                 <form action={`/field-ops/bookings/${booking.id}/decision`} method="post" className="contents">
                   <input type="hidden" name="decision" value="approve" />
+                  <input type="hidden" name="returnTo" value={decisionReturnTo} />
                   <button
                     type="submit"
                     disabled={hasBlockingConflict}
@@ -317,6 +321,7 @@ export default async function BookingDetailsPage({
                 </form>
                 <form action={`/field-ops/bookings/${booking.id}/decision`} method="post" className="contents">
                   <input type="hidden" name="decision" value="deny" />
+                  <input type="hidden" name="returnTo" value={decisionReturnTo} />
                   <button
                     type="submit"
                     className="rounded-md border border-red-700 px-4 py-2 text-sm text-red-700 hover:bg-red-50 dark:border-red-500 dark:text-red-400 dark:hover:bg-red-950/40"
@@ -440,7 +445,7 @@ export default async function BookingDetailsPage({
                 {conflict.relatedBooking ? (
                   <p className="mt-2 text-zinc-600 dark:text-zinc-400">
                     Related booking:{" "}
-                    <Link href={`/field-ops/bookings/${conflict.relatedBooking.id}`} className="underline">
+                    <Link href={appendReturnToParam(`/field-ops/bookings/${conflict.relatedBooking.id}`, returnTo)} className="underline">
                       {conflict.relatedBooking.title}
                     </Link>
                   </p>

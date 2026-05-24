@@ -3,6 +3,7 @@ import { FormActions } from "@/components/dashboard/form-actions";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { canReadStaffOnlyContent, resolveActorRoleContext } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -103,6 +104,7 @@ export default async function NewNotePage({
   const athletePersonId = readSearchParam(resolvedSearchParams, "athletePersonId");
   const teamId = readSearchParam(resolvedSearchParams, "teamId");
   const eventId = readSearchParam(resolvedSearchParams, "eventId");
+  const returnTo = resolveSafeReturnPath(readSearchParam(resolvedSearchParams, "returnTo"), "/notes");
   const selectedEventForContext = events.find((event) => event.id === eventId) ?? null;
   const resolvedTeamId = teamId || selectedEventForContext?.teamId || "";
   const generalError = readSearchParam(resolvedSearchParams, "error");
@@ -114,6 +116,7 @@ export default async function NewNotePage({
       {generalError ? <ErrorMessage message={generalError} /> : null}
 
       <form action="/notes/create" method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <input type="hidden" name="returnTo" value={returnTo} />
         <p className="text-xs text-zinc-600 dark:text-zinc-400">
           Notes are created with staff-only visibility. Author attribution resolves from your linked organization person via Clerk authentication. If no person link is detected, attribution falls back to an admin person in the organization.
         </p>
@@ -188,7 +191,7 @@ export default async function NewNotePage({
           </div>
         </div>
 
-        <FormActions submitLabel="Create note" cancelHref="/notes" />
+        <FormActions submitLabel="Create note" cancelHref={returnTo} />
       </form>
     </section>
   );

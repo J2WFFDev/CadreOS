@@ -25,6 +25,7 @@ import {
   resolveActorRoleContext,
 } from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import { appendReturnToParam, resolveSafeReturnPath } from "@/lib/navigation-context";
 import { classifyObservationNoteOperationalVisibility } from "@/lib/operational-visibility";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -33,10 +34,13 @@ export const dynamic = "force-dynamic";
 
 export default async function NoteDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ noteId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { noteId } = await params;
+  const resolvedSearchParams = await searchParams;
   const scope = await getOrganizationScope();
 
   if (!scope.databaseReady) {
@@ -293,21 +297,26 @@ export default async function NoteDetailPage({
       : null;
   const unresolvedTaskCount = note.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
   const isContextFree = !note.athlete && !note.team && !note.event;
+  const returnToRaw = resolvedSearchParams.returnTo;
+  const returnToValue = Array.isArray(returnToRaw) ? (returnToRaw[0] ?? "") : (returnToRaw ?? "");
+  const returnTo = resolveSafeReturnPath(returnToValue, "/notes");
+  const editNoteHref = appendReturnToParam(`/notes/${note.id}/edit`, `/notes/${note.id}?returnTo=${encodeURIComponent(returnTo)}`);
+  const createFollowUpHref = appendReturnToParam(`/tasks/new?sourceNoteId=${note.id}`, `/notes/${note.id}?returnTo=${encodeURIComponent(returnTo)}`);
 
   return (
     <section className="space-y-6">
       <div className="space-y-1">
-        <BackLink href="/notes" label="Notes" />
+        <BackLink href={returnTo} label="Notes" />
         <h2 className="text-2xl font-semibold tracking-tight">Observation note</h2>
         <div className="flex flex-wrap gap-2">
           <Link
-            href={`/notes/${note.id}/edit`}
+            href={editNoteHref}
             className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Edit note
           </Link>
           <Link
-            href={`/tasks/new?sourceNoteId=${note.id}`}
+            href={createFollowUpHref}
             className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Create follow-up task

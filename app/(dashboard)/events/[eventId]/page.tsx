@@ -23,6 +23,7 @@ import {
   hasResolvedFollowUpTaskOperationalVisibility,
   SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
 } from "@/lib/operational-visibility";
+import { appendReturnToParam } from "@/lib/navigation-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 import { selectSeededOrCurrentSeason } from "@/lib/workflows";
 
@@ -353,6 +354,8 @@ export default async function EventDetailsPage({
     : AttendanceStatus.PRESENT;
   const attendanceReasonCode = readSearchParam(resolvedSearchParams, "attendanceReasonCode");
   const attendanceError = readSearchParam(resolvedSearchParams, "attendanceError");
+  const attendanceContinue = readSearchParam(resolvedSearchParams, "attendanceContinue") === "1";
+  const attendanceSaved = readSearchParam(resolvedSearchParams, "attendanceSaved") === "1";
   const attendanceViewParam = readSearchParam(resolvedSearchParams, "attendanceView");
   const attendanceView =
     attendanceViewParam === "all" ||
@@ -461,7 +464,10 @@ export default async function EventDetailsPage({
     : attendanceMissingCount > 0
       ? `Attendance missing for part of ${selectedAttendanceSeason ? `${selectedAttendanceSeason.name} ` : ""}team roster`
       : `Attendance captured for all ${selectedAttendanceSeason ? `${selectedAttendanceSeason.name} ` : ""}rostered team members`;
-  const fieldOpsBookingHref = `/field-ops/bookings/new?eventId=${event.id}`;
+  const eventWorkflowReturnTo = `/events/${event.id}#attendance-workflow`;
+  const fieldOpsBookingHref = appendReturnToParam(`/field-ops/bookings/new?eventId=${event.id}`, eventWorkflowReturnTo);
+  const newTaskHref = appendReturnToParam(`/tasks/new?sourceEventId=${event.id}`, eventWorkflowReturnTo);
+  const newNoteHref = appendReturnToParam(`/notes/new?eventId=${event.id}`, eventWorkflowReturnTo);
 
   return (
     <section className="space-y-6">
@@ -479,13 +485,13 @@ export default async function EventDetailsPage({
             Attendance workflow
           </Link>
           <Link
-            href={`/tasks/new?sourceEventId=${event.id}`}
+            href={newTaskHref}
             className="inline-flex min-h-9 items-center rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Create follow-up task
           </Link>
           <Link
-            href={`/notes/new?eventId=${event.id}`}
+            href={newNoteHref}
             className="inline-flex min-h-9 items-center rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Add note
@@ -598,11 +604,11 @@ export default async function EventDetailsPage({
         {attendanceConcernCount > 0 ? (
           <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
             Attendance concern follow-up is recommended. Capture a linked{" "}
-            <Link href={`/notes/new?eventId=${event.id}`} className="underline">
+            <Link href={newNoteHref} className="underline">
               note
             </Link>{" "}
             and create a{" "}
-            <Link href={`/tasks/new?sourceEventId=${event.id}`} className="underline">
+            <Link href={newTaskHref} className="underline">
               follow-up task
             </Link>
             .
@@ -634,10 +640,10 @@ export default async function EventDetailsPage({
           <Link href={`/tasks?eventId=${event.id}&changedWindow=last_7d`} className="rounded-full border px-2 py-1">
             Recent related activity
           </Link>
-          <Link href={`/notes/new?eventId=${event.id}`} className="rounded-full border px-2 py-1">
+          <Link href={newNoteHref} className="rounded-full border px-2 py-1">
             Add event note
           </Link>
-          <Link href={`/tasks/new?sourceEventId=${event.id}`} className="rounded-full border px-2 py-1">
+          <Link href={newTaskHref} className="rounded-full border px-2 py-1">
             New event follow-up
           </Link>
           <Link href="#operational-history" className="rounded-full border px-2 py-1">
@@ -681,7 +687,7 @@ export default async function EventDetailsPage({
               View event notes
             </Link>
             <span className="text-zinc-500 dark:text-zinc-400">•</span>
-            <Link href={`/notes/new?eventId=${event.id}`} className="underline">
+            <Link href={newNoteHref} className="underline">
               Add note
             </Link>
           </div>
@@ -698,7 +704,7 @@ export default async function EventDetailsPage({
               return (
                 <li key={note.id} className="rounded-md border p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Link href={`/notes/${note.id}`} className="font-medium underline">
+                    <Link href={appendReturnToParam(`/notes/${note.id}`, eventWorkflowReturnTo)} className="font-medium underline">
                       {note.body.length > 120 ? `${note.body.slice(0, 120)}…` : note.body}
                     </Link>
                     <span className="text-xs text-zinc-600 dark:text-zinc-400">
@@ -725,7 +731,7 @@ export default async function EventDetailsPage({
               Open tasks workflow
             </Link>
             <span className="text-zinc-500 dark:text-zinc-400">•</span>
-            <Link href={`/tasks/new?sourceEventId=${event.id}`} className="underline">
+            <Link href={newTaskHref} className="underline">
               Create follow-up task
             </Link>
           </div>
@@ -740,7 +746,7 @@ export default async function EventDetailsPage({
             {eventTasks.map((task) => (
               <li key={task.id} className="rounded-md border p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Link href={`/tasks/${task.id}`} className="font-medium underline">
+                  <Link href={appendReturnToParam(`/tasks/${task.id}`, eventWorkflowReturnTo)} className="font-medium underline">
                     {task.title}
                   </Link>
                   <span
@@ -768,7 +774,7 @@ export default async function EventDetailsPage({
                 {task.sourceNote ? (
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                     Note:{" "}
-                    <Link href={`/notes/${task.sourceNote.id}`} className="underline">
+                    <Link href={appendReturnToParam(`/notes/${task.sourceNote.id}`, eventWorkflowReturnTo)} className="underline">
                       {task.sourceNote.body.length > 90 ? `${task.sourceNote.body.slice(0, 90)}…` : task.sourceNote.body}
                     </Link>
                   </p>
@@ -825,6 +831,7 @@ export default async function EventDetailsPage({
             <input type="hidden" name="attendancePersonId" value={attendancePersonId} />
             <input type="hidden" name="attendanceStatus" value={attendanceStatus} />
             <input type="hidden" name="attendanceReasonCode" value={attendanceReasonCode} />
+            <input type="hidden" name="attendanceContinue" value={attendanceContinue ? "1" : ""} />
             <label htmlFor="attendanceView" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
               Attendance filter
             </label>
@@ -865,11 +872,11 @@ export default async function EventDetailsPage({
             related tasks
           </Link>
           <span>•</span>
-          <Link href={`/notes/new?eventId=${event.id}`} className="underline">
+          <Link href={newNoteHref} className="underline">
             add attendance concern note
           </Link>
           <span>•</span>
-          <Link href={`/tasks/new?sourceEventId=${event.id}`} className="underline">
+          <Link href={newTaskHref} className="underline">
             create follow-up task
           </Link>
         </div>
@@ -951,11 +958,11 @@ export default async function EventDetailsPage({
                 </ul>
                 <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
                   Missing attendance is an unresolved operational item. Capture context in{" "}
-                  <Link href={`/notes/new?eventId=${event.id}`} className="underline">
+                  <Link href={newNoteHref} className="underline">
                     notes
                   </Link>{" "}
                   and track action in{" "}
-                  <Link href={`/tasks/new?sourceEventId=${event.id}`} className="underline">
+                  <Link href={newTaskHref} className="underline">
                     follow-up tasks
                   </Link>
                   .
@@ -1059,6 +1066,13 @@ export default async function EventDetailsPage({
             <p className="text-sm text-amber-900 dark:text-amber-200">{attendanceError}</p>
           </div>
         ) : null}
+        {attendanceSaved ? (
+          <div className="mt-3 rounded-md border border-emerald-300 bg-emerald-50 p-3 dark:border-emerald-700 dark:bg-emerald-950/40">
+            <p className="text-sm text-emerald-800 dark:text-emerald-200">
+              Attendance saved. Continue-capture mode keeps status/reason context for rapid entry.
+            </p>
+          </div>
+        ) : null}
 
         {attendancePeople.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
@@ -1066,6 +1080,7 @@ export default async function EventDetailsPage({
           </p>
         ) : (
           <form id="attendance-capture-form" action={`/events/${event.id}/attendance`} method="post" className="mt-3 space-y-4">
+            <input type="hidden" name="attendanceView" value={attendanceView} />
             <div className="space-y-1">
               <label htmlFor="attendancePersonId" className="text-sm font-medium">
                 Person
@@ -1124,6 +1139,19 @@ export default async function EventDetailsPage({
                 <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "attendanceReasonCodeError")}</p>
               ) : null}
             </div>
+
+            <label className="flex items-start gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-2 text-sm dark:border-zinc-700 dark:bg-zinc-800/40">
+              <input
+                type="checkbox"
+                name="continueCapture"
+                value="1"
+                defaultChecked={attendanceContinue}
+                className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-black focus:ring-black dark:border-zinc-600 dark:bg-zinc-900 dark:focus:ring-white"
+              />
+              <span className="text-zinc-600 dark:text-zinc-400">
+                Continue rapid-entry mode after save (keep attendance status/reason and return to this form).
+              </span>
+            </label>
 
             <button type="submit" className="rounded-md bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black">
               Save attendance

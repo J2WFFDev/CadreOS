@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { canReadStaffOnlyContent, resolveActorRoleContext } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -149,6 +150,7 @@ export default async function EditNotePage({
   const athletePersonId = readSearchParam(resolvedSearchParams, "athletePersonId") || note.athletePersonId || "";
   const teamId = readSearchParam(resolvedSearchParams, "teamId") || note.teamId || "";
   const eventId = readSearchParam(resolvedSearchParams, "eventId") || note.eventId || "";
+  const returnTo = resolveSafeReturnPath(readSearchParam(resolvedSearchParams, "returnTo"), `/notes/${note.id}`);
   const generalError = readSearchParam(resolvedSearchParams, "error");
 
   return (
@@ -167,6 +169,7 @@ export default async function EditNotePage({
       ) : null}
 
       <form action={`/notes/${note.id}/edit/update`} method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <input type="hidden" name="returnTo" value={returnTo} />
         <div className="space-y-1">
           <label htmlFor="body" className="text-sm font-medium">
             Note body
@@ -239,7 +242,7 @@ export default async function EditNotePage({
           <button type="submit" className="rounded-md bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black">
             Save note
           </button>
-          <Link href={`/notes/${note.id}`} className="rounded-md border px-4 py-2 text-sm">
+          <Link href={returnTo} className="rounded-md border px-4 py-2 text-sm">
             Cancel
           </Link>
         </div>

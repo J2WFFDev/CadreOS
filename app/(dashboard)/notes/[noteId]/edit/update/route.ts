@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeObservationNoteEntryRuntimeRef } from "@/lib/entry-runtime";
+import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
@@ -13,7 +14,7 @@ import {
 } from "@/lib/workflows";
 
 function buildErrorRedirectUrl(requestUrl: string, noteId: string, input: {
-  values: { body: string; athletePersonId: string; teamId: string; eventId: string };
+  values: { body: string; athletePersonId: string; teamId: string; eventId: string; returnTo: string };
   fieldErrors?: Partial<Record<"body" | "athletePersonId" | "teamId" | "eventId", string>>;
   error?: string;
 }) {
@@ -23,6 +24,7 @@ function buildErrorRedirectUrl(requestUrl: string, noteId: string, input: {
   url.searchParams.set("athletePersonId", input.values.athletePersonId);
   url.searchParams.set("teamId", input.values.teamId);
   url.searchParams.set("eventId", input.values.eventId);
+  url.searchParams.set("returnTo", resolveSafeReturnPath(input.values.returnTo, `/notes/${noteId}`));
 
   if (input.fieldErrors?.body) {
     url.searchParams.set("bodyError", input.fieldErrors.body);
@@ -56,6 +58,7 @@ export async function POST(
     athletePersonId: getStringField(formData, "athletePersonId"),
     teamId: getStringField(formData, "teamId"),
     eventId: getStringField(formData, "eventId"),
+    returnTo: getStringField(formData, "returnTo"),
   };
 
   if (!scope.databaseReady) {
@@ -228,7 +231,10 @@ export async function POST(
       // Entry wrapper sync remains non-authoritative and must not block note updates.
     }
 
-    return NextResponse.redirect(new URL(`/notes/${noteId}`, request.url), 303);
+    return NextResponse.redirect(
+      new URL(resolveSafeReturnPath(values.returnTo, `/notes/${noteId}`), request.url),
+      303,
+    );
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
       return NextResponse.redirect(

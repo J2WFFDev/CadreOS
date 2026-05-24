@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeFollowUpTaskEntryRuntimeRef } from "@/lib/entry-runtime";
+import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import {
   classifyFollowUpTaskOperationalVisibility,
   classifyObservationNoteOperationalVisibility,
@@ -25,6 +26,7 @@ function buildErrorRedirectUrl(requestUrl: string, taskId: string, input: {
     dueAt: string;
     sourceNoteId: string;
     sourceEventId: string;
+    returnTo: string;
   };
   fieldErrors?: Partial<
     Record<"title" | "description" | "status" | "assigneePersonId" | "dueAt" | "sourceNoteId" | "sourceEventId", string>
@@ -40,6 +42,7 @@ function buildErrorRedirectUrl(requestUrl: string, taskId: string, input: {
   url.searchParams.set("dueAt", input.values.dueAt);
   url.searchParams.set("sourceNoteId", input.values.sourceNoteId);
   url.searchParams.set("sourceEventId", input.values.sourceEventId);
+  url.searchParams.set("returnTo", resolveSafeReturnPath(input.values.returnTo, `/tasks/${taskId}`));
 
   if (input.fieldErrors?.title) {
     url.searchParams.set("titleError", input.fieldErrors.title);
@@ -85,6 +88,7 @@ export async function POST(
     dueAt: getStringField(formData, "dueAt"),
     sourceNoteId: getStringField(formData, "sourceNoteId"),
     sourceEventId: getStringField(formData, "sourceEventId"),
+    returnTo: getStringField(formData, "returnTo"),
   };
 
   if (!scope.databaseReady) {
@@ -357,7 +361,10 @@ export async function POST(
       // Entry wrapper sync remains non-authoritative and must not block task updates.
     }
 
-    return NextResponse.redirect(new URL(`/tasks/${taskId}`, request.url), 303);
+    return NextResponse.redirect(
+      new URL(resolveSafeReturnPath(values.returnTo, `/tasks/${taskId}`), request.url),
+      303,
+    );
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
       return NextResponse.redirect(
