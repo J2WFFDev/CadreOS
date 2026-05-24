@@ -100,6 +100,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 10C Validation Checklist](./PHASE_10C_VALIDATION_CHECKLIST.md)
 - [Phase 10D Read-Only Entry Relationship View](./PHASE_10D_ENTRY_RELATIONSHIP_VIEW.md)
 - [Phase 10D Validation Checklist](./PHASE_10D_VALIDATION_CHECKLIST.md)
+- [Phase 10E Entry Runtime Stabilization and Closeout](./PHASE_10E_ENTRY_RUNTIME_STABILIZATION_CLOSEOUT.md)
+- [Phase 10E Validation Checklist](./PHASE_10E_VALIDATION_CHECKLIST.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -165,6 +167,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 10C Validation Checklist](./PHASE_10C_VALIDATION_CHECKLIST.md)
 - [Phase 10D Read-Only Entry Relationship View](./PHASE_10D_ENTRY_RELATIONSHIP_VIEW.md)
 - [Phase 10D Validation Checklist](./PHASE_10D_VALIDATION_CHECKLIST.md)
+- [Phase 10E Entry Runtime Stabilization and Closeout](./PHASE_10E_ENTRY_RUNTIME_STABILIZATION_CLOSEOUT.md)
+- [Phase 10E Validation Checklist](./PHASE_10E_VALIDATION_CHECKLIST.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 
 ## Operational Foundation MVP Phase Sequence (8A–8P)
@@ -218,6 +222,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: adds a read-only Entry relationship detail surface and safe note/task navigation for wrapper traceability while keeping existing runtime models and authorization behavior authoritative.
 - [Phase 10D Validation Checklist](./PHASE_10D_VALIDATION_CHECKLIST.md)
   - Summary: verifies relationship-view read-only behavior, workflow continuity, scoping/authorization safety, and deferred Feed/Inbox/Journal/messaging/notifications/runtime automation boundaries.
+- [Phase 10E Entry Runtime Stabilization and Closeout](./PHASE_10E_ENTRY_RUNTIME_STABILIZATION_CLOSEOUT.md)
+  - Summary: closes out the minimal Entry runtime arc with consolidated scope documentation, explicit deferred boundaries, rollback/reset guidance, and a safest-next-arc recommendation.
+- [Phase 10E Validation Checklist](./PHASE_10E_VALIDATION_CHECKLIST.md)
+  - Summary: verifies current note/task workflow continuity, read-only wrapper context safety, organization-scoped authorization behavior, additive/reversible guarantees, and deferred runtime boundaries.
 
 ---
 
