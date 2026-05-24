@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { href: "/teams", label: "Teams" },
   { href: "/events", label: "Events" },
   { href: "/field-ops", label: "FieldOps" },
+  { href: "/gear-ops", label: "GearOps" },
   { href: "/notes", label: "Notes" },
   { href: "/tasks", label: "Tasks" },
   { href: "/account", label: "Account" },

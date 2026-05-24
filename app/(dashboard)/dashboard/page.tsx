@@ -100,6 +100,11 @@ const NAVIGATION_CARDS = [
     description: "Review facilities, resources, and bookings across the organization.",
   },
   {
+    href: "/gear-ops",
+    title: "GearOps",
+    description: "Review gear categories, item lifecycle status, and accountability context.",
+  },
+  {
     href: "/notes",
     title: "Notes",
     description: "Review the latest operational and coaching notes.",
