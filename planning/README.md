@@ -9,6 +9,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Domain Model](./DOMAIN_MODEL.md)
 - [Phase 7A MVP Recenter Roadmap (recommended Phase 7B direction)](./ROADMAP.md)
 - [Roadmap: Core MVP, FieldOps, GearOps](./ROADMAP_CORE_FIELDOPS_GEAROPS.md)
+- [Roadmap Reset (Post-15A): GearOps Next Build Arc](./ROADMAP_POST_15A_GEAROPS_NEXT.md)
 - [Notes / Inbox / Entry Model](./NOTES_INBOX_ENTRY_MODEL.md)
 - [User Stories](./USER_STORIES.md)
 - [MVP Spec](./MVP_SPEC.md)
