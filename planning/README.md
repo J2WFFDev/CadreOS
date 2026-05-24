@@ -244,6 +244,8 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: defines communication categories, boundary separations, communication risk controls, deferred runtime scope, a safe-first internal staff communication slice, and a blocking checklist before runtime messaging.
 - [Phase 12B Internal Communication/Notification Classification Foundation](./PHASE_12B_INTERNAL_COMMUNICATION_NOTIFICATION_CLASSIFICATION_FOUNDATION.md)
   - Summary: implements lightweight internal-only communication/notification event classification metadata across existing operational surfaces while keeping all delivery, messaging, Feed/Inbox, guardian runtime communication, and automation behavior deferred.
+- [Phase 12C Internal Notification-Candidate Evaluation Foundation](./PHASE_12C_INTERNAL_NOTIFICATION_CANDIDATE_EVALUATION_FOUNDATION.md)
+  - Summary: adds lightweight internal-only notification-candidate evaluation metadata for overdue/unresolved/attendance/readiness/assignment contexts while keeping runtime delivery, messaging, Feed/Inbox, guardian communication, and automation behavior deferred.
 
 ---
 
@@ -309,6 +311,7 @@ Do not implement any delivery channel runtime behavior until:
 Milestones delivered:
 - [Phase 12A Communication & Coordination Architecture Boundaries](./PHASE_12A_COMMUNICATION_COORDINATION_ARCHITECTURE_BOUNDARIES.md) (communication categories, consent/authorization boundary framing, delivery expectations, failure/audit guidance, and runtime blockers).
 - [Phase 12B Internal Communication/Notification Classification Foundation](./PHASE_12B_INTERNAL_COMMUNICATION_NOTIFICATION_CLASSIFICATION_FOUNDATION.md) (internal-only event categorization metadata on operational surfaces with delivery/messaging/guardian communication/feed/inbox behavior still deferred).
+- [Phase 12C Internal Notification-Candidate Evaluation Foundation](./PHASE_12C_INTERNAL_NOTIFICATION_CANDIDATE_EVALUATION_FOUNDATION.md) (internal-only candidate evaluation metadata for operational concerns with all runtime communication and automation behavior still deferred).
 
 ### Track 4 — AI / Automation (deferred)
 

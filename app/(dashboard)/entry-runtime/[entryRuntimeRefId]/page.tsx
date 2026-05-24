@@ -3,8 +3,10 @@ import { EntryRuntimeSourceModelType, EntryRuntimeVisibilityClass } from "@prism
 
 import { BackLink } from "@/components/dashboard/back-link";
 import {
+  classifyCommunicationCategoryNotificationCandidate,
   classifyEntryRuntimeCommunicationCategory,
   getInternalCommunicationEventClassification,
+  getInternalNotificationCandidateEvaluation,
 } from "@/lib/communication-classification";
 import { db } from "@/lib/db";
 import { formatDateTime, formatEnumLabel, getTaskStatusBadgeClassName } from "@/lib/follow-up-tasks";
@@ -256,8 +258,10 @@ export default async function EntryRuntimeDetailPage({
       : null;
   const linkedObservationNoteFromTask = linkedFollowUpTask?.sourceNote ?? null;
   const linkedObservationNoteRecord = linkedObservationNote ?? linkedObservationNoteFromTask;
-  const communicationClassification = getInternalCommunicationEventClassification(
-    classifyEntryRuntimeCommunicationCategory(entryRuntimeRef.sourceModelType),
+  const communicationCategory = classifyEntryRuntimeCommunicationCategory(entryRuntimeRef.sourceModelType);
+  const communicationClassification = getInternalCommunicationEventClassification(communicationCategory);
+  const notificationCandidateEvaluation = getInternalNotificationCandidateEvaluation(
+    classifyCommunicationCategoryNotificationCandidate(communicationCategory),
   );
 
   return (
@@ -321,6 +325,12 @@ export default async function EntryRuntimeDetailPage({
           <div>
             <dt className="font-medium">Communication classification (internal)</dt>
             <dd className="text-zinc-600 dark:text-zinc-400">{communicationClassification.categoryLabel}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Notification candidate (internal)</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {notificationCandidateEvaluation.candidateLabel ?? "No active candidate"}
+            </dd>
           </div>
           <div>
             <dt className="font-medium">Linked athlete pointer</dt>
@@ -470,7 +480,8 @@ export default async function EntryRuntimeDetailPage({
 
       <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/40 dark:text-zinc-400">
         <strong className="font-medium">Intentionally deferred:</strong> Feed, Inbox, Journal, messaging, notifications,
-        guardian-facing runtime behavior, and workflow automation are not implemented in this view.
+        guardian-facing runtime behavior, and workflow automation are not implemented in this view. Notification candidate
+        evaluation is metadata-only and does not perform delivery.
       </div>
     </section>
   );

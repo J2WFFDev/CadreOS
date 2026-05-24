@@ -484,6 +484,12 @@ export default async function NoteDetailPage({
               </dd>
             </div>
             <div>
+              <dt className="font-medium">Notification candidate (internal)</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">
+                {entryRuntimeSummary.notificationCandidateEvaluation.candidateLabel ?? "No active candidate"}
+              </dd>
+            </div>
+            <div>
               <dt className="font-medium">Wrapper author pointer</dt>
               <dd className="text-zinc-600 dark:text-zinc-400">{entryRuntimeSummary.entryRuntimeRef.authorPersonId}</dd>
             </div>
@@ -533,6 +539,7 @@ export default async function NoteDetailPage({
         {entryRuntimeSummary?.status === "linked" ? (
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             Classification is internal-only ({getInternalCommunicationEventClassification(entryRuntimeSummary.communicationClassification.category).categoryLabel});
+            notification candidate evaluation is metadata-only ({entryRuntimeSummary.notificationCandidateEvaluation.candidateLabel ?? "no active candidate"});
             delivery, messaging, and guardian communication remain deferred.
           </p>
         ) : null}

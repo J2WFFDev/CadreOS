@@ -1,11 +1,16 @@
 import { AttendanceStatus, Prisma, RoleType, TaskStatus } from "@prisma/client";
 
 import {
+  classifyCommunicationCategoryNotificationCandidate,
   classifyAttendanceCommunicationCategory,
+  classifyFollowUpTaskNotificationCandidate,
   classifyFollowUpTaskCommunicationCategory,
   getInternalCommunicationEventClassification,
+  getInternalNotificationCandidateEvaluation,
   INTERNAL_COMMUNICATION_EVENT_CATEGORY,
   type InternalCommunicationEventClassification,
+  INTERNAL_NOTIFICATION_CANDIDATE_TYPE,
+  type InternalNotificationCandidateEvaluation,
 } from "@/lib/communication-classification";
 import { db } from "@/lib/db";
 import { formatDateTime, formatEnumLabel } from "@/lib/follow-up-tasks";
@@ -43,6 +48,7 @@ export type OperationalHistoryItem = {
       };
   unresolvedLabel?: string | null;
   communicationClassification: InternalCommunicationEventClassification;
+  notificationCandidateEvaluation: InternalNotificationCandidateEvaluation;
 };
 
 export async function getOperationalHistory(input: {
@@ -450,6 +456,13 @@ export async function getOperationalHistory(input: {
               dueAt: task.dueAt,
             }),
           ),
+          notificationCandidateEvaluation: getInternalNotificationCandidateEvaluation(
+            classifyFollowUpTaskNotificationCandidate({
+              status: task.status,
+              dueAt: task.dueAt,
+              updatedAt: task.updatedAt,
+            }),
+          ),
         };
       }),
     ...notes.flatMap((note) => {
@@ -492,6 +505,11 @@ export async function getOperationalHistory(input: {
               ? INTERNAL_COMMUNICATION_EVENT_CATEGORY.FOLLOW_UP_REMINDER_CANDIDATE
               : INTERNAL_COMMUNICATION_EVENT_CATEGORY.OPERATIONAL_UPDATE,
           ),
+          notificationCandidateEvaluation: getInternalNotificationCandidateEvaluation(
+            unresolvedTaskCount > 0
+              ? INTERNAL_NOTIFICATION_CANDIDATE_TYPE.UNRESOLVED_OPERATIONAL_CONCERN
+              : null,
+          ),
         }];
       }),
     ...attendanceRecords.flatMap((attendance) => {
@@ -527,6 +545,11 @@ export async function getOperationalHistory(input: {
           unresolvedLabel: hasOperationalConcern ? formatEnumLabel(attendance.status) : null,
           communicationClassification: getInternalCommunicationEventClassification(
             classifyAttendanceCommunicationCategory(attendance.status),
+          ),
+          notificationCandidateEvaluation: getInternalNotificationCandidateEvaluation(
+            classifyCommunicationCategoryNotificationCandidate(
+              classifyAttendanceCommunicationCategory(attendance.status),
+            ),
           ),
         }];
       }),
@@ -580,6 +603,11 @@ export async function getOperationalHistory(input: {
               ? INTERNAL_COMMUNICATION_EVENT_CATEGORY.READINESS_CONCERN
               : INTERNAL_COMMUNICATION_EVENT_CATEGORY.INFORMATIONAL_OPERATIONAL_EVENT,
           ),
+          notificationCandidateEvaluation: getInternalNotificationCandidateEvaluation(
+            hasOperationalConcern
+              ? INTERNAL_NOTIFICATION_CANDIDATE_TYPE.READINESS_CONCERN
+              : null,
+          ),
         }];
       }),
     ...rosterMemberships.map((membership) => ({
@@ -602,6 +630,9 @@ export async function getOperationalHistory(input: {
       unresolvedLabel: null,
       communicationClassification: getInternalCommunicationEventClassification(
         INTERNAL_COMMUNICATION_EVENT_CATEGORY.ASSIGNMENT_UPDATE_EVENT,
+      ),
+      notificationCandidateEvaluation: getInternalNotificationCandidateEvaluation(
+        INTERNAL_NOTIFICATION_CANDIDATE_TYPE.ASSIGNMENT_UPDATE_AWARENESS,
       ),
     })),
     ...roleAssignments.map((assignment) => ({
@@ -626,6 +657,9 @@ export async function getOperationalHistory(input: {
       unresolvedLabel: null,
       communicationClassification: getInternalCommunicationEventClassification(
         INTERNAL_COMMUNICATION_EVENT_CATEGORY.ASSIGNMENT_UPDATE_EVENT,
+      ),
+      notificationCandidateEvaluation: getInternalNotificationCandidateEvaluation(
+        INTERNAL_NOTIFICATION_CANDIDATE_TYPE.ASSIGNMENT_UPDATE_AWARENESS,
       ),
     })),
   ];
