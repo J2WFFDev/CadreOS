@@ -125,6 +125,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 14C Operational Context Continuity & Fast-Entry Optimizations](./PHASE_14C_OPERATIONAL_CONTEXT_CONTINUITY_FAST_ENTRY_OPTIMIZATIONS.md)
 - [Phase 14D Mobile & Capture Optimization Stabilization and Arc Closeout](./PHASE_14D_MOBILE_CAPTURE_OPTIMIZATION_STABILIZATION_CLOSEOUT.md)
 - [Phase 14D Validation Checklist](./PHASE_14D_VALIDATION_CHECKLIST.md)
+- [Phase 15A Practical User Test Case Suite](./PHASE_15A_USER_TEST_CASE_SUITE.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -298,6 +299,8 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: closes Arc 14 with consolidated mobile/capture runtime-boundary verification and operational-speed validation, confirms current staff-scoped rapid-capture behavior, documents explicit deferred scope (offline sync/local queues/native mobile/push/messaging/Feed/Inbox/guardian runtime), adds “Do Not Build Yet” and production risk tracking, and records post-arc strategic options.
 - [Phase 14D Validation Checklist](./PHASE_14D_VALIDATION_CHECKLIST.md)
   - Summary: validates mobile responsiveness, rapid-capture continuity, operational context preservation, authorization boundaries, organization scoping, and explicit non-implementation of offline/native mobile/push/Feed/Inbox/messaging runtime behavior.
+- [Phase 15A Practical User Test Case Suite](./PHASE_15A_USER_TEST_CASE_SUITE.md)
+  - Summary: provides a persona-based practical manual test suite for implemented CadreOS workflows (auth/bootstrap, roster/roles, guardian visibility, events/attendance, notes/tasks, dashboard review, FieldOps MVP, Entry wrapper read-only context, rapid-capture, and deployment smoke), including end-to-end scenarios, negative/edge checks, defect logging template, and execution status tracking.
 
 ---
 
