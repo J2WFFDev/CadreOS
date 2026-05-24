@@ -243,16 +243,17 @@ export default async function GearOpsItemDetailsPage({
     );
   }
 
+  const gearItem = item;
   const currentAssignmentStatuses = new Set<GearAssignmentStatus>([
     GearAssignmentStatus.PENDING,
     GearAssignmentStatus.ACTIVE,
     GearAssignmentStatus.OVERDUE,
   ]);
-  const currentAssignments = item.assignments.filter((assignment) => currentAssignmentStatuses.has(assignment.status));
-  const assignmentHistory = item.assignments.filter((assignment) => !currentAssignmentStatuses.has(assignment.status));
+  const currentAssignments = gearItem.assignments.filter((assignment) => currentAssignmentStatuses.has(assignment.status));
+  const assignmentHistory = gearItem.assignments.filter((assignment) => !currentAssignmentStatuses.has(assignment.status));
 
-  function renderAssignmentCard(assignment: (typeof item.assignments)[number]) {
-    const assignmentProgram = assignment.assignedEvent?.program ?? assignment.assignedTeam?.program ?? item.program;
+  function renderAssignmentCard(assignment: (typeof gearItem.assignments)[number]) {
+    const assignmentProgram = assignment.assignedEvent?.program ?? assignment.assignedTeam?.program ?? gearItem.program;
 
     return (
       <article key={assignment.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
@@ -261,7 +262,7 @@ export default async function GearOpsItemDetailsPage({
             {formatGearOpsEnum(assignment.status)} · Assigned {formatGearOpsDateTime(assignment.assignedAt)}
           </p>
           <Link
-            href={`/gear-ops/items/${item.id}/assignments/${assignment.id}/edit`}
+            href={`/gear-ops/items/${gearItem.id}/assignments/${assignment.id}/edit`}
             className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Edit
