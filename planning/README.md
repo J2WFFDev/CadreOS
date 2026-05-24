@@ -102,6 +102,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 10D Validation Checklist](./PHASE_10D_VALIDATION_CHECKLIST.md)
 - [Phase 10E Entry Runtime Stabilization and Closeout](./PHASE_10E_ENTRY_RUNTIME_STABILIZATION_CLOSEOUT.md)
 - [Phase 10E Validation Checklist](./PHASE_10E_VALIDATION_CHECKLIST.md)
+- [Phase 11A Pilot Validation Plan and Build/Deployment Verification](./PHASE_11A_PILOT_VALIDATION_PLAN.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -169,6 +170,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 10D Validation Checklist](./PHASE_10D_VALIDATION_CHECKLIST.md)
 - [Phase 10E Entry Runtime Stabilization and Closeout](./PHASE_10E_ENTRY_RUNTIME_STABILIZATION_CLOSEOUT.md)
 - [Phase 10E Validation Checklist](./PHASE_10E_VALIDATION_CHECKLIST.md)
+- [Phase 11A Pilot Validation Plan and Build/Deployment Verification](./PHASE_11A_PILOT_VALIDATION_PLAN.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 
 ## Operational Foundation MVP Phase Sequence (8A–8P)
@@ -226,6 +228,8 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: closes out the minimal Entry runtime arc with consolidated scope documentation, explicit deferred boundaries, rollback/reset guidance, and a safest-next-arc recommendation.
 - [Phase 10E Validation Checklist](./PHASE_10E_VALIDATION_CHECKLIST.md)
   - Summary: verifies current note/task workflow continuity, read-only wrapper context safety, organization-scoped authorization behavior, additive/reversible guarantees, and deferred runtime boundaries.
+- [Phase 11A Pilot Validation Plan and Build/Deployment Verification](./PHASE_11A_PILOT_VALIDATION_PLAN.md)
+  - Summary: defines pilot demo/pilot readiness validation gates, deployment/build verification, coach end-to-end manual scenario testing, validation debt tracking, and explicit pilot blockers without expanding runtime scope.
 
 ---
 
