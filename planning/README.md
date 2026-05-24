@@ -120,6 +120,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 13D Validation Checklist](./PHASE_13D_VALIDATION_CHECKLIST.md)
 - [Phase 13E Operational Intelligence Stabilization and Arc Closeout](./PHASE_13E_OPERATIONAL_INTELLIGENCE_STABILIZATION_CLOSEOUT.md)
 - [Phase 13E Validation Checklist](./PHASE_13E_VALIDATION_CHECKLIST.md)
+- [Phase 14A Mobile & Rapid Capture Architecture Boundaries](./PHASE_14A_MOBILE_RAPID_CAPTURE_ARCHITECTURE_BOUNDARIES.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -283,6 +284,8 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: closes Arc 13 with a consolidated Operational Intelligence scope verification across summary classification, readiness metadata, and awareness visibility; documents what remains intentionally non-AI/non-recommendation/non-automation; adds a "Do Not Build Yet" list, Arc 14 Mobile/Capture boundary recommendations, and production risk tracking.
 - [Phase 13E Validation Checklist](./PHASE_13E_VALIDATION_CHECKLIST.md)
   - Summary: validates awareness visibility, readiness metadata behavior, summary classification behavior, authorization boundaries, organization scoping, and explicit no-AI/no-recommendation/no-automation/no-guardian-intelligence/no-Feed/Inbox runtime confirmations for Arc 13 closeout.
+- [Phase 14A Mobile & Rapid Capture Architecture Boundaries](./PHASE_14A_MOBILE_RAPID_CAPTURE_ARCHITECTURE_BOUNDARIES.md)
+  - Summary: defines Mobile & Rapid Capture architecture boundaries before runtime offline/mobile-native expansion; reviews Arc 8–13 workflows and current capture friction (attendance, notes, follow-ups, operational review, events, FieldOps), separates mobile optimization from offline runtime and Feed/Inbox/messaging/automation concerns, documents mobile/capture risk areas, adds a “Do Not Implement Yet” list, recommends a safe-first staff mobile web capture slice, and provides a blocking checklist before offline/mobile runtime behavior.
 
 ---
 
