@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { writeObservationNoteEntryRuntimeRef } from "@/lib/entry-runtime";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
@@ -198,6 +199,33 @@ export async function POST(
         }),
         303,
       );
+    }
+
+    try {
+      const updatedNote = await db.observationNote.findFirst({
+        where: {
+          id: noteId,
+          organizationId: scope.organizationId,
+        },
+        select: {
+          id: true,
+          organizationId: true,
+          authorPersonId: true,
+          visibility: true,
+          athletePersonId: true,
+          teamId: true,
+          eventId: true,
+        },
+      });
+
+      if (updatedNote) {
+        await writeObservationNoteEntryRuntimeRef({
+          organizationId: scope.organizationId,
+          note: updatedNote,
+        });
+      }
+    } catch {
+      // Entry wrapper sync remains non-authoritative and must not block note updates.
     }
 
     return NextResponse.redirect(new URL(`/notes/${noteId}`, request.url), 303);

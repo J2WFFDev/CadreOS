@@ -9,6 +9,28 @@ import { db } from "@/lib/db";
 
 export type EntryRuntimeRefWriteOutcome = "disabled" | "skipped" | "upserted";
 
+export type ObservationNoteEntryRuntimeSummary =
+  | {
+      status: "linked";
+      entryRuntimeRef: {
+        id: string;
+        sourceModelType: EntryRuntimeSourceModelType;
+        sourceModelId: string;
+        entryKind: EntryRuntimeKind;
+        authorPersonId: string;
+        visibilityClass: EntryRuntimeVisibilityClass;
+        athletePersonId: string | null;
+        teamId: string | null;
+        eventId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+      };
+    }
+  | {
+      status: "not_linked";
+      entryRuntimeRef: null;
+    };
+
 export function isObservationNoteEntryRuntimeRefWriteEnabled() {
   const rawValue = process.env.CADREOS_ENTRY_RUNTIME_NOTES_SIDECAR_WRITE?.toLowerCase();
 
@@ -68,4 +90,44 @@ export async function writeObservationNoteEntryRuntimeRef(input: {
   });
 
   return "upserted";
+}
+
+export async function getObservationNoteEntryRuntimeSummary(input: {
+  organizationId: string;
+  noteId: string;
+}): Promise<ObservationNoteEntryRuntimeSummary> {
+  const entryRuntimeRef = await db.entryRuntimeRef.findUnique({
+    where: {
+      organizationId_sourceModelType_sourceModelId: {
+        organizationId: input.organizationId,
+        sourceModelType: EntryRuntimeSourceModelType.OBSERVATION_NOTE,
+        sourceModelId: input.noteId,
+      },
+    },
+    select: {
+      id: true,
+      sourceModelType: true,
+      sourceModelId: true,
+      entryKind: true,
+      authorPersonId: true,
+      visibilityClass: true,
+      athletePersonId: true,
+      teamId: true,
+      eventId: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  if (!entryRuntimeRef) {
+    return {
+      status: "not_linked",
+      entryRuntimeRef: null,
+    };
+  }
+
+  return {
+    status: "linked",
+    entryRuntimeRef,
+  };
 }
