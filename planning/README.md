@@ -114,6 +114,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 13A Operational Intelligence Architecture Review](./PHASE_13A_OPERATIONAL_INTELLIGENCE_ARCHITECTURE_REVIEW.md)
 - [Phase 13B Operational Summary Classification Foundation](./PHASE_13B_OPERATIONAL_SUMMARY_CLASSIFICATION_FOUNDATION.md)
 - [Phase 13B Validation Checklist](./PHASE_13B_VALIDATION_CHECKLIST.md)
+- [Phase 13C Internal Readiness Evaluation Foundation](./PHASE_13C_INTERNAL_READINESS_EVALUATION_FOUNDATION.md)
+- [Phase 13C Validation Checklist](./PHASE_13C_VALIDATION_CHECKLIST.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -265,6 +267,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: adds `lib/operational-summary-classification.ts` and `OperationalSummaryClassificationPanel` to derive deterministic internal-only summary classifications from already-authorized operational history data. The runtime scope is limited to informational summary categorization for readiness, attendance, unresolved workload, follow-up workload, and assignment/load visibility; AI-generated summaries, recommendations, automation, guardian intelligence, and Feed/Inbox runtime behavior remain explicitly deferred.
 - [Phase 13B Validation Checklist](./PHASE_13B_VALIDATION_CHECKLIST.md)
   - Summary: confirms summary classification rendering, pure-helper boundaries, authorization and organization scope preservation, workflow continuity, and continued deferral of AI/recommendation/automation/Feed/Inbox behavior.
+- [Phase 13C Internal Readiness Evaluation Foundation](./PHASE_13C_INTERNAL_READINESS_EVALUATION_FOUNDATION.md)
+  - Summary: adds `lib/operational-readiness-evaluation.ts` and `OperationalReadinessEvaluationPanel` to derive deterministic internal-only readiness heuristics from already-authorized operational history and Phase 13B summary classifications. The runtime scope stays informational and staff-only for readiness, follow-up backlog, attendance review, staffing/load visibility, and unresolved operational issue concerns; AI analysis, recommendations, automation, guardian intelligence, and Feed/Inbox runtime behavior remain deferred.
+- [Phase 13C Validation Checklist](./PHASE_13C_VALIDATION_CHECKLIST.md)
+  - Summary: confirms readiness-evaluation rendering, pure-helper boundaries, authorization and organization scope preservation, workflow continuity, and continued deferral of AI/recommendation/automation/Feed/Inbox behavior.
 
 ---
 
@@ -347,6 +353,7 @@ Suggested first milestone: AI governance brief covering data readiness, use-case
 Milestones delivered:
 - [Phase 13A Operational Intelligence Architecture Review](./PHASE_13A_OPERATIONAL_INTELLIGENCE_ARCHITECTURE_REVIEW.md) (architecture boundary review covering intelligence concept definitions, operational data inventory, boundary separations — intelligence vs. automation, summaries vs. notifications, recommendations vs. workflow execution, awareness vs. escalation — five risk areas, "Do Not Implement Yet" section, Safe First Intelligence Slice recommendation, and Blocking Before Runtime Intelligence checklist). **Arc 13 architecture review complete.**
 - [Phase 13B Operational Summary Classification Foundation](./PHASE_13B_OPERATIONAL_SUMMARY_CLASSIFICATION_FOUNDATION.md) (lightweight runtime follow-through on the safe first slice: pure internal-only summary classification metadata plus a read-only dashboard section derived from existing authorized operational history, with AI/recommendation/automation/guardian intelligence/Feed/Inbox behavior still deferred). **Arc 13 safe summary-classification foundation delivered.**
+- [Phase 13C Internal Readiness Evaluation Foundation](./PHASE_13C_INTERNAL_READINESS_EVALUATION_FOUNDATION.md) (adds a lightweight internal readiness-evaluation layer on top of authorized operational history and Phase 13B summary classifications, with deterministic count-based heuristic metadata for readiness, backlog, attendance, staffing/load visibility, and unresolved operational issue concerns only; AI/recommendation/automation/guardian intelligence/Feed/Inbox behavior remains deferred). **Arc 13 readiness-evaluation foundation delivered.**
 
 ---
 

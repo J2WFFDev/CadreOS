@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { OperationalAwarenessPanel } from "@/components/dashboard/operational-awareness-panel";
+import { OperationalReadinessEvaluationPanel } from "@/components/dashboard/operational-readiness-evaluation-panel";
 import { OperationalSummaryClassificationPanel } from "@/components/dashboard/operational-summary-classification-panel";
 import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
 import { ReviewFocusPanel } from "@/components/dashboard/review-focus-panel";
@@ -21,6 +22,10 @@ import {
 import { getOrganizationScope } from "@/lib/organization-context";
 import { getOperationalHistory, type OperationalHistoryItem } from "@/lib/operational-history";
 import { buildOperationalAwarenessView, type OperationalAwarenessView } from "@/lib/operational-awareness";
+import {
+  buildOperationalReadinessEvaluationView,
+  type OperationalReadinessEvaluationView,
+} from "@/lib/operational-readiness-evaluation";
 import {
   buildOperationalSummaryClassificationView,
   type OperationalSummaryClassificationView,
@@ -514,6 +519,7 @@ export default async function DashboardPage() {
         unresolvedOperationalHistory: OperationalHistoryItem[];
         operationalAwarenessView: OperationalAwarenessView;
         operationalSummaryClassificationView: OperationalSummaryClassificationView;
+        operationalReadinessEvaluationView: OperationalReadinessEvaluationView;
         unresolvedEventConcerns: Array<{
           id: string;
           title: string;
@@ -1065,6 +1071,8 @@ export default async function DashboardPage() {
       ...unresolvedOperationalHistory.filter((item) => !recentOperationalHistory.some((recent) => recent.id === item.id)),
     ];
 
+    const operationalSummaryClassificationView = buildOperationalSummaryClassificationView(combinedOperationalHistory);
+
     dashboardData = {
       counts: {
         programs: programCount,
@@ -1094,7 +1102,11 @@ export default async function DashboardPage() {
       recentOperationalHistory,
       unresolvedOperationalHistory,
       operationalAwarenessView: buildOperationalAwarenessView(combinedOperationalHistory),
-      operationalSummaryClassificationView: buildOperationalSummaryClassificationView(combinedOperationalHistory),
+      operationalSummaryClassificationView,
+      operationalReadinessEvaluationView: buildOperationalReadinessEvaluationView({
+        items: combinedOperationalHistory,
+        summaryView: operationalSummaryClassificationView,
+      }),
       unresolvedEventConcerns,
       notesNeedingAttention,
       eventsMissingResponsibleTeam,
@@ -1866,6 +1878,9 @@ export default async function DashboardPage() {
           </div>
           <OperationalSummaryClassificationPanel
             summaryView={dashboardData.operationalSummaryClassificationView}
+          />
+          <OperationalReadinessEvaluationPanel
+            readinessView={dashboardData.operationalReadinessEvaluationView}
           />
           <OperationalAwarenessPanel awarenessView={dashboardData.operationalAwarenessView} />
         </>
