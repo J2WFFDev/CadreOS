@@ -106,6 +106,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 11B Operational Workflow Friction and Stability Remediation](./PHASE_11B_OPERATIONAL_WORKFLOW_FRICTION_STABILITY_REMEDIATION.md)
 - [Phase 11C Pilot Stability Closeout and Operational Readiness Review](./PHASE_11C_PILOT_STABILITY_CLOSEOUT_OPERATIONAL_READINESS_REVIEW.md)
 - [Phase 12A Communication & Coordination Architecture Boundaries](./PHASE_12A_COMMUNICATION_COORDINATION_ARCHITECTURE_BOUNDARIES.md)
+- [Phase 12B Internal Communication/Notification Classification Foundation](./PHASE_12B_INTERNAL_COMMUNICATION_NOTIFICATION_CLASSIFICATION_FOUNDATION.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -241,6 +242,8 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: closes out Arc 11 pilot hardening with an operational readiness review, pilot-safe workflow boundaries, production risk tracking, and Arc 12 communication architecture recommendations.
 - [Phase 12A Communication & Coordination Architecture Boundaries](./PHASE_12A_COMMUNICATION_COORDINATION_ARCHITECTURE_BOUNDARIES.md)
   - Summary: defines communication categories, boundary separations, communication risk controls, deferred runtime scope, a safe-first internal staff communication slice, and a blocking checklist before runtime messaging.
+- [Phase 12B Internal Communication/Notification Classification Foundation](./PHASE_12B_INTERNAL_COMMUNICATION_NOTIFICATION_CLASSIFICATION_FOUNDATION.md)
+  - Summary: implements lightweight internal-only communication/notification event classification metadata across existing operational surfaces while keeping all delivery, messaging, Feed/Inbox, guardian runtime communication, and automation behavior deferred.
 
 ---
 
@@ -303,7 +306,9 @@ Do not implement any delivery channel runtime behavior until:
 - Parent/guardian boundary policies are defined
 - Consent and opt-out infrastructure is designed
 
-First milestone delivered: [Phase 12A Communication & Coordination Architecture Boundaries](./PHASE_12A_COMMUNICATION_COORDINATION_ARCHITECTURE_BOUNDARIES.md) (communication categories, consent/authorization boundary framing, delivery expectations, failure/audit guidance, and runtime blockers).
+Milestones delivered:
+- [Phase 12A Communication & Coordination Architecture Boundaries](./PHASE_12A_COMMUNICATION_COORDINATION_ARCHITECTURE_BOUNDARIES.md) (communication categories, consent/authorization boundary framing, delivery expectations, failure/audit guidance, and runtime blockers).
+- [Phase 12B Internal Communication/Notification Classification Foundation](./PHASE_12B_INTERNAL_COMMUNICATION_NOTIFICATION_CLASSIFICATION_FOUNDATION.md) (internal-only event categorization metadata on operational surfaces with delivery/messaging/guardian communication/feed/inbox behavior still deferred).
 
 ### Track 4 — AI / Automation (deferred)
 

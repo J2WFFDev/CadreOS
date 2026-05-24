@@ -2,6 +2,10 @@ import Link from "next/link";
 import { EntryRuntimeSourceModelType, EntryRuntimeVisibilityClass } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
+import {
+  classifyEntryRuntimeCommunicationCategory,
+  getInternalCommunicationEventClassification,
+} from "@/lib/communication-classification";
 import { db } from "@/lib/db";
 import { formatDateTime, formatEnumLabel, getTaskStatusBadgeClassName } from "@/lib/follow-up-tasks";
 import {
@@ -252,6 +256,9 @@ export default async function EntryRuntimeDetailPage({
       : null;
   const linkedObservationNoteFromTask = linkedFollowUpTask?.sourceNote ?? null;
   const linkedObservationNoteRecord = linkedObservationNote ?? linkedObservationNoteFromTask;
+  const communicationClassification = getInternalCommunicationEventClassification(
+    classifyEntryRuntimeCommunicationCategory(entryRuntimeRef.sourceModelType),
+  );
 
   return (
     <section className="space-y-6">
@@ -310,6 +317,10 @@ export default async function EntryRuntimeDetailPage({
           <div>
             <dt className="font-medium">Visibility class</dt>
             <dd className="text-zinc-600 dark:text-zinc-400">{formatEnumLabel(entryRuntimeRef.visibilityClass)}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Communication classification (internal)</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{communicationClassification.categoryLabel}</dd>
           </div>
           <div>
             <dt className="font-medium">Linked athlete pointer</dt>

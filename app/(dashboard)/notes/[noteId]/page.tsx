@@ -2,6 +2,7 @@ import Link from "next/link";
 import { NoteVisibility, RoleType } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
+import { getInternalCommunicationEventClassification } from "@/lib/communication-classification";
 import { db } from "@/lib/db";
 import { getObservationNoteEntryRuntimeSummary } from "@/lib/entry-runtime";
 import {
@@ -477,6 +478,12 @@ export default async function NoteDetailPage({
               </dd>
             </div>
             <div>
+              <dt className="font-medium">Communication classification (internal)</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">
+                {entryRuntimeSummary.communicationClassification.categoryLabel}
+              </dd>
+            </div>
+            <div>
               <dt className="font-medium">Wrapper author pointer</dt>
               <dd className="text-zinc-600 dark:text-zinc-400">{entryRuntimeSummary.entryRuntimeRef.authorPersonId}</dd>
             </div>
@@ -523,6 +530,12 @@ export default async function NoteDetailPage({
           This wrapper is metadata-only for ownership, visibility, relationship linkage, and traceability. Feed, Inbox,
           Journal, messaging, notifications, guardian-facing runtime, and workflow automation remain deferred.
         </p>
+        {entryRuntimeSummary?.status === "linked" ? (
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Classification is internal-only ({getInternalCommunicationEventClassification(entryRuntimeSummary.communicationClassification.category).categoryLabel});
+            delivery, messaging, and guardian communication remain deferred.
+          </p>
+        ) : null}
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
