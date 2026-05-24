@@ -24,6 +24,7 @@ import {
   SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
 } from "@/lib/operational-visibility";
 import { isSchemaUnavailableError } from "@/lib/workflows";
+import { selectSeededOrCurrentSeason } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -107,7 +108,16 @@ export default async function EventDetailsPage({
           | {
               id: string;
               name: string;
+              program: {
+                seasons: Array<{
+                  id: string;
+                  name: string;
+                  startDate: Date | null;
+                  endDate: Date | null;
+                }>;
+              };
               roster: Array<{
+                seasonId: string;
                 person: { id: string; firstName: string; lastName: string };
               }>;
             }
@@ -170,9 +180,24 @@ export default async function EventDetailsPage({
             select: {
               id: true,
               name: true,
+              program: {
+                select: {
+                  seasons: {
+                    where: { organizationId: scope.organizationId },
+                    select: {
+                      id: true,
+                      name: true,
+                      startDate: true,
+                      endDate: true,
+                    },
+                    orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
+                  },
+                },
+              },
               roster: {
                 where: { organizationId: scope.organizationId },
                 select: {
+                  seasonId: true,
                   person: {
                     select: {
                       id: true,
@@ -337,11 +362,14 @@ export default async function EventDetailsPage({
     attendanceViewParam === "unexcused_absent"
       ? attendanceViewParam
       : "all";
-  const rosterMembers = Array.from(
-    new Map(
-      (event.team?.roster ?? []).map((membership) => [membership.person.id, membership.person]),
-    ).values(),
-  );
+  const selectedAttendanceSeason = event.team
+    ? selectSeededOrCurrentSeason(event.team.program.seasons)
+    : null;
+  const rosterMembershipsForAttendance =
+    event.team && selectedAttendanceSeason
+      ? event.team.roster.filter((membership) => membership.seasonId === selectedAttendanceSeason.id)
+      : event.team?.roster ?? [];
+  const rosterMembers = Array.from(new Map(rosterMembershipsForAttendance.map((membership) => [membership.person.id, membership.person])).values());
   const rosterPersonIds = new Set(rosterMembers.map((person) => person.id));
   const attendanceByPersonId = new Map(event.attendance.map((record) => [record.person.id, record]));
   const missingRosterAttendance = rosterMembers.filter((person) => !attendanceByPersonId.has(person.id));
@@ -362,7 +390,7 @@ export default async function EventDetailsPage({
     )
     .sort(compareFollowUpTasks);
   const eventNotes = [...event.notes].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
-  const attendancePeople = [...people].sort((a, b) => {
+  const attendancePeopleSorted = [...people].sort((a, b) => {
     const rosterWeightA = rosterPersonIds.has(a.id) ? 0 : 1;
     const rosterWeightB = rosterPersonIds.has(b.id) ? 0 : 1;
 
@@ -378,6 +406,10 @@ export default async function EventDetailsPage({
 
     return a.firstName.localeCompare(b.firstName);
   });
+  const attendancePeople =
+    event.team && selectedAttendanceSeason
+      ? attendancePeopleSorted.filter((person) => rosterPersonIds.has(person.id))
+      : attendancePeopleSorted;
   const filteredAttendance = event.attendance.filter((record) => {
     if (attendanceView === "all") {
       return true;
@@ -427,8 +459,8 @@ export default async function EventDetailsPage({
       ? "Attendance captured (no team roster expectation)"
       : "Attendance expectation not set (event has no team roster context)"
     : attendanceMissingCount > 0
-      ? "Attendance missing for part of team roster"
-      : "Attendance captured for all currently rostered team members";
+      ? `Attendance missing for part of ${selectedAttendanceSeason ? `${selectedAttendanceSeason.name} ` : ""}team roster`
+      : `Attendance captured for all ${selectedAttendanceSeason ? `${selectedAttendanceSeason.name} ` : ""}rostered team members`;
 
   return (
     <section className="space-y-6">
@@ -992,7 +1024,9 @@ export default async function EventDetailsPage({
         </p>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           {event.team
-            ? "Team roster people are listed first; all people in the active organization remain selectable."
+            ? selectedAttendanceSeason
+              ? `Attendance capture is scoped to ${selectedAttendanceSeason.name} team roster members.`
+              : "No active/seeded team season was resolved, so all people in the active organization remain selectable."
             : "This event is not linked to a team, so all people in the active organization are selectable."}
         </p>
 
@@ -1075,7 +1109,7 @@ export default async function EventDetailsPage({
       </div>
 
       <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/40 dark:text-zinc-400">
-        <strong className="font-medium">Current limitations:</strong> Attendance expectations are inferred from current team roster membership when a team is linked. Season/date-aware roster snapshots, approval flows, reminders, and notifications remain deferred.
+        <strong className="font-medium">Current limitations:</strong> Attendance expectations use the selected current/seeded team season when available for linked teams; full date-snapshot roster modeling, approval flows, reminders, and notifications remain deferred.
       </div>
     </section>
   );

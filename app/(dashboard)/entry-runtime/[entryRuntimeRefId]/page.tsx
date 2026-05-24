@@ -322,6 +322,8 @@ export default async function EntryRuntimeDetailPage({
                 <Link href={`/teams/${linkedTeam.id}`} className="underline">
                   {linkedTeam.name}
                 </Link>
+              ) : entryRuntimeRef.teamId ? (
+                "Missing linked team record in this organization"
               ) : (
                 "—"
               )}
@@ -335,6 +337,8 @@ export default async function EntryRuntimeDetailPage({
                 <Link href={`/events/${linkedEvent.id}`} className="underline">
                   {linkedEvent.title}
                 </Link>
+              ) : entryRuntimeRef.eventId ? (
+                "Missing linked event record in this organization"
               ) : (
                 "—"
               )}
