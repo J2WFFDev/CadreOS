@@ -103,6 +103,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 10E Entry Runtime Stabilization and Closeout](./PHASE_10E_ENTRY_RUNTIME_STABILIZATION_CLOSEOUT.md)
 - [Phase 10E Validation Checklist](./PHASE_10E_VALIDATION_CHECKLIST.md)
 - [Phase 11A Pilot Validation Plan and Build/Deployment Verification](./PHASE_11A_PILOT_VALIDATION_PLAN.md)
+- [Phase 11B Operational Workflow Friction and Stability Remediation](./PHASE_11B_OPERATIONAL_WORKFLOW_FRICTION_STABILITY_REMEDIATION.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -171,6 +172,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 10E Entry Runtime Stabilization and Closeout](./PHASE_10E_ENTRY_RUNTIME_STABILIZATION_CLOSEOUT.md)
 - [Phase 10E Validation Checklist](./PHASE_10E_VALIDATION_CHECKLIST.md)
 - [Phase 11A Pilot Validation Plan and Build/Deployment Verification](./PHASE_11A_PILOT_VALIDATION_PLAN.md)
+- [Phase 11B Operational Workflow Friction and Stability Remediation](./PHASE_11B_OPERATIONAL_WORKFLOW_FRICTION_STABILITY_REMEDIATION.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 
 ## Operational Foundation MVP Phase Sequence (8A–8P)

@@ -9,6 +9,7 @@ import {
   isPermissionDeniedError,
   isSchemaUnavailableError,
   requirePhase1CMutationPermission,
+  selectSeededOrCurrentSeason,
 } from "@/lib/workflows";
 import { resolveActorPersonId } from "@/lib/user-account";
 
@@ -110,6 +111,8 @@ export async function POST(
       select: {
         id: true,
         organizationId: true,
+        teamId: true,
+        programId: true,
       },
     });
 
@@ -144,6 +147,51 @@ export async function POST(
         }),
         303,
       );
+    }
+
+    if (event.teamId) {
+      const teamSeasons = await db.season.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          programId: event.programId,
+        },
+        select: {
+          id: true,
+          name: true,
+          startDate: true,
+          endDate: true,
+        },
+        orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
+      });
+      const selectedSeason = selectSeededOrCurrentSeason(teamSeasons);
+
+      if (selectedSeason) {
+        const rosterMembership = await db.rosterMembership.findUnique({
+          where: {
+            teamId_seasonId_personId: {
+              teamId: event.teamId,
+              seasonId: selectedSeason.id,
+              personId: person.id,
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        if (!rosterMembership) {
+          return NextResponse.redirect(
+            buildErrorRedirectUrl(request.url, eventId, {
+              values,
+              fieldErrors: {
+                personId: `Select a person on the ${selectedSeason.name} roster for this team event.`,
+              },
+              error: "Attendance person must match the selected team roster context.",
+            }),
+            303,
+          );
+        }
+      }
     }
 
     const markedByPersonId = await resolveActorPersonId({
