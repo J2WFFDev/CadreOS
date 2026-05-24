@@ -162,6 +162,7 @@ export async function POST(
       | {
           id: string;
           eventId: string | null;
+          athletePersonId: string | null;
           visibility: NoteVisibility;
           teamId: string | null;
           team: { programId: string } | null;
