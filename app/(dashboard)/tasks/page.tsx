@@ -26,6 +26,7 @@ import {
   resolveStaffScopeResolution,
 } from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import { appendReturnToParam } from "@/lib/navigation-context";
 import {
   buildSupportedTaskSourceNoteVisibilityWhere,
   hasResolvedFollowUpTaskOperationalVisibility,
@@ -666,6 +667,8 @@ export default async function TasksPage({
       guardianFollowUp: canViewGuardianRelationshipDetails ? guardianFollowUpFilter : "",
       ...overrides,
     });
+  const currentTaskScopeHref = buildTaskHref({});
+  const newTaskHref = appendReturnToParam("/tasks/new", currentTaskScopeHref);
 
   return (
     <section className="space-y-4">
@@ -673,7 +676,7 @@ export default async function TasksPage({
         title="Tasks"
         description="Track follow-up actions and accountability items across your organization."
         actions={
-          <Link href="/tasks/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+          <Link href={newTaskHref} className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
             New task
           </Link>
         }
@@ -882,7 +885,7 @@ export default async function TasksPage({
               ? "No follow-up tasks match the selected filters."
               : "No follow-up tasks have been created yet."
           }
-          actionHref={hasActiveFilters ? "/tasks" : "/tasks/new"}
+          actionHref={hasActiveFilters ? "/tasks" : newTaskHref}
           actionLabel={hasActiveFilters ? "Clear filters" : "Create the first task"}
         />
       ) : (
@@ -923,7 +926,7 @@ export default async function TasksPage({
                 return (
                   <tr key={task.id} className="border-b last:border-b-0">
                     <td className="px-4 py-3">
-                      <Link href={`/tasks/${task.id}`} className="underline">
+                      <Link href={appendReturnToParam(`/tasks/${task.id}`, currentTaskScopeHref)} className="underline">
                         {task.title}
                       </Link>
                     </td>

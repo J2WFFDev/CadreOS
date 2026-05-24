@@ -14,7 +14,7 @@ import {
 import { resolveActorPersonId } from "@/lib/user-account";
 
 function buildErrorRedirectUrl(requestUrl: string, eventId: string, input: {
-  values: { personId: string; status: string; reasonCode: string };
+  values: { personId: string; status: string; reasonCode: string; attendanceView: string; continueCapture: string };
   fieldErrors?: Partial<Record<"personId" | "status" | "reasonCode", string>>;
   error?: string;
 }) {
@@ -23,6 +23,10 @@ function buildErrorRedirectUrl(requestUrl: string, eventId: string, input: {
   url.searchParams.set("attendancePersonId", input.values.personId);
   url.searchParams.set("attendanceStatus", input.values.status);
   url.searchParams.set("attendanceReasonCode", input.values.reasonCode);
+  url.searchParams.set("attendanceView", input.values.attendanceView);
+  if (input.values.continueCapture === "1") {
+    url.searchParams.set("attendanceContinue", "1");
+  }
 
   if (input.fieldErrors?.personId) {
     url.searchParams.set("attendancePersonIdError", input.fieldErrors.personId);
@@ -55,6 +59,8 @@ export async function POST(
     personId: getStringField(formData, "personId"),
     status: getStringField(formData, "status"),
     reasonCode: getStringField(formData, "reasonCode"),
+    attendanceView: getStringField(formData, "attendanceView"),
+    continueCapture: getStringField(formData, "continueCapture"),
   };
 
   if (!scope.databaseReady) {
@@ -235,6 +241,22 @@ export async function POST(
         markedAt,
       },
     });
+
+    const continueCapture = values.continueCapture === "1";
+
+    if (continueCapture) {
+      const continueCaptureRedirectUrl = new URL(`/events/${event.id}`, request.url);
+      continueCaptureRedirectUrl.searchParams.set("attendanceStatus", parsed.data.status);
+      continueCaptureRedirectUrl.searchParams.set("attendanceReasonCode", parsed.data.reasonCode ?? "");
+      if (values.attendanceView) {
+        continueCaptureRedirectUrl.searchParams.set("attendanceView", values.attendanceView);
+      }
+      continueCaptureRedirectUrl.searchParams.set("attendanceContinue", "1");
+      continueCaptureRedirectUrl.searchParams.set("attendanceSaved", "1");
+      continueCaptureRedirectUrl.hash = "attendance-capture-form";
+
+      return NextResponse.redirect(continueCaptureRedirectUrl, 303);
+    }
 
     return NextResponse.redirect(new URL(`/events/${event.id}`, request.url), 303);
   } catch (error) {

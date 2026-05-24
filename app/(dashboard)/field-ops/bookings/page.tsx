@@ -8,6 +8,7 @@ import { BookingCard } from "@/components/field-ops/booking-card";
 import { FieldOpsSubnav } from "@/components/field-ops/subnav";
 import { db } from "@/lib/db";
 import { formatFieldOpsEnum } from "@/lib/field-ops";
+import { appendReturnToParam } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -61,6 +62,19 @@ function readSearchParamValues(searchParams: SearchParams, key: string) {
   return [value];
 }
 
+function buildHref(pathname: string, filters: Record<string, string>) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
+
+  const query = params.toString();
+  return query ? `${pathname}?${query}` : pathname;
+}
+
 export default async function FieldOpsBookingsPage({
   searchParams,
 }: {
@@ -95,7 +109,7 @@ export default async function FieldOpsBookingsPage({
   const rawPrecheckStatus = readSearchParam(resolvedSearchParams, "precheckStatus");
   const timeframe = readSearchParam(resolvedSearchParams, "timeframe") || "all";
   const hasConflicts = readSearchParam(resolvedSearchParams, "hasConflicts");
-  const created = readSearchParam(resolvedSearchParams, "created");
+  const created = readSearchParam(resolvedSearchParams, "created") || readSearchParam(resolvedSearchParams, "bookingRequestCreated");
   const statusValues = readSearchParamValues(resolvedSearchParams, "status").filter((value): value is BookingStatus =>
     STATUS_FILTERS.includes(value as BookingStatus),
   );
@@ -199,6 +213,17 @@ export default async function FieldOpsBookingsPage({
   const hasFilters = Boolean(
     facilityId || resourceId || selectedStatus || approvalStatus || precheckStatus || hasConflicts || timeframe !== "all",
   );
+  const currentBookingsScopeHref = buildHref("/field-ops/bookings", {
+    facilityId,
+    resourceId,
+    status: selectedStatus,
+    approvalStatus,
+    precheckStatus,
+    timeframe: timeframe === "all" ? "" : timeframe,
+    hasConflicts,
+  });
+  const newBookingBaseHref = resourceId ? `/field-ops/bookings/new?resourceId=${resourceId}` : "/field-ops/bookings/new";
+  const newBookingHref = appendReturnToParam(newBookingBaseHref, currentBookingsScopeHref);
 
   return (
     <section className="space-y-4">
@@ -219,7 +244,7 @@ export default async function FieldOpsBookingsPage({
           </Link>
           {data.activeResourceCount > 0 ? (
             <Link
-              href={resourceId ? `/field-ops/bookings/new?resourceId=${resourceId}` : "/field-ops/bookings/new"}
+              href={newBookingHref}
               className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
             >
               New booking request
@@ -373,7 +398,11 @@ export default async function FieldOpsBookingsPage({
       ) : (
         <div className="space-y-3">
           {data.bookings.map((booking) => (
-            <BookingCard key={booking.id} booking={{ ...booking, conflictCount: booking._count.conflicts }} />
+            <BookingCard
+              key={booking.id}
+              booking={{ ...booking, conflictCount: booking._count.conflicts }}
+              detailHref={appendReturnToParam(`/field-ops/bookings/${booking.id}`, currentBookingsScopeHref)}
+            />
           ))}
         </div>
       )}

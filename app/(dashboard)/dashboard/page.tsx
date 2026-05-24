@@ -16,6 +16,7 @@ import {
 } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import { appendReturnToParam } from "@/lib/navigation-context";
 import {
   buildSupportedTaskSourceNoteVisibilityWhere,
   SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
@@ -1530,7 +1531,7 @@ export default async function DashboardPage() {
                               Capture attendance
                             </Link>
                             <span className="text-zinc-500 dark:text-zinc-400">•</span>
-                            <Link href={`/notes/new?eventId=${event.id}`} className="underline">
+                            <Link href={appendReturnToParam(`/notes/new?eventId=${event.id}`, "/dashboard")} className="underline">
                               Capture event note
                             </Link>
                           </div>
@@ -1876,7 +1877,7 @@ export default async function DashboardPage() {
                             Event unresolved tasks
                           </Link>
                           <span className="text-zinc-500 dark:text-zinc-400">•</span>
-                          <Link href={`/tasks/new?sourceEventId=${event.id}`} className="underline">
+                          <Link href={appendReturnToParam(`/tasks/new?sourceEventId=${event.id}`, "/dashboard")} className="underline">
                             Create follow-up task
                           </Link>
                         </div>

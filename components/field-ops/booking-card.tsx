@@ -18,6 +18,7 @@ type BookingCardProps = {
     event: { id: string; title: string } | null;
     conflictCount?: number;
   };
+  detailHref?: string;
 };
 
 function getApprovalBadgeClass(approvalStatus: string) {
@@ -94,7 +95,7 @@ function getPrecheckBadgeClass(precheckStatus: string) {
   return "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200";
 }
 
-export function BookingCard({ booking }: BookingCardProps) {
+export function BookingCard({ booking, detailHref }: BookingCardProps) {
   const hasConflictWarning = (booking.conflictCount ?? 0) > 0;
   const hasInactiveContext = booking.facility.status !== "ACTIVE" || booking.resource.status !== "ACTIVE";
 
@@ -103,7 +104,7 @@ export function BookingCard({ booking }: BookingCardProps) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <h3 className="text-base font-medium">
-            <Link href={`/field-ops/bookings/${booking.id}`} className="underline">
+            <Link href={detailHref ?? `/field-ops/bookings/${booking.id}`} className="underline">
               {booking.title}
             </Link>
           </h3>

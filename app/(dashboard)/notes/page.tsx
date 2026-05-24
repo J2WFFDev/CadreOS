@@ -17,6 +17,7 @@ import {
   resolveStaffScopeResolution,
 } from "@/lib/authorization";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import { appendReturnToParam } from "@/lib/navigation-context";
 import { SUPPORTED_OPERATIONAL_NOTE_VISIBILITY } from "@/lib/operational-visibility";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -487,6 +488,8 @@ export default async function NotesPage({
       guardianContext: canViewGuardianRelationshipDetails ? guardianContextFilter : "",
       ...overrides,
     });
+  const currentNotesScopeHref = buildNotesHref({});
+  const newNoteHref = appendReturnToParam("/notes/new", currentNotesScopeHref);
 
   return (
     <section className="space-y-4">
@@ -494,7 +497,7 @@ export default async function NotesPage({
         title="Notes"
         description="Record coaching observations about athletes, teams, and events."
         actions={
-          <Link href="/notes/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+          <Link href={newNoteHref} className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
             New note
           </Link>
         }
@@ -700,7 +703,7 @@ export default async function NotesPage({
               ? "No notes match the selected filters."
               : "No observation notes have been recorded yet."
           }
-          actionHref={hasActiveFilters ? "/notes" : "/notes/new"}
+          actionHref={hasActiveFilters ? "/notes" : newNoteHref}
           actionLabel={hasActiveFilters ? "Clear filters" : "Record the first note"}
         />
       ) : (
@@ -739,7 +742,7 @@ export default async function NotesPage({
                 return (
                   <tr key={note.id} className="border-b last:border-b-0">
                     <td className="px-4 py-3">
-                      <Link href={`/notes/${note.id}`} className="underline">
+                      <Link href={appendReturnToParam(`/notes/${note.id}`, currentNotesScopeHref)} className="underline">
                         {note.body.length > 80 ? `${note.body.slice(0, 80)}…` : note.body}
                       </Link>
                     </td>

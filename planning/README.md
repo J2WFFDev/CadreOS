@@ -122,6 +122,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 13E Validation Checklist](./PHASE_13E_VALIDATION_CHECKLIST.md)
 - [Phase 14A Mobile & Rapid Capture Architecture Boundaries](./PHASE_14A_MOBILE_RAPID_CAPTURE_ARCHITECTURE_BOUNDARIES.md)
 - [Phase 14B Lightweight Rapid Operational Capture Optimizations](./PHASE_14B_LIGHTWEIGHT_RAPID_OPERATIONAL_CAPTURE_OPTIMIZATIONS.md)
+- [Phase 14C Operational Context Continuity & Fast-Entry Optimizations](./PHASE_14C_OPERATIONAL_CONTEXT_CONTINUITY_FAST_ENTRY_OPTIMIZATIONS.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -287,6 +288,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: validates awareness visibility, readiness metadata behavior, summary classification behavior, authorization boundaries, organization scoping, and explicit no-AI/no-recommendation/no-automation/no-guardian-intelligence/no-Feed/Inbox runtime confirmations for Arc 13 closeout.
 - [Phase 14A Mobile & Rapid Capture Architecture Boundaries](./PHASE_14A_MOBILE_RAPID_CAPTURE_ARCHITECTURE_BOUNDARIES.md)
   - Summary: defines Mobile & Rapid Capture architecture boundaries before runtime offline/mobile-native expansion; reviews Arc 8–13 workflows and current capture friction (attendance, notes, follow-ups, operational review, events, FieldOps), separates mobile optimization from offline runtime and Feed/Inbox/messaging/automation concerns, documents mobile/capture risk areas, adds a “Do Not Implement Yet” list, recommends a safe-first staff mobile web capture slice, and provides a blocking checklist before offline/mobile runtime behavior.
+- [Phase 14B Lightweight Rapid Operational Capture Optimizations](./PHASE_14B_LIGHTWEIGHT_RAPID_OPERATIONAL_CAPTURE_OPTIMIZATIONS.md)
+  - Summary: delivers low-risk rapid-capture improvements for event attendance, note/task context prefills, dashboard shortcuts, and FieldOps booking prefills while preserving existing authorization/scoping boundaries and deferring offline/mobile-native/Feed/Inbox/messaging/automation runtime behavior.
+- [Phase 14C Operational Context Continuity & Fast-Entry Optimizations](./PHASE_14C_OPERATIONAL_CONTEXT_CONTINUITY_FAST_ENTRY_OPTIMIZATIONS.md)
+  - Summary: adds safe return-path continuity across note/task create+update and FieldOps booking create+decision workflows, improves filtered review continuity in dashboard/events/notes/tasks/FieldOps surfaces, and introduces attendance continue-capture mode for repetitive entry while preserving authorization/scoping behavior and deferring offline/mobile-native/Feed/Inbox/messaging/automation runtime behavior.
 
 ---
 

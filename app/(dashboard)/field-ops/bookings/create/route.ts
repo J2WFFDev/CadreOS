@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { evaluateFieldOpsBookingPrecheck } from "@/lib/field-ops-booking-precheck";
+import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   bookingRequestWorkflowSchema,
@@ -24,6 +25,7 @@ function buildErrorRedirectUrl(requestUrl: string, input: {
     programId: string;
     teamId: string;
     eventId: string;
+    returnTo: string;
   };
   fieldErrors?: Partial<
     Record<"facilityId" | "resourceId" | "title" | "description" | "startsAt" | "endsAt" | "programId" | "teamId" | "eventId", string>
@@ -41,6 +43,7 @@ function buildErrorRedirectUrl(requestUrl: string, input: {
   url.searchParams.set("programId", input.values.programId);
   url.searchParams.set("teamId", input.values.teamId);
   url.searchParams.set("eventId", input.values.eventId);
+  url.searchParams.set("returnTo", resolveSafeReturnPath(input.values.returnTo, "/field-ops/bookings"));
 
   if (input.fieldErrors?.facilityId) {
     url.searchParams.set("facilityIdError", input.fieldErrors.facilityId);
@@ -90,6 +93,7 @@ export async function POST(request: Request) {
     programId: getStringField(formData, "programId"),
     teamId: getStringField(formData, "teamId"),
     eventId: getStringField(formData, "eventId"),
+    returnTo: getStringField(formData, "returnTo"),
   };
 
   if (!scope.databaseReady) {
@@ -395,8 +399,8 @@ export async function POST(request: Request) {
       }
     });
 
-    const redirectUrl = new URL("/field-ops/bookings", request.url);
-    redirectUrl.searchParams.set("created", "1");
+    const redirectUrl = new URL(resolveSafeReturnPath(values.returnTo, "/field-ops/bookings"), request.url);
+    redirectUrl.searchParams.set("bookingRequestCreated", "1");
     redirectUrl.searchParams.set("resourceId", resource.id);
 
     return NextResponse.redirect(redirectUrl, 303);

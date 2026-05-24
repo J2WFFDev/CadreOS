@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeObservationNoteEntryRuntimeRef } from "@/lib/entry-runtime";
+import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
@@ -14,7 +15,7 @@ import {
 import { resolveActorPersonId } from "@/lib/user-account";
 
 function buildErrorRedirectUrl(requestUrl: string, input: {
-  values: { body: string; athletePersonId: string; teamId: string; eventId: string };
+  values: { body: string; athletePersonId: string; teamId: string; eventId: string; returnTo: string };
   fieldErrors?: Partial<Record<"body" | "athletePersonId" | "teamId" | "eventId", string>>;
   error?: string;
 }) {
@@ -24,6 +25,7 @@ function buildErrorRedirectUrl(requestUrl: string, input: {
   url.searchParams.set("athletePersonId", input.values.athletePersonId);
   url.searchParams.set("teamId", input.values.teamId);
   url.searchParams.set("eventId", input.values.eventId);
+  url.searchParams.set("returnTo", resolveSafeReturnPath(input.values.returnTo, "/notes"));
 
   if (input.fieldErrors?.body) {
     url.searchParams.set("bodyError", input.fieldErrors.body);
@@ -53,6 +55,7 @@ export async function POST(request: Request) {
     athletePersonId: getStringField(formData, "athletePersonId"),
     teamId: getStringField(formData, "teamId"),
     eventId: getStringField(formData, "eventId"),
+    returnTo: getStringField(formData, "returnTo"),
   };
 
   if (!scope.databaseReady) {
@@ -219,7 +222,10 @@ export async function POST(request: Request) {
       // Phase 10A sidecar writes are intentionally non-authoritative and fail-safe.
     }
 
-    return NextResponse.redirect(new URL(`/notes/${createdNote.id}`, request.url), 303);
+    return NextResponse.redirect(
+      new URL(resolveSafeReturnPath(values.returnTo, `/notes/${createdNote.id}`), request.url),
+      303,
+    );
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
       return NextResponse.redirect(

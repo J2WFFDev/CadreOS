@@ -12,6 +12,7 @@ import {
   formatGuardianOperationalIndicator,
 } from "@/lib/guardian-operational-context";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -179,6 +180,7 @@ export default async function NewTaskPage({
   const dueAt = readSearchParam(resolvedSearchParams, "dueAt");
   const sourceNoteId = readSearchParam(resolvedSearchParams, "sourceNoteId");
   const sourceEventId = readSearchParam(resolvedSearchParams, "sourceEventId");
+  const returnTo = resolveSafeReturnPath(readSearchParam(resolvedSearchParams, "returnTo"), "/tasks");
   const generalError = readSearchParam(resolvedSearchParams, "error");
   const selectedSourceNote = notes.find((note) => note.id === sourceNoteId) ?? null;
   const resolvedSourceEventId = sourceEventId || selectedSourceNote?.eventId || "";
@@ -203,6 +205,7 @@ export default async function NewTaskPage({
         </div>
       ) : (
         <form action="/tasks/create" method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <input type="hidden" name="returnTo" value={returnTo} />
           <p className="text-xs text-zinc-600 dark:text-zinc-400">
             Created-by attribution uses mock actor context and falls back to a seeded/admin organization person
             until real authentication-to-person resolution is implemented.
@@ -355,7 +358,7 @@ export default async function NewTaskPage({
             </div>
           </div>
 
-          <FormActions submitLabel="Create task" cancelHref="/tasks" />
+          <FormActions submitLabel="Create task" cancelHref={returnTo} />
         </form>
       )}
     </section>
