@@ -98,6 +98,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 10B Validation Checklist](./PHASE_10B_VALIDATION_CHECKLIST.md)
 - [Phase 10C FollowUpTask Entry Wrapper Integration](./PHASE_10C_FOLLOWUPTASK_ENTRY_WRAPPER_INTEGRATION.md)
 - [Phase 10C Validation Checklist](./PHASE_10C_VALIDATION_CHECKLIST.md)
+- [Phase 10D Read-Only Entry Relationship View](./PHASE_10D_ENTRY_RELATIONSHIP_VIEW.md)
+- [Phase 10D Validation Checklist](./PHASE_10D_VALIDATION_CHECKLIST.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -161,6 +163,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 10B Validation Checklist](./PHASE_10B_VALIDATION_CHECKLIST.md)
 - [Phase 10C FollowUpTask Entry Wrapper Integration](./PHASE_10C_FOLLOWUPTASK_ENTRY_WRAPPER_INTEGRATION.md)
 - [Phase 10C Validation Checklist](./PHASE_10C_VALIDATION_CHECKLIST.md)
+- [Phase 10D Read-Only Entry Relationship View](./PHASE_10D_ENTRY_RELATIONSHIP_VIEW.md)
+- [Phase 10D Validation Checklist](./PHASE_10D_VALIDATION_CHECKLIST.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 
 ## Operational Foundation MVP Phase Sequence (8A–8P)
@@ -210,6 +214,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: extends additive Entry wrapper linkage to `FollowUpTask` with feature-flagged, non-blocking create/update sync and read-only task-detail traceability while keeping current task/note workflows authoritative.
 - [Phase 10C Validation Checklist](./PHASE_10C_VALIDATION_CHECKLIST.md)
   - Summary: verifies task wrapper continuity, scoping/authorization safety, and that Feed/Inbox/Journal/messaging/notifications/workflow automation remain deferred.
+- [Phase 10D Read-Only Entry Relationship View](./PHASE_10D_ENTRY_RELATIONSHIP_VIEW.md)
+  - Summary: adds a read-only Entry relationship detail surface and safe note/task navigation for wrapper traceability while keeping existing runtime models and authorization behavior authoritative.
+- [Phase 10D Validation Checklist](./PHASE_10D_VALIDATION_CHECKLIST.md)
+  - Summary: verifies relationship-view read-only behavior, workflow continuity, scoping/authorization safety, and deferred Feed/Inbox/Journal/messaging/notifications/runtime automation boundaries.
 
 ---
 
