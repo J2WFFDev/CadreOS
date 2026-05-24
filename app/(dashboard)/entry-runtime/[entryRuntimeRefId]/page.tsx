@@ -87,8 +87,6 @@ export default async function EntryRuntimeDetailPage({
         createdAt: Date;
         updatedAt: Date;
         author: { id: string; firstName: string; lastName: string };
-        team: { id: string; name: string; programId: string } | null;
-        event: { id: string; title: string; teamId: string | null; programId: string } | null;
       }
     | null = null;
 
@@ -114,8 +112,6 @@ export default async function EntryRuntimeDetailPage({
         createdAt: true,
         updatedAt: true,
         author: { select: { id: true, firstName: true, lastName: true } },
-        team: { select: { id: true, name: true, programId: true } },
-        event: { select: { id: true, title: true, teamId: true, programId: true } },
       },
     });
   } catch (error) {
@@ -159,11 +155,30 @@ export default async function EntryRuntimeDetailPage({
     );
   }
 
+  const linkedTeam = entryRuntimeRef.teamId
+    ? await db.team.findFirst({
+        where: {
+          id: entryRuntimeRef.teamId,
+          organizationId: scope.organizationId,
+        },
+        select: { id: true, name: true, programId: true },
+      })
+    : null;
+  const linkedEvent = entryRuntimeRef.eventId
+    ? await db.event.findFirst({
+        where: {
+          id: entryRuntimeRef.eventId,
+          organizationId: scope.organizationId,
+        },
+        select: { id: true, title: true, teamId: true, programId: true },
+      })
+    : null;
+
   if (entryRuntimeRef.visibilityClass !== EntryRuntimeVisibilityClass.STAFF_ONLY) {
     const teamScopeAccessDecision = evaluateTeamScopedContentAccess(
       actorRoleContext,
       entryRuntimeRef.teamId,
-      entryRuntimeRef.team?.programId ?? entryRuntimeRef.event?.programId ?? null,
+      linkedTeam?.programId ?? linkedEvent?.programId ?? null,
     );
     logAuthorizationDecision(teamScopeAccessDecision, {
       workflow: "entry-runtime.detail.visibility-scope",
@@ -303,9 +318,9 @@ export default async function EntryRuntimeDetailPage({
           <div>
             <dt className="font-medium">Linked team pointer</dt>
             <dd className="text-zinc-600 dark:text-zinc-400">
-              {entryRuntimeRef.team ? (
-                <Link href={`/teams/${entryRuntimeRef.team.id}`} className="underline">
-                  {entryRuntimeRef.team.name}
+              {linkedTeam ? (
+                <Link href={`/teams/${linkedTeam.id}`} className="underline">
+                  {linkedTeam.name}
                 </Link>
               ) : (
                 "—"
@@ -316,9 +331,9 @@ export default async function EntryRuntimeDetailPage({
           <div className="sm:col-span-2">
             <dt className="font-medium">Linked event pointer</dt>
             <dd className="text-zinc-600 dark:text-zinc-400">
-              {entryRuntimeRef.event ? (
-                <Link href={`/events/${entryRuntimeRef.event.id}`} className="underline">
-                  {entryRuntimeRef.event.title}
+              {linkedEvent ? (
+                <Link href={`/events/${linkedEvent.id}`} className="underline">
+                  {linkedEvent.title}
                 </Link>
               ) : (
                 "—"
