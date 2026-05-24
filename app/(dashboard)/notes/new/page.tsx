@@ -63,7 +63,7 @@ export default async function NewNotePage({
 
   let people: Array<{ id: string; firstName: string; lastName: string }> | null = null;
   let teams: Array<{ id: string; name: string }> | null = null;
-  let events: Array<{ id: string; title: string; startsAt: Date }> | null = null;
+  let events: Array<{ id: string; title: string; startsAt: Date; teamId: string | null }> | null = null;
 
   try {
     [people, teams, events] = await Promise.all([
@@ -79,7 +79,7 @@ export default async function NewNotePage({
       }),
       db.event.findMany({
         where: { organizationId: scope.organizationId },
-        select: { id: true, title: true, startsAt: true },
+        select: { id: true, title: true, startsAt: true, teamId: true },
         orderBy: [{ startsAt: "desc" }],
         take: 200,
       }),
@@ -103,6 +103,8 @@ export default async function NewNotePage({
   const athletePersonId = readSearchParam(resolvedSearchParams, "athletePersonId");
   const teamId = readSearchParam(resolvedSearchParams, "teamId");
   const eventId = readSearchParam(resolvedSearchParams, "eventId");
+  const selectedEventForContext = events.find((event) => event.id === eventId) ?? null;
+  const resolvedTeamId = teamId || selectedEventForContext?.teamId || "";
   const generalError = readSearchParam(resolvedSearchParams, "error");
 
   return (
@@ -153,7 +155,7 @@ export default async function NewNotePage({
             <label htmlFor="teamId" className="text-sm font-medium">
               Team (optional)
             </label>
-            <select id="teamId" name="teamId" defaultValue={teamId} className="w-full rounded-md border px-3 py-2 text-sm">
+            <select id="teamId" name="teamId" defaultValue={resolvedTeamId} className="w-full rounded-md border px-3 py-2 text-sm">
               <option value="">No team link</option>
               {teams.map((team) => (
                 <option key={team.id} value={team.id}>
@@ -163,6 +165,8 @@ export default async function NewNotePage({
             </select>
             {readSearchParam(resolvedSearchParams, "teamIdError") ? (
               <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "teamIdError")}</p>
+            ) : !teamId && eventId && selectedEventForContext?.teamId ? (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Team prefilled from selected event context.</p>
             ) : null}
           </div>
 

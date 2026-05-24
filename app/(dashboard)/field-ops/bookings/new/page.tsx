@@ -27,6 +27,14 @@ function readSearchParam(searchParams: SearchParams, key: string) {
   return value ?? "";
 }
 
+function toDateTimeLocalValue(value: Date | null): string {
+  if (!value) {
+    return "";
+  }
+
+  return value.toISOString().slice(0, 16);
+}
+
 export default async function NewFieldOpsBookingRequestPage({
   searchParams,
 }: {
@@ -67,7 +75,9 @@ export default async function NewFieldOpsBookingRequestPage({
     | null = null;
   let programs: Array<{ id: string; name: string }> | null = null;
   let teams: Array<{ id: string; name: string; programId: string; program: { id: string; name: string } }> | null = null;
-  let events: Array<{ id: string; title: string; startsAt: Date; programId: string; teamId: string | null }> | null = null;
+  let events:
+    | Array<{ id: string; title: string; startsAt: Date; endsAt: Date | null; programId: string; teamId: string | null }>
+    | null = null;
   let queryErrorMessage = "Unable to load booking request options right now. Please try again later.";
 
   try {
@@ -120,6 +130,7 @@ export default async function NewFieldOpsBookingRequestPage({
           id: true,
           title: true,
           startsAt: true,
+          endsAt: true,
           programId: true,
           teamId: true,
         },
@@ -151,6 +162,12 @@ export default async function NewFieldOpsBookingRequestPage({
   const programId = readSearchParam(resolvedSearchParams, "programId");
   const teamId = readSearchParam(resolvedSearchParams, "teamId");
   const eventId = readSearchParam(resolvedSearchParams, "eventId");
+  const selectedEventForContext = events.find((event) => event.id === eventId) ?? null;
+  const resolvedTitle = title || (selectedEventForContext ? `Booking for ${selectedEventForContext.title}` : "");
+  const resolvedStartsAt = startsAt || toDateTimeLocalValue(selectedEventForContext?.startsAt ?? null);
+  const resolvedEndsAt = endsAt || toDateTimeLocalValue(selectedEventForContext?.endsAt ?? null);
+  const resolvedProgramId = programId || selectedEventForContext?.programId || "";
+  const resolvedTeamId = teamId || selectedEventForContext?.teamId || "";
   const generalError = readSearchParam(resolvedSearchParams, "error");
   const activeResources = resources.filter((resource) => resource.status === "ACTIVE" && resource.facility.status === "ACTIVE");
   const activeFacilities = facilities.filter((facility) => facility.status === "ACTIVE");
@@ -215,7 +232,7 @@ export default async function NewFieldOpsBookingRequestPage({
             <label htmlFor="title" className="text-sm font-medium">
               Title
             </label>
-            <input id="title" name="title" defaultValue={title} className="w-full rounded-md border px-3 py-2 text-sm" />
+            <input id="title" name="title" defaultValue={resolvedTitle} className="w-full rounded-md border px-3 py-2 text-sm" />
             {hasSearchParam(resolvedSearchParams, "titleError") ? (
               <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "titleError")}</p>
             ) : null}
@@ -246,7 +263,7 @@ export default async function NewFieldOpsBookingRequestPage({
                 id="startsAt"
                 name="startsAt"
                 type="datetime-local"
-                defaultValue={startsAt}
+                defaultValue={resolvedStartsAt}
                 className="w-full rounded-md border px-3 py-2 text-sm"
               />
               {hasSearchParam(resolvedSearchParams, "startsAtError") ? (
@@ -262,7 +279,7 @@ export default async function NewFieldOpsBookingRequestPage({
                 id="endsAt"
                 name="endsAt"
                 type="datetime-local"
-                defaultValue={endsAt}
+                defaultValue={resolvedEndsAt}
                 className="w-full rounded-md border px-3 py-2 text-sm"
               />
               {hasSearchParam(resolvedSearchParams, "endsAtError") ? (
@@ -276,7 +293,7 @@ export default async function NewFieldOpsBookingRequestPage({
               <label htmlFor="programId" className="text-sm font-medium">
                 Program context (optional)
               </label>
-              <select id="programId" name="programId" defaultValue={programId} className="w-full rounded-md border px-3 py-2 text-sm">
+              <select id="programId" name="programId" defaultValue={resolvedProgramId} className="w-full rounded-md border px-3 py-2 text-sm">
                 <option value="">No program context</option>
                 {programs.map((program) => (
                   <option key={program.id} value={program.id}>
@@ -293,7 +310,7 @@ export default async function NewFieldOpsBookingRequestPage({
               <label htmlFor="teamId" className="text-sm font-medium">
                 Team context (optional)
               </label>
-              <select id="teamId" name="teamId" defaultValue={teamId} className="w-full rounded-md border px-3 py-2 text-sm">
+              <select id="teamId" name="teamId" defaultValue={resolvedTeamId} className="w-full rounded-md border px-3 py-2 text-sm">
                 <option value="">No team context</option>
                 {teams.map((team) => (
                   <option key={team.id} value={team.id}>
@@ -321,6 +338,10 @@ export default async function NewFieldOpsBookingRequestPage({
             </select>
             {hasSearchParam(resolvedSearchParams, "eventIdError") ? (
               <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "eventIdError")}</p>
+            ) : selectedEventForContext ? (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Event context prefilled program/team/title/timing where available.
+              </p>
             ) : null}
           </div>
 
