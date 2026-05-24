@@ -1,5 +1,12 @@
 import { AttendanceStatus, Prisma, RoleType, TaskStatus } from "@prisma/client";
 
+import {
+  classifyAttendanceCommunicationCategory,
+  classifyFollowUpTaskCommunicationCategory,
+  getInternalCommunicationEventClassification,
+  INTERNAL_COMMUNICATION_EVENT_CATEGORY,
+  type InternalCommunicationEventClassification,
+} from "@/lib/communication-classification";
 import { db } from "@/lib/db";
 import { formatDateTime, formatEnumLabel } from "@/lib/follow-up-tasks";
 import {
@@ -35,6 +42,7 @@ export type OperationalHistoryItem = {
         href: null;
       };
   unresolvedLabel?: string | null;
+  communicationClassification: InternalCommunicationEventClassification;
 };
 
 export async function getOperationalHistory(input: {
@@ -436,6 +444,12 @@ export async function getOperationalHistory(input: {
             href: `/people/${task.createdBy.id}`,
           },
           unresolvedLabel: unresolved ? formatEnumLabel(task.status) : null,
+          communicationClassification: getInternalCommunicationEventClassification(
+            classifyFollowUpTaskCommunicationCategory({
+              status: task.status,
+              dueAt: task.dueAt,
+            }),
+          ),
         };
       }),
     ...notes.flatMap((note) => {
@@ -473,6 +487,11 @@ export async function getOperationalHistory(input: {
             unresolvedTaskCount > 0
               ? `${unresolvedTaskCount} unresolved linked task${unresolvedTaskCount === 1 ? "" : "s"}`
               : null,
+          communicationClassification: getInternalCommunicationEventClassification(
+            unresolvedTaskCount > 0
+              ? INTERNAL_COMMUNICATION_EVENT_CATEGORY.FOLLOW_UP_REMINDER_CANDIDATE
+              : INTERNAL_COMMUNICATION_EVENT_CATEGORY.OPERATIONAL_UPDATE,
+          ),
         }];
       }),
     ...attendanceRecords.flatMap((attendance) => {
@@ -506,6 +525,9 @@ export async function getOperationalHistory(input: {
                 href: null,
               },
           unresolvedLabel: hasOperationalConcern ? formatEnumLabel(attendance.status) : null,
+          communicationClassification: getInternalCommunicationEventClassification(
+            classifyAttendanceCommunicationCategory(attendance.status),
+          ),
         }];
       }),
     ...events.flatMap((event) => {
@@ -553,6 +575,11 @@ export async function getOperationalHistory(input: {
                 .filter(Boolean)
                 .join(" · ")
             : null,
+          communicationClassification: getInternalCommunicationEventClassification(
+            hasOperationalConcern
+              ? INTERNAL_COMMUNICATION_EVENT_CATEGORY.READINESS_CONCERN
+              : INTERNAL_COMMUNICATION_EVENT_CATEGORY.INFORMATIONAL_OPERATIONAL_EVENT,
+          ),
         }];
       }),
     ...rosterMemberships.map((membership) => ({
@@ -573,6 +600,9 @@ export async function getOperationalHistory(input: {
       ]),
       actor: { label: "Actor", name: null, href: null },
       unresolvedLabel: null,
+      communicationClassification: getInternalCommunicationEventClassification(
+        INTERNAL_COMMUNICATION_EVENT_CATEGORY.ASSIGNMENT_UPDATE_EVENT,
+      ),
     })),
     ...roleAssignments.map((assignment) => ({
       id: `assignment-${assignment.id}`,
@@ -594,6 +624,9 @@ export async function getOperationalHistory(input: {
       ]),
       actor: { label: "Actor", name: null, href: null },
       unresolvedLabel: null,
+      communicationClassification: getInternalCommunicationEventClassification(
+        INTERNAL_COMMUNICATION_EVENT_CATEGORY.ASSIGNMENT_UPDATE_EVENT,
+      ),
     })),
   ];
 

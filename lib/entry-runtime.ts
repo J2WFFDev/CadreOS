@@ -5,6 +5,11 @@ import {
   NoteVisibility,
 } from "@prisma/client";
 
+import {
+  classifyEntryRuntimeCommunicationCategory,
+  getInternalCommunicationEventClassification,
+  type InternalCommunicationEventClassification,
+} from "@/lib/communication-classification";
 import { db } from "@/lib/db";
 import { classifyFollowUpTaskOperationalVisibility } from "@/lib/operational-visibility";
 
@@ -13,6 +18,7 @@ export type EntryRuntimeRefWriteOutcome = "disabled" | "skipped" | "upserted";
 export type ObservationNoteEntryRuntimeSummary =
   | {
       status: "linked";
+      communicationClassification: InternalCommunicationEventClassification;
       entryRuntimeRef: {
         id: string;
         sourceModelType: EntryRuntimeSourceModelType;
@@ -35,6 +41,7 @@ export type ObservationNoteEntryRuntimeSummary =
 export type FollowUpTaskEntryRuntimeSummary =
   | {
       status: "linked";
+      communicationClassification: InternalCommunicationEventClassification;
       entryRuntimeRef: {
         id: string;
         sourceModelType: EntryRuntimeSourceModelType;
@@ -157,6 +164,9 @@ export async function getObservationNoteEntryRuntimeSummary(input: {
 
   return {
     status: "linked",
+    communicationClassification: getInternalCommunicationEventClassification(
+      classifyEntryRuntimeCommunicationCategory(entryRuntimeRef.sourceModelType),
+    ),
     entryRuntimeRef,
   };
 }
@@ -277,6 +287,9 @@ export async function getFollowUpTaskEntryRuntimeSummary(input: {
 
   return {
     status: "linked",
+    communicationClassification: getInternalCommunicationEventClassification(
+      classifyEntryRuntimeCommunicationCategory(entryRuntimeRef.sourceModelType),
+    ),
     entryRuntimeRef,
   };
 }
