@@ -2,6 +2,7 @@ import { NoteVisibility, TaskStatus, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { writeFollowUpTaskEntryRuntimeRef } from "@/lib/entry-runtime";
 import {
   classifyFollowUpTaskOperationalVisibility,
   classifyObservationNoteOperationalVisibility,
@@ -157,6 +158,7 @@ export async function POST(request: Request) {
       | {
           id: string;
           eventId: string | null;
+          athletePersonId: string | null;
           visibility: NoteVisibility;
           teamId: string | null;
           team: { programId: string } | null;
@@ -172,6 +174,7 @@ export async function POST(request: Request) {
         select: {
           id: true,
           eventId: true,
+          athletePersonId: true,
           visibility: true,
           teamId: true,
           team: { select: { programId: true } },
@@ -301,8 +304,38 @@ export async function POST(request: Request) {
         sourceNoteId: parsed.data.sourceNoteId,
         sourceEventId: parsed.data.sourceEventId,
       },
-      select: { id: true },
+      select: {
+        id: true,
+        organizationId: true,
+        createdByPersonId: true,
+        sourceNoteId: true,
+        sourceEventId: true,
+      },
     });
+
+    try {
+      await writeFollowUpTaskEntryRuntimeRef({
+        organizationId: scope.organizationId,
+        task: {
+          id: createdTask.id,
+          organizationId: createdTask.organizationId,
+          createdByPersonId: createdTask.createdByPersonId,
+          sourceNoteId: createdTask.sourceNoteId,
+          sourceEventId: createdTask.sourceEventId,
+          sourceNoteVisibility: sourceNote?.visibility ?? null,
+          sourceNoteEventId: sourceNote?.eventId ?? null,
+          sourceNoteTeamId: sourceNote?.teamId ?? null,
+          sourceNoteAthletePersonId: sourceNote?.athletePersonId ?? null,
+          sourceNoteEventTeamId: sourceNote?.event?.teamId ?? null,
+          sourceEventTeamId: sourceEvent?.teamId ?? null,
+          sourceNoteTeamProgramId: sourceNote?.team?.programId ?? null,
+          sourceNoteEventProgramId: sourceNote?.event?.programId ?? null,
+          sourceEventProgramId: sourceEvent?.programId ?? null,
+        },
+      });
+    } catch {
+      // Entry wrapper sync is non-authoritative and must not block task creation.
+    }
 
     return NextResponse.redirect(new URL(`/tasks/${createdTask.id}`, request.url), 303);
   } catch (error) {

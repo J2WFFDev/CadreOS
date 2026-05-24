@@ -27,14 +27,18 @@ enum NoteVisibility {
 
 enum EntryRuntimeSourceModelType {
   OBSERVATION_NOTE
+  FOLLOW_UP_TASK
 }
 
 enum EntryRuntimeKind {
   NOTE
+  TASK
 }
 
 enum EntryRuntimeVisibilityClass {
   STAFF_ONLY
+  TEAM_STAFF
+  ORGANIZATION_SCOPED
 }
 
 enum EventType {
