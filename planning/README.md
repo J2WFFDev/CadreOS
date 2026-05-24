@@ -111,6 +111,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 12D Internal Operational Awareness View](./PHASE_12D_INTERNAL_OPERATIONAL_AWARENESS_VIEW.md)
 - [Phase 12E Communication & Coordination Stabilization and Arc Closeout](./PHASE_12E_COMMUNICATION_AWARENESS_STABILIZATION_CLOSEOUT.md)
 - [Phase 12E Validation Checklist](./PHASE_12E_VALIDATION_CHECKLIST.md)
+- [Phase 13A Operational Intelligence Architecture Review](./PHASE_13A_OPERATIONAL_INTELLIGENCE_ARCHITECTURE_REVIEW.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -256,6 +257,8 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: stabilizes and closes Arc 12 with consolidated scope documentation, deferred-behavior boundaries, "Do Not Build Yet" section, Arc 13 safe/unsafe scope recommendations, production risk areas (communication fatigue, authorization leakage, awareness overload, misclassification), and a validation checklist.
 - [Phase 12E Validation Checklist](./PHASE_12E_VALIDATION_CHECKLIST.md)
   - Summary: covers awareness-view visibility, classification behavior, notification-candidate behavior, authorization boundaries, organization scoping, no-delivery/no-messaging confirmations, no-Feed/Inbox confirmations, no-guardian-runtime confirmations, workflow continuity, and documentation completeness.
+- [Phase 13A Operational Intelligence Architecture Review](./PHASE_13A_OPERATIONAL_INTELLIGENCE_ARCHITECTURE_REVIEW.md)
+  - Summary: defines Operational Intelligence architecture boundaries before any runtime analytics, recommendation, AI, or automation behavior is introduced. Reviews current operational data (ObservationNotes, FollowUpTasks, attendance, Entry wrapper, awareness metadata, roster context), defines intelligence concept boundaries (summaries, readiness evaluation, trend analysis, workload visibility, concern analysis, recommendation limits), separates intelligence from automation/notifications/workflow execution/escalation, identifies five risk areas (misleading summaries, recommendation overreach, authorization leakage, false urgency, trust erosion), establishes a "Do Not Implement Yet" section (autonomous actions, AI escalation, guardian-facing AI summaries, predictive discipline scoring, automated coaching), recommends a Safe First Intelligence Slice, and provides a Blocking Before Runtime Intelligence checklist. Documentation-only; no runtime code changes.
 
 ---
 
@@ -334,6 +337,9 @@ This track covers AI-assisted note capture, AI-suggested task prioritization, es
 Do not implement: AI-generated operational workflows, automation/escalation engines, or recommendation systems until operational baseline is pilot-validated and data volume confidence is established.
 
 Suggested first milestone: AI governance brief covering data readiness, use-case prioritization, governance model, and safety boundaries. See Phase 8P Option D.
+
+Milestones delivered:
+- [Phase 13A Operational Intelligence Architecture Review](./PHASE_13A_OPERATIONAL_INTELLIGENCE_ARCHITECTURE_REVIEW.md) (architecture boundary review covering intelligence concept definitions, operational data inventory, boundary separations — intelligence vs. automation, summaries vs. notifications, recommendations vs. workflow execution, awareness vs. escalation — five risk areas, "Do Not Implement Yet" section, Safe First Intelligence Slice recommendation, and Blocking Before Runtime Intelligence checklist). **Arc 13 architecture review complete.**
 
 ---
 
