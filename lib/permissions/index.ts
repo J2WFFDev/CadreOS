@@ -30,7 +30,9 @@ type SupportedAction =
   | "gearItem.create"
   | "gearItem.update"
   | "gearAssignment.create"
-  | "gearAssignment.update";
+  | "gearAssignment.update"
+  | "gearCheckout.create"
+  | "gearCheckout.update";
 
 type PermissionReason =
   | "UNAUTHENTICATED"
@@ -75,6 +77,8 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "gearItem.update",
     "gearAssignment.create",
     "gearAssignment.update",
+    "gearCheckout.create",
+    "gearCheckout.update",
   ]),
   [RoleType.PROGRAM_DIRECTOR]: new Set<SupportedAction>([
     "season.create",
@@ -99,6 +103,8 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "gearItem.update",
     "gearAssignment.create",
     "gearAssignment.update",
+    "gearCheckout.create",
+    "gearCheckout.update",
   ]),
   [RoleType.COACH]: new Set<SupportedAction>([
     "rosterMembership.create",
@@ -116,6 +122,8 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "gearItem.update",
     "gearAssignment.create",
     "gearAssignment.update",
+    "gearCheckout.create",
+    "gearCheckout.update",
   ]),
   [RoleType.ASSISTANT_COACH]: new Set<SupportedAction>([
     "attendance.upsert",
@@ -176,6 +184,8 @@ const SUPPORTED_ACTIONS = new Set<SupportedAction>([
   "gearItem.update",
   "gearAssignment.create",
   "gearAssignment.update",
+  "gearCheckout.create",
+  "gearCheckout.update",
 ]);
 
 export type PermissionCheckInput = {

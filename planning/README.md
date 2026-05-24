@@ -19,6 +19,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 16D Validation Checklist](./PHASE_16D_VALIDATION_CHECKLIST.md)
 - [Phase 16E GearOps Assignment Workflows](./PHASE_16E_GEAROPS_ASSIGNMENT_WORKFLOWS.md)
 - [Phase 16E Validation Checklist](./PHASE_16E_VALIDATION_CHECKLIST.md)
+- [Phase 16F GearOps Checkout and Check-in Custody Workflows](./PHASE_16F_GEAROPS_CHECKOUT_CHECKIN_WORKFLOWS.md)
+- [Phase 16F Validation Checklist](./PHASE_16F_VALIDATION_CHECKLIST.md)
 - [Notes / Inbox / Entry Model](./NOTES_INBOX_ENTRY_MODEL.md)
 - [User Stories](./USER_STORIES.md)
 - [MVP Spec](./MVP_SPEC.md)
@@ -155,7 +157,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 6J FieldOps MVP Hardening](./PHASE_6J_FIELDOPS_MVP_HARDENING.md)
 - [Phase 6K FieldOps MVP Closeout and Phase 7 Decision Plan](./PHASE_6K_FIELDOPS_MVP_CLOSEOUT.md)
 
-## GearOps Arc 16 Phase Sequence (16A–16E)
+## GearOps Arc 16 Phase Sequence (16A–16F)
 - [Phase 16A GearOps Architecture and Scope Boundaries](./PHASE_16A_GEAROPS_ARCHITECTURE_BOUNDARIES.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)
@@ -165,6 +167,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 16D Validation Checklist](./PHASE_16D_VALIDATION_CHECKLIST.md)
 - [Phase 16E GearOps Assignment Workflows](./PHASE_16E_GEAROPS_ASSIGNMENT_WORKFLOWS.md)
 - [Phase 16E Validation Checklist](./PHASE_16E_VALIDATION_CHECKLIST.md)
+- [Phase 16F GearOps Checkout and Check-in Custody Workflows](./PHASE_16F_GEAROPS_CHECKOUT_CHECKIN_WORKFLOWS.md)
+- [Phase 16F Validation Checklist](./PHASE_16F_VALIDATION_CHECKLIST.md)
 
 ## Phase 7A Recenter (current decision path)
 - [CadreOS MVP Roadmap (Phase 7A Recenter)](./ROADMAP.md)

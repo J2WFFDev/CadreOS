@@ -109,7 +109,14 @@ export default async function GearOpsItemDetailsPage({
           issuedBy: { id: string; firstName: string; lastName: string };
           returnedBy: { id: string; firstName: string; lastName: string } | null;
           receivedBy: { id: string; firstName: string; lastName: string } | null;
-          event: { id: string; title: string } | null;
+          event:
+            | {
+                id: string;
+                title: string;
+                team: { id: string; name: string } | null;
+                program: { id: string; name: string } | null;
+              }
+            | null;
         }>;
         maintenanceLogs: Array<{
           id: string;
@@ -183,7 +190,7 @@ export default async function GearOpsItemDetailsPage({
             issuedBy: { select: { id: true, firstName: true, lastName: true } },
             returnedBy: { select: { id: true, firstName: true, lastName: true } },
             receivedBy: { select: { id: true, firstName: true, lastName: true } },
-            event: { select: { id: true, title: true } },
+            event: { select: { id: true, title: true, team: { select: { id: true, name: true } }, program: { select: { id: true, name: true } } } },
           },
           orderBy: [{ checkedOutAt: "desc" }, { createdAt: "desc" }],
           take: 8,
@@ -251,6 +258,9 @@ export default async function GearOpsItemDetailsPage({
   ]);
   const currentAssignments = gearItem.assignments.filter((assignment) => currentAssignmentStatuses.has(assignment.status));
   const assignmentHistory = gearItem.assignments.filter((assignment) => !currentAssignmentStatuses.has(assignment.status));
+  const currentCheckoutStatuses = new Set<GearCheckoutStatus>([GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE]);
+  const currentCheckouts = gearItem.checkouts.filter((checkout) => currentCheckoutStatuses.has(checkout.status));
+  const checkoutHistory = gearItem.checkouts.filter((checkout) => !currentCheckoutStatuses.has(checkout.status));
 
   function renderAssignmentCard(assignment: (typeof gearItem.assignments)[number]) {
     const assignmentProgram = assignment.assignedEvent?.program ?? assignment.assignedTeam?.program ?? gearItem.program;
@@ -313,6 +323,90 @@ export default async function GearOpsItemDetailsPage({
           {formatGearOpsDateTime(assignment.returnedAt)}
         </p>
         {assignment.notes ? <p className="mt-1 text-zinc-600 dark:text-zinc-400">{assignment.notes}</p> : null}
+      </article>
+    );
+  }
+
+  function renderCheckoutCard(checkout: (typeof gearItem.checkouts)[number]) {
+    const checkoutProgram = checkout.event?.program ?? gearItem.program;
+    const checkoutTeam = checkout.event?.team;
+
+    return (
+      <article key={checkout.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <p className="font-medium">
+            {formatGearOpsEnum(checkout.status)} · Checked out {formatGearOpsDateTime(checkout.checkedOutAt)}
+          </p>
+          <Link
+            href={`/gear-ops/items/${gearItem.id}/checkouts/${checkout.id}/edit`}
+            className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Edit
+          </Link>
+        </div>
+        <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+          Checked out to:{" "}
+          <Link href={`/people/${checkout.checkedOutBy.id}`} className="underline">
+            {checkout.checkedOutBy.firstName} {checkout.checkedOutBy.lastName}
+          </Link>
+          {" · "}Issued by{" "}
+          <Link href={`/people/${checkout.issuedBy.id}`} className="underline">
+            {checkout.issuedBy.firstName} {checkout.issuedBy.lastName}
+          </Link>
+        </p>
+        <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+          Team:{" "}
+          {checkoutTeam ? (
+            <Link href={`/teams/${checkoutTeam.id}`} className="underline">
+              {checkoutTeam.name}
+            </Link>
+          ) : (
+            "—"
+          )}
+          {" · "}Program:{" "}
+          {checkoutProgram ? (
+            <Link href={`/programs/${checkoutProgram.id}`} className="underline">
+              {checkoutProgram.name}
+            </Link>
+          ) : (
+            "—"
+          )}
+          {" · "}Event:{" "}
+          {checkout.event ? (
+            <Link href={`/events/${checkout.event.id}`} className="underline">
+              {checkout.event.title}
+            </Link>
+          ) : (
+            "—"
+          )}
+        </p>
+        <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+          Expected return: {formatGearOpsDateTime(checkout.expectedReturnAt)} · Returned:{" "}
+          {formatGearOpsDateTime(checkout.returnedAt)}
+        </p>
+        {checkout.returnedBy || checkout.receivedBy ? (
+          <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+            Returned by:{" "}
+            {checkout.returnedBy ? (
+              <Link href={`/people/${checkout.returnedBy.id}`} className="underline">
+                {checkout.returnedBy.firstName} {checkout.returnedBy.lastName}
+              </Link>
+            ) : (
+              "—"
+            )}
+            {" · "}Received by:{" "}
+            {checkout.receivedBy ? (
+              <Link href={`/people/${checkout.receivedBy.id}`} className="underline">
+                {checkout.receivedBy.firstName} {checkout.receivedBy.lastName}
+              </Link>
+            ) : (
+              "—"
+            )}
+            {" · "}Condition on return: {checkout.conditionOnReturn ? formatGearOpsEnum(checkout.conditionOnReturn) : "—"}
+          </p>
+        ) : null}
+        {checkout.purposeNotes ? <p className="mt-1 text-zinc-600 dark:text-zinc-400">{checkout.purposeNotes}</p> : null}
+        {checkout.returnNotes ? <p className="mt-1 text-zinc-600 dark:text-zinc-400">{checkout.returnNotes}</p> : null}
       </article>
     );
   }
@@ -421,64 +515,40 @@ export default async function GearOpsItemDetailsPage({
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-lg font-medium">Checkouts</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-lg font-medium">Checkouts</h3>
+          <Link
+            href={`/gear-ops/items/${item.id}/checkout`}
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Check out gear
+          </Link>
+        </div>
         {item.checkouts.length === 0 ? (
-          <EmptyState message="No checkout records are currently visible for this item." />
+          <EmptyState message="No checkout history is currently visible for this item." />
         ) : (
-          <div className="space-y-3">
-            {item.checkouts.map((checkout) => (
-              <article key={checkout.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-                <p className="font-medium">
-                  {formatGearOpsEnum(checkout.status)} · Checked out {formatGearOpsDateTime(checkout.checkedOutAt)}
-                </p>
-                <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-                  Holder:{" "}
-                  <Link href={`/people/${checkout.checkedOutBy.id}`} className="underline">
-                    {checkout.checkedOutBy.firstName} {checkout.checkedOutBy.lastName}
-                  </Link>
-                  {" · "}Issued by{" "}
-                  <Link href={`/people/${checkout.issuedBy.id}`} className="underline">
-                    {checkout.issuedBy.firstName} {checkout.issuedBy.lastName}
-                  </Link>
-                  {checkout.event ? (
-                    <>
-                      {" · "}Event:{" "}
-                      <Link href={`/events/${checkout.event.id}`} className="underline">
-                        {checkout.event.title}
-                      </Link>
-                    </>
-                  ) : null}
-                </p>
-                <p className="mt-1 text-zinc-500 dark:text-zinc-400">
-                  Expected return: {formatGearOpsDateTime(checkout.expectedReturnAt)} · Returned:{" "}
-                  {formatGearOpsDateTime(checkout.returnedAt)}
-                </p>
-                {checkout.returnedBy || checkout.receivedBy ? (
-                  <p className="mt-1 text-zinc-500 dark:text-zinc-400">
-                    Returned by:{" "}
-                    {checkout.returnedBy ? (
-                      <Link href={`/people/${checkout.returnedBy.id}`} className="underline">
-                        {checkout.returnedBy.firstName} {checkout.returnedBy.lastName}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                    {" · "}Received by:{" "}
-                    {checkout.receivedBy ? (
-                      <Link href={`/people/${checkout.receivedBy.id}`} className="underline">
-                        {checkout.receivedBy.firstName} {checkout.receivedBy.lastName}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                    {" · "}Condition on return:{" "}
-                    {checkout.conditionOnReturn ? formatGearOpsEnum(checkout.conditionOnReturn) : "—"}
-                  </p>
-                ) : null}
-                {checkout.purposeNotes ? <p className="mt-1 text-zinc-600 dark:text-zinc-400">{checkout.purposeNotes}</p> : null}
-                {checkout.returnNotes ? <p className="mt-1 text-zinc-600 dark:text-zinc-400">{checkout.returnNotes}</p> : null}
-              </article>
-            ))}
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Current open checkouts
+              </h4>
+              {currentCheckouts.length === 0 ? (
+                <EmptyState message="No open checkout records are currently visible for this item." />
+              ) : (
+                <div className="space-y-3">{currentCheckouts.map((checkout) => renderCheckoutCard(checkout))}</div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Checkout history
+              </h4>
+              {checkoutHistory.length === 0 ? (
+                <EmptyState message="No completed checkout history is currently visible for this item." />
+              ) : (
+                <div className="space-y-3">{checkoutHistory.map((checkout) => renderCheckoutCard(checkout))}</div>
+              )}
+            </div>
           </div>
         )}
       </div>
