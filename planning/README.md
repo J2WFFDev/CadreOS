@@ -104,6 +104,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 10E Validation Checklist](./PHASE_10E_VALIDATION_CHECKLIST.md)
 - [Phase 11A Pilot Validation Plan and Build/Deployment Verification](./PHASE_11A_PILOT_VALIDATION_PLAN.md)
 - [Phase 11B Operational Workflow Friction and Stability Remediation](./PHASE_11B_OPERATIONAL_WORKFLOW_FRICTION_STABILITY_REMEDIATION.md)
+- [Phase 11C Pilot Stability Closeout and Operational Readiness Review](./PHASE_11C_PILOT_STABILITY_CLOSEOUT_OPERATIONAL_READINESS_REVIEW.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 - [Module Roadmap: FieldOps and GearOps](./MODULE_ROADMAP_FIELDOPS_GEAROPS.md)
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
@@ -173,6 +174,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 10E Validation Checklist](./PHASE_10E_VALIDATION_CHECKLIST.md)
 - [Phase 11A Pilot Validation Plan and Build/Deployment Verification](./PHASE_11A_PILOT_VALIDATION_PLAN.md)
 - [Phase 11B Operational Workflow Friction and Stability Remediation](./PHASE_11B_OPERATIONAL_WORKFLOW_FRICTION_STABILITY_REMEDIATION.md)
+- [Phase 11C Pilot Stability Closeout and Operational Readiness Review](./PHASE_11C_PILOT_STABILITY_CLOSEOUT_OPERATIONAL_READINESS_REVIEW.md)
 - [**MVP Stability Checklist**](./MVP_STABILITY_CHECKLIST.md)
 
 ## Operational Foundation MVP Phase Sequence (8A–8P)
@@ -232,6 +234,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: verifies current note/task workflow continuity, read-only wrapper context safety, organization-scoped authorization behavior, additive/reversible guarantees, and deferred runtime boundaries.
 - [Phase 11A Pilot Validation Plan and Build/Deployment Verification](./PHASE_11A_PILOT_VALIDATION_PLAN.md)
   - Summary: defines pilot demo/pilot readiness validation gates, deployment/build verification, coach end-to-end manual scenario testing, validation debt tracking, and explicit pilot blockers without expanding runtime scope.
+- [Phase 11B Operational Workflow Friction and Stability Remediation](./PHASE_11B_OPERATIONAL_WORKFLOW_FRICTION_STABILITY_REMEDIATION.md)
+  - Summary: remediates attendance and entry relationship operational friction from pilot validation, improving continuity and clarity without expanding runtime scope.
+- [Phase 11C Pilot Stability Closeout and Operational Readiness Review](./PHASE_11C_PILOT_STABILITY_CLOSEOUT_OPERATIONAL_READINESS_REVIEW.md)
+  - Summary: closes out Arc 11 pilot hardening with an operational readiness review, pilot-safe workflow boundaries, production risk tracking, and Arc 12 communication architecture recommendations.
 
 ---
 
