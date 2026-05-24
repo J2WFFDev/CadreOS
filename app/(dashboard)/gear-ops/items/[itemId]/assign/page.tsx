@@ -184,7 +184,7 @@ export default async function AssignGearItemPage({
         </div>
 
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Select one assignment context below (person, team, or event). All are optional.
+          Select exactly one assignment context below (person, team, or event).
         </p>
 
         <div className="space-y-1">

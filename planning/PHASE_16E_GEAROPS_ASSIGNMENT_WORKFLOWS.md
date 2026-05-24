@@ -25,6 +25,8 @@ The existing `GearItem` detail page (`/gear-ops/items/[itemId]`) already display
 
 - Add an **"Assign gear"** button (top-right of the Assignments section header) linking to the create form.
 - Add an **"Edit"** link on each assignment card linking to the edit form.
+- Split assignment visibility into **Current assignments** and **Assignment history** sections.
+- Show labeled assignment context values for person/team/event and program (when derivable from assignment/item context).
 
 These entry points are visible to all staff users who have read access to the item.
 
@@ -58,14 +60,14 @@ Both route handlers call `requirePhase1CMutationPermission()` with the appropria
 | Field | Required | Constraints |
 |-------|----------|-------------|
 | `status` | Yes | Must be a valid `GearAssignmentStatus` enum value |
-| `assignedToPersonId` | No | Must exist in the same organization if provided |
-| `assignedToTeamId` | No | Must exist in the same organization if provided |
-| `assignedToEventId` | No | Must exist in the same organization if provided |
+| `assignedToPersonId` | Conditional | Must exist in the same organization if provided |
+| `assignedToTeamId` | Conditional | Must exist in the same organization if provided |
+| `assignedToEventId` | Conditional | Must exist in the same organization if provided |
 | `expectedReturnAt` | No | Must use YYYY-MM-DDTHH:mm format if provided |
 | `returnedAt` | No | Must use YYYY-MM-DDTHH:mm format if provided |
 | `notes` | No | Max 4000 characters |
 
-All context fields (person, team, event) are optional. The form allows selecting one or more, but no enforcement of "exactly one" is applied server-side — this is consistent with the schema, which supports multi-context assignments.
+Server-side workflow validation enforces exactly one assignment context selection among person/team/event. Empty context submissions and multi-context submissions are both rejected with field-level errors.
 
 ---
 
@@ -126,7 +128,7 @@ Both are added to `SUPPORTED_ACTIONS`. Neither is added to `SCOPED_ACTIONS` — 
 
 ## Workflow Schema Added (`lib/workflows/index.ts`)
 
-- `gearAssignmentWorkflowSchema`: Validates and transforms status, all three optional context fields (personId/teamId/eventId), two optional datetime fields (expectedReturnAt/returnedAt), and notes.
+- `gearAssignmentWorkflowSchema`: Validates and transforms status, three context fields (personId/teamId/eventId) with exact-one selection enforcement, two optional datetime fields (expectedReturnAt/returnedAt), and notes.
 - `GearAssignmentWorkflowInput`: Type export for `gearAssignmentWorkflowSchema` output.
 
 The `GearAssignmentStatus` enum import was added to the workflows module.

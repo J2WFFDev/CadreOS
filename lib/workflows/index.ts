@@ -547,6 +547,46 @@ export const gearAssignmentWorkflowSchema = z
       .max(MAX_GEAR_NOTES_LENGTH, `Notes must be ${MAX_GEAR_NOTES_LENGTH} characters or less.`),
   })
   .superRefine((value, context) => {
+    const contextCount = [value.assignedToPersonId, value.assignedToTeamId, value.assignedToEventId].filter(
+      (entry) => entry.length > 0,
+    ).length;
+
+    if (contextCount === 0) {
+      const message = "Select one assignment context (person, team, or event).";
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["assignedToPersonId"],
+        message,
+      });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["assignedToTeamId"],
+        message,
+      });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["assignedToEventId"],
+        message,
+      });
+    } else if (contextCount > 1) {
+      const message = "Select only one assignment context (person, team, or event).";
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["assignedToPersonId"],
+        message,
+      });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["assignedToTeamId"],
+        message,
+      });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["assignedToEventId"],
+        message,
+      });
+    }
+
     if (value.expectedReturnAt.length > 0 && !DATETIME_LOCAL_INPUT_PATTERN.test(value.expectedReturnAt)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
