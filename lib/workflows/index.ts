@@ -5,6 +5,7 @@ import {
   EventStatus,
   EventType,
   GearAssignmentStatus,
+  GearCheckoutStatus,
   GearConditionStatus,
   GearInventoryType,
   GearItemLifecycleStatus,
@@ -613,6 +614,190 @@ export const gearAssignmentWorkflowSchema = z
     notes: value.notes.length === 0 ? null : value.notes,
   }));
 
+export const gearCheckoutWorkflowSchema = z
+  .object({
+    status: z.nativeEnum(GearCheckoutStatus, {
+      message: "Checkout status must use a valid status value.",
+    }),
+    checkedOutById: z.string().trim(),
+    issuedById: z.string().trim(),
+    eventId: z.string().trim(),
+    checkedOutAt: z.string().trim(),
+    expectedReturnAt: z.string().trim(),
+    returnedAt: z.string().trim(),
+    returnedById: z.string().trim(),
+    receivedById: z.string().trim(),
+    conditionOnReturn: z.string().trim(),
+    purposeNotes: z
+      .string()
+      .trim()
+      .max(MAX_GEAR_NOTES_LENGTH, `Purpose notes must be ${MAX_GEAR_NOTES_LENGTH} characters or less.`),
+    returnNotes: z
+      .string()
+      .trim()
+      .max(MAX_GEAR_NOTES_LENGTH, `Return notes must be ${MAX_GEAR_NOTES_LENGTH} characters or less.`),
+  })
+  .superRefine((value, context) => {
+    if (value.checkedOutById.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["checkedOutById"],
+        message: "Select who currently has custody of this item.",
+      });
+    }
+
+    if (value.issuedById.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["issuedById"],
+        message: "Select the staff member who issued this checkout.",
+      });
+    }
+
+    if (value.checkedOutAt.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["checkedOutAt"],
+        message: "Checkout date/time is required.",
+      });
+    } else if (!DATETIME_LOCAL_INPUT_PATTERN.test(value.checkedOutAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["checkedOutAt"],
+        message: "Checkout date/time must use YYYY-MM-DDTHH:mm format.",
+      });
+    }
+
+    if (value.expectedReturnAt.length > 0 && !DATETIME_LOCAL_INPUT_PATTERN.test(value.expectedReturnAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["expectedReturnAt"],
+        message: "Expected return must use YYYY-MM-DDTHH:mm format.",
+      });
+    }
+
+    if (value.returnedAt.length > 0 && !DATETIME_LOCAL_INPUT_PATTERN.test(value.returnedAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["returnedAt"],
+        message: "Returned at must use YYYY-MM-DDTHH:mm format.",
+      });
+    }
+
+    if (value.conditionOnReturn.length > 0) {
+      const valid = Object.values(GearConditionStatus) as string[];
+      if (!valid.includes(value.conditionOnReturn)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["conditionOnReturn"],
+          message: "Condition on return must use an existing condition value.",
+        });
+      }
+    }
+
+    const isReturnedStatus = value.status === GearCheckoutStatus.RETURNED;
+    if (isReturnedStatus) {
+      if (value.returnedAt.length === 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["returnedAt"],
+          message: "Returned at is required when status is RETURNED.",
+        });
+      }
+      if (value.returnedById.length === 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["returnedById"],
+          message: "Select who returned the item when status is RETURNED.",
+        });
+      }
+      if (value.receivedById.length === 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["receivedById"],
+          message: "Select who received the item when status is RETURNED.",
+        });
+      }
+    } else {
+      if (value.returnedAt.length > 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["returnedAt"],
+          message: "Returned at can only be set when status is RETURNED.",
+        });
+      }
+      if (value.returnedById.length > 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["returnedById"],
+          message: "Returned by can only be set when status is RETURNED.",
+        });
+      }
+      if (value.receivedById.length > 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["receivedById"],
+          message: "Received by can only be set when status is RETURNED.",
+        });
+      }
+      if (value.conditionOnReturn.length > 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["conditionOnReturn"],
+          message: "Condition on return can only be set when status is RETURNED.",
+        });
+      }
+      if (value.returnNotes.length > 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["returnNotes"],
+          message: "Return notes can only be set when status is RETURNED.",
+        });
+      }
+    }
+
+    if (DATETIME_LOCAL_INPUT_PATTERN.test(value.checkedOutAt) && DATETIME_LOCAL_INPUT_PATTERN.test(value.expectedReturnAt)) {
+      const checkedOutAt = dateTimeInputToUtcDate(value.checkedOutAt);
+      const expectedReturnAt = dateTimeInputToUtcDate(value.expectedReturnAt);
+
+      if (expectedReturnAt < checkedOutAt) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["expectedReturnAt"],
+          message: "Expected return must be after checkout date/time.",
+        });
+      }
+    }
+
+    if (DATETIME_LOCAL_INPUT_PATTERN.test(value.checkedOutAt) && DATETIME_LOCAL_INPUT_PATTERN.test(value.returnedAt)) {
+      const checkedOutAt = dateTimeInputToUtcDate(value.checkedOutAt);
+      const returnedAt = dateTimeInputToUtcDate(value.returnedAt);
+
+      if (returnedAt < checkedOutAt) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["returnedAt"],
+          message: "Returned at must be after checkout date/time.",
+        });
+      }
+    }
+  })
+  .transform((value) => ({
+    status: value.status,
+    checkedOutById: value.checkedOutById,
+    issuedById: value.issuedById,
+    eventId: value.eventId.length === 0 ? null : value.eventId,
+    checkedOutAt: dateTimeInputToUtcDate(value.checkedOutAt),
+    expectedReturnAt: value.expectedReturnAt.length === 0 ? null : dateTimeInputToUtcDate(value.expectedReturnAt),
+    returnedAt: value.returnedAt.length === 0 ? null : dateTimeInputToUtcDate(value.returnedAt),
+    returnedById: value.returnedById.length === 0 ? null : value.returnedById,
+    receivedById: value.receivedById.length === 0 ? null : value.receivedById,
+    conditionOnReturn:
+      value.conditionOnReturn.length === 0 ? null : (value.conditionOnReturn as GearConditionStatus),
+    purposeNotes: value.purposeNotes.length === 0 ? null : value.purposeNotes,
+    returnNotes: value.returnNotes.length === 0 ? null : value.returnNotes,
+  }));
+
 export type PersonWorkflowInput = z.output<typeof personWorkflowSchema>;
 export type TeamWorkflowInput = z.output<typeof teamWorkflowSchema>;
 export type ProgramWorkflowInput = z.output<typeof programWorkflowSchema>;
@@ -628,6 +813,7 @@ export type BookingRequestWorkflowInput = z.output<typeof bookingRequestWorkflow
 export type GearCategoryWorkflowInput = z.output<typeof gearCategoryWorkflowSchema>;
 export type GearItemWorkflowInput = z.output<typeof gearItemWorkflowSchema>;
 export type GearAssignmentWorkflowInput = z.output<typeof gearAssignmentWorkflowSchema>;
+export type GearCheckoutWorkflowInput = z.output<typeof gearCheckoutWorkflowSchema>;
 
 export function getStringField(formData: FormData, field: string): string {
   const rawValue = formData.get(field);
@@ -700,7 +886,9 @@ export async function requirePhase1CMutationPermission(input: {
     | "gearItem.create"
     | "gearItem.update"
     | "gearAssignment.create"
-    | "gearAssignment.update";
+    | "gearAssignment.update"
+    | "gearCheckout.create"
+    | "gearCheckout.update";
   programId?: string | null;
   teamId?: string | null;
   seasonId?: string | null;
