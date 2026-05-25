@@ -19,6 +19,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 17G Validation Checklist](./PHASE_17G_VALIDATION_CHECKLIST.md)
 - [Phase 17H Roster Lifecycle Dashboard and Readiness Integration](./PHASE_17H_ROSTER_LIFECYCLE_READINESS_DASHBOARD.md)
 - [Phase 17H Validation Checklist](./PHASE_17H_VALIDATION_CHECKLIST.md)
+- [Phase 18A Ops Reporting and Operational Review Architecture Boundaries](./PHASE_18A_OPS_REPORTING_ARCHITECTURE_BOUNDARIES.md)
+- [Phase 18A Validation Checklist](./PHASE_18A_VALIDATION_CHECKLIST.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)
 - [Phase 16C GearOps Catalog Read-Only Views](./PHASE_16C_GEAROPS_CATALOG_READ_ONLY_VIEWS.md)
@@ -227,6 +229,12 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: closes Arc 17 by validating end-to-end lifecycle workflow coverage (status model, join/activate, move, inactive/archive, rollover, guardian maintenance, readiness visibility), confirms org-scoping and authorization safety boundaries, records blocker-level findings, and explicitly documents deferred scope.
 - [Phase 17I Validation Checklist](./PHASE_17I_VALIDATION_CHECKLIST.md)
   - Summary: captures automated validation status and closeout verification for workflow-chain coverage, organization scoping, staff authorization boundaries, invalid-id/empty-state handling, history preservation, blocker triage, and deferred-scope confirmation.
+
+## Ops Reporting and Operational Review Arc 18 Phase Sequence (18A–18I)
+- [Phase 18A Ops Reporting and Operational Review Architecture Boundaries](./PHASE_18A_OPS_REPORTING_ARCHITECTURE_BOUNDARIES.md)
+  - Summary: defines Arc 18 purpose for operational visibility and review cadence, confirms in-scope reporting areas across Core/FieldOps/GearOps/roster lifecycle domains, locks out-of-scope boundaries (no messaging, parent-facing reporting, AI/automation, financials, external integrations/APIs, scheduled delivery, or workflow mutation), proposes Arc 18B–18I sequence, and preserves staff-only organization-scoped authorization/privacy patterns.
+- [Phase 18A Validation Checklist](./PHASE_18A_VALIDATION_CHECKLIST.md)
+  - Summary: confirms Arc 18A documentation-only scope compliance, required validation command status, deferred boundary confirmation, authorization/privacy boundary checks, and README/index updates.
 
 ## Phase 7A Recenter (current decision path)
 - [CadreOS MVP Roadmap (Phase 7A Recenter)](./ROADMAP.md)
