@@ -1,4 +1,4 @@
-import { MemberLifecycleStatus, ScopeType } from "@prisma/client";
+import { MemberLifecycleStatus, Prisma, ScopeType, TaskStatus } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
@@ -9,7 +9,12 @@ import {
 } from "@/lib/attendance-event-reporting";
 import { canReadStaffOnlyContent, resolveActorRoleContext } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { isTaskOverdue, isUnresolvedTaskStatus } from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
+import {
+  buildSupportedTaskSourceNoteVisibilityWhere,
+  SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
+} from "@/lib/operational-visibility";
 import { canPerformAction } from "@/lib/permissions";
 import { selectSeededOrCurrentSeason } from "@/lib/workflows";
 
@@ -20,6 +25,14 @@ function formatEnumLabel(value: string) {
     .replaceAll("_", " ")
     .toLowerCase()
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatDateTime(value: Date | null) {
+  if (!value) {
+    return "—";
+  }
+
+  return `${value.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -232,6 +245,25 @@ export default async function ProgramDetailsPage({
     new Map<string, Set<string>>(),
   );
   const now = new Date();
+  const staleNoteCutoff = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+  const recentNoteThreshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const programTaskWhere: Prisma.FollowUpTaskWhereInput = {
+    organizationId: scope.organizationId,
+    ...buildSupportedTaskSourceNoteVisibilityWhere(),
+    OR: [
+      { sourceEvent: { is: { programId: program.id } } },
+      { sourceNote: { is: { team: { is: { programId: program.id } } } } },
+      { sourceNote: { is: { event: { is: { programId: program.id } } } } },
+    ],
+  };
+  const programNoteWhere: Prisma.ObservationNoteWhereInput = {
+    organizationId: scope.organizationId,
+    visibility: SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
+    OR: [
+      { team: { is: { programId: program.id } } },
+      { event: { is: { programId: program.id } } },
+    ],
+  };
   const [recentProgramEvents, upcomingProgramEvents] = canViewAttendanceReporting
     ? await Promise.all([
         db.event.findMany({
@@ -304,6 +336,176 @@ export default async function ProgramDetailsPage({
         }),
       ])
     : [[], []];
+  const [
+    unresolvedProgramTasks,
+    unresolvedProgramTaskOwnership,
+    overdueProgramTaskCount,
+    unresolvedProgramTaskCount,
+    programTaskStatusGroups,
+    recentProgramNotes,
+    totalProgramNoteCount,
+  ] = canViewAttendanceReporting
+    ? await Promise.all([
+        db.followUpTask.findMany({
+          where: {
+            AND: [
+              programTaskWhere,
+              {
+                status: {
+                  in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED],
+                },
+              },
+            ],
+          },
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            dueAt: true,
+            assignee: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            sourceEvent: {
+              select: {
+                id: true,
+                title: true,
+                team: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+            sourceNote: {
+              select: {
+                id: true,
+                team: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+                event: {
+                  select: {
+                    id: true,
+                    team: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            updatedAt: true,
+          },
+          orderBy: [{ dueAt: "asc" }, { updatedAt: "desc" }],
+          take: 8,
+        }),
+        db.followUpTask.findMany({
+          where: {
+            AND: [
+              programTaskWhere,
+              {
+                status: {
+                  in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED],
+                },
+              },
+            ],
+          },
+          select: {
+            dueAt: true,
+            assignee: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        }),
+        db.followUpTask.count({
+          where: {
+            AND: [
+              programTaskWhere,
+              {
+                status: {
+                  in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED],
+                },
+                dueAt: { lt: now },
+              },
+            ],
+          },
+        }),
+        db.followUpTask.count({
+          where: {
+            AND: [
+              programTaskWhere,
+              {
+                status: {
+                  in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED],
+                },
+              },
+            ],
+          },
+        }),
+        db.followUpTask.groupBy({
+          by: ["status"],
+          where: programTaskWhere,
+          _count: {
+            _all: true,
+          },
+        }),
+        db.observationNote.findMany({
+          where: {
+            ...programNoteWhere,
+            createdAt: {
+              gte: recentNoteThreshold,
+            },
+          },
+          select: {
+            id: true,
+            createdAt: true,
+            updatedAt: true,
+            body: true,
+            team: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            event: {
+              select: {
+                id: true,
+                title: true,
+                team: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+            tasks: {
+              select: {
+                status: true,
+              },
+            },
+          },
+          orderBy: [{ createdAt: "desc" }],
+          take: 8,
+        }),
+        db.observationNote.count({
+          where: programNoteWhere,
+        }),
+      ])
+    : [[], [], 0, 0, [], [], 0];
   const programAttendanceTrend = summarizeAttendanceTrend(
     recentProgramEvents.map((event) => ({
       startsAt: event.startsAt,
@@ -352,6 +554,56 @@ export default async function ProgramDetailsPage({
   const upcomingProgramReadinessConcernCount = upcomingProgramReadinessEntries.filter(
     (event) => event.readinessConcernCount > 0,
   ).length;
+  const unresolvedTaskCountsByStatus = Object.values(TaskStatus).reduce(
+    (statusCounts, status) => {
+      statusCounts[status] = 0;
+      return statusCounts;
+    },
+    {} as Record<TaskStatus, number>,
+  );
+  for (const statusGroup of programTaskStatusGroups) {
+    unresolvedTaskCountsByStatus[statusGroup.status] = statusGroup._count._all;
+  }
+  const overdueProgramTasks = unresolvedProgramTasks.filter((task) => isTaskOverdue(task, now));
+  const recentProgramNotesWithUnresolved = recentProgramNotes.filter((note) =>
+    note.tasks.some((task) => isUnresolvedTaskStatus(task.status)),
+  );
+  const notesNeedingReviewCount = recentProgramNotes.filter((note) => {
+    const unresolvedTaskCount = note.tasks.filter((task) => isUnresolvedTaskStatus(task.status)).length;
+    return unresolvedTaskCount > 0 && note.updatedAt.getTime() < staleNoteCutoff.getTime();
+  }).length;
+  const ownershipSummary = Array.from(
+    unresolvedProgramTaskOwnership.reduce(
+      (summaryByAssignee, task) => {
+        const currentSummary = summaryByAssignee.get(task.assignee.id) ?? {
+          assigneeId: task.assignee.id,
+          assigneeName: `${task.assignee.firstName} ${task.assignee.lastName}`,
+          unresolvedCount: 0,
+          overdueCount: 0,
+        };
+        currentSummary.unresolvedCount += 1;
+        if (task.dueAt && task.dueAt.getTime() < now.getTime()) {
+          currentSummary.overdueCount += 1;
+        }
+        summaryByAssignee.set(task.assignee.id, currentSummary);
+        return summaryByAssignee;
+      },
+      new Map<
+        string,
+        { assigneeId: string; assigneeName: string; unresolvedCount: number; overdueCount: number }
+      >(),
+    ).values(),
+  )
+    .sort((left, right) => {
+      if (right.unresolvedCount !== left.unresolvedCount) {
+        return right.unresolvedCount - left.unresolvedCount;
+      }
+      if (right.overdueCount !== left.overdueCount) {
+        return right.overdueCount - left.overdueCount;
+      }
+      return left.assigneeName.localeCompare(right.assigneeName);
+    })
+    .slice(0, 5);
 
   return (
     <section className="space-y-6">
@@ -400,6 +652,167 @@ export default async function ProgramDetailsPage({
           Athlete rows missing guardian linkage in selected season: {selectedSeasonAthletesMissingGuardianLinkage}.
         </p>
       </div>
+
+      {canViewAttendanceReporting ? (
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-medium">Notes and follow-up operational review</h3>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                Staff-scoped, read-only workload visibility for unresolved follow-up, ownership, and review readiness in
+                current program context.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-sm">
+              <Link href="/tasks?resolution=unresolved" className="rounded-full border px-2 py-1">
+                Unresolved task lane
+              </Link>
+              <Link href="/tasks?dueWindow=overdue" className="rounded-full border px-2 py-1">
+                Overdue follow-up lane
+              </Link>
+              <Link href="/notes?readinessIndicator=needs_review" className="rounded-full border px-2 py-1">
+                Notes needing review
+              </Link>
+            </div>
+          </div>
+          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <dt className="font-medium">Open follow-up tasks</dt>
+              <dd className={unresolvedProgramTaskCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+                {unresolvedProgramTaskCount}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">Overdue follow-up tasks</dt>
+              <dd className={overdueProgramTaskCount > 0 ? "text-red-700 dark:text-red-300" : "text-zinc-600 dark:text-zinc-400"}>
+                {overdueProgramTaskCount}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">Recent notes (30 days)</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">{recentProgramNotes.length}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Recent notes with unresolved follow-up</dt>
+              <dd className={recentProgramNotesWithUnresolved.length > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+                {recentProgramNotesWithUnresolved.length}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">Total program notes</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">{totalProgramNoteCount}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Operational review readiness concerns</dt>
+              <dd className={notesNeedingReviewCount + overdueProgramTaskCount + upcomingProgramReadinessConcernCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+                {notesNeedingReviewCount + overdueProgramTaskCount + upcomingProgramReadinessConcernCount}
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+            <div>
+              <h4 className="text-sm font-medium">Task status summary</h4>
+              <ul className="mt-2 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+                <li>Open: {unresolvedTaskCountsByStatus[TaskStatus.OPEN]}</li>
+                <li>In progress: {unresolvedTaskCountsByStatus[TaskStatus.IN_PROGRESS]}</li>
+                <li>Blocked: {unresolvedTaskCountsByStatus[TaskStatus.BLOCKED]}</li>
+                <li>Done: {unresolvedTaskCountsByStatus[TaskStatus.DONE]}</li>
+                <li>Cancelled: {unresolvedTaskCountsByStatus[TaskStatus.CANCELLED]}</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium">Follow-up ownership summary</h4>
+              {ownershipSummary.length === 0 ? (
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No unresolved follow-up ownership items in this program context.</p>
+              ) : (
+                <ul className="mt-2 space-y-2 text-sm">
+                  {ownershipSummary.map((owner) => (
+                    <li key={owner.assigneeId} className="rounded-md border p-2">
+                      <Link href={`/tasks?assigneePersonId=${owner.assigneeId}&resolution=unresolved`} className="font-medium underline">
+                        {owner.assigneeName}
+                      </Link>
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        Unresolved: {owner.unresolvedCount} · Overdue: {owner.overdueCount}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <h4 className="text-sm font-medium">Readiness focus</h4>
+              <ul className="mt-2 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+                <li>Notes needing review: {notesNeedingReviewCount}</li>
+                <li>Overdue follow-up tasks: {overdueProgramTaskCount}</li>
+                <li>Upcoming event readiness concerns: {upcomingProgramReadinessConcernCount}</li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div>
+              <h4 className="text-sm font-medium">Overdue follow-up tasks</h4>
+              {overdueProgramTasks.length === 0 ? (
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  No overdue open/in-progress/blocked follow-up tasks in current program context.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-2 text-sm">
+                  {overdueProgramTasks.slice(0, 3).map((task) => (
+                    <li key={task.id} className="rounded-md border p-2">
+                      <Link href={`/tasks/${task.id}`} className="font-medium underline">
+                        {task.title}
+                      </Link>
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        {formatEnumLabel(task.status)} · Due {formatDateTime(task.dueAt)}
+                      </p>
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        Assignee: {task.assignee.firstName} {task.assignee.lastName}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <h4 className="text-sm font-medium">Recent note activity</h4>
+              {recentProgramNotes.length === 0 ? (
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  No staff-visible program notes were recorded in the last 30 days.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-2 text-sm">
+                  {recentProgramNotes.slice(0, 3).map((note) => (
+                    <li key={note.id} className="rounded-md border p-2">
+                      <Link href={`/notes/${note.id}`} className="font-medium underline">
+                        {note.body.slice(0, 80)}
+                        {note.body.length > 80 ? "…" : ""}
+                      </Link>
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        Created {formatDateTime(note.createdAt)} · Updated {formatDateTime(note.updatedAt)}
+                      </p>
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        Team:{" "}
+                        {note.team ? (
+                          <Link href={`/teams/${note.team.id}`} className="underline">
+                            {note.team.name}
+                          </Link>
+                        ) : note.event?.team ? (
+                          <Link href={`/teams/${note.event.team.id}`} className="underline">
+                            {note.event.team.name}
+                          </Link>
+                        ) : (
+                          "No team context"
+                        )}{" "}
+                        · Unresolved linked tasks: {note.tasks.filter((task) => isUnresolvedTaskStatus(task.status)).length}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {canViewAttendanceReporting ? (
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
