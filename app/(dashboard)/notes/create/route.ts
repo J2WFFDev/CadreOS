@@ -206,6 +206,7 @@ export async function POST(request: Request) {
       select: {
         id: true,
         organizationId: true,
+        body: true,
         authorPersonId: true,
         visibility: true,
         athletePersonId: true,
