@@ -147,6 +147,27 @@ export default async function ResourceDetailsPage({
     );
   }
 
+  const now = new Date();
+  const nextFourteenDays = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const upcomingResourceBookings = resource.bookings.filter(
+    (booking) =>
+      booking.startsAt >= now &&
+      booking.startsAt < nextFourteenDays &&
+      booking.status !== "DENIED" &&
+      booking.status !== "CANCELED",
+  );
+  const upcomingBookedHours = upcomingResourceBookings.reduce((total, booking) => {
+    const hours = (booking.endsAt.getTime() - booking.startsAt.getTime()) / (1000 * 60 * 60);
+    return total + Math.max(hours, 0);
+  }, 0);
+  const nextUpcomingBooking = upcomingResourceBookings[0] ?? null;
+  const resourceReadinessConcerns =
+    (resource.status === "ACTIVE" ? 0 : 1) +
+    (resource.facility.status === "ACTIVE" ? 0 : 1) +
+    upcomingResourceBookings.filter((booking) => booking._count.conflicts > 0 || booking.approvalStatus === "PENDING").length;
+  const currentlyAvailable =
+    resource.status === "ACTIVE" && resource.facility.status === "ACTIVE" && upcomingResourceBookings.length === 0;
+
   return (
     <section className="space-y-6">
       <div className="space-y-3">
@@ -206,6 +227,64 @@ export default async function ResourceDetailsPage({
           <dd className="text-zinc-600 dark:text-zinc-400">{resource.capacity ?? "—"}</dd>
         </div>
       </dl>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-medium">Resource operational summary</h3>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Scheduling load, upcoming reservations, readiness concerns, and current availability.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Link href={`/field-ops/bookings?resourceId=${resource.id}&timeframe=upcoming`} className="rounded-full border px-2 py-1">
+              Upcoming reservations
+            </Link>
+            <Link href="/field-ops/resources" className="rounded-full border px-2 py-1">
+              Resource list
+            </Link>
+          </div>
+        </div>
+        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <dt className="font-medium">Upcoming reservations (14 days)</dt>
+            <dd className={upcomingResourceBookings.length > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {upcomingResourceBookings.length}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Scheduled hours (14 days)</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{upcomingBookedHours.toFixed(1)}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Readiness concerns</dt>
+            <dd className={resourceReadinessConcerns > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {resourceReadinessConcerns}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Availability status</dt>
+            <dd className={currentlyAvailable ? "text-emerald-700 dark:text-emerald-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {currentlyAvailable ? "Available now" : "Currently allocated or not ready"}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="font-medium">Next upcoming reservation</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {nextUpcomingBooking ? (
+                <>
+                  <Link href={`/field-ops/bookings/${nextUpcomingBooking.id}`} className="underline">
+                    {nextUpcomingBooking.title}
+                  </Link>{" "}
+                  · {formatFieldOpsDateTime(nextUpcomingBooking.startsAt)}
+                </>
+              ) : (
+                "No upcoming reservation in the next 14 days."
+              )}
+            </dd>
+          </div>
+        </dl>
+      </div>
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
