@@ -16,6 +16,7 @@ import {
   Prisma,
   RoleType,
   RSVPStatus,
+  RelationshipType,
   ScopeType,
   TaskStatus,
 } from "@prisma/client";
@@ -145,6 +146,18 @@ export const memberMoveWorkflowSchema = z
     teamId: value.teamId,
     seasonId: value.seasonId,
     rosterRole: value.rosterRole,
+  }));
+
+export const guardianRelationshipWorkflowSchema = z
+  .object({
+    guardianPersonId: z.string().trim().min(1, "Guardian selection is required."),
+    relationshipType: z.nativeEnum(RelationshipType, {
+      message: "Relationship type must use an existing relationship value.",
+    }),
+  })
+  .transform((value) => ({
+    guardianPersonId: value.guardianPersonId,
+    relationshipType: value.relationshipType,
   }));
 
 export const teamWorkflowSchema = z.object({
@@ -1029,6 +1042,7 @@ export type ProgramWorkflowInput = z.output<typeof programWorkflowSchema>;
 export type RosterMembershipWorkflowInput = z.output<typeof rosterMembershipWorkflowSchema>;
 export type SeasonWorkflowInput = z.output<typeof seasonWorkflowSchema>;
 export type SeasonRolloverWorkflowInput = z.output<typeof seasonRolloverWorkflowSchema>;
+export type GuardianRelationshipWorkflowInput = z.output<typeof guardianRelationshipWorkflowSchema>;
 export type RoleAssignmentWorkflowInput = z.output<typeof roleAssignmentWorkflowSchema>;
 export type EventWorkflowInput = z.output<typeof eventWorkflowSchema>;
 export type RsvpWorkflowInput = z.output<typeof rsvpWorkflowSchema>;
@@ -1095,6 +1109,8 @@ export async function requirePhase1CMutationPermission(input: {
     | "person.deactivate"
     | "person.archive"
     | "person.move"
+    | "guardianRelationship.create"
+    | "guardianRelationship.update"
     | "team.create"
     | "season.create"
     | "season.update"
