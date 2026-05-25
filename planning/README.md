@@ -13,6 +13,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Roadmap Decision (Post-GearOps): Next Arc Selection](./ROADMAP_POST_GEAROPS_DECISION.md)
 - [Roadmap Placement: Deferred GearOps-Related Capabilities](./ROADMAP_DEFERRED_GEAROPS_CAPABILITIES.md)
 - [Phase 16A GearOps Architecture and Scope Boundaries](./PHASE_16A_GEAROPS_ARCHITECTURE_BOUNDARIES.md)
+- [Phase 17A Roster and Member Lifecycle Architecture and Boundaries](./PHASE_17A_ROSTER_MEMBER_LIFECYCLE_ARCHITECTURE_BOUNDARIES.md)
+- [Phase 17A Validation Checklist](./PHASE_17A_VALIDATION_CHECKLIST.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)
 - [Phase 16C GearOps Catalog Read-Only Views](./PHASE_16C_GEAROPS_CATALOG_READ_ONLY_VIEWS.md)
@@ -183,6 +185,20 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 16H Validation Checklist](./PHASE_16H_VALIDATION_CHECKLIST.md)
 - [Phase 16I GearOps MVP Closeout and Stabilization](./PHASE_16I_GEAROPS_MVP_CLOSEOUT.md)
 - [Phase 16I Validation Checklist](./PHASE_16I_VALIDATION_CHECKLIST.md)
+
+## Roster and Member Lifecycle Arc 17 Phase Sequence (17A–17I)
+- [Phase 17A Roster and Member Lifecycle Architecture and Boundaries](./PHASE_17A_ROSTER_MEMBER_LIFECYCLE_ARCHITECTURE_BOUNDARIES.md)
+  - Summary: defines Arc 17 purpose (join/activate/move/inactive/archive/rollover), confirms in-scope lifecycle areas and out-of-scope boundaries, documents current model fit and gaps for all relevant entities, proposes the 17A–17I phase sequence, and establishes authorization and privacy expectations before any schema or runtime work begins.
+- [Phase 17A Validation Checklist](./PHASE_17A_VALIDATION_CHECKLIST.md)
+  - Summary: confirms documentation-only scope compliance, automated validation pass (lint/typecheck/build/prisma validate), documentation completeness, deferred boundary confirmation, authorization/privacy expectations, known risks, and Arc 17A closeout sign-off.
+- Phase 17B — Member Status and Lifecycle Model (planned)
+- Phase 17C — Join / Activate Workflow (planned)
+- Phase 17D — Move Team / Program Workflow (planned)
+- Phase 17E — Inactive / Archive Workflow (planned)
+- Phase 17F — Season Rollover Workflow (planned)
+- Phase 17G — Guardian Relationship Maintenance (planned)
+- Phase 17H — Roster Lifecycle Dashboard / Readiness Integration (planned)
+- Phase 17I — Roster / Member Lifecycle Closeout (planned)
 
 ## Phase 7A Recenter (current decision path)
 - [CadreOS MVP Roadmap (Phase 7A Recenter)](./ROADMAP.md)
