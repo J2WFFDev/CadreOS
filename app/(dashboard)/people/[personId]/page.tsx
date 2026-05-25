@@ -462,7 +462,6 @@ export default async function PersonDetailsPage({
   const isAthleteProfile =
     visibleRoles.some((role) => role.roleType === RoleType.ATHLETE) ||
     visibleRoster.some((membership) => membership.rosterRole === RoleType.ATHLETE);
-  const hasGuardianRelationship = canViewGuardianRelationshipDetails && person.athleteLinks.length > 0;
   const hasGuardianAccountLinkGap = person.athleteLinks.some(
     (link) => link.guardian._count.userAccounts === 0,
   );
@@ -660,6 +659,9 @@ export default async function PersonDetailsPage({
         </Link>
         <Link href={`/people/${person.id}/move`} className="ml-2 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
           Change team/program
+        </Link>
+        <Link href={`/people/${person.id}/guardians`} className="ml-2 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+          Guardian relationships
         </Link>
       </div>
 
@@ -917,36 +919,36 @@ export default async function PersonDetailsPage({
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Guardian / athlete relationships</h3>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-          Relationship records are visible here. Dedicated create/manage guardian relationship workflows are not yet
-          exposed in this MVP slice.
+          Relationship type is shown for each athlete/guardian link. Primary/emergency indicators and contact-permission
+          notes are deferred and not yet modeled in this phase.
         </p>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-          Relationship indicators on this page are staff-facing visibility diagnostics only. They do not grant guardian
-          access to staff-only data, and onboarding/invitation workflows remain intentionally deferred.
+          Guardian/parent portal visibility, messaging, notifications, and communications remain deferred.
         </p>
-        <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-          View access: staff role assignments (Org Admin, Program Director, Coach, Assistant Coach). Edit support where
-          available:{" "}
-          {canEditGuardianLinkageWhereSupported
-            ? "you have staff write coverage via existing person/roster/role assignment routes."
-            : "staff write permissions are required via existing person/roster/role assignment routes."}
-        </p>
+        {canEditGuardianLinkageWhereSupported ? (
+          <Link
+            href={`/people/${person.id}/guardians`}
+            className="mb-3 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Manage guardian relationships
+          </Link>
+        ) : null}
         {!canViewGuardianRelationshipDetails ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Guardian relationship details are hidden for this account to prevent private relationship visibility leaks.
+            Guardian relationship details are hidden for this account.
           </p>
         ) : isAthleteProfile ? (
           <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-            Athlete relationship status:{" "}
-            {!hasGuardianRelationship
-              ? "Missing guardian relationship."
+            Athlete/member relationship status:{" "}
+            {person.athleteLinks.length === 0
+              ? "No guardian relationships are currently linked."
               : hasPendingOrIncompleteRelationshipSupport
-                ? "Guardian relationship exists, but pending/incomplete relationship support remains (missing link and/or inactive guardian account signal)."
-                : "Guardian relationship linked and active guardian account signal detected."}
+                ? "Guardian relationships exist with at least one account-link or role-assignment support gap."
+                : "Guardian relationships are linked."}
           </p>
         ) : (
           <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-            Relationship visibility is intentionally limited for non-athlete profiles.
+            This person currently has no athlete/member profile signal in visible role or roster context.
           </p>
         )}
         {canViewGuardianRelationshipDetails &&
@@ -957,11 +959,20 @@ export default async function PersonDetailsPage({
           <div className="space-y-3 text-sm">
             {person.guardianLinks.length > 0 ? (
               <div>
-                <p className="font-medium">Guardian for</p>
+                <p className="font-medium">As guardian: linked athletes</p>
                 <ul className="mt-1 list-disc pl-5">
                   {person.guardianLinks.map((link) => (
                     <li key={link.id}>
-                      {link.athlete.firstName} {link.athlete.lastName} ({formatEnumLabel(link.relationshipType)})
+                      {link.athlete.firstName} {link.athlete.lastName} · Relationship: {formatEnumLabel(link.relationshipType)}
+                      {canEditGuardianLinkageWhereSupported ? (
+                        <>
+                          {" "}
+                          ·{" "}
+                          <Link href={`/people/${link.athlete.id}/guardians/${link.id}/edit`} className="underline">
+                            Edit from athlete workflow
+                          </Link>
+                        </>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -970,11 +981,11 @@ export default async function PersonDetailsPage({
 
             {person.athleteLinks.length > 0 ? (
               <div>
-                <p className="font-medium">Athlete linked to guardians</p>
+                <p className="font-medium">As athlete/member: linked guardians</p>
                 <ul className="mt-1 list-disc pl-5">
                   {person.athleteLinks.map((link) => (
                     <li key={link.id}>
-                      {link.guardian.firstName} {link.guardian.lastName} ({formatEnumLabel(link.relationshipType)}) ·{" "}
+                      {link.guardian.firstName} {link.guardian.lastName} · Relationship: {formatEnumLabel(link.relationshipType)} ·{" "}
                       {link.guardian._count.userAccounts === 0
                         ? "Guardian account link missing"
                         : link.guardian.roles.length === 0
@@ -984,6 +995,15 @@ export default async function PersonDetailsPage({
                       {link.guardian._count.userAccounts > 0 && link.guardian.roles.length > 0
                         ? "Relationship support complete"
                         : "Pending/incomplete relationship support"}
+                      {canEditGuardianLinkageWhereSupported ? (
+                        <>
+                          {" "}
+                          ·{" "}
+                          <Link href={`/people/${person.id}/guardians/${link.id}/edit`} className="underline">
+                            Edit
+                          </Link>
+                        </>
+                      ) : null}
                     </li>
                   ))}
                 </ul>

@@ -12,7 +12,6 @@ const STAFF_GUARDIAN_VISIBILITY_ROLE_TYPES = new Set<RoleType>([
 const STAFF_GUARDIAN_EDIT_ROLE_TYPES = new Set<RoleType>([
   RoleType.ORGANIZATION_ADMIN,
   RoleType.PROGRAM_DIRECTOR,
-  RoleType.COACH,
 ]);
 
 export type GuardianRelationshipAccess = {

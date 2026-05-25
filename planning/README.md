@@ -15,6 +15,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 16A GearOps Architecture and Scope Boundaries](./PHASE_16A_GEAROPS_ARCHITECTURE_BOUNDARIES.md)
 - [Phase 17A Roster and Member Lifecycle Architecture and Boundaries](./PHASE_17A_ROSTER_MEMBER_LIFECYCLE_ARCHITECTURE_BOUNDARIES.md)
 - [Phase 17A Validation Checklist](./PHASE_17A_VALIDATION_CHECKLIST.md)
+- [Phase 17G Guardian Relationship Maintenance Workflow](./PHASE_17G_GUARDIAN_RELATIONSHIP_MAINTENANCE.md)
+- [Phase 17G Validation Checklist](./PHASE_17G_VALIDATION_CHECKLIST.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)
 - [Phase 16C GearOps Catalog Read-Only Views](./PHASE_16C_GEAROPS_CATALOG_READ_ONLY_VIEWS.md)
@@ -211,7 +213,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: adds staff-scoped season rollover workflow (`GET /programs/[programId]/seasons/[seasonId]/rollover`, `POST .../rollover/execute`) with `season.rollover` authorization for ORGANIZATION_ADMIN and PROGRAM_DIRECTOR; validates source/target seasons belong to same org and program; creates new target-season RosterMembership records via `createMany` with `skipDuplicates`; excludes ARCHIVED persons always and INACTIVE persons by default; previews eligible members before execution; preserves all source-season records, lifecycle states, role assignments, guardian relationships, notes, tasks, attendance, and GearOps records; adds Rollover link and rollover success banner to program detail page.
 - [Phase 17F Validation Checklist](./PHASE_17F_VALIDATION_CHECKLIST.md)
   - Summary: confirms Arc 17F scope compliance, authorization correctness, org/program scoping validation, eligible membership filtering, rollover execution safety, redirect behavior, existing behavior preservation, and automated/manual validation steps.
-- Phase 17G — Guardian Relationship Maintenance (planned)
+- [Phase 17G Guardian Relationship Maintenance Workflow](./PHASE_17G_GUARDIAN_RELATIONSHIP_MAINTENANCE.md)
+  - Summary: adds staff-scoped guardian relationship maintenance routes for viewing, creating, and updating athlete/guardian relationships with organization-scoped validation, cross-organization/self-relationship blocking, practical duplicate prevention, and safe redirects while preserving lifecycle, roster history, role assignments, FieldOps, and GearOps behavior.
+- [Phase 17G Validation Checklist](./PHASE_17G_VALIDATION_CHECKLIST.md)
+  - Summary: confirms Arc 17G scope compliance, authorization correctness, organization-safe person/guardian/relationship validation, duplicate/self-relationship guards, lifecycle/operational preservation, and automated/manual validation steps.
 - Phase 17H — Roster Lifecycle Dashboard / Readiness Integration (planned)
 - Phase 17I — Roster / Member Lifecycle Closeout (planned)
 

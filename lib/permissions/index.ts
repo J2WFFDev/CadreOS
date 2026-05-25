@@ -14,6 +14,8 @@ type SupportedAction =
   | "person.deactivate"
   | "person.archive"
   | "person.move"
+  | "guardianRelationship.create"
+  | "guardianRelationship.update"
   | "team.create"
   | "rosterMembership.create"
   | "rosterMembership.delete"
@@ -69,6 +71,8 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "person.deactivate",
     "person.archive",
     "person.move",
+    "guardianRelationship.create",
+    "guardianRelationship.update",
     "team.create",
     "rosterMembership.create",
     "rosterMembership.delete",
@@ -107,6 +111,8 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "person.deactivate",
     "person.archive",
     "person.move",
+    "guardianRelationship.create",
+    "guardianRelationship.update",
     "rosterMembership.create",
     "rosterMembership.delete",
     "event.create",
@@ -175,6 +181,8 @@ const SCOPED_ACTIONS = new Set<SupportedAction>([
   "season.update",
   "season.rollover",
   "person.move",
+  "guardianRelationship.create",
+  "guardianRelationship.update",
   "team.create",
   "rosterMembership.create",
   "rosterMembership.delete",
@@ -203,6 +211,8 @@ const SUPPORTED_ACTIONS = new Set<SupportedAction>([
   "person.deactivate",
   "person.archive",
   "person.move",
+  "guardianRelationship.create",
+  "guardianRelationship.update",
   "team.create",
   "rosterMembership.create",
   "rosterMembership.delete",
