@@ -2,6 +2,7 @@ import {
   ApprovalStatus,
   AttendanceStatus,
   BookingStatus,
+  ConsumableTransactionType,
   EventStatus,
   EventType,
   GearAssignmentStatus,
@@ -868,6 +869,88 @@ export const gearMaintenanceWorkflowSchema = z
     notes: value.notes,
   }));
 
+export const gearConsumableTransactionWorkflowSchema = z
+  .object({
+    transactionType: z.nativeEnum(ConsumableTransactionType, {
+      message: "Transaction type must use a valid value.",
+    }),
+    quantityDelta: z.string().trim(),
+    recordedAt: z.string().trim(),
+    eventId: z.string().trim(),
+    notes: z
+      .string()
+      .trim()
+      .max(MAX_GEAR_NOTES_LENGTH, `Notes must be ${MAX_GEAR_NOTES_LENGTH} characters or less.`),
+  })
+  .superRefine((value, context) => {
+    if (value.quantityDelta.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["quantityDelta"],
+        message: "Quantity is required.",
+      });
+    } else {
+      const quantityDelta = Number(value.quantityDelta);
+      if (!Number.isInteger(quantityDelta)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["quantityDelta"],
+          message: "Quantity must be a whole number.",
+        });
+      } else {
+        if (quantityDelta === 0) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["quantityDelta"],
+            message: "Quantity must be greater than or less than zero.",
+          });
+        }
+
+        if (value.transactionType === ConsumableTransactionType.RECEIVED && quantityDelta < 1) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["quantityDelta"],
+            message: "RECEIVED transactions must use a positive quantity.",
+          });
+        }
+
+        if (
+          (value.transactionType === ConsumableTransactionType.USED ||
+            value.transactionType === ConsumableTransactionType.DISTRIBUTED ||
+            value.transactionType === ConsumableTransactionType.DISPOSED) &&
+          quantityDelta > -1
+        ) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["quantityDelta"],
+            message: `${value.transactionType} transactions must use a negative quantity.`,
+          });
+        }
+      }
+    }
+
+    if (value.recordedAt.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["recordedAt"],
+        message: "Recorded date/time is required.",
+      });
+    } else if (!DATETIME_LOCAL_INPUT_PATTERN.test(value.recordedAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["recordedAt"],
+        message: "Recorded date/time must use YYYY-MM-DDTHH:mm format.",
+      });
+    }
+  })
+  .transform((value) => ({
+    transactionType: value.transactionType,
+    quantityDelta: Number(value.quantityDelta),
+    recordedAt: dateTimeInputToUtcDate(value.recordedAt),
+    eventId: value.eventId.length === 0 ? null : value.eventId,
+    notes: value.notes.length === 0 ? null : value.notes,
+  }));
+
 export type PersonWorkflowInput = z.output<typeof personWorkflowSchema>;
 export type TeamWorkflowInput = z.output<typeof teamWorkflowSchema>;
 export type ProgramWorkflowInput = z.output<typeof programWorkflowSchema>;
@@ -885,6 +968,7 @@ export type GearItemWorkflowInput = z.output<typeof gearItemWorkflowSchema>;
 export type GearAssignmentWorkflowInput = z.output<typeof gearAssignmentWorkflowSchema>;
 export type GearCheckoutWorkflowInput = z.output<typeof gearCheckoutWorkflowSchema>;
 export type GearMaintenanceWorkflowInput = z.output<typeof gearMaintenanceWorkflowSchema>;
+export type GearConsumableTransactionWorkflowInput = z.output<typeof gearConsumableTransactionWorkflowSchema>;
 
 export function getStringField(formData: FormData, field: string): string {
   const rawValue = formData.get(field);
@@ -961,7 +1045,9 @@ export async function requirePhase1CMutationPermission(input: {
     | "gearCheckout.create"
     | "gearCheckout.update"
     | "gearMaintenance.create"
-    | "gearMaintenance.update";
+    | "gearMaintenance.update"
+    | "gearConsumableTransaction.create"
+    | "gearConsumableTransaction.update";
   programId?: string | null;
   teamId?: string | null;
   seasonId?: string | null;

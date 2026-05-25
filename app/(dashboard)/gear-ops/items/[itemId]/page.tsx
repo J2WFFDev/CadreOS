@@ -1,4 +1,5 @@
 import {
+  ConsumableTransactionType,
   GearAssignmentStatus,
   GearCheckoutStatus,
   GearConditionStatus,
@@ -130,12 +131,20 @@ export default async function GearOpsItemDetailsPage({
         }>;
         consumableTransactions: Array<{
           id: string;
-          transactionType: string;
+          transactionType: ConsumableTransactionType;
           quantityDelta: number;
           recordedAt: Date;
+          createdAt: Date;
           notes: string | null;
           recordedBy: { id: string; firstName: string; lastName: string };
-          event: { id: string; title: string } | null;
+          event:
+            | {
+                id: string;
+                title: string;
+                team: { id: string; name: string } | null;
+                program: { id: string; name: string } | null;
+              }
+            | null;
         }>;
       }
     | null = null;
@@ -216,12 +225,13 @@ export default async function GearOpsItemDetailsPage({
             transactionType: true,
             quantityDelta: true,
             recordedAt: true,
+            createdAt: true,
             notes: true,
             recordedBy: { select: { id: true, firstName: true, lastName: true } },
-            event: { select: { id: true, title: true } },
+            event: { select: { id: true, title: true, team: { select: { id: true, name: true } }, program: { select: { id: true, name: true } } } },
           },
           orderBy: [{ recordedAt: "desc" }, { createdAt: "desc" }],
-          take: 8,
+          take: 12,
         },
       },
     });
@@ -265,6 +275,8 @@ export default async function GearOpsItemDetailsPage({
   const checkoutHistory = gearItem.checkouts.filter((checkout) => !currentCheckoutStatuses.has(checkout.status));
   const recentMaintenanceLogs = gearItem.maintenanceLogs.slice(0, 3);
   const maintenanceHistory = gearItem.maintenanceLogs.slice(3);
+  const recentConsumableTransactions = gearItem.consumableTransactions.slice(0, 3);
+  const consumableTransactionHistory = gearItem.consumableTransactions.slice(3);
 
   function renderAssignmentCard(assignment: (typeof gearItem.assignments)[number]) {
     const assignmentProgram = assignment.assignedEvent?.program ?? assignment.assignedTeam?.program ?? gearItem.program;
@@ -445,6 +457,63 @@ export default async function GearOpsItemDetailsPage({
     );
   }
 
+  function renderConsumableTransactionCard(entry: (typeof gearItem.consumableTransactions)[number]) {
+    const relatedTeam = entry.event?.team;
+    const relatedProgram = entry.event?.program ?? gearItem.program;
+
+    return (
+      <article key={entry.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <p className="font-medium">
+            {formatGearOpsEnum(entry.transactionType)} · Quantity: {entry.quantityDelta > 0 ? "+" : ""}
+            {entry.quantityDelta} · Unit: units
+          </p>
+          <Link
+            href={`/gear-ops/items/${gearItem.id}/consumables/${entry.id}/edit`}
+            className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Edit
+          </Link>
+        </div>
+        <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+          Recorded by{" "}
+          <Link href={`/people/${entry.recordedBy.id}`} className="underline">
+            {entry.recordedBy.firstName} {entry.recordedBy.lastName}
+          </Link>
+          {" · "}Recorded {formatGearOpsDateTime(entry.recordedAt)}
+          {" · "}Logged {formatGearOpsDateTime(entry.createdAt)}
+        </p>
+        <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+          Person: —{" · "}Team:{" "}
+          {relatedTeam ? (
+            <Link href={`/teams/${relatedTeam.id}`} className="underline">
+              {relatedTeam.name}
+            </Link>
+          ) : (
+            "—"
+          )}
+          {" · "}Program:{" "}
+          {relatedProgram ? (
+            <Link href={`/programs/${relatedProgram.id}`} className="underline">
+              {relatedProgram.name}
+            </Link>
+          ) : (
+            "—"
+          )}
+          {" · "}Event:{" "}
+          {entry.event ? (
+            <Link href={`/events/${entry.event.id}`} className="underline">
+              {entry.event.title}
+            </Link>
+          ) : (
+            "—"
+          )}
+        </p>
+        {entry.notes ? <p className="mt-1 text-zinc-600 dark:text-zinc-400">{entry.notes}</p> : null}
+      </article>
+    );
+  }
+
   return (
     <section className="space-y-6">
       <div className="space-y-3">
@@ -621,34 +690,46 @@ export default async function GearOpsItemDetailsPage({
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-lg font-medium">Consumable transactions</h3>
-        {item.consumableTransactions.length === 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-lg font-medium">Consumable transactions</h3>
+          {item.inventoryType === GearInventoryType.CONSUMABLE ? (
+            <Link
+              href={`/gear-ops/items/${item.id}/consumables/new`}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              New transaction
+            </Link>
+          ) : null}
+        </div>
+        {item.inventoryType !== GearInventoryType.CONSUMABLE ? (
+          <div className="rounded-lg border bg-white p-4 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+            Consumable transactions do not apply to durable gear items.
+          </div>
+        ) : item.consumableTransactions.length === 0 ? (
           <EmptyState message="No consumable transaction history is currently visible for this item." />
         ) : (
-          <div className="space-y-3">
-            {item.consumableTransactions.map((entry) => (
-              <article key={entry.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-                <p className="font-medium">
-                  {formatGearOpsEnum(entry.transactionType)} ({entry.quantityDelta > 0 ? "+" : ""}
-                  {entry.quantityDelta}) · {formatGearOpsDateTime(entry.recordedAt)}
-                </p>
-                <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-                  Recorded by{" "}
-                  <Link href={`/people/${entry.recordedBy.id}`} className="underline">
-                    {entry.recordedBy.firstName} {entry.recordedBy.lastName}
-                  </Link>
-                  {entry.event ? (
-                    <>
-                      {" · "}Event:{" "}
-                      <Link href={`/events/${entry.event.id}`} className="underline">
-                        {entry.event.title}
-                      </Link>
-                    </>
-                  ) : null}
-                </p>
-                {entry.notes ? <p className="mt-1 text-zinc-600 dark:text-zinc-400">{entry.notes}</p> : null}
-              </article>
-            ))}
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Recent transactions
+              </h4>
+              <div className="space-y-3">
+                {recentConsumableTransactions.map((entry) => renderConsumableTransactionCard(entry))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Transaction history
+              </h4>
+              {consumableTransactionHistory.length === 0 ? (
+                <EmptyState message="No additional consumable transaction history is currently visible for this item." />
+              ) : (
+                <div className="space-y-3">
+                  {consumableTransactionHistory.map((entry) => renderConsumableTransactionCard(entry))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
