@@ -14,13 +14,29 @@ function formatEnumLabel(value: string) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+type SearchParams = Record<string, string | string[] | undefined>;
+
+function readSearchParam(searchParams: SearchParams, key: string): string {
+  const value = searchParams[key];
+
+  if (Array.isArray(value)) {
+    return value[0] ?? "";
+  }
+
+  return value ?? "";
+}
+
 export default async function ProgramDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ programId: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const { programId } = await params;
+  const resolvedSearchParams = await searchParams;
   const scope = await getOrganizationScope();
+  const rolloverSuccess = readSearchParam(resolvedSearchParams, "rolloverSuccess");
 
   if (!scope.databaseReady) {
     return (
@@ -159,6 +175,12 @@ export default async function ProgramDetailsPage({
         </div>
       </div>
 
+      {rolloverSuccess ? (
+        <div className="rounded-lg border border-green-300 bg-green-50 p-4 dark:border-green-700 dark:bg-green-950/40">
+          <p className="text-sm text-green-900 dark:text-green-200">{rolloverSuccess}</p>
+        </div>
+      ) : null}
+
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Seasons</h3>
         {program.seasons.length === 0 ? (
@@ -170,6 +192,9 @@ export default async function ProgramDetailsPage({
                 <span>{season.name}</span>
                 <Link href={`/programs/${program.id}/seasons/${season.id}/edit`} className="underline">
                   Edit
+                </Link>
+                <Link href={`/programs/${program.id}/seasons/${season.id}/rollover`} className="underline">
+                  Rollover
                 </Link>
               </li>
             ))}

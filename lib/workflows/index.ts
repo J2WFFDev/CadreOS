@@ -123,6 +123,12 @@ export const memberLifecycleArchiveSchema = z.object({
   confirm: z.literal("1", { message: "Archive confirmation is required." }),
 });
 
+export const seasonRolloverWorkflowSchema = z.object({
+  targetSeasonId: z.string().trim().min(1, "Target season selection is required."),
+  includeInactive: z.string().trim(),
+  confirm: z.literal("1", { message: "Rollover confirmation is required." }),
+});
+
 export const memberMoveWorkflowSchema = z
   .object({
     sourceMembershipId: z.string().trim(),
@@ -1022,6 +1028,7 @@ export type TeamWorkflowInput = z.output<typeof teamWorkflowSchema>;
 export type ProgramWorkflowInput = z.output<typeof programWorkflowSchema>;
 export type RosterMembershipWorkflowInput = z.output<typeof rosterMembershipWorkflowSchema>;
 export type SeasonWorkflowInput = z.output<typeof seasonWorkflowSchema>;
+export type SeasonRolloverWorkflowInput = z.output<typeof seasonRolloverWorkflowSchema>;
 export type RoleAssignmentWorkflowInput = z.output<typeof roleAssignmentWorkflowSchema>;
 export type EventWorkflowInput = z.output<typeof eventWorkflowSchema>;
 export type RsvpWorkflowInput = z.output<typeof rsvpWorkflowSchema>;
@@ -1091,6 +1098,7 @@ export async function requirePhase1CMutationPermission(input: {
     | "team.create"
     | "season.create"
     | "season.update"
+    | "season.rollover"
     | "event.create"
     | "event.update"
     | "rsvp.upsert"
