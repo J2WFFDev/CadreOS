@@ -24,6 +24,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 18A Validation Checklist](./PHASE_18A_VALIDATION_CHECKLIST.md)
 - [Phase 18B Core Operational Summary Reports](./PHASE_18B_CORE_OPERATIONAL_SUMMARY_REPORTS.md)
 - [Phase 18B Validation Checklist](./PHASE_18B_VALIDATION_CHECKLIST.md)
+- [Phase 18C Attendance and Event Reporting](./PHASE_18C_ATTENDANCE_EVENT_REPORTING.md)
+- [Phase 18C Validation Checklist](./PHASE_18C_VALIDATION_CHECKLIST.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)
 - [Phase 16C GearOps Catalog Read-Only Views](./PHASE_16C_GEAROPS_CATALOG_READ_ONLY_VIEWS.md)
@@ -242,6 +244,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: begins Arc 18 runtime delivery with staff-scoped, read-only dashboard operational summary visibility covering lifecycle distribution, active-member totals, team/program counts, roster readiness cues, attendance participation summaries, open follow-up workload, and recent operational activity links into existing surfaces.
 - [Phase 18B Validation Checklist](./PHASE_18B_VALIDATION_CHECKLIST.md)
   - Summary: validates Arc 18B scope delivery, authorization/privacy boundaries, workflow-preservation constraints, deferred-boundary compliance, required automated validation command status, and planning index updates.
+- [Phase 18C Attendance and Event Reporting](./PHASE_18C_ATTENDANCE_EVENT_REPORTING.md)
+  - Summary: expands Arc 18 reporting with staff-scoped, read-only attendance and event visibility across dashboard, team, program, and event detail surfaces using existing RSVP, attendance, roster, lifecycle, team, and season data for participation, readiness, no-response, and recent-trend summaries.
+- [Phase 18C Validation Checklist](./PHASE_18C_VALIDATION_CHECKLIST.md)
+  - Summary: validates Arc 18C attendance/event reporting scope delivery, authorization/privacy boundaries, workflow-preservation constraints, deferred-boundary compliance, automated validation command status, and planning index updates.
 
 ## Phase 7A Recenter (current decision path)
 - [CadreOS MVP Roadmap (Phase 7A Recenter)](./ROADMAP.md)

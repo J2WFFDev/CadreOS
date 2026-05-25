@@ -1,4 +1,4 @@
-import { ApprovalStatus, MemberLifecycleStatus, Prisma, RoleType, ScopeType, TaskStatus } from "@prisma/client";
+import { ApprovalStatus, AttendanceStatus, MemberLifecycleStatus, Prisma, RoleType, ScopeType, TaskStatus } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -8,6 +8,10 @@ import { OperationalReadinessEvaluationPanel } from "@/components/dashboard/oper
 import { OperationalSummaryClassificationPanel } from "@/components/dashboard/operational-summary-classification-panel";
 import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
 import { ReviewFocusPanel } from "@/components/dashboard/review-focus-panel";
+import {
+  summarizeAttendanceTrend,
+  summarizeRsvpReadiness,
+} from "@/lib/attendance-event-reporting";
 import {
   evaluateStaffOnlyContentAccess,
   logAuthorizationDecision,
@@ -540,6 +544,21 @@ export default async function DashboardPage() {
           capturedAttendanceCount: number;
           missingAttendanceCount: number;
         }>;
+        recentAttendanceTrend: ReturnType<typeof summarizeAttendanceTrend>;
+        upcomingEventReadiness: Array<{
+          id: string;
+          title: string;
+          startsAt: Date;
+          status: string;
+          program: { id: string; name: string };
+          team: { id: string; name: string } | null;
+          expectedAttendanceCount: number;
+          noResponseCount: number;
+          goingCount: number;
+          maybeCount: number;
+          notGoingCount: number;
+          openTaskCount: number;
+        }>;
         overdueTasks: Array<{
           id: string;
           title: string;
@@ -647,6 +666,7 @@ export default async function DashboardPage() {
       upcomingEventCount,
       recentNoteCount,
       upcomingEvents,
+      upcomingEventReadinessEvents,
       attendanceReviewEvents,
       overdueTaskCount,
       unresolvedFollowUpCount,
@@ -711,6 +731,44 @@ export default async function DashboardPage() {
         },
         orderBy: [{ startsAt: "asc" }],
         take: 5,
+      }),
+      db.event.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          ...scopedEventWhere,
+          startsAt: {
+            gte: currentTime,
+            lte: new Date(currentTime.getTime() + EVENT_REVIEW_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000),
+          },
+        },
+        select: {
+          id: true,
+          title: true,
+          startsAt: true,
+          status: true,
+          program: { select: { id: true, name: true } },
+          team: {
+            select: {
+              id: true,
+              name: true,
+              roster: {
+                where: { organizationId: scope.organizationId, rosterRole: RoleType.ATHLETE },
+                select: { personId: true },
+              },
+            },
+          },
+          rsvps: {
+            select: {
+              personId: true,
+              status: true,
+            },
+          },
+          tasks: {
+            select: { status: true },
+          },
+        },
+        orderBy: [{ startsAt: "asc" }],
+        take: 8,
       }),
       db.event.findMany({
         where: {
@@ -1104,30 +1162,57 @@ export default async function DashboardPage() {
       attendanceNeedingReview.length = 5;
     }
 
-    const attendanceParticipationTotals = attendanceReviewEvents.reduce(
-      (totals, event) => {
-        if (!event.team) {
-          return totals;
-        }
-
-        const expectedAttendanceCount = new Set(event.team.roster.map((membership) => membership.personId)).size;
-        if (expectedAttendanceCount === 0) {
-          return totals;
-        }
-
-        totals.eventsReviewed += 1;
-        totals.expectedAttendance += expectedAttendanceCount;
-        totals.capturedAttendance += Math.min(event._count.attendance, expectedAttendanceCount);
-        return totals;
-      },
-      { eventsReviewed: 0, expectedAttendance: 0, capturedAttendance: 0 },
+    const recentAttendanceTrend = summarizeAttendanceTrend(
+      attendanceReviewEvents
+        .filter((event) => Boolean(event.team))
+        .map((event) => ({
+          startsAt: event.startsAt,
+          expectedPersonIds: event.team ? event.team.roster.map((membership) => membership.personId) : [],
+          attendanceRecords: event.team
+            ? Array.from({ length: Math.min(event._count.attendance, event.team.roster.length) }, (_, index) => ({
+                personId: event.team?.roster[index]?.personId ?? `captured-${index}`,
+                status: AttendanceStatus.PRESENT,
+              }))
+            : [],
+        })),
     );
-    const attendanceParticipationCoveragePercent =
-      attendanceParticipationTotals.expectedAttendance > 0
-        ? Math.round(
-            (attendanceParticipationTotals.capturedAttendance / attendanceParticipationTotals.expectedAttendance) * 100,
-          )
-        : 0;
+    const upcomingEventReadiness = upcomingEventReadinessEvents
+      .map((event) => {
+        const expectedPersonIds = event.team?.roster.map((membership) => membership.personId) ?? [];
+        const rsvpSummary = summarizeRsvpReadiness({
+          expectedPersonIds,
+          rsvps: event.rsvps,
+        });
+        const openTaskCount = event.tasks.filter(
+          (task) => task.status !== TaskStatus.DONE && task.status !== TaskStatus.CANCELLED,
+        ).length;
+
+        return {
+          id: event.id,
+          title: event.title,
+          startsAt: event.startsAt,
+          status: event.status,
+          program: event.program,
+          team: event.team ? { id: event.team.id, name: event.team.name } : null,
+          expectedAttendanceCount: expectedPersonIds.length,
+          noResponseCount: rsvpSummary.noResponseCount,
+          goingCount: rsvpSummary.goingCount,
+          maybeCount: rsvpSummary.maybeCount,
+          notGoingCount: rsvpSummary.notGoingCount,
+          openTaskCount,
+        };
+      })
+      .sort((left, right) => {
+        const leftConcernWeight = left.noResponseCount + left.openTaskCount;
+        const rightConcernWeight = right.noResponseCount + right.openTaskCount;
+
+        if (leftConcernWeight !== rightConcernWeight) {
+          return rightConcernWeight - leftConcernWeight;
+        }
+
+        return left.startsAt.getTime() - right.startsAt.getTime();
+      })
+      .slice(0, 5);
 
     const unresolvedEventConcerns = eventOperationalConcerns
       .map((event) => {
@@ -1255,8 +1340,8 @@ export default async function DashboardPage() {
         alumniMembers: lifecycleStatusCounts[MemberLifecycleStatus.ALUMNI],
         upcomingEvents: upcomingEventCount,
         attendanceNeedingReview: attendanceNeedingReview.length,
-        attendanceParticipationCoveragePercent,
-        attendanceParticipationEventsReviewed: attendanceParticipationTotals.eventsReviewed,
+        attendanceParticipationCoveragePercent: recentAttendanceTrend.coveragePercent,
+        attendanceParticipationEventsReviewed: recentAttendanceTrend.reviewedEventCount,
         unresolvedFollowUps: unresolvedFollowUpCount,
         overdueTasks: overdueTaskCount,
         blockedTasks: blockedTaskCount,
@@ -1277,6 +1362,8 @@ export default async function DashboardPage() {
       lifecycleStatusCounts,
       upcomingEvents,
       attendanceNeedingReview,
+      recentAttendanceTrend,
+      upcomingEventReadiness,
       overdueTasks: sortOpenTasks(overdueTasks),
       blockedTasks,
       staleUnreviewedTasks: sortOpenTasks(staleUnreviewedTasks),
@@ -1735,6 +1822,81 @@ export default async function DashboardPage() {
                         </div>
                       );
                     })}
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-medium">Attendance and event reporting</h3>
+                <Link href="/events?operationalIndicator=attendance_not_reviewed_recently" className="text-sm underline">
+                  Open review lanes
+                </Link>
+              </div>
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800/40">
+                  <p className="text-sm font-medium">Recent attendance trend</p>
+                  <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                    Coverage: {dashboardData.recentAttendanceTrend.coveragePercent}% across{" "}
+                    {dashboardData.recentAttendanceTrend.reviewedEventCount} recent team events.
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    Complete {dashboardData.recentAttendanceTrend.completeEvents} · Partial{" "}
+                    {dashboardData.recentAttendanceTrend.partialEvents} · Missing{" "}
+                    {dashboardData.recentAttendanceTrend.missingEvents}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    {dashboardData.recentAttendanceTrend.trendDirection === "insufficient_data"
+                      ? "Need more attendance history before a directional trend can be shown."
+                      : dashboardData.recentAttendanceTrend.trendDirection === "up"
+                        ? `Improving versus prior review window (${dashboardData.recentAttendanceTrend.priorCoveragePercent}% → ${dashboardData.recentAttendanceTrend.recentCoveragePercent}%).`
+                        : dashboardData.recentAttendanceTrend.trendDirection === "down"
+                          ? `Declining versus prior review window (${dashboardData.recentAttendanceTrend.priorCoveragePercent}% → ${dashboardData.recentAttendanceTrend.recentCoveragePercent}%).`
+                          : `Steady versus prior review window (${dashboardData.recentAttendanceTrend.recentCoveragePercent}%).`}
+                  </p>
+                </div>
+                <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800/40">
+                  <p className="text-sm font-medium">Upcoming event readiness</p>
+                  <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                    {dashboardData.upcomingEventReadiness.length} events in the next {EVENT_REVIEW_LOOKAHEAD_DAYS} days.
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    Events needing readiness review:{" "}
+                    {
+                      dashboardData.upcomingEventReadiness.filter(
+                        (event) => event.noResponseCount > 0 || event.openTaskCount > 0,
+                      ).length
+                    }
+                    {" · "}No-response roster members:{" "}
+                    {dashboardData.upcomingEventReadiness.reduce(
+                      (count, event) => count + event.noResponseCount,
+                      0,
+                    )}
+                  </p>
+                  {dashboardData.upcomingEventReadiness.length === 0 ? (
+                    <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                      No upcoming events are currently within the readiness review window.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <div className="mt-4 space-y-3">
+                {dashboardData.upcomingEventReadiness.length === 0
+                  ? renderEmptyList("No upcoming readiness items are currently available.")
+                  : dashboardData.upcomingEventReadiness.map((event) => (
+                      <div key={event.id} className="border-b pb-3 last:border-b-0 last:pb-0">
+                        <Link href={`/events/${event.id}`} className="font-medium underline">
+                          {event.title}
+                        </Link>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          {formatDateTime(event.startsAt)} · {event.program.name}
+                          {event.team ? ` · Team: ${event.team.name}` : " · Team: Unassigned"}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          No response: {event.noResponseCount} · Open tasks: {event.openTaskCount} · Going / maybe / not going:{" "}
+                          {event.goingCount} / {event.maybeCount} / {event.notGoingCount}
+                        </p>
+                      </div>
+                    ))}
               </div>
             </div>
 
