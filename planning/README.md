@@ -30,6 +30,10 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 18D Validation Checklist](./PHASE_18D_VALIDATION_CHECKLIST.md)
 - [Phase 18E FieldOps Reporting](./PHASE_18E_FIELDOPS_REPORTING.md)
 - [Phase 18E Validation Checklist](./PHASE_18E_VALIDATION_CHECKLIST.md)
+- [Phase 18F GearOps Reporting](./PHASE_18F_GEAROPS_REPORTING.md)
+- [Phase 18F Validation Checklist](./PHASE_18F_VALIDATION_CHECKLIST.md)
+- [Phase 18G Roster Lifecycle and Guardian Readiness Reporting](./PHASE_18G_ROSTER_LIFECYCLE_GUARDIAN_READINESS_REPORTING.md)
+- [Phase 18G Validation Checklist](./PHASE_18G_VALIDATION_CHECKLIST.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)
 - [Phase 16C GearOps Catalog Read-Only Views](./PHASE_16C_GEAROPS_CATALOG_READ_ONLY_VIEWS.md)
@@ -264,6 +268,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: adds staff-scoped, read-only GearOps operational reporting visibility across dashboard, GearOps overview/category/item surfaces, and practical program/team readiness context with inventory, custody, maintenance/condition, low-availability consumable, and usage/replenishment trend summaries linked to existing workflows.
 - [Phase 18F Validation Checklist](./PHASE_18F_VALIDATION_CHECKLIST.md)
   - Summary: validates Arc 18F GearOps reporting scope delivery, authorization/privacy boundaries, workflow-preservation constraints, deferred-boundary compliance, automated validation command status, and planning index updates.
+- [Phase 18G Roster Lifecycle and Guardian Readiness Reporting](./PHASE_18G_ROSTER_LIFECYCLE_GUARDIAN_READINESS_REPORTING.md)
+  - Summary: adds staff-scoped, read-only roster lifecycle and guardian readiness visibility across dashboard, program/season, and team readiness surfaces with lifecycle distribution, selected-season roster context, guardian coverage gaps, and practical lifecycle operational gap review links into existing people/team/program workflows.
+- [Phase 18G Validation Checklist](./PHASE_18G_VALIDATION_CHECKLIST.md)
+  - Summary: validates Arc 18G lifecycle/guardian readiness reporting scope delivery, authorization/privacy boundaries, workflow-preservation constraints, deferred-boundary compliance, automated validation command status, and planning index updates.
 
 ## Phase 7A Recenter (current decision path)
 - [CadreOS MVP Roadmap (Phase 7A Recenter)](./ROADMAP.md)

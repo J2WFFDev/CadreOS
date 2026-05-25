@@ -1858,6 +1858,15 @@ export default async function DashboardPage() {
               Active members with no roster membership in current scope:{" "}
               {dashboardData.counts.activeWithoutRosterMembership}.
             </p>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Lifecycle operational gaps (non-active lifecycle + active without roster + guardian linkage gaps):{" "}
+              {dashboardData.counts.inactiveMembers +
+                dashboardData.counts.archivedMembers +
+                dashboardData.counts.alumniMembers +
+                dashboardData.counts.activeWithoutRosterMembership +
+                dashboardData.counts.athletesMissingGuardianLinkage}
+              .
+            </p>
             <div className="mt-3 flex flex-wrap gap-2 text-sm">
               <Link href="/teams?readiness=needs_attention" className="rounded-full border px-2 py-1">
                 Team roster readiness

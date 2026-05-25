@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ScopeType } from "@prisma/client";
+import { MemberLifecycleStatus, ScopeType } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
@@ -97,7 +97,16 @@ export default async function TeamsPage({
           name: string;
           seasons: Array<{ id: string; name: string; startDate: Date | null; endDate: Date | null }>;
         };
-        roster: Array<{ id: string; seasonId: string; personId: string; rosterRole: string }>;
+        roster: Array<{
+          id: string;
+          seasonId: string;
+          personId: string;
+          rosterRole: string;
+          person: {
+            lifecycleStatus: MemberLifecycleStatus;
+            athleteLinks: Array<{ id: string }>;
+          };
+        }>;
         roles: Array<{ id: string; personId: string }>;
       }>
     | null = null;
@@ -130,6 +139,20 @@ export default async function TeamsPage({
             seasonId: true,
             personId: true,
             rosterRole: true,
+            person: {
+              select: {
+                lifecycleStatus: true,
+                athleteLinks: {
+                  where: {
+                    organizationId: scope.organizationId,
+                  },
+                  select: {
+                    id: true,
+                  },
+                  take: 1,
+                },
+              },
+            },
           },
         },
         roles: {
@@ -164,15 +187,43 @@ export default async function TeamsPage({
     const seasonRoster = selectedSeason
       ? team.roster.filter((membership) => membership.seasonId === selectedSeason.id)
       : [];
-    const athleteRosterCount = seasonRoster.filter((membership) => membership.rosterRole === "ATHLETE").length;
-    const seasonRosterPersonIds = new Set(seasonRoster.map((membership) => membership.personId));
+    const seasonRosterByPersonId = new Map<string, (typeof seasonRoster)[number]>();
+    for (const membership of seasonRoster) {
+      if (seasonRosterByPersonId.has(membership.personId)) {
+        continue;
+      }
+      seasonRosterByPersonId.set(membership.personId, membership);
+    }
+    const selectedSeasonRosterMembers = [...seasonRosterByPersonId.values()];
+    const athleteRosterCount = selectedSeasonRosterMembers.filter((membership) => membership.rosterRole === "ATHLETE").length;
+    const seasonRosterPersonIds = new Set(selectedSeasonRosterMembers.map((membership) => membership.personId));
     const roleAssignmentPersonIds = new Set(team.roles.map((role) => role.personId));
     const roleAssignmentGapCount = [...seasonRosterPersonIds].filter(
       (personId) => !roleAssignmentPersonIds.has(personId),
     ).length;
     const inactiveRoleAssignmentCount = team.roles.filter((role) => !seasonRosterPersonIds.has(role.personId)).length;
+    const lifecycleStatusCounts = Object.values(MemberLifecycleStatus).reduce(
+      (counts, status) => {
+        counts[status] = selectedSeasonRosterMembers.filter(
+          (membership) => membership.person.lifecycleStatus === status,
+        ).length;
+        return counts;
+      },
+      {} as Record<MemberLifecycleStatus, number>,
+    );
+    const membersWithoutActiveLifecycle = selectedSeasonRosterMembers.filter(
+      (membership) => membership.person.lifecycleStatus !== MemberLifecycleStatus.ACTIVE,
+    ).length;
+    const athletesMissingGuardianLinkage = selectedSeasonRosterMembers.filter(
+      (membership) => membership.rosterRole === "ATHLETE" && membership.person.athleteLinks.length === 0,
+    ).length;
     const hasRosterGap = seasonRoster.length === 0;
-    const needsAttention = hasRosterGap || roleAssignmentGapCount > 0 || inactiveRoleAssignmentCount > 0;
+    const needsAttention =
+      hasRosterGap ||
+      roleAssignmentGapCount > 0 ||
+      inactiveRoleAssignmentCount > 0 ||
+      membersWithoutActiveLifecycle > 0 ||
+      athletesMissingGuardianLinkage > 0;
     const stale = needsAttention && team.updatedAt.getTime() < staleGapCutoff.getTime();
     const recentlyActive = team.updatedAt.getTime() >= recentActivityCutoff.getTime();
     const unresolvedTooLong = needsAttention && stale;
@@ -184,6 +235,9 @@ export default async function TeamsPage({
       athleteRosterCount,
       roleAssignmentGapCount,
       inactiveRoleAssignmentCount,
+      lifecycleStatusCounts,
+      membersWithoutActiveLifecycle,
+      athletesMissingGuardianLinkage,
       needsAttention,
       hasRosterGap,
       stale,
@@ -416,11 +470,23 @@ export default async function TeamsPage({
                       ? `Selected season roster: ${entry.seasonRoster.length} members (${entry.athleteRosterCount} athletes)`
                       : "Selected season roster: none"}
                   </p>
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    Lifecycle mix: Active {entry.lifecycleStatusCounts[MemberLifecycleStatus.ACTIVE]} · Prospect{" "}
+                    {entry.lifecycleStatusCounts[MemberLifecycleStatus.PROSPECT]} · Inactive{" "}
+                    {entry.lifecycleStatusCounts[MemberLifecycleStatus.INACTIVE]} · Archived{" "}
+                    {entry.lifecycleStatusCounts[MemberLifecycleStatus.ARCHIVED]} · Alumni{" "}
+                    {entry.lifecycleStatusCounts[MemberLifecycleStatus.ALUMNI]}.
+                  </p>
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Team role assignments: {entry.team.roles.length}</p>
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                     Role-assignment gaps: {entry.roleAssignmentGapCount}
                     {" · "}
                     Inactive/unassigned role signals: {entry.inactiveRoleAssignmentCount}
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    Selected-season roster members not currently Active: {entry.membersWithoutActiveLifecycle}
+                    {" · "}
+                    Athlete rows missing guardian linkage: {entry.athletesMissingGuardianLinkage}
                   </p>
                   <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                     Last operational change: {entry.team.updatedAt.toISOString().slice(0, 16).replace("T", " ")} UTC
