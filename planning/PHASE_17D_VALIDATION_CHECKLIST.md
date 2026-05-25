@@ -9,7 +9,7 @@ Confirms Arc 17D (Team and Program Move Workflow) is implemented correctly, pres
 ## 1. Scope Compliance
 
 - [x] Move workflow route is added at `/people/[personId]/move`.
-- [x] Move action route is added at `POST /people/[personId]/move`.
+- [x] Move action route is added at `POST /people/[personId]/move/update`.
 - [x] Person detail shows move workflow entry point(s) for staff.
 - [x] Existing roster membership visibility on person detail is preserved.
 - [x] Lifecycle status is preserved (no activate/inactive/archive mutation in move flow).

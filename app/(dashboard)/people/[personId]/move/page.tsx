@@ -396,7 +396,7 @@ export default async function MovePersonPage({
         )}
       </div>
 
-      <form action={`/people/${person.id}/move`} method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
+      <form action={`/people/${person.id}/move/update`} method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <div className="space-y-1">
           <label htmlFor="sourceMembershipId" className="text-sm font-medium">
             Current membership to transition (optional)

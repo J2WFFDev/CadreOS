@@ -8,7 +8,7 @@ Add a controlled staff-scoped move workflow so an operator can move a member bet
 
 - Add a staff-only move entry point from person detail.
 - Add move workflow route: `/people/[personId]/move`.
-- Add move action route: `POST /people/[personId]/move`.
+- Add move action route: `POST /people/[personId]/move/update`.
 - Reuse organization scoping and existing authorization patterns.
 - Validate person, program, team, and season IDs are organization-scoped.
 - Validate selected team belongs to selected program.
