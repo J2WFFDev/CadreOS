@@ -221,6 +221,9 @@ export default async function ProgramDetailsPage({
           personId: true,
           person: {
             select: {
+              id: true,
+              firstName: true,
+              lastName: true,
               lifecycleStatus: true,
               athleteLinks: {
                 where: {
@@ -236,18 +239,42 @@ export default async function ProgramDetailsPage({
         },
       })
     : [];
+  const selectedSeasonRosterUniqueMembers = Array.from(
+    selectedSeasonRoster.reduce(
+      (membersByPersonId, membership) => {
+        if (!membersByPersonId.has(membership.personId)) {
+          membersByPersonId.set(membership.personId, membership);
+        }
+        return membersByPersonId;
+      },
+      new Map<string, (typeof selectedSeasonRoster)[number]>(),
+    ).values(),
+  );
   const selectedSeasonLifecycleCounts = Object.values(MemberLifecycleStatus).reduce(
     (counts, status) => {
-      counts[status] = selectedSeasonRoster.filter((membership) => membership.person.lifecycleStatus === status).length;
+      counts[status] = selectedSeasonRosterUniqueMembers.filter(
+        (membership) => membership.person.lifecycleStatus === status,
+      ).length;
       return counts;
     },
     {} as Record<MemberLifecycleStatus, number>,
   );
-  const selectedSeasonRosterPersonIds = new Set(selectedSeasonRoster.map((membership) => membership.personId));
-  const selectedSeasonAthleteRoster = selectedSeasonRoster.filter((membership) => membership.rosterRole === "ATHLETE");
-  const selectedSeasonAthletesMissingGuardianLinkage = selectedSeasonAthleteRoster.filter(
+  const selectedSeasonRosterPersonIds = new Set(
+    selectedSeasonRosterUniqueMembers.map((membership) => membership.personId),
+  );
+  const selectedSeasonAthleteRoster = selectedSeasonRosterUniqueMembers.filter(
+    (membership) => membership.rosterRole === "ATHLETE",
+  );
+  const selectedSeasonAthletesMissingGuardianLinkageMembers = selectedSeasonAthleteRoster.filter(
     (membership) => membership.person.athleteLinks.length === 0,
-  ).length;
+  );
+  const selectedSeasonAthletesMissingGuardianLinkage = selectedSeasonAthletesMissingGuardianLinkageMembers.length;
+  const selectedSeasonMembersWithoutActiveLifecycleMembers = selectedSeasonRosterUniqueMembers.filter(
+    (membership) => membership.person.lifecycleStatus !== MemberLifecycleStatus.ACTIVE,
+  );
+  const selectedSeasonMembersWithoutActiveLifecycle = selectedSeasonMembersWithoutActiveLifecycleMembers.length;
+  const selectedSeasonLifecycleOperationalGapCount =
+    selectedSeasonAthletesMissingGuardianLinkage + selectedSeasonMembersWithoutActiveLifecycle;
   const selectedSeasonRosterByTeamId = selectedSeasonRoster.reduce(
     (rosterByTeamId, membership) => {
       const personIds = rosterByTeamId.get(membership.teamId) ?? new Set<string>();
@@ -852,6 +879,65 @@ export default async function ProgramDetailsPage({
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Athlete rows missing guardian linkage in selected season: {selectedSeasonAthletesMissingGuardianLinkage}.
         </p>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Selected-season roster members not currently Active: {selectedSeasonMembersWithoutActiveLifecycle}.
+        </p>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Lifecycle operational gaps in selected season: {selectedSeasonLifecycleOperationalGapCount}.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2 text-sm">
+          <Link href="/people" className="rounded-full border px-2 py-1">
+            People lifecycle and guardian context
+          </Link>
+          <Link href="/teams?readiness=needs_attention" className="rounded-full border px-2 py-1">
+            Team readiness lane
+          </Link>
+        </div>
+        {selectedSeasonAthletesMissingGuardianLinkageMembers.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            No athlete guardian-linkage gaps are currently detected for the selected season.
+          </p>
+        ) : (
+          <div className="mt-3">
+            <h4 className="text-sm font-medium">Athletes missing guardian linkage (selected season)</h4>
+            <ul className="mt-2 space-y-1 text-sm">
+              {selectedSeasonAthletesMissingGuardianLinkageMembers.slice(0, 5).map((membership) => (
+                <li key={membership.person.id}>
+                  <Link href={`/people/${membership.person.id}#relationship-summary`} className="underline">
+                    {membership.person.firstName} {membership.person.lastName}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {selectedSeasonMembersWithoutActiveLifecycleMembers.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            All selected-season roster members are currently Active in lifecycle status.
+          </p>
+        ) : (
+          <div className="mt-3">
+            <h4 className="text-sm font-medium">Roster members not currently Active (selected season)</h4>
+            <ul className="mt-2 space-y-1 text-sm">
+              {selectedSeasonMembersWithoutActiveLifecycleMembers.slice(0, 5).map((membership) => (
+                <li key={`${membership.person.id}-${membership.person.lifecycleStatus}`}>
+                  <Link href={`/people/${membership.person.id}`} className="underline">
+                    {membership.person.firstName} {membership.person.lastName}
+                  </Link>
+                  <span className="text-zinc-600 dark:text-zinc-400">
+                    {" "}
+                    · {formatEnumLabel(membership.person.lifecycleStatus)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {selectedSeasonRosterUniqueMembers.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            No selected-season roster members are available for lifecycle/guardian readiness review.
+          </p>
+        ) : null}
       </div>
 
       {canViewAttendanceReporting ? (
