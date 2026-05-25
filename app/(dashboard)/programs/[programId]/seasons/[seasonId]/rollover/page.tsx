@@ -10,6 +10,7 @@ import {
 } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { canPerformAction } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +84,32 @@ export default async function SeasonRolloverPage({
             You do not have staff access to perform season rollovers.
           </p>
         </div>
+      </section>
+    );
+  }
+
+  const canExecuteSeasonRollover =
+    scope.auth.clerkUserId &&
+    (await canPerformAction({
+      actorUserId: scope.auth.clerkUserId,
+      organizationId: scope.organizationId,
+      action: "season.rollover",
+      programId,
+      seasonId,
+    }));
+
+  if (!canExecuteSeasonRollover) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Season rollover</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            You do not have permission to execute season rollover in this program.
+          </p>
+        </div>
+        <Link href={`/programs/${programId}`} className="text-sm underline">
+          Back to program
+        </Link>
       </section>
     );
   }
@@ -175,6 +202,9 @@ export default async function SeasonRolloverPage({
       where: {
         organizationId: scope.organizationId,
         seasonId,
+        team: {
+          programId,
+        },
         person: lifecycleFilter,
       },
       select: {
