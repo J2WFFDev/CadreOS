@@ -1,3 +1,5 @@
+import { MemberLifecycleStatus } from "@prisma/client";
+
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { FormActions } from "@/components/dashboard/form-actions";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -16,6 +18,14 @@ function readSearchParam(searchParams: SearchParams, key: string): string {
 
   return value ?? "";
 }
+
+const LIFECYCLE_STATUS_LABELS: Record<MemberLifecycleStatus, string> = {
+  [MemberLifecycleStatus.PROSPECT]: "Prospect (pending activation)",
+  [MemberLifecycleStatus.ACTIVE]: "Active",
+  [MemberLifecycleStatus.INACTIVE]: "Inactive",
+  [MemberLifecycleStatus.ARCHIVED]: "Archived",
+  [MemberLifecycleStatus.ALUMNI]: "Alumni",
+};
 
 export default async function NewPersonPage({
   searchParams,
@@ -49,6 +59,7 @@ export default async function NewPersonPage({
   const lastName = readSearchParam(resolvedSearchParams, "lastName");
   const email = readSearchParam(resolvedSearchParams, "email");
   const phone = readSearchParam(resolvedSearchParams, "phone");
+  const lifecycleStatus = (readSearchParam(resolvedSearchParams, "lifecycleStatus") || MemberLifecycleStatus.ACTIVE) as MemberLifecycleStatus;
   const generalError = readSearchParam(resolvedSearchParams, "error");
 
   return (
@@ -120,6 +131,30 @@ export default async function NewPersonPage({
           {readSearchParam(resolvedSearchParams, "phoneError") ? (
             <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "phoneError")}</p>
           ) : null}
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="lifecycleStatus" className="text-sm font-medium">
+            Member status
+          </label>
+          <select
+            id="lifecycleStatus"
+            name="lifecycleStatus"
+            defaultValue={lifecycleStatus}
+            className="w-full rounded-md border px-3 py-2 text-sm"
+          >
+            {Object.values(MemberLifecycleStatus).map((status) => (
+              <option key={status} value={status}>
+                {LIFECYCLE_STATUS_LABELS[status]}
+              </option>
+            ))}
+          </select>
+          {readSearchParam(resolvedSearchParams, "lifecycleStatusError") ? (
+            <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "lifecycleStatusError")}</p>
+          ) : null}
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Use &ldquo;Prospect&rdquo; to add a person who has not yet been fully activated. Use &ldquo;Active&rdquo; to join them directly.
+          </p>
         </div>
 
         <FormActions submitLabel="Create person" cancelHref="/people" />
