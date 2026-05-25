@@ -34,6 +34,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 18F Validation Checklist](./PHASE_18F_VALIDATION_CHECKLIST.md)
 - [Phase 18G Roster Lifecycle and Guardian Readiness Reporting](./PHASE_18G_ROSTER_LIFECYCLE_GUARDIAN_READINESS_REPORTING.md)
 - [Phase 18G Validation Checklist](./PHASE_18G_VALIDATION_CHECKLIST.md)
+- [Phase 18H Export-Friendly Reporting Views](./PHASE_18H_EXPORT_FRIENDLY_REPORTING_VIEWS.md)
+- [Phase 18H Validation Checklist](./PHASE_18H_VALIDATION_CHECKLIST.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)
 - [Phase 16C GearOps Catalog Read-Only Views](./PHASE_16C_GEAROPS_CATALOG_READ_ONLY_VIEWS.md)
@@ -272,6 +274,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: adds staff-scoped, read-only roster lifecycle and guardian readiness visibility across dashboard, program/season, and team readiness surfaces with lifecycle distribution, selected-season roster context, guardian coverage gaps, and practical lifecycle operational gap review links into existing people/team/program workflows.
 - [Phase 18G Validation Checklist](./PHASE_18G_VALIDATION_CHECKLIST.md)
   - Summary: validates Arc 18G lifecycle/guardian readiness reporting scope delivery, authorization/privacy boundaries, workflow-preservation constraints, deferred-boundary compliance, automated validation command status, and planning index updates.
+- [Phase 18H Export-Friendly Reporting Views](./PHASE_18H_EXPORT_FRIENDLY_REPORTING_VIEWS.md)
+  - Summary: adds a staff-scoped, read-only export-friendly reporting surface with structured tabular layouts across core operational summaries, attendance/events, notes/tasks, FieldOps, GearOps, and lifecycle/guardian readiness using existing scoped operational data and safe navigation links.
+- [Phase 18H Validation Checklist](./PHASE_18H_VALIDATION_CHECKLIST.md)
+  - Summary: validates Arc 18H export-friendly reporting scope delivery, authorization/privacy boundaries, workflow-preservation constraints, deferred-boundary compliance, automated validation command status, and planning index updates.
 
 ## Phase 7A Recenter (current decision path)
 - [CadreOS MVP Roadmap (Phase 7A Recenter)](./ROADMAP.md)
