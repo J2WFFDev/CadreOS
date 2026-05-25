@@ -177,6 +177,7 @@ export default async function PeoplePage() {
           team: { id: string; name: string; program: { id: string; name: string } | null } | null;
         }>;
         roster: Array<{
+          rosterRole: string;
           team: { id: string; name: string; program: { id: string; name: string } };
         }>;
         _count: {
@@ -239,6 +240,7 @@ export default async function PeoplePage() {
         },
         roster: {
           select: {
+            rosterRole: true,
             team: {
               select: {
                 id: true,
@@ -292,6 +294,25 @@ export default async function PeoplePage() {
     );
   }
 
+  const lifecycleCounts = people.reduce(
+    (counts, person) => {
+      counts[person.lifecycleStatus] = (counts[person.lifecycleStatus] ?? 0) + 1;
+      return counts;
+    },
+    {} as Record<string, number>,
+  );
+  const activePeopleWithoutRosterMembership = people.filter(
+    (person) => person.lifecycleStatus === "ACTIVE" && person.roster.length === 0,
+  ).length;
+  const scopedAthletesMissingGuardianLinkage = canViewGuardianRelationshipDetails
+    ? people.filter(
+        (person) =>
+          (person.roles.some((role) => role.roleType === "ATHLETE") ||
+            person.roster.some((membership) => membership.rosterRole === "ATHLETE")) &&
+          person._count.athleteLinks === 0,
+      ).length
+    : 0;
+
   return (
     <section className="space-y-4">
       <PageHeader
@@ -307,52 +328,71 @@ export default async function PeoplePage() {
       {people.length === 0 ? (
         <EmptyState message="No people have been added yet." actionHref="/people/new" actionLabel="Add the first person" />
       ) : (
-        <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b bg-zinc-50 dark:bg-zinc-800/60">
-              <tr>
-                <th className="px-4 py-3 font-medium">First name</th>
-                <th className="px-4 py-3 font-medium">Last name</th>
-                <th className="px-4 py-3 font-medium">Email</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Roles</th>
-                <th className="px-4 py-3 font-medium">Team / Program</th>
-                {canViewGuardianRelationshipDetails ? (
-                  <th className="px-4 py-3 font-medium">Guardian links</th>
-                ) : null}
-              </tr>
-            </thead>
-            <tbody>
-              {people.map((person) => {
-                return (
-                  <tr key={person.id} className="border-b last:border-b-0">
-                    <td className="px-4 py-3">
-                      <Link href={`/people/${person.id}`} className="underline">
-                        {person.firstName}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">{person.lastName}</td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{person.email ?? "—"}</td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                      {person.lifecycleStatus.charAt(0).toUpperCase() + person.lifecycleStatus.slice(1).toLowerCase()}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                      {formatAssignmentSummary(person.roles)}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                      {formatTeamMembershipSummary(person.roster)}
-                    </td>
-                    {canViewGuardianRelationshipDetails ? (
-                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                        Guardian for {person._count.guardianLinks} athlete{person._count.guardianLinks === 1 ? "" : "s"} ·
-                        Athlete linked to {person._count.athleteLinks} guardian{person._count.athleteLinks === 1 ? "" : "s"}
+        <div className="space-y-4">
+          <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+            <h3 className="text-base font-medium">Roster lifecycle readiness</h3>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Status mix in current scope: Active {lifecycleCounts.ACTIVE ?? 0} · Prospect {lifecycleCounts.PROSPECT ?? 0}
+              {" "}· Inactive {lifecycleCounts.INACTIVE ?? 0} · Archived {lifecycleCounts.ARCHIVED ?? 0} · Alumni{" "}
+              {lifecycleCounts.ALUMNI ?? 0}.
+            </p>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Active members with no roster membership in current scope: {activePeopleWithoutRosterMembership}.
+            </p>
+            {canViewGuardianRelationshipDetails ? (
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                Athlete profiles with no guardian relationship in current scope: {scopedAthletesMissingGuardianLinkage}.
+              </p>
+            ) : null}
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
+            <table className="min-w-full text-left text-sm">
+              <thead className="border-b bg-zinc-50 dark:bg-zinc-800/60">
+                <tr>
+                  <th className="px-4 py-3 font-medium">First name</th>
+                  <th className="px-4 py-3 font-medium">Last name</th>
+                  <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Roles</th>
+                  <th className="px-4 py-3 font-medium">Team / Program</th>
+                  {canViewGuardianRelationshipDetails ? (
+                    <th className="px-4 py-3 font-medium">Guardian links</th>
+                  ) : null}
+                </tr>
+              </thead>
+              <tbody>
+                {people.map((person) => {
+                  return (
+                    <tr key={person.id} className="border-b last:border-b-0">
+                      <td className="px-4 py-3">
+                        <Link href={`/people/${person.id}`} className="underline">
+                          {person.firstName}
+                        </Link>
                       </td>
-                    ) : null}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <td className="px-4 py-3">{person.lastName}</td>
+                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{person.email ?? "—"}</td>
+                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                        {person.lifecycleStatus.charAt(0).toUpperCase() + person.lifecycleStatus.slice(1).toLowerCase()}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                        {formatAssignmentSummary(person.roles)}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                        {formatTeamMembershipSummary(person.roster)}
+                      </td>
+                      {canViewGuardianRelationshipDetails ? (
+                        <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                          Guardian for {person._count.guardianLinks} athlete{person._count.guardianLinks === 1 ? "" : "s"} ·
+                          Athlete linked to {person._count.athleteLinks} guardian{person._count.athleteLinks === 1 ? "" : "s"}
+                        </td>
+                      ) : null}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       {!canViewGuardianRelationshipDetails ? (

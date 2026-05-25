@@ -17,6 +17,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 17A Validation Checklist](./PHASE_17A_VALIDATION_CHECKLIST.md)
 - [Phase 17G Guardian Relationship Maintenance Workflow](./PHASE_17G_GUARDIAN_RELATIONSHIP_MAINTENANCE.md)
 - [Phase 17G Validation Checklist](./PHASE_17G_VALIDATION_CHECKLIST.md)
+- [Phase 17H Roster Lifecycle Dashboard and Readiness Integration](./PHASE_17H_ROSTER_LIFECYCLE_READINESS_DASHBOARD.md)
+- [Phase 17H Validation Checklist](./PHASE_17H_VALIDATION_CHECKLIST.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)
 - [Phase 16C GearOps Catalog Read-Only Views](./PHASE_16C_GEAROPS_CATALOG_READ_ONLY_VIEWS.md)
@@ -217,7 +219,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: adds staff-scoped guardian relationship maintenance routes for viewing, creating, and updating athlete/guardian relationships with organization-scoped validation, cross-organization/self-relationship blocking, practical duplicate prevention, and safe redirects while preserving lifecycle, roster history, role assignments, FieldOps, and GearOps behavior.
 - [Phase 17G Validation Checklist](./PHASE_17G_VALIDATION_CHECKLIST.md)
   - Summary: confirms Arc 17G scope compliance, authorization correctness, organization-safe person/guardian/relationship validation, duplicate/self-relationship guards, lifecycle/operational preservation, and automated/manual validation steps.
-- Phase 17H — Roster Lifecycle Dashboard / Readiness Integration (planned)
+- [Phase 17H Roster Lifecycle Dashboard and Readiness Integration](./PHASE_17H_ROSTER_LIFECYCLE_READINESS_DASHBOARD.md)
+  - Summary: adds staff-scoped, read-only roster lifecycle readiness visibility across dashboard, people, team, and program surfaces with lifecycle mix counts, roster readiness cues, guardian readiness context, and active-without-roster signals while preserving existing Arc 17 mutation workflows and Core/FieldOps/GearOps behavior.
+- [Phase 17H Validation Checklist](./PHASE_17H_VALIDATION_CHECKLIST.md)
+  - Summary: confirms Arc 17H scope compliance, authorization/privacy boundaries, lifecycle/roster/guardian readiness signal coverage, workflow preservation, and automated/manual validation steps.
 - Phase 17I — Roster / Member Lifecycle Closeout (planned)
 
 ## Phase 7A Recenter (current decision path)

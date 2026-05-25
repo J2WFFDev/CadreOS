@@ -1,10 +1,11 @@
-import { ScopeType } from "@prisma/client";
+import { MemberLifecycleStatus, ScopeType } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { canPerformAction } from "@/lib/permissions";
+import { selectSeededOrCurrentSeason } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +71,7 @@ export default async function ProgramDetailsPage({
         name: string;
         organization: { id: string; name: string };
         teams: Array<{ id: string; name: string }>;
-        seasons: Array<{ id: string; name: string }>;
+        seasons: Array<{ id: string; name: string; startDate: Date | null; endDate: Date | null }>;
         roles: Array<{
           id: string;
           roleType: string;
@@ -106,6 +107,8 @@ export default async function ProgramDetailsPage({
           select: {
             id: true,
             name: true,
+            startDate: true,
+            endDate: true,
           },
           orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
         },
@@ -163,6 +166,50 @@ export default async function ProgramDetailsPage({
       programId: program.id,
     }));
 
+  const selectedSeason = selectSeededOrCurrentSeason(program.seasons);
+  const selectedSeasonRoster = selectedSeason
+    ? await db.rosterMembership.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          seasonId: selectedSeason.id,
+          team: {
+            programId: program.id,
+          },
+        },
+        select: {
+          id: true,
+          rosterRole: true,
+          personId: true,
+          person: {
+            select: {
+              lifecycleStatus: true,
+              athleteLinks: {
+                where: {
+                  organizationId: scope.organizationId,
+                },
+                select: {
+                  id: true,
+                },
+                take: 1,
+              },
+            },
+          },
+        },
+      })
+    : [];
+  const selectedSeasonLifecycleCounts = Object.values(MemberLifecycleStatus).reduce(
+    (counts, status) => {
+      counts[status] = selectedSeasonRoster.filter((membership) => membership.person.lifecycleStatus === status).length;
+      return counts;
+    },
+    {} as Record<MemberLifecycleStatus, number>,
+  );
+  const selectedSeasonRosterPersonIds = new Set(selectedSeasonRoster.map((membership) => membership.personId));
+  const selectedSeasonAthleteRoster = selectedSeasonRoster.filter((membership) => membership.rosterRole === "ATHLETE");
+  const selectedSeasonAthletesMissingGuardianLinkage = selectedSeasonAthleteRoster.filter(
+    (membership) => membership.person.athleteLinks.length === 0,
+  ).length;
+
   return (
     <section className="space-y-6">
       <div className="space-y-1">
@@ -190,6 +237,26 @@ export default async function ProgramDetailsPage({
           <p className="text-sm text-green-900 dark:text-green-200">{rolloverSuccess}</p>
         </div>
       ) : null}
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="mb-2 text-lg font-medium">Roster lifecycle readiness</h3>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Selected season: {selectedSeason?.name ?? "No season available"}.
+        </p>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Unique roster members in selected season: {selectedSeasonRosterPersonIds.size}.
+        </p>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Lifecycle mix: Active {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ACTIVE]} · Prospect{" "}
+          {selectedSeasonLifecycleCounts[MemberLifecycleStatus.PROSPECT]} · Inactive{" "}
+          {selectedSeasonLifecycleCounts[MemberLifecycleStatus.INACTIVE]} · Archived{" "}
+          {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ARCHIVED]} · Alumni{" "}
+          {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ALUMNI]}.
+        </p>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Athlete rows missing guardian linkage in selected season: {selectedSeasonAthletesMissingGuardianLinkage}.
+        </p>
+      </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Seasons</h3>

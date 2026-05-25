@@ -459,6 +459,11 @@ export default async function PersonDetailsPage({
           membership.team.program.id,
         ),
       );
+  const hasActiveRosterMembership = visibleRoster.length > 0;
+  const hasLifecycleRosterReadinessGap =
+    person.lifecycleStatus === MemberLifecycleStatus.ACTIVE && !hasActiveRosterMembership;
+  const hasNonActiveLifecycleRosterMembership =
+    person.lifecycleStatus !== MemberLifecycleStatus.ACTIVE && hasActiveRosterMembership;
   const isAthleteProfile =
     visibleRoles.some((role) => role.roleType === RoleType.ATHLETE) ||
     visibleRoster.some((membership) => membership.rosterRole === RoleType.ATHLETE);
@@ -687,6 +692,16 @@ export default async function PersonDetailsPage({
             {formatEnumLabel(person.lifecycleStatus)}
           </span>
         </p>
+        {hasLifecycleRosterReadinessGap ? (
+          <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
+            Readiness gap: member is Active but has no roster membership in current scoped context.
+          </p>
+        ) : null}
+        {hasNonActiveLifecycleRosterMembership ? (
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            Lifecycle note: member has roster membership while lifecycle status is {formatEnumLabel(person.lifecycleStatus)}.
+          </p>
+        ) : null}
         {activateError ? (
           <p className="mt-2 text-sm text-red-600">{activateError}</p>
         ) : null}
@@ -1019,7 +1034,13 @@ export default async function PersonDetailsPage({
           Use these current memberships as the baseline when moving this member to a different team/program context.
         </p>
         {visibleRoster.length === 0 ? (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">No roster memberships.</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            No roster memberships. Use{" "}
+            <Link href={`/people/${person.id}/move`} className="underline">
+              Change team/program
+            </Link>{" "}
+            to place this member on a team/season roster.
+          </p>
         ) : (
           <ul className="space-y-2 text-sm">
             {visibleRoster.map((membership) => (

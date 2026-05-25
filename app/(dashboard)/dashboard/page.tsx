@@ -1,4 +1,4 @@
-import { ApprovalStatus, Prisma, RoleType, ScopeType, TaskStatus } from "@prisma/client";
+import { ApprovalStatus, MemberLifecycleStatus, Prisma, RoleType, ScopeType, TaskStatus } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -504,7 +504,14 @@ export default async function DashboardPage() {
           athletesMissingGuardianLinkage: number;
           teamsWithOperationalGaps: number;
           missingResponsibleFollowUps: number;
+          lifecycleActive: number;
+          lifecycleProspect: number;
+          lifecycleInactive: number;
+          lifecycleArchived: number;
+          lifecycleAlumni: number;
+          activeWithoutRosterMembership: number;
         };
+        lifecycleStatusCounts: Record<MemberLifecycleStatus, number>;
         upcomingEvents: Array<{
           id: string;
           title: string;
@@ -613,6 +620,11 @@ export default async function DashboardPage() {
           missingAttendanceCount: number;
           openTaskCount: number;
         }>;
+        activeMembersWithoutRosterMembership: Array<{
+          id: string;
+          firstName: string;
+          lastName: string;
+        }>;
       }
     | null = null;
   let queryErrorMessage = "Unable to load dashboard data right now. Please try again later.";
@@ -642,6 +654,9 @@ export default async function DashboardPage() {
       teamsForGapReview,
       pendingFieldOpsApprovalsCount,
       pendingFieldOpsApprovals,
+      lifecycleStatusGroupedCounts,
+      activeMembersWithoutRosterMembershipCount,
+      activeMembersWithoutRosterMembership,
       recentOperationalHistory,
       unresolvedOperationalHistory,
     ] = await Promise.all([
@@ -969,6 +984,42 @@ export default async function DashboardPage() {
             take: 5,
           })
         : Promise.resolve([]),
+      db.person.groupBy({
+        by: ["lifecycleStatus"],
+        where: scopedPersonWhere,
+        _count: {
+          _all: true,
+        },
+      }),
+      db.person.count({
+        where: {
+          ...scopedPersonWhere,
+          lifecycleStatus: MemberLifecycleStatus.ACTIVE,
+          roster: {
+            none: {
+              organizationId: scope.organizationId,
+            },
+          },
+        },
+      }),
+      db.person.findMany({
+        where: {
+          ...scopedPersonWhere,
+          lifecycleStatus: MemberLifecycleStatus.ACTIVE,
+          roster: {
+            none: {
+              organizationId: scope.organizationId,
+            },
+          },
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+        },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+        take: 5,
+      }),
       getOperationalHistory({
         organizationId: scope.organizationId,
         limit: 8,
@@ -1130,6 +1181,14 @@ export default async function DashboardPage() {
       ...recentOperationalHistory,
       ...unresolvedOperationalHistory.filter((item) => !recentOperationalHistory.some((recent) => recent.id === item.id)),
     ];
+    const lifecycleStatusCounts = Object.values(MemberLifecycleStatus).reduce(
+      (counts, status) => {
+        counts[status] =
+          lifecycleStatusGroupedCounts.find((entry) => entry.lifecycleStatus === status)?._count._all ?? 0;
+        return counts;
+      },
+      {} as Record<MemberLifecycleStatus, number>,
+    );
 
     const operationalSummaryClassificationView = buildOperationalSummaryClassificationView(combinedOperationalHistory);
     const operationalReadinessEvaluationView = buildOperationalReadinessEvaluationView({
@@ -1156,7 +1215,14 @@ export default async function DashboardPage() {
         athletesMissingGuardianLinkage: athletesMissingGuardianLinkageCount,
         teamsWithOperationalGaps: teamOperationalGaps.length,
         missingResponsibleFollowUps: missingResponsibleFollowUpCount + eventsMissingResponsibleTeam.length,
+        lifecycleActive: lifecycleStatusCounts[MemberLifecycleStatus.ACTIVE],
+        lifecycleProspect: lifecycleStatusCounts[MemberLifecycleStatus.PROSPECT],
+        lifecycleInactive: lifecycleStatusCounts[MemberLifecycleStatus.INACTIVE],
+        lifecycleArchived: lifecycleStatusCounts[MemberLifecycleStatus.ARCHIVED],
+        lifecycleAlumni: lifecycleStatusCounts[MemberLifecycleStatus.ALUMNI],
+        activeWithoutRosterMembership: activeMembersWithoutRosterMembershipCount,
       },
+      lifecycleStatusCounts,
       upcomingEvents,
       attendanceNeedingReview,
       overdueTasks: sortOpenTasks(overdueTasks),
@@ -1176,6 +1242,7 @@ export default async function DashboardPage() {
       unresolvedEventConcerns,
       notesNeedingAttention,
       eventsMissingResponsibleTeam,
+      activeMembersWithoutRosterMembership,
     };
   } catch (error) {
     if (isSchemaUnavailableError(error)) {
@@ -1300,6 +1367,52 @@ export default async function DashboardPage() {
             ]}
             guidance="These groupings are lightweight review aids. They summarize current workflow data and do not introduce workflow automation, notifications, or predictive prioritization."
           />
+
+          <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-base font-medium">Roster lifecycle readiness</h3>
+              <Link href="/people" className="text-sm underline">
+                Open people
+              </Link>
+            </div>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              Lifecycle mix in current scope: Active {dashboardData.lifecycleStatusCounts[MemberLifecycleStatus.ACTIVE]} ·
+              Prospect {dashboardData.lifecycleStatusCounts[MemberLifecycleStatus.PROSPECT]} · Inactive{" "}
+              {dashboardData.lifecycleStatusCounts[MemberLifecycleStatus.INACTIVE]} · Archived{" "}
+              {dashboardData.lifecycleStatusCounts[MemberLifecycleStatus.ARCHIVED]} · Alumni{" "}
+              {dashboardData.lifecycleStatusCounts[MemberLifecycleStatus.ALUMNI]}.
+            </p>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Active members with no roster membership in current scope:{" "}
+              {dashboardData.counts.activeWithoutRosterMembership}.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2 text-sm">
+              <Link href="/teams?readiness=needs_attention" className="rounded-full border px-2 py-1">
+                Team roster readiness
+              </Link>
+              <Link href="/programs" className="rounded-full border px-2 py-1">
+                Program/season context
+              </Link>
+              <Link href="/people" className="rounded-full border px-2 py-1">
+                Member lifecycle + guardian context
+              </Link>
+            </div>
+            <div className="mt-3 space-y-2 text-sm">
+              {dashboardData.activeMembersWithoutRosterMembership.length === 0 ? (
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  No active members are currently missing roster membership context.
+                </p>
+              ) : (
+                dashboardData.activeMembersWithoutRosterMembership.map((person) => (
+                  <p key={person.id}>
+                    <Link href={`/people/${person.id}`} className="underline">
+                      {person.firstName} {person.lastName}
+                    </Link>
+                  </p>
+                ))
+              )}
+            </div>
+          </div>
 
           {/* Operational Priority Focus — lightweight triage view of what requires immediate review */}
           <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
@@ -1454,6 +1567,11 @@ export default async function DashboardPage() {
                 label: "Teams with roster/assignment gaps",
                 value: dashboardData.counts.teamsWithOperationalGaps,
                 href: "/teams?readiness=needs_attention",
+              },
+              {
+                label: "Active members with no roster membership",
+                value: dashboardData.counts.activeWithoutRosterMembership,
+                href: "/people",
               },
             ].map((metric) => (
               <Link

@@ -1,4 +1,4 @@
-import { RoleType, ScopeType } from "@prisma/client";
+import { MemberLifecycleStatus, RoleType, ScopeType } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
@@ -135,6 +135,7 @@ export default async function TeamDetailsPage({
             firstName: string;
             lastName: string;
             email: string | null;
+            lifecycleStatus: string;
             athleteLinks: Array<{
               id: string;
               guardian: {
@@ -207,6 +208,7 @@ export default async function TeamDetailsPage({
                   firstName: true,
                   lastName: true,
                   email: true,
+                  lifecycleStatus: true,
                   athleteLinks: {
                     where: {
                       organizationId: scope.organizationId,
@@ -344,6 +346,16 @@ export default async function TeamDetailsPage({
         })
       : filteredSelectedSeasonRosterMembers;
   const athleteRosterMemberships = selectedSeasonRosterMembers.filter((membership) => membership.rosterRole === RoleType.ATHLETE);
+  const selectedSeasonLifecycleCounts = Object.values(MemberLifecycleStatus).reduce(
+    (counts, status) => {
+      counts[status] = selectedSeasonRosterMembers.filter((membership) => membership.person.lifecycleStatus === status).length;
+      return counts;
+    },
+    {} as Record<MemberLifecycleStatus, number>,
+  );
+  const selectedSeasonMembersWithoutActiveLifecycle = selectedSeasonRosterMembers.filter(
+    (membership) => membership.person.lifecycleStatus !== MemberLifecycleStatus.ACTIVE,
+  ).length;
   const athleteRosterWithGuardianLinks = athleteRosterMemberships.filter(
     (membership) => deriveGuardianOperationalContext(membership.person.athleteLinks).hasGuardianRelationship,
   ).length;
@@ -668,7 +680,9 @@ export default async function TeamDetailsPage({
                       </td>
                       <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">{formatEnumLabel(membership.rosterRole)}</td>
                       <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">{roleAssignmentStatus}</td>
-                      <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">Active on selected season roster</td>
+                      <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
+                        {formatEnumLabel(membership.person.lifecycleStatus)}
+                      </td>
                       <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">{guardianStatus}</td>
                       <td className="px-3 py-2">
                         <form action={`/teams/${team.id}/roster/${membership.id}/remove`} method="post">
@@ -694,6 +708,17 @@ export default async function TeamDetailsPage({
           {canEditGuardianLinkageWhereSupported
             ? "you have staff write coverage via existing person/roster/role assignment routes."
             : "staff write permissions are required via existing person/roster/role assignment routes."}
+        </p>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Selected-season lifecycle mix: Active {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ACTIVE]} · Prospect{" "}
+          {selectedSeasonLifecycleCounts[MemberLifecycleStatus.PROSPECT]} · Inactive{" "}
+          {selectedSeasonLifecycleCounts[MemberLifecycleStatus.INACTIVE]} · Archived{" "}
+          {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ARCHIVED]} · Alumni{" "}
+          {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ALUMNI]}.
+        </p>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Selected-season roster members not currently Active in lifecycle status:{" "}
+          {selectedSeasonMembersWithoutActiveLifecycle}.
         </p>
         {canViewGuardianRelationshipDetails ? (
           <>
