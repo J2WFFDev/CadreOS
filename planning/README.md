@@ -207,7 +207,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: adds staff-scoped inactive and archive lifecycle workflows (`POST /people/[personId]/inactive`, `POST /people/[personId]/archive`) with `person.deactivate` and `person.archive` authorization for ORGANIZATION_ADMIN, PROGRAM_DIRECTOR, and COACH; validates server-side lifecycle transitions; preserves all roster history, roles, guardian relationships, notes, tasks, attendance, and GearOps records; adds lifecycle action buttons with confirmation context on person detail; preserves all existing join, activate, and move behavior.
 - [Phase 17E Validation Checklist](./PHASE_17E_VALIDATION_CHECKLIST.md)
   - Summary: confirms Arc 17E scope compliance, authorization correctness, lifecycle transition safety, referential data preservation, existing behavior preservation, and automated/manual validation steps.
-- Phase 17F — Season Rollover Workflow (planned)
+- [Phase 17F Season Rollover Workflow](./PHASE_17F_SEASON_ROLLOVER_WORKFLOW.md)
+  - Summary: adds staff-scoped season rollover workflow (`GET /programs/[programId]/seasons/[seasonId]/rollover`, `POST .../rollover/execute`) with `season.rollover` authorization for ORGANIZATION_ADMIN and PROGRAM_DIRECTOR; validates source/target seasons belong to same org and program; creates new target-season RosterMembership records via `createMany` with `skipDuplicates`; excludes ARCHIVED persons always and INACTIVE persons by default; previews eligible members before execution; preserves all source-season records, lifecycle states, role assignments, guardian relationships, notes, tasks, attendance, and GearOps records; adds Rollover link and rollover success banner to program detail page.
+- [Phase 17F Validation Checklist](./PHASE_17F_VALIDATION_CHECKLIST.md)
+  - Summary: confirms Arc 17F scope compliance, authorization correctness, org/program scoping validation, eligible membership filtering, rollover execution safety, redirect behavior, existing behavior preservation, and automated/manual validation steps.
 - Phase 17G — Guardian Relationship Maintenance (planned)
 - Phase 17H — Roster Lifecycle Dashboard / Readiness Integration (planned)
 - Phase 17I — Roster / Member Lifecycle Closeout (planned)

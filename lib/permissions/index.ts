@@ -7,6 +7,7 @@ type SupportedAction =
   | "program.update"
   | "season.create"
   | "season.update"
+  | "season.rollover"
   | "person.create"
   | "person.update"
   | "person.activate"
@@ -61,6 +62,7 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "program.update",
     "season.create",
     "season.update",
+    "season.rollover",
     "person.create",
     "person.update",
     "person.activate",
@@ -99,6 +101,7 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
   [RoleType.PROGRAM_DIRECTOR]: new Set<SupportedAction>([
     "season.create",
     "season.update",
+    "season.rollover",
     "team.create",
     "person.activate",
     "person.deactivate",
@@ -170,6 +173,7 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
 const SCOPED_ACTIONS = new Set<SupportedAction>([
   "season.create",
   "season.update",
+  "season.rollover",
   "person.move",
   "team.create",
   "rosterMembership.create",
@@ -192,6 +196,7 @@ const SUPPORTED_ACTIONS = new Set<SupportedAction>([
   "program.update",
   "season.create",
   "season.update",
+  "season.rollover",
   "person.create",
   "person.update",
   "person.activate",
