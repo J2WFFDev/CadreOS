@@ -115,6 +115,24 @@ export const memberLifecycleActivateSchema = z.object({
   confirm: z.literal("1", { message: "Activation confirmation is required." }),
 });
 
+export const memberMoveWorkflowSchema = z
+  .object({
+    sourceMembershipId: z.string().trim(),
+    programId: z.string().trim().min(1, "Program selection is required."),
+    teamId: z.string().trim().min(1, "Team selection is required."),
+    seasonId: z.string().trim().min(1, "Season selection is required."),
+    rosterRole: z.nativeEnum(RoleType, {
+      message: "Roster role must use an existing role value.",
+    }),
+  })
+  .transform((value) => ({
+    sourceMembershipId: value.sourceMembershipId.length === 0 ? null : value.sourceMembershipId,
+    programId: value.programId,
+    teamId: value.teamId,
+    seasonId: value.seasonId,
+    rosterRole: value.rosterRole,
+  }));
+
 export const teamWorkflowSchema = z.object({
   name: z
     .string()
@@ -1059,6 +1077,7 @@ export async function requirePhase1CMutationPermission(input: {
     | "person.create"
     | "person.update"
     | "person.activate"
+    | "person.move"
     | "team.create"
     | "season.create"
     | "season.update"
