@@ -115,6 +115,14 @@ export const memberLifecycleActivateSchema = z.object({
   confirm: z.literal("1", { message: "Activation confirmation is required." }),
 });
 
+export const memberLifecycleInactiveSchema = z.object({
+  confirm: z.literal("1", { message: "Deactivation confirmation is required." }),
+});
+
+export const memberLifecycleArchiveSchema = z.object({
+  confirm: z.literal("1", { message: "Archive confirmation is required." }),
+});
+
 export const memberMoveWorkflowSchema = z
   .object({
     sourceMembershipId: z.string().trim(),
@@ -1077,6 +1085,8 @@ export async function requirePhase1CMutationPermission(input: {
     | "person.create"
     | "person.update"
     | "person.activate"
+    | "person.deactivate"
+    | "person.archive"
     | "person.move"
     | "team.create"
     | "season.create"
