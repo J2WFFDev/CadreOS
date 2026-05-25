@@ -165,6 +165,9 @@ export async function POST(
       where: {
         organizationId,
         seasonId,
+        team: {
+          programId,
+        },
         person: lifecycleFilter,
       },
       select: {

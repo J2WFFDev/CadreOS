@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BackLink } from "@/components/dashboard/back-link";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { canPerformAction } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -153,6 +154,15 @@ export default async function ProgramDetailsPage({
     );
   }
 
+  const canAccessSeasonRollover =
+    scope.auth.clerkUserId &&
+    (await canPerformAction({
+      actorUserId: scope.auth.clerkUserId,
+      organizationId: scope.organizationId,
+      action: "season.rollover",
+      programId: program.id,
+    }));
+
   return (
     <section className="space-y-6">
       <div className="space-y-1">
@@ -193,9 +203,11 @@ export default async function ProgramDetailsPage({
                 <Link href={`/programs/${program.id}/seasons/${season.id}/edit`} className="underline">
                   Edit
                 </Link>
-                <Link href={`/programs/${program.id}/seasons/${season.id}/rollover`} className="underline">
-                  Rollover
-                </Link>
+                {canAccessSeasonRollover ? (
+                  <Link href={`/programs/${program.id}/seasons/${season.id}/rollover`} className="underline">
+                    Rollover
+                  </Link>
+                ) : null}
               </li>
             ))}
           </ul>
