@@ -223,7 +223,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: adds staff-scoped, read-only roster lifecycle readiness visibility across dashboard, people, team, and program surfaces with lifecycle mix counts, roster readiness cues, guardian readiness context, and active-without-roster signals while preserving existing Arc 17 mutation workflows and Core/FieldOps/GearOps behavior.
 - [Phase 17H Validation Checklist](./PHASE_17H_VALIDATION_CHECKLIST.md)
   - Summary: confirms Arc 17H scope compliance, authorization/privacy boundaries, lifecycle/roster/guardian readiness signal coverage, workflow preservation, and automated/manual validation steps.
-- Phase 17I — Roster / Member Lifecycle Closeout (planned)
+- [Phase 17I Roster and Member Lifecycle Closeout](./PHASE_17I_ROSTER_MEMBER_LIFECYCLE_CLOSEOUT.md)
+  - Summary: closes Arc 17 by validating end-to-end lifecycle workflow coverage (status model, join/activate, move, inactive/archive, rollover, guardian maintenance, readiness visibility), confirms org-scoping and authorization safety boundaries, records blocker-level findings, and explicitly documents deferred scope.
+- [Phase 17I Validation Checklist](./PHASE_17I_VALIDATION_CHECKLIST.md)
+  - Summary: captures automated validation status and closeout verification for workflow-chain coverage, organization scoping, staff authorization boundaries, invalid-id/empty-state handling, history preservation, blocker triage, and deferred-scope confirmation.
 
 ## Phase 7A Recenter (current decision path)
 - [CadreOS MVP Roadmap (Phase 7A Recenter)](./ROADMAP.md)
