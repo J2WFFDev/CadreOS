@@ -1,4 +1,4 @@
-import { MemberLifecycleStatus, RoleType, ScopeType } from "@prisma/client";
+import { ApprovalStatus, BookingStatus, MemberLifecycleStatus, RoleType, ScopeType } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
@@ -578,6 +578,56 @@ export default async function TeamDetailsPage({
     (count, event) => count + event.rsvpSummary.noResponseCount,
     0,
   );
+  const [teamFieldOpsBookingCount, teamFieldOpsPendingApprovals, teamFieldOpsConflicts, teamFieldOpsUpcomingBookings] =
+    await Promise.all([
+      db.resourceBooking.count({
+        where: {
+          organizationId: scope.organizationId,
+          teamId: team.id,
+        },
+      }),
+      db.resourceBooking.count({
+        where: {
+          organizationId: scope.organizationId,
+          teamId: team.id,
+          approvalStatus: ApprovalStatus.PENDING,
+        },
+      }),
+      db.resourceBooking.count({
+        where: {
+          organizationId: scope.organizationId,
+          teamId: team.id,
+          conflicts: {
+            some: {},
+          },
+        },
+      }),
+      db.resourceBooking.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          teamId: team.id,
+          startsAt: {
+            gte: now,
+          },
+          status: {
+            notIn: [BookingStatus.DENIED, BookingStatus.CANCELED],
+          },
+        },
+        select: {
+          id: true,
+          title: true,
+          startsAt: true,
+          status: true,
+          approvalStatus: true,
+          facility: { select: { id: true, name: true } },
+          resource: { select: { id: true, name: true } },
+        },
+        orderBy: [{ startsAt: "asc" }, { createdAt: "asc" }],
+        take: 5,
+      }),
+    ]);
+  const teamFieldOpsResourcesInUse = new Set(teamFieldOpsUpcomingBookings.map((booking) => booking.resource.id)).size;
+  const teamFieldOpsReadinessConcerns = teamFieldOpsPendingApprovals + teamFieldOpsConflicts;
 
   return (
     <section className="space-y-6">
@@ -935,6 +985,69 @@ export default async function TeamDetailsPage({
             ))}
           </ul>
         ) : null}
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-medium">FieldOps operational readiness</h3>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Read-only reservation and resource readiness context linked to this team.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Link href="/field-ops/bookings" className="rounded-full border px-2 py-1">
+              Booking lane
+            </Link>
+            <Link href={`/field-ops/bookings/new?teamId=${team.id}&programId=${team.program.id}`} className="rounded-full border px-2 py-1">
+              New team booking
+            </Link>
+          </div>
+        </div>
+        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <dt className="font-medium">Team-linked reservations</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{teamFieldOpsBookingCount}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Upcoming reservations</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{teamFieldOpsUpcomingBookings.length}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Resources with upcoming load</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{teamFieldOpsResourcesInUse}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Readiness concerns</dt>
+            <dd className={teamFieldOpsReadinessConcerns > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {teamFieldOpsReadinessConcerns}
+            </dd>
+          </div>
+        </dl>
+        <div className="mt-4">
+          <h4 className="text-sm font-medium">Upcoming reservations</h4>
+          {teamFieldOpsUpcomingBookings.length === 0 ? (
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              No upcoming FieldOps reservations are currently linked to this team.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-2 text-sm">
+              {teamFieldOpsUpcomingBookings.slice(0, 3).map((booking) => (
+                <li key={booking.id} className="rounded-md border p-2">
+                  <Link href={`/field-ops/bookings/${booking.id}`} className="font-medium underline">
+                    {booking.title}
+                  </Link>
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    {booking.startsAt.toISOString().slice(0, 16).replace("T", " ")} UTC · {formatEnumLabel(booking.status)}
+                  </p>
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    Approval: {formatEnumLabel(booking.approvalStatus)} · {booking.facility.name} · {booking.resource.name}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">

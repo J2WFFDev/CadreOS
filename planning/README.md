@@ -28,6 +28,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 18C Validation Checklist](./PHASE_18C_VALIDATION_CHECKLIST.md)
 - [Phase 18D Notes and Follow-Up Task Operational Review Reporting](./PHASE_18D_NOTES_TASK_OPERATIONAL_REVIEW_REPORTING.md)
 - [Phase 18D Validation Checklist](./PHASE_18D_VALIDATION_CHECKLIST.md)
+- [Phase 18E FieldOps Reporting](./PHASE_18E_FIELDOPS_REPORTING.md)
+- [Phase 18E Validation Checklist](./PHASE_18E_VALIDATION_CHECKLIST.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)
 - [Phase 16C GearOps Catalog Read-Only Views](./PHASE_16C_GEAROPS_CATALOG_READ_ONLY_VIEWS.md)
@@ -254,6 +256,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: adds staff-scoped, read-only operational review visibility for notes and follow-up tasks across dashboard/program/team context with open workload, overdue follow-up, ownership summaries, task status distribution, unresolved readiness cues, recent note activity, and safe links into existing notes/tasks/team/event surfaces.
 - [Phase 18D Validation Checklist](./PHASE_18D_VALIDATION_CHECKLIST.md)
   - Summary: validates Arc 18D notes/task operational review scope delivery, authorization/privacy boundaries, workflow-preservation constraints, deferred-boundary compliance, automated validation command status, and planning index updates.
+- [Phase 18E FieldOps Reporting](./PHASE_18E_FIELDOPS_REPORTING.md)
+  - Summary: adds staff-scoped, read-only FieldOps operational reporting visibility across dashboard, FieldOps overview/facility/resource surfaces, and practical program/team readiness context with utilization, reservation activity, upcoming load, readiness cues, and availability summaries linked to existing workflows.
+- [Phase 18E Validation Checklist](./PHASE_18E_VALIDATION_CHECKLIST.md)
+  - Summary: validates Arc 18E FieldOps reporting scope delivery, authorization/privacy boundaries, workflow-preservation constraints, deferred-boundary compliance, automated validation command status, and planning index updates.
 
 ## Phase 7A Recenter (current decision path)
 - [CadreOS MVP Roadmap (Phase 7A Recenter)](./ROADMAP.md)

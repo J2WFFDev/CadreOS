@@ -1,4 +1,4 @@
-import { ApprovalStatus, AttendanceStatus, MemberLifecycleStatus, Prisma, RoleType, ScopeType, TaskStatus } from "@prisma/client";
+import { ApprovalStatus, AttendanceStatus, BookingStatus, MemberLifecycleStatus, Prisma, RoleType, ScopeType, TaskStatus } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -515,6 +515,10 @@ export default async function DashboardPage() {
           recentNotes: number;
           recentOperationalChanges: number;
           pendingFieldOpsApprovals: number;
+          fieldOpsUpcomingReservations: number;
+          fieldOpsActiveResources: number;
+          fieldOpsAvailableResources: number;
+          fieldOpsReadinessConcerns: number;
           athletesMissingGuardianLinkage: number;
           teamsWithOperationalGaps: number;
           missingResponsibleFollowUps: number;
@@ -610,6 +614,15 @@ export default async function DashboardPage() {
           facility: { id: string; name: string };
           resource: { id: string; name: string };
         }>;
+        upcomingFieldOpsReservations: Array<{
+          id: string;
+          title: string;
+          startsAt: Date;
+          status: string;
+          approvalStatus: string;
+          facility: { id: string; name: string };
+          resource: { id: string; name: string };
+        }>;
         recentOperationalHistory: OperationalHistoryItem[];
         unresolvedOperationalHistory: OperationalHistoryItem[];
         operationalAwarenessView: OperationalAwarenessView;
@@ -685,6 +698,11 @@ export default async function DashboardPage() {
       teamsForGapReview,
       pendingFieldOpsApprovalsCount,
       pendingFieldOpsApprovals,
+      fieldOpsUpcomingReservationsCount,
+      fieldOpsUpcomingReservations,
+      fieldOpsActiveResourceCount,
+      fieldOpsInactiveResourceCount,
+      fieldOpsInactiveFacilityCount,
       lifecycleStatusGroupedCounts,
       activeMembersWithoutRosterMembershipCount,
       activeMembersWithoutRosterMembership,
@@ -1060,6 +1078,68 @@ export default async function DashboardPage() {
             take: 5,
           })
         : Promise.resolve([]),
+      canViewOrganizationLevelFieldOpsApprovals
+        ? db.resourceBooking.count({
+            where: {
+              organizationId: scope.organizationId,
+              startsAt: { gte: currentTime },
+              status: {
+                notIn: [BookingStatus.DENIED, BookingStatus.CANCELED],
+              },
+            },
+          })
+        : Promise.resolve(0),
+      canViewOrganizationLevelFieldOpsApprovals
+        ? db.resourceBooking.findMany({
+            where: {
+              organizationId: scope.organizationId,
+              startsAt: { gte: currentTime },
+              status: {
+                notIn: [BookingStatus.DENIED, BookingStatus.CANCELED],
+              },
+            },
+            select: {
+              id: true,
+              title: true,
+              startsAt: true,
+              status: true,
+              approvalStatus: true,
+              facility: { select: { id: true, name: true } },
+              resource: { select: { id: true, name: true } },
+            },
+            orderBy: [{ startsAt: "asc" }, { createdAt: "asc" }],
+            take: 5,
+          })
+        : Promise.resolve([]),
+      canViewOrganizationLevelFieldOpsApprovals
+        ? db.facilityResource.count({
+            where: {
+              organizationId: scope.organizationId,
+              status: "ACTIVE",
+              facility: { status: "ACTIVE" },
+            },
+          })
+        : Promise.resolve(0),
+      canViewOrganizationLevelFieldOpsApprovals
+        ? db.facilityResource.count({
+            where: {
+              organizationId: scope.organizationId,
+              status: {
+                not: "ACTIVE",
+              },
+            },
+          })
+        : Promise.resolve(0),
+      canViewOrganizationLevelFieldOpsApprovals
+        ? db.facility.count({
+            where: {
+              organizationId: scope.organizationId,
+              status: {
+                not: "ACTIVE",
+              },
+            },
+          })
+        : Promise.resolve(0),
       db.person.groupBy({
         by: ["lifecycleStatus"],
         where: scopedPersonWhere,
@@ -1317,6 +1397,10 @@ export default async function DashboardPage() {
       },
       {} as Record<MemberLifecycleStatus, number>,
     );
+    const upcomingFieldOpsResourceIds = new Set(fieldOpsUpcomingReservations.map((booking) => booking.resource.id));
+    const fieldOpsAvailableResourceCount = Math.max(fieldOpsActiveResourceCount - upcomingFieldOpsResourceIds.size, 0);
+    const fieldOpsReadinessConcernCount =
+      pendingFieldOpsApprovalsCount + fieldOpsInactiveResourceCount + fieldOpsInactiveFacilityCount;
 
     const operationalSummaryClassificationView = buildOperationalSummaryClassificationView(combinedOperationalHistory);
     const operationalReadinessEvaluationView = buildOperationalReadinessEvaluationView({
@@ -1349,6 +1433,10 @@ export default async function DashboardPage() {
         recentNotes: recentNoteCount,
         recentOperationalChanges: recentOperationalHistory.length,
         pendingFieldOpsApprovals: pendingFieldOpsApprovalsCount,
+        fieldOpsUpcomingReservations: fieldOpsUpcomingReservationsCount,
+        fieldOpsActiveResources: fieldOpsActiveResourceCount,
+        fieldOpsAvailableResources: fieldOpsAvailableResourceCount,
+        fieldOpsReadinessConcerns: fieldOpsReadinessConcernCount,
         athletesMissingGuardianLinkage: athletesMissingGuardianLinkageCount,
         teamsWithOperationalGaps: teamOperationalGaps.length,
         missingResponsibleFollowUps: missingResponsibleFollowUpCount + eventsMissingResponsibleTeam.length,
@@ -1372,6 +1460,7 @@ export default async function DashboardPage() {
       athletesMissingGuardianLinkage,
       teamOperationalGaps,
       pendingFieldOpsApprovals,
+      upcomingFieldOpsReservations: fieldOpsUpcomingReservations,
       recentOperationalHistory,
       unresolvedOperationalHistory,
       operationalAwarenessView: buildOperationalAwarenessView(combinedOperationalHistory),
@@ -1712,6 +1801,26 @@ export default async function DashboardPage() {
                       label: "FieldOps pending approvals",
                       value: dashboardData.counts.pendingFieldOpsApprovals,
                       href: "/field-ops/bookings?approvalStatus=PENDING",
+                    },
+                    {
+                      label: "FieldOps upcoming reservations",
+                      value: dashboardData.counts.fieldOpsUpcomingReservations,
+                      href: "/field-ops/bookings?timeframe=upcoming",
+                    },
+                    {
+                      label: "FieldOps active resources",
+                      value: dashboardData.counts.fieldOpsActiveResources,
+                      href: "/field-ops/resources",
+                    },
+                    {
+                      label: "FieldOps available resources",
+                      value: dashboardData.counts.fieldOpsAvailableResources,
+                      href: "/field-ops/resources",
+                    },
+                    {
+                      label: "FieldOps readiness concerns",
+                      value: dashboardData.counts.fieldOpsReadinessConcerns,
+                      href: "/field-ops",
                     },
                   ]
                 : []),
@@ -2268,6 +2377,65 @@ export default async function DashboardPage() {
                         </Link>
                         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                           {formatDateTime(booking.startsAt)} · {formatEnumLabel(booking.status)}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          {booking.facility.name} · {booking.resource.name}
+                        </p>
+                      </div>
+                    ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-medium">FieldOps operational summary</h3>
+                {canViewOrganizationLevelFieldOpsApprovals ? (
+                  <Link href="/field-ops" className="text-sm underline">
+                    Open FieldOps
+                  </Link>
+                ) : null}
+              </div>
+              <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Upcoming reservations:{" "}
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {dashboardData.counts.fieldOpsUpcomingReservations}
+                  </span>
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Active resources:{" "}
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {dashboardData.counts.fieldOpsActiveResources}
+                  </span>
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Available resources:{" "}
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {dashboardData.counts.fieldOpsAvailableResources}
+                  </span>
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Readiness concerns:{" "}
+                  <span className={dashboardData.counts.fieldOpsReadinessConcerns > 0 ? "font-medium text-amber-700 dark:text-amber-300" : "font-medium text-zinc-900 dark:text-zinc-100"}>
+                    {dashboardData.counts.fieldOpsReadinessConcerns}
+                  </span>
+                </p>
+              </div>
+              <div className="mt-4 space-y-3">
+                {!canViewOrganizationLevelFieldOpsApprovals
+                  ? renderEmptyList(
+                      "FieldOps operational summary remains organization-scoped until staff-safe non-org visibility rules are defined.",
+                    )
+                  : dashboardData.upcomingFieldOpsReservations.length === 0
+                  ? renderEmptyList("No upcoming FieldOps reservations are currently scheduled.")
+                  : dashboardData.upcomingFieldOpsReservations.map((booking) => (
+                      <div key={booking.id} className="border-b pb-3 last:border-b-0 last:pb-0">
+                        <Link href={`/field-ops/bookings/${booking.id}`} className="font-medium underline">
+                          {booking.title}
+                        </Link>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          {formatDateTime(booking.startsAt)} · {formatEnumLabel(booking.status)} · Approval{" "}
+                          {formatEnumLabel(booking.approvalStatus)}
                         </p>
                         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                           {booking.facility.name} · {booking.resource.name}

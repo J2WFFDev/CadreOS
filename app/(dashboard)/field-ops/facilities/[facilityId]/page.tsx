@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BookingStatus } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -138,6 +139,39 @@ export default async function FacilityDetailsPage({
 
   const activeFacilityResources = facility.resources.filter((resource) => resource.status === "ACTIVE");
   const canRequestForFacility = facility.status === "ACTIVE" && activeFacilityResources.length > 0;
+  const now = new Date();
+  const nextFourteenDays = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const upcomingFacilityBookings = await db.resourceBooking.findMany({
+    where: {
+      organizationId: scope.organizationId,
+      facilityId: facility.id,
+      startsAt: {
+        gte: now,
+        lt: nextFourteenDays,
+      },
+      status: {
+        notIn: [BookingStatus.DENIED, BookingStatus.CANCELED],
+      },
+    },
+    select: {
+      id: true,
+      title: true,
+      startsAt: true,
+      status: true,
+      resource: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+    orderBy: [{ startsAt: "asc" }, { createdAt: "asc" }],
+    take: 5,
+  });
+  const resourcesWithUpcomingBookings = new Set(upcomingFacilityBookings.map((booking) => booking.resource.id)).size;
+  const resourcesWithoutUpcomingBookings = Math.max(activeFacilityResources.length - resourcesWithUpcomingBookings, 0);
+  const facilityReadinessConcerns =
+    (facility.status === "ACTIVE" ? 0 : 1) + facility.resources.filter((resource) => resource.status !== "ACTIVE").length;
 
   return (
     <section className="space-y-6">
@@ -185,6 +219,82 @@ export default async function FacilityDetailsPage({
             New requests unavailable: no active resources
           </span>
         )}
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-medium">Facility operational summary</h3>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Read-only utilization, readiness, and upcoming reservation visibility for this facility.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Link href={`/field-ops/bookings?facilityId=${facility.id}&timeframe=upcoming`} className="rounded-full border px-2 py-1">
+              Upcoming reservations
+            </Link>
+            <Link href="/field-ops/resources" className="rounded-full border px-2 py-1">
+              Resource availability
+            </Link>
+          </div>
+        </div>
+        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <dt className="font-medium">Total resources</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{facility.resources.length}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Active resources</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{activeFacilityResources.length}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Upcoming reservations (14 days)</dt>
+            <dd className={upcomingFacilityBookings.length > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {upcomingFacilityBookings.length}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Resources with upcoming load</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{resourcesWithUpcomingBookings}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Resources currently available</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{resourcesWithoutUpcomingBookings}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Readiness concerns</dt>
+            <dd className={facilityReadinessConcerns > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {facilityReadinessConcerns}
+            </dd>
+          </div>
+        </dl>
+        <div className="mt-4">
+          <h4 className="text-sm font-medium">Upcoming reservations</h4>
+          {upcomingFacilityBookings.length === 0 ? (
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              No upcoming reservations are scheduled for this facility in the next 14 days.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-2 text-sm">
+              {upcomingFacilityBookings.map((booking) => (
+                <li key={booking.id} className="rounded-md border p-2">
+                  <Link href={`/field-ops/bookings/${booking.id}`} className="font-medium underline">
+                    {booking.title}
+                  </Link>
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    {booking.startsAt.toISOString().slice(0, 16).replace("T", " ")} UTC · {formatFieldOpsEnum(booking.status)}
+                  </p>
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    Resource:{" "}
+                    <Link href={`/field-ops/resources/${booking.resource.id}`} className="underline">
+                      {booking.resource.name}
+                    </Link>
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       <div className="space-y-3">
