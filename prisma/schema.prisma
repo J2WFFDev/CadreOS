@@ -12,6 +12,14 @@ enum OrgStatus {
   INACTIVE
 }
 
+enum MemberLifecycleStatus {
+  PROSPECT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+  ALUMNI
+}
+
 enum RoleType {
   ORGANIZATION_ADMIN
   PROGRAM_DIRECTOR
@@ -332,6 +340,7 @@ model UserAccount {
 model Person {
   id             String   @id @default(cuid())
   organizationId String
+  lifecycleStatus MemberLifecycleStatus @default(ACTIVE)
   firstName      String
   lastName       String
   email          String?
@@ -369,6 +378,7 @@ model Person {
   recordedConsumableTransactions ConsumableTransaction[]
 
   @@index([organizationId])
+  @@index([organizationId, lifecycleStatus])
   @@index([organizationId, lastName, firstName])
 }
 
