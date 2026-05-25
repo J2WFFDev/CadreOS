@@ -6,7 +6,7 @@ import { ErrorMessage } from "@/components/dashboard/error-message";
 import { BookingCard } from "@/components/field-ops/booking-card";
 import { FieldOpsSubnav } from "@/components/field-ops/subnav";
 import { db } from "@/lib/db";
-import { formatFieldOpsEnum } from "@/lib/field-ops";
+import { formatFieldOpsDateTime, formatFieldOpsEnum } from "@/lib/field-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
