@@ -430,6 +430,7 @@ export default async function PersonDetailsPage({
   const programIdError = readSearchParam(resolvedSearchParams, "programIdError");
   const teamIdError = readSearchParam(resolvedSearchParams, "teamIdError");
   const activateError = readSearchParam(resolvedSearchParams, "activateError");
+  const moveSuccess = readSearchParam(resolvedSearchParams, "moveSuccess");
 
   const selectedRoleType = (readSearchParam(resolvedSearchParams, "roleType") || RoleType.ATHLETE) as RoleType;
   const selectedScopeType = (readSearchParam(resolvedSearchParams, "scopeType") || ScopeType.ORGANIZATION) as ScopeType;
@@ -656,7 +657,16 @@ export default async function PersonDetailsPage({
         <Link href={`/people/${person.id}/edit`} className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
           Edit person
         </Link>
+        <Link href={`/people/${person.id}/move`} className="ml-2 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+          Change team/program
+        </Link>
       </div>
+
+      {moveSuccess ? (
+        <div className="rounded-lg border border-green-300 bg-green-50 p-4 dark:border-green-700 dark:bg-green-950/40">
+          <p className="text-sm text-green-900 dark:text-green-200">{moveSuccess}</p>
+        </div>
+      ) : null}
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-2 text-lg font-medium">Member lifecycle status</h3>
@@ -949,6 +959,9 @@ export default async function PersonDetailsPage({
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Roster memberships</h3>
+        <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+          Use these current memberships as the baseline when moving this member to a different team/program context.
+        </p>
         {visibleRoster.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No roster memberships.</p>
         ) : (
@@ -969,6 +982,12 @@ export default async function PersonDetailsPage({
             ))}
           </ul>
         )}
+        <Link
+          href={`/people/${person.id}/move`}
+          className="mt-3 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+        >
+          Move member
+        </Link>
       </div>
 
       <OperationalHistoryPanel
