@@ -36,6 +36,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Phase 18G Validation Checklist](./PHASE_18G_VALIDATION_CHECKLIST.md)
 - [Phase 18H Export-Friendly Reporting Views](./PHASE_18H_EXPORT_FRIENDLY_REPORTING_VIEWS.md)
 - [Phase 18H Validation Checklist](./PHASE_18H_VALIDATION_CHECKLIST.md)
+- [Phase 18I Reporting Dashboard Integration and Closeout](./PHASE_18I_REPORTING_DASHBOARD_INTEGRATION_CLOSEOUT.md)
+- [Phase 18I Validation Checklist](./PHASE_18I_VALIDATION_CHECKLIST.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)
 - [Phase 16C GearOps Catalog Read-Only Views](./PHASE_16C_GEAROPS_CATALOG_READ_ONLY_VIEWS.md)
@@ -278,6 +280,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: adds a staff-scoped, read-only export-friendly reporting surface with structured tabular layouts across core operational summaries, attendance/events, notes/tasks, FieldOps, GearOps, and lifecycle/guardian readiness using existing scoped operational data and safe navigation links.
 - [Phase 18H Validation Checklist](./PHASE_18H_VALIDATION_CHECKLIST.md)
   - Summary: validates Arc 18H export-friendly reporting scope delivery, authorization/privacy boundaries, workflow-preservation constraints, deferred-boundary compliance, automated validation command status, and planning index updates.
+- [Phase 18I Reporting Dashboard Integration and Closeout](./PHASE_18I_REPORTING_DASHBOARD_INTEGRATION_CLOSEOUT.md)
+  - Summary: closes Arc 18 by validating and documenting the full reporting chain across all eight prior phases (18A–18H), confirming staff-only authorization, organization scoping, workflow preservation, safe empty states, and navigation integration, recording zero critical blockers, and explicitly documenting all deferred Arc 18 capabilities.
+- [Phase 18I Validation Checklist](./PHASE_18I_VALIDATION_CHECKLIST.md)
+  - Summary: captures automated validation status, full scope delivery verification across 18B–18H, dashboard/navigation integration, authorization/privacy compliance, workflow preservation, safe empty states, blocker triage (no blockers found), deferred scope confirmation, and Arc 18 closeout sign-off.
 
 ## Phase 7A Recenter (current decision path)
 - [CadreOS MVP Roadmap (Phase 7A Recenter)](./ROADMAP.md)
