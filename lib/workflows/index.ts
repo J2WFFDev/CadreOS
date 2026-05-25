@@ -9,6 +9,7 @@ import {
   GearConditionStatus,
   GearInventoryType,
   GearItemLifecycleStatus,
+  GearMaintenanceType,
   PrecheckStatus,
   Prisma,
   RoleType,
@@ -798,6 +799,75 @@ export const gearCheckoutWorkflowSchema = z
     returnNotes: value.returnNotes.length === 0 ? null : value.returnNotes,
   }));
 
+export const gearMaintenanceWorkflowSchema = z
+  .object({
+    maintenanceType: z.nativeEnum(GearMaintenanceType, {
+      message: "Maintenance type must use a valid value.",
+    }),
+    performedByPersonId: z.string().trim(),
+    performedAt: z.string().trim(),
+    conditionBefore: z.string().trim(),
+    conditionAfter: z.string().trim(),
+    notes: z
+      .string()
+      .trim()
+      .min(1, "Notes are required.")
+      .max(MAX_GEAR_NOTES_LENGTH, `Notes must be ${MAX_GEAR_NOTES_LENGTH} characters or less.`),
+  })
+  .superRefine((value, context) => {
+    if (value.performedByPersonId.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["performedByPersonId"],
+        message: "Select who performed this maintenance.",
+      });
+    }
+
+    if (value.performedAt.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["performedAt"],
+        message: "Service date/time is required.",
+      });
+    } else if (!DATETIME_LOCAL_INPUT_PATTERN.test(value.performedAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["performedAt"],
+        message: "Service date/time must use YYYY-MM-DDTHH:mm format.",
+      });
+    }
+
+    if (value.conditionBefore.length > 0) {
+      const valid = Object.values(GearConditionStatus) as string[];
+      if (!valid.includes(value.conditionBefore)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["conditionBefore"],
+          message: "Condition before must use an existing condition value.",
+        });
+      }
+    }
+
+    if (value.conditionAfter.length > 0) {
+      const valid = Object.values(GearConditionStatus) as string[];
+      if (!valid.includes(value.conditionAfter)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["conditionAfter"],
+          message: "Condition after must use an existing condition value.",
+        });
+      }
+    }
+  })
+  .transform((value) => ({
+    maintenanceType: value.maintenanceType,
+    performedByPersonId: value.performedByPersonId,
+    performedAt: dateTimeInputToUtcDate(value.performedAt),
+    conditionBefore: value.conditionBefore.length === 0 ? null : (value.conditionBefore as GearConditionStatus),
+    conditionAfter: value.conditionAfter.length === 0 ? null : (value.conditionAfter as GearConditionStatus),
+    notes: value.notes,
+  }));
+
 export type PersonWorkflowInput = z.output<typeof personWorkflowSchema>;
 export type TeamWorkflowInput = z.output<typeof teamWorkflowSchema>;
 export type ProgramWorkflowInput = z.output<typeof programWorkflowSchema>;
@@ -814,6 +884,7 @@ export type GearCategoryWorkflowInput = z.output<typeof gearCategoryWorkflowSche
 export type GearItemWorkflowInput = z.output<typeof gearItemWorkflowSchema>;
 export type GearAssignmentWorkflowInput = z.output<typeof gearAssignmentWorkflowSchema>;
 export type GearCheckoutWorkflowInput = z.output<typeof gearCheckoutWorkflowSchema>;
+export type GearMaintenanceWorkflowInput = z.output<typeof gearMaintenanceWorkflowSchema>;
 
 export function getStringField(formData: FormData, field: string): string {
   const rawValue = formData.get(field);
@@ -888,7 +959,9 @@ export async function requirePhase1CMutationPermission(input: {
     | "gearAssignment.create"
     | "gearAssignment.update"
     | "gearCheckout.create"
-    | "gearCheckout.update";
+    | "gearCheckout.update"
+    | "gearMaintenance.create"
+    | "gearMaintenance.update";
   programId?: string | null;
   teamId?: string | null;
   seasonId?: string | null;

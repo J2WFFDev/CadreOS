@@ -122,6 +122,7 @@ export default async function GearOpsItemDetailsPage({
           id: string;
           maintenanceType: GearMaintenanceType;
           performedAt: Date;
+          createdAt: Date;
           conditionBefore: GearConditionStatus | null;
           conditionAfter: GearConditionStatus | null;
           notes: string;
@@ -200,13 +201,14 @@ export default async function GearOpsItemDetailsPage({
             id: true,
             maintenanceType: true,
             performedAt: true,
+            createdAt: true,
             conditionBefore: true,
             conditionAfter: true,
             notes: true,
             performedBy: { select: { id: true, firstName: true, lastName: true } },
           },
           orderBy: [{ performedAt: "desc" }, { createdAt: "desc" }],
-          take: 8,
+          take: 12,
         },
         consumableTransactions: {
           select: {
@@ -261,6 +263,8 @@ export default async function GearOpsItemDetailsPage({
   const currentCheckoutStatuses = new Set<GearCheckoutStatus>([GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE]);
   const currentCheckouts = gearItem.checkouts.filter((checkout) => currentCheckoutStatuses.has(checkout.status));
   const checkoutHistory = gearItem.checkouts.filter((checkout) => !currentCheckoutStatuses.has(checkout.status));
+  const recentMaintenanceLogs = gearItem.maintenanceLogs.slice(0, 3);
+  const maintenanceHistory = gearItem.maintenanceLogs.slice(3);
 
   function renderAssignmentCard(assignment: (typeof gearItem.assignments)[number]) {
     const assignmentProgram = assignment.assignedEvent?.program ?? assignment.assignedTeam?.program ?? gearItem.program;
@@ -411,6 +415,36 @@ export default async function GearOpsItemDetailsPage({
     );
   }
 
+  function renderMaintenanceCard(entry: (typeof gearItem.maintenanceLogs)[number]) {
+    return (
+      <article key={entry.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <p className="font-medium">
+            {formatGearOpsEnum(entry.maintenanceType)} · Service {formatGearOpsDateTime(entry.performedAt)}
+          </p>
+          <Link
+            href={`/gear-ops/items/${gearItem.id}/maintenance/${entry.id}/edit`}
+            className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Edit
+          </Link>
+        </div>
+        <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+          Performed by{" "}
+          <Link href={`/people/${entry.performedBy.id}`} className="underline">
+            {entry.performedBy.firstName} {entry.performedBy.lastName}
+          </Link>
+          {" · "}Logged {formatGearOpsDateTime(entry.createdAt)}
+        </p>
+        <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+          Condition before: {entry.conditionBefore ? formatGearOpsEnum(entry.conditionBefore) : "—"} · Condition after:{" "}
+          {entry.conditionAfter ? formatGearOpsEnum(entry.conditionAfter) : "—"}
+        </p>
+        <p className="mt-1 text-zinc-600 dark:text-zinc-400">{entry.notes}</p>
+      </article>
+    );
+  }
+
   return (
     <section className="space-y-6">
       <div className="space-y-3">
@@ -554,29 +588,34 @@ export default async function GearOpsItemDetailsPage({
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-lg font-medium">Maintenance history</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-lg font-medium">Maintenance and condition logs</h3>
+          <Link
+            href={`/gear-ops/items/${item.id}/maintenance/new`}
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            New maintenance log
+          </Link>
+        </div>
         {item.maintenanceLogs.length === 0 ? (
           <EmptyState message="No maintenance history is currently visible for this item." />
         ) : (
-          <div className="space-y-3">
-            {item.maintenanceLogs.map((entry) => (
-              <article key={entry.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-                <p className="font-medium">
-                  {formatGearOpsEnum(entry.maintenanceType)} · {formatGearOpsDateTime(entry.performedAt)}
-                </p>
-                <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-                  Performed by{" "}
-                  <Link href={`/people/${entry.performedBy.id}`} className="underline">
-                    {entry.performedBy.firstName} {entry.performedBy.lastName}
-                  </Link>
-                </p>
-                <p className="mt-1 text-zinc-500 dark:text-zinc-400">
-                  Before: {entry.conditionBefore ? formatGearOpsEnum(entry.conditionBefore) : "—"} · After:{" "}
-                  {entry.conditionAfter ? formatGearOpsEnum(entry.conditionAfter) : "—"}
-                </p>
-                <p className="mt-1 text-zinc-600 dark:text-zinc-400">{entry.notes}</p>
-              </article>
-            ))}
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Recent logs</h4>
+              <div className="space-y-3">{recentMaintenanceLogs.map((entry) => renderMaintenanceCard(entry))}</div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Maintenance history
+              </h4>
+              {maintenanceHistory.length === 0 ? (
+                <EmptyState message="No additional maintenance history is currently visible for this item." />
+              ) : (
+                <div className="space-y-3">{maintenanceHistory.map((entry) => renderMaintenanceCard(entry))}</div>
+              )}
+            </div>
           </div>
         )}
       </div>
