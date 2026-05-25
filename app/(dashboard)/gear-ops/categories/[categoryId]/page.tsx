@@ -1,4 +1,11 @@
-import { GearItemLifecycleStatus, type GearInventoryType } from "@prisma/client";
+import {
+  ConsumableTransactionType,
+  GearAssignmentStatus,
+  GearCheckoutStatus,
+  GearConditionStatus,
+  GearItemLifecycleStatus,
+  type GearInventoryType,
+} from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
@@ -72,6 +79,9 @@ export default async function GearOpsCategoryDetailsPage({
         name: string;
         inventoryType: GearInventoryType;
         lifecycleStatus: GearItemLifecycleStatus;
+        conditionStatus: GearConditionStatus | null;
+        quantityOnHand: number;
+        quantityMin: number | null;
       }>
     | null = null;
   let queryFailed = false;
@@ -101,6 +111,9 @@ export default async function GearOpsCategoryDetailsPage({
           name: true,
           inventoryType: true,
           lifecycleStatus: true,
+          conditionStatus: true,
+          quantityOnHand: true,
+          quantityMin: true,
         },
         orderBy: [{ name: "asc" }, { createdAt: "asc" }],
       }),
@@ -133,6 +146,69 @@ export default async function GearOpsCategoryDetailsPage({
   }
 
   const activeItemCount = items.filter((item) => item.lifecycleStatus === GearItemLifecycleStatus.ACTIVE).length;
+  const maintenanceLifecycleItemCount = items.filter(
+    (item) => item.lifecycleStatus === GearItemLifecycleStatus.MAINTENANCE,
+  ).length;
+  const conditionConcernCount = items.filter(
+    (item) => item.conditionStatus === GearConditionStatus.POOR || item.conditionStatus === GearConditionStatus.DAMAGED,
+  ).length;
+  const lowAvailabilityConsumables = items.filter(
+    (item) =>
+      item.inventoryType === "CONSUMABLE" &&
+      item.quantityMin !== null &&
+      item.quantityOnHand <= item.quantityMin,
+  );
+  const categoryItemIds = items.map((item) => item.id);
+  const now = new Date();
+  const [activeAssignmentCount, openCheckoutCount, netUsageAggregate30d, netReplenishmentAggregate30d] =
+    categoryItemIds.length === 0
+      ? [0, 0, { _sum: { quantityDelta: 0 } }, { _sum: { quantityDelta: 0 } }]
+      : await Promise.all([
+          db.gearAssignment.count({
+            where: {
+              organizationId: scope.organizationId,
+              gearItemId: { in: categoryItemIds },
+              status: { in: [GearAssignmentStatus.PENDING, GearAssignmentStatus.ACTIVE, GearAssignmentStatus.OVERDUE] },
+            },
+          }),
+          db.gearCheckout.count({
+            where: {
+              organizationId: scope.organizationId,
+              gearItemId: { in: categoryItemIds },
+              status: { in: [GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE] },
+            },
+          }),
+          db.consumableTransaction.aggregate({
+            where: {
+              organizationId: scope.organizationId,
+              gearItemId: { in: categoryItemIds },
+              recordedAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
+              transactionType: {
+                in: [
+                  ConsumableTransactionType.USED,
+                  ConsumableTransactionType.DISTRIBUTED,
+                  ConsumableTransactionType.DISPOSED,
+                ],
+              },
+            },
+            _sum: { quantityDelta: true },
+          }),
+          db.consumableTransaction.aggregate({
+            where: {
+              organizationId: scope.organizationId,
+              gearItemId: { in: categoryItemIds },
+              recordedAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
+              transactionType: {
+                in: [ConsumableTransactionType.RECEIVED],
+              },
+            },
+            _sum: { quantityDelta: true },
+          }),
+        ]);
+  const usageUnits30d = Math.abs(netUsageAggregate30d._sum.quantityDelta ?? 0);
+  const replenishmentUnits30d = Math.max(netReplenishmentAggregate30d._sum.quantityDelta ?? 0, 0);
+  const netDelta30d = replenishmentUnits30d - usageUnits30d;
+  const readinessConcerns = maintenanceLifecycleItemCount + conditionConcernCount + lowAvailabilityConsumables.length + openCheckoutCount;
 
   return (
     <section className="space-y-6">
@@ -163,7 +239,7 @@ export default async function GearOpsCategoryDetailsPage({
         </div>
       </div>
 
-      <dl className="grid gap-3 rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900 sm:grid-cols-2">
+      <dl className="grid gap-3 rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Active items</dt>
           <dd className="text-zinc-600 dark:text-zinc-400">{activeItemCount}</dd>
@@ -171,6 +247,41 @@ export default async function GearOpsCategoryDetailsPage({
         <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Linked items</dt>
           <dd className="text-zinc-600 dark:text-zinc-400">{items.length}</dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Active assignments / open checkouts</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">
+            {activeAssignmentCount} / {openCheckoutCount}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Maintenance lifecycle items</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">{maintenanceLifecycleItemCount}</dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Condition concerns</dt>
+          <dd className={conditionConcernCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+            {conditionConcernCount}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Low-availability consumables</dt>
+          <dd className={lowAvailabilityConsumables.length > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+            {lowAvailabilityConsumables.length}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Consumable net delta (30d)</dt>
+          <dd className={netDelta30d < 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+            {netDelta30d > 0 ? "+" : ""}
+            {netDelta30d} (usage {usageUnits30d} / replenishment {replenishmentUnits30d})
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Readiness concerns</dt>
+          <dd className={readinessConcerns > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+            {readinessConcerns}
+          </dd>
         </div>
       </dl>
 

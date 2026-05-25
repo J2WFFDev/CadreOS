@@ -1,4 +1,19 @@
-import { ApprovalStatus, AttendanceStatus, BookingStatus, MemberLifecycleStatus, Prisma, RoleType, ScopeType, TaskStatus } from "@prisma/client";
+import {
+  ApprovalStatus,
+  AttendanceStatus,
+  BookingStatus,
+  ConsumableTransactionType,
+  GearAssignmentStatus,
+  GearCheckoutStatus,
+  GearConditionStatus,
+  GearInventoryType,
+  GearItemLifecycleStatus,
+  MemberLifecycleStatus,
+  Prisma,
+  RoleType,
+  ScopeType,
+  TaskStatus,
+} from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -19,6 +34,7 @@ import {
   resolveStaffScopeResolution,
 } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { appendReturnToParam } from "@/lib/navigation-context";
 import {
@@ -481,6 +497,12 @@ export default async function DashboardPage() {
   const scopedTeamWhere = buildScopedTeamWhere(scope.organizationId, staffScopeResolution);
   const scopedPersonWhere = buildScopedPersonWhere(scope.organizationId, staffScopeResolution);
   const canViewOrganizationLevelFieldOpsApprovals = staffScopeResolution.allowAllStaffScope;
+  const gearReportingAccess = await resolveGearOpsReadAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+    workflow: "dashboard.gear-ops.reporting.access",
+  });
+  const canViewGearOpsReporting = gearReportingAccess.allowed;
 
   const guardianAccess = await resolveGuardianRelationshipAccess({
     organizationId: scope.organizationId,
@@ -519,6 +541,19 @@ export default async function DashboardPage() {
           fieldOpsActiveResources: number;
           fieldOpsAvailableResources: number;
           fieldOpsReadinessConcerns: number;
+          gearVisibleItems: number;
+          gearDurableItems: number;
+          gearConsumableItems: number;
+          gearAssignedOrCheckedOutItems: number;
+          gearMaintenanceItems: number;
+          gearConditionConcerns: number;
+          gearActiveAssignments: number;
+          gearOpenCheckouts: number;
+          lowAvailabilityConsumables: number;
+          consumableUsageUnits30d: number;
+          consumableReplenishmentUnits30d: number;
+          consumableNetDelta30d: number;
+          gearReadinessConcerns: number;
           athletesMissingGuardianLinkage: number;
           teamsWithOperationalGaps: number;
           missingResponsibleFollowUps: number;
@@ -623,6 +658,27 @@ export default async function DashboardPage() {
           facility: { id: string; name: string };
           resource: { id: string; name: string };
         }>;
+        lowAvailabilityConsumables: Array<{
+          id: string;
+          name: string;
+          quantityOnHand: number;
+          quantityMin: number | null;
+          program: { id: string; name: string } | null;
+        }>;
+        openGearCheckouts: Array<{
+          id: string;
+          checkedOutAt: Date;
+          status: string;
+          gearItem: { id: string; name: string };
+          checkedOutBy: { id: string; firstName: string; lastName: string };
+        }>;
+        recentConsumableTransactions: Array<{
+          id: string;
+          recordedAt: Date;
+          quantityDelta: number;
+          transactionType: string;
+          gearItem: { id: string; name: string };
+        }>;
         recentOperationalHistory: OperationalHistoryItem[];
         unresolvedOperationalHistory: OperationalHistoryItem[];
         operationalAwarenessView: OperationalAwarenessView;
@@ -703,6 +759,20 @@ export default async function DashboardPage() {
       fieldOpsActiveResourceCount,
       fieldOpsInactiveResourceCount,
       fieldOpsInactiveFacilityCount,
+      gearVisibleItemCount,
+      gearDurableItemCount,
+      gearConsumableItemCount,
+      gearAssignedOrCheckedOutItemCount,
+      gearMaintenanceItemCount,
+      gearConditionConcernItemCount,
+      gearActiveAssignmentCount,
+      gearOpenCheckoutCount,
+      lowAvailabilityConsumableCount,
+      lowAvailabilityConsumables,
+      openGearCheckouts,
+      recentConsumableTransactions,
+      consumableUsageAggregate30d,
+      consumableReplenishmentAggregate30d,
       lifecycleStatusGroupedCounts,
       activeMembersWithoutRosterMembershipCount,
       activeMembersWithoutRosterMembership,
@@ -1140,6 +1210,156 @@ export default async function DashboardPage() {
             },
           })
         : Promise.resolve(0),
+      canViewGearOpsReporting
+        ? db.gearItem.count({
+            where: gearReportingAccess.where,
+          })
+        : Promise.resolve(0),
+      canViewGearOpsReporting
+        ? db.gearItem.count({
+            where: { ...gearReportingAccess.where, inventoryType: GearInventoryType.DURABLE },
+          })
+        : Promise.resolve(0),
+      canViewGearOpsReporting
+        ? db.gearItem.count({
+            where: { ...gearReportingAccess.where, inventoryType: GearInventoryType.CONSUMABLE },
+          })
+        : Promise.resolve(0),
+      canViewGearOpsReporting
+        ? db.gearItem.count({
+            where: {
+              ...gearReportingAccess.where,
+              lifecycleStatus: { in: [GearItemLifecycleStatus.ASSIGNED, GearItemLifecycleStatus.CHECKED_OUT] },
+            },
+          })
+        : Promise.resolve(0),
+      canViewGearOpsReporting
+        ? db.gearItem.count({
+            where: {
+              ...gearReportingAccess.where,
+              lifecycleStatus: GearItemLifecycleStatus.MAINTENANCE,
+            },
+          })
+        : Promise.resolve(0),
+      canViewGearOpsReporting
+        ? db.gearItem.count({
+            where: {
+              ...gearReportingAccess.where,
+              conditionStatus: { in: [GearConditionStatus.POOR, GearConditionStatus.DAMAGED] },
+            },
+          })
+        : Promise.resolve(0),
+      canViewGearOpsReporting
+        ? db.gearAssignment.count({
+            where: {
+              organizationId: scope.organizationId,
+              status: { in: [GearAssignmentStatus.PENDING, GearAssignmentStatus.ACTIVE, GearAssignmentStatus.OVERDUE] },
+              gearItem: { AND: [gearReportingAccess.where] },
+            },
+          })
+        : Promise.resolve(0),
+      canViewGearOpsReporting
+        ? db.gearCheckout.count({
+            where: {
+              organizationId: scope.organizationId,
+              status: { in: [GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE] },
+              gearItem: { AND: [gearReportingAccess.where] },
+            },
+          })
+        : Promise.resolve(0),
+      canViewGearOpsReporting
+        ? db.gearItem.count({
+            where: {
+              ...gearReportingAccess.where,
+              inventoryType: GearInventoryType.CONSUMABLE,
+              quantityMin: { not: null },
+              quantityOnHand: { lte: db.gearItem.fields.quantityMin },
+            },
+          })
+        : Promise.resolve(0),
+      canViewGearOpsReporting
+        ? db.gearItem.findMany({
+            where: {
+              ...gearReportingAccess.where,
+              inventoryType: GearInventoryType.CONSUMABLE,
+              quantityMin: { not: null },
+              quantityOnHand: { lte: db.gearItem.fields.quantityMin },
+            },
+            select: {
+              id: true,
+              name: true,
+              quantityOnHand: true,
+              quantityMin: true,
+              program: { select: { id: true, name: true } },
+            },
+            orderBy: [{ quantityOnHand: "asc" }, { updatedAt: "asc" }],
+            take: 5,
+          })
+        : Promise.resolve([]),
+      canViewGearOpsReporting
+        ? db.gearCheckout.findMany({
+            where: {
+              organizationId: scope.organizationId,
+              status: { in: [GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE] },
+              gearItem: { AND: [gearReportingAccess.where] },
+            },
+            select: {
+              id: true,
+              checkedOutAt: true,
+              status: true,
+              gearItem: { select: { id: true, name: true } },
+              checkedOutBy: { select: { id: true, firstName: true, lastName: true } },
+            },
+            orderBy: [{ checkedOutAt: "desc" }, { createdAt: "desc" }],
+            take: 5,
+          })
+        : Promise.resolve([]),
+      canViewGearOpsReporting
+        ? db.consumableTransaction.findMany({
+            where: {
+              organizationId: scope.organizationId,
+              gearItem: { AND: [gearReportingAccess.where] },
+              recordedAt: { gte: new Date(currentTime.getTime() - 30 * 24 * 60 * 60 * 1000) },
+            },
+            select: {
+              id: true,
+              recordedAt: true,
+              quantityDelta: true,
+              transactionType: true,
+              gearItem: { select: { id: true, name: true } },
+            },
+            orderBy: [{ recordedAt: "desc" }, { createdAt: "desc" }],
+            take: 5,
+          })
+        : Promise.resolve([]),
+      canViewGearOpsReporting
+        ? db.consumableTransaction.aggregate({
+            where: {
+              organizationId: scope.organizationId,
+              gearItem: { AND: [gearReportingAccess.where] },
+              recordedAt: { gte: new Date(currentTime.getTime() - 30 * 24 * 60 * 60 * 1000) },
+              transactionType: {
+                in: [
+                  ConsumableTransactionType.USED,
+                  ConsumableTransactionType.DISTRIBUTED,
+                  ConsumableTransactionType.DISPOSED,
+                ],
+              },
+            },
+            _sum: { quantityDelta: true },
+          })
+        : Promise.resolve({ _sum: { quantityDelta: 0 } }),
+      canViewGearOpsReporting
+        ? db.consumableTransaction.aggregate({
+            where: {
+              organizationId: scope.organizationId,
+              gearItem: { AND: [gearReportingAccess.where] },
+              recordedAt: { gte: new Date(currentTime.getTime() - 30 * 24 * 60 * 60 * 1000) },
+              transactionType: { in: [ConsumableTransactionType.RECEIVED] },
+            },
+            _sum: { quantityDelta: true },
+          })
+        : Promise.resolve({ _sum: { quantityDelta: 0 } }),
       db.person.groupBy({
         by: ["lifecycleStatus"],
         where: scopedPersonWhere,
@@ -1401,6 +1621,14 @@ export default async function DashboardPage() {
     const fieldOpsAvailableResourceCount = Math.max(fieldOpsActiveResourceCount - upcomingFieldOpsResourceIds.size, 0);
     const fieldOpsReadinessConcernCount =
       pendingFieldOpsApprovalsCount + fieldOpsInactiveResourceCount + fieldOpsInactiveFacilityCount;
+    const consumableUsageUnits30d = Math.abs(consumableUsageAggregate30d._sum.quantityDelta ?? 0);
+    const consumableReplenishmentUnits30d = Math.max(consumableReplenishmentAggregate30d._sum.quantityDelta ?? 0, 0);
+    const consumableNetDelta30d = consumableReplenishmentUnits30d - consumableUsageUnits30d;
+    const gearReadinessConcernCount =
+      gearMaintenanceItemCount +
+      gearConditionConcernItemCount +
+      lowAvailabilityConsumableCount +
+      gearOpenCheckoutCount;
 
     const operationalSummaryClassificationView = buildOperationalSummaryClassificationView(combinedOperationalHistory);
     const operationalReadinessEvaluationView = buildOperationalReadinessEvaluationView({
@@ -1437,6 +1665,19 @@ export default async function DashboardPage() {
         fieldOpsActiveResources: fieldOpsActiveResourceCount,
         fieldOpsAvailableResources: fieldOpsAvailableResourceCount,
         fieldOpsReadinessConcerns: fieldOpsReadinessConcernCount,
+        gearVisibleItems: gearVisibleItemCount,
+        gearDurableItems: gearDurableItemCount,
+        gearConsumableItems: gearConsumableItemCount,
+        gearAssignedOrCheckedOutItems: gearAssignedOrCheckedOutItemCount,
+        gearMaintenanceItems: gearMaintenanceItemCount,
+        gearConditionConcerns: gearConditionConcernItemCount,
+        gearActiveAssignments: gearActiveAssignmentCount,
+        gearOpenCheckouts: gearOpenCheckoutCount,
+        lowAvailabilityConsumables: lowAvailabilityConsumableCount,
+        consumableUsageUnits30d,
+        consumableReplenishmentUnits30d,
+        consumableNetDelta30d,
+        gearReadinessConcerns: gearReadinessConcernCount,
         athletesMissingGuardianLinkage: athletesMissingGuardianLinkageCount,
         teamsWithOperationalGaps: teamOperationalGaps.length,
         missingResponsibleFollowUps: missingResponsibleFollowUpCount + eventsMissingResponsibleTeam.length,
@@ -1461,6 +1702,9 @@ export default async function DashboardPage() {
       teamOperationalGaps,
       pendingFieldOpsApprovals,
       upcomingFieldOpsReservations: fieldOpsUpcomingReservations,
+      lowAvailabilityConsumables,
+      openGearCheckouts,
+      recentConsumableTransactions,
       recentOperationalHistory,
       unresolvedOperationalHistory,
       operationalAwarenessView: buildOperationalAwarenessView(combinedOperationalHistory),
@@ -1821,6 +2065,35 @@ export default async function DashboardPage() {
                       label: "FieldOps readiness concerns",
                       value: dashboardData.counts.fieldOpsReadinessConcerns,
                       href: "/field-ops",
+                    },
+                  ]
+                : []),
+              ...(canViewGearOpsReporting
+                ? [
+                    {
+                      label: "GearOps visible items",
+                      value: dashboardData.counts.gearVisibleItems,
+                      href: "/gear-ops/items",
+                    },
+                    {
+                      label: "GearOps active assignments",
+                      value: dashboardData.counts.gearActiveAssignments,
+                      href: "/gear-ops/items",
+                    },
+                    {
+                      label: "GearOps open checkouts",
+                      value: dashboardData.counts.gearOpenCheckouts,
+                      href: "/gear-ops/items",
+                    },
+                    {
+                      label: "GearOps low-availability consumables",
+                      value: dashboardData.counts.lowAvailabilityConsumables,
+                      href: "/gear-ops/items?inventoryType=CONSUMABLE",
+                    },
+                    {
+                      label: "GearOps readiness concerns",
+                      value: dashboardData.counts.gearReadinessConcerns,
+                      href: "/gear-ops",
                     },
                   ]
                 : []),
@@ -2442,6 +2715,177 @@ export default async function DashboardPage() {
                         </p>
                       </div>
                     ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-medium">GearOps operational summary</h3>
+                {canViewGearOpsReporting ? (
+                  <Link href="/gear-ops" className="text-sm underline">
+                    Open GearOps
+                  </Link>
+                ) : null}
+              </div>
+              <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Visible gear items:{" "}
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">{dashboardData.counts.gearVisibleItems}</span>
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Durable / consumable:{" "}
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {dashboardData.counts.gearDurableItems} / {dashboardData.counts.gearConsumableItems}
+                  </span>
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Assigned or checked out items:{" "}
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {dashboardData.counts.gearAssignedOrCheckedOutItems}
+                  </span>
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Active assignment records:{" "}
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">{dashboardData.counts.gearActiveAssignments}</span>
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Open checkout records:{" "}
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">{dashboardData.counts.gearOpenCheckouts}</span>
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Maintenance lifecycle items:{" "}
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">{dashboardData.counts.gearMaintenanceItems}</span>
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Condition concerns:{" "}
+                  <span className={dashboardData.counts.gearConditionConcerns > 0 ? "font-medium text-amber-700 dark:text-amber-300" : "font-medium text-zinc-900 dark:text-zinc-100"}>
+                    {dashboardData.counts.gearConditionConcerns}
+                  </span>
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Low-availability consumables:{" "}
+                  <span className={dashboardData.counts.lowAvailabilityConsumables > 0 ? "font-medium text-amber-700 dark:text-amber-300" : "font-medium text-zinc-900 dark:text-zinc-100"}>
+                    {dashboardData.counts.lowAvailabilityConsumables}
+                  </span>
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Consumable usage (30d):{" "}
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {dashboardData.counts.consumableUsageUnits30d} units
+                  </span>
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Consumable replenishment (30d):{" "}
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {dashboardData.counts.consumableReplenishmentUnits30d} units
+                  </span>
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Consumable net delta (30d):{" "}
+                  <span className={dashboardData.counts.consumableNetDelta30d < 0 ? "font-medium text-amber-700 dark:text-amber-300" : "font-medium text-zinc-900 dark:text-zinc-100"}>
+                    {dashboardData.counts.consumableNetDelta30d > 0 ? "+" : ""}
+                    {dashboardData.counts.consumableNetDelta30d}
+                  </span>
+                </p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Readiness concerns:{" "}
+                  <span className={dashboardData.counts.gearReadinessConcerns > 0 ? "font-medium text-amber-700 dark:text-amber-300" : "font-medium text-zinc-900 dark:text-zinc-100"}>
+                    {dashboardData.counts.gearReadinessConcerns}
+                  </span>
+                </p>
+              </div>
+              <div className="mt-4 grid gap-4 lg:grid-cols-3">
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-sm font-medium">Low-availability consumables</h4>
+                    <Link href="/gear-ops/items?inventoryType=CONSUMABLE" className="text-xs underline">
+                      Open consumables
+                    </Link>
+                  </div>
+                  {dashboardData.lowAvailabilityConsumables.length === 0 ? (
+                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                      No low-availability consumables are currently visible.
+                    </p>
+                  ) : (
+                    <ul className="mt-2 space-y-2 text-sm">
+                      {dashboardData.lowAvailabilityConsumables.slice(0, 3).map((item) => (
+                        <li key={item.id} className="rounded-md border p-2">
+                          <Link href={`/gear-ops/items/${item.id}`} className="font-medium underline">
+                            {item.name}
+                          </Link>
+                          <p className="text-zinc-600 dark:text-zinc-400">
+                            On hand {item.quantityOnHand} · Min {item.quantityMin ?? "—"}
+                          </p>
+                          <p className="text-zinc-600 dark:text-zinc-400">
+                            Program: {item.program ? <Link href={`/programs/${item.program.id}`} className="underline">{item.program.name}</Link> : "Unassigned"}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-sm font-medium">Open custody checkouts</h4>
+                    <Link href="/gear-ops/items" className="text-xs underline">
+                      Open items
+                    </Link>
+                  </div>
+                  {dashboardData.openGearCheckouts.length === 0 ? (
+                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                      No open checkout records are currently visible.
+                    </p>
+                  ) : (
+                    <ul className="mt-2 space-y-2 text-sm">
+                      {dashboardData.openGearCheckouts.slice(0, 3).map((checkout) => (
+                        <li key={checkout.id} className="rounded-md border p-2">
+                          <Link href={`/gear-ops/items/${checkout.gearItem.id}`} className="font-medium underline">
+                            {checkout.gearItem.name}
+                          </Link>
+                          <p className="text-zinc-600 dark:text-zinc-400">
+                            {formatDateTime(checkout.checkedOutAt)} · {formatEnumLabel(checkout.status)}
+                          </p>
+                          <p className="text-zinc-600 dark:text-zinc-400">
+                            Checked out by{" "}
+                            <Link href={`/people/${checkout.checkedOutBy.id}`} className="underline">
+                              {checkout.checkedOutBy.firstName} {checkout.checkedOutBy.lastName}
+                            </Link>
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-sm font-medium">Recent consumable activity</h4>
+                    <Link href="/gear-ops/items?inventoryType=CONSUMABLE" className="text-xs underline">
+                      Open transactions
+                    </Link>
+                  </div>
+                  {dashboardData.recentConsumableTransactions.length === 0 ? (
+                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                      No recent consumable transactions were recorded in the last 30 days.
+                    </p>
+                  ) : (
+                    <ul className="mt-2 space-y-2 text-sm">
+                      {dashboardData.recentConsumableTransactions.slice(0, 3).map((transaction) => (
+                        <li key={transaction.id} className="rounded-md border p-2">
+                          <Link href={`/gear-ops/items/${transaction.gearItem.id}`} className="font-medium underline">
+                            {transaction.gearItem.name}
+                          </Link>
+                          <p className="text-zinc-600 dark:text-zinc-400">
+                            {formatDateTime(transaction.recordedAt)} · {formatEnumLabel(transaction.transactionType)}
+                          </p>
+                          <p className="text-zinc-600 dark:text-zinc-400">
+                            Quantity delta: {transaction.quantityDelta > 0 ? "+" : ""}
+                            {transaction.quantityDelta}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </div>
 

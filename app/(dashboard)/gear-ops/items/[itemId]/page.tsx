@@ -277,6 +277,17 @@ export default async function GearOpsItemDetailsPage({
   const maintenanceHistory = gearItem.maintenanceLogs.slice(3);
   const recentConsumableTransactions = gearItem.consumableTransactions.slice(0, 3);
   const consumableTransactionHistory = gearItem.consumableTransactions.slice(3);
+  const lowAvailabilityConcern =
+    gearItem.inventoryType === GearInventoryType.CONSUMABLE &&
+    gearItem.quantityMin !== null &&
+    gearItem.quantityOnHand <= gearItem.quantityMin;
+  const readinessConcernCount =
+    (gearItem.lifecycleStatus === GearItemLifecycleStatus.MAINTENANCE ? 1 : 0) +
+    ((gearItem.conditionStatus === GearConditionStatus.POOR || gearItem.conditionStatus === GearConditionStatus.DAMAGED)
+      ? 1
+      : 0) +
+    (currentCheckouts.length > 0 ? 1 : 0) +
+    (lowAvailabilityConcern ? 1 : 0);
 
   function renderAssignmentCard(assignment: (typeof gearItem.assignments)[number]) {
     const assignmentProgram = assignment.assignedEvent?.program ?? assignment.assignedTeam?.program ?? gearItem.program;
@@ -575,6 +586,37 @@ export default async function GearOpsItemDetailsPage({
         <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Notes</dt>
           <dd className="text-zinc-600 dark:text-zinc-400">{item.notes ?? "—"}</dd>
+        </div>
+      </dl>
+
+      <dl className="grid gap-3 rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Current assignments</dt>
+          <dd className={currentAssignments.length > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+            {currentAssignments.length}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Open checkouts</dt>
+          <dd className={currentCheckouts.length > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+            {currentCheckouts.length}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Recent maintenance logs</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">{recentMaintenanceLogs.length}</dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Low-availability status</dt>
+          <dd className={lowAvailabilityConcern ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+            {lowAvailabilityConcern ? "At or below min threshold" : "No low-availability signal"}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Operational readiness concerns</dt>
+          <dd className={readinessConcernCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+            {readinessConcernCount}
+          </dd>
         </div>
       </dl>
 
