@@ -99,6 +99,7 @@ export default async function NoteDetailPage({
           assignee: { id: string; firstName: string; lastName: string };
           sourceEvent: { id: string; title: string } | null;
         }>;
+        entry: { id: string } | null;
       }
     | null = null;
   const actorRoleContext = await resolveActorRoleContext({
@@ -178,6 +179,7 @@ export default async function NoteDetailPage({
             sourceEvent: { select: { id: true, title: true } },
           },
         },
+        entry: { select: { id: true } },
       },
     });
     note?.tasks.sort(compareFollowUpTasks);
@@ -302,6 +304,7 @@ export default async function NoteDetailPage({
   const returnTo = resolveSafeReturnPath(returnToValue, "/notes");
   const editNoteHref = appendReturnToParam(`/notes/${note.id}/edit`, `/notes/${note.id}?returnTo=${encodeURIComponent(returnTo)}`);
   const createFollowUpHref = appendReturnToParam(`/tasks/new?sourceNoteId=${note.id}`, `/notes/${note.id}?returnTo=${encodeURIComponent(returnTo)}`);
+  const entryDetailHref = note.entry ? `/entries/${note.entry.id}` : null;
 
   return (
     <section className="space-y-6">
@@ -321,6 +324,14 @@ export default async function NoteDetailPage({
           >
             Create follow-up task
           </Link>
+          {entryDetailHref ? (
+            <Link
+              href={entryDetailHref}
+              className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Open entry
+            </Link>
+          ) : null}
         </div>
       </div>
 

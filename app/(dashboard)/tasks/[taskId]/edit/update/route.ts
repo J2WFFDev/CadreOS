@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeFollowUpTaskEntryRuntimeRef } from "@/lib/entry-runtime";
+import { upsertEntryFromTask } from "@/lib/entries/service";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import {
   classifyFollowUpTaskOperationalVisibility,
@@ -337,6 +338,18 @@ export async function POST(
       });
 
       if (updatedTask) {
+        await upsertEntryFromTask({
+          organizationId: scope.organizationId,
+          task: {
+            id: updatedTask.id,
+            title: parsed.data.title,
+            description: parsed.data.description,
+            status: parsed.data.status,
+            assigneePersonId: parsed.data.assigneePersonId,
+            createdByPersonId: updatedTask.createdByPersonId,
+            dueAt: parsed.data.dueAt,
+          },
+        });
         await writeFollowUpTaskEntryRuntimeRef({
           organizationId: scope.organizationId,
           task: {

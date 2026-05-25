@@ -8,11 +8,15 @@ const NAV_LINKS = [
   { href: "/people", label: "People" },
   { href: "/programs", label: "Programs" },
   { href: "/teams", label: "Teams" },
+  { href: "/today", label: "Today" },
+  { href: "/upcoming", label: "Upcoming" },
   { href: "/events", label: "Events" },
   { href: "/field-ops", label: "FieldOps" },
   { href: "/gear-ops", label: "GearOps" },
   { href: "/notes", label: "Notes" },
   { href: "/tasks", label: "Tasks" },
+  { href: "/decisions", label: "Decisions" },
+  { href: "/entries", label: "All Entries" },
   { href: "/account", label: "Account" },
 ] as const;
 

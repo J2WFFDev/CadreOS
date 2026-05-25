@@ -1,0 +1,153 @@
+import { EntryPriority, EntryStatus, EntryType, EntryVisibility, TaskStatus, type Prisma } from "@prisma/client";
+
+import { db } from "@/lib/db";
+
+export function mapTaskStatusToEntryStatus(status: TaskStatus): EntryStatus {
+  if (status === TaskStatus.DONE) return EntryStatus.DONE;
+  if (status === TaskStatus.CANCELLED) return EntryStatus.CANCELLED;
+  if (status === TaskStatus.IN_PROGRESS) return EntryStatus.IN_PROGRESS;
+  return EntryStatus.OPEN;
+}
+
+export function mapEntryStatusToTaskStatus(status: EntryStatus): TaskStatus {
+  if (status === EntryStatus.DONE) return TaskStatus.DONE;
+  if (status === EntryStatus.CANCELLED || status === EntryStatus.ARCHIVED) return TaskStatus.CANCELLED;
+  if (status === EntryStatus.IN_PROGRESS) return TaskStatus.IN_PROGRESS;
+  return TaskStatus.OPEN;
+}
+
+function splitDueAt(dueAt: Date | null) {
+  if (!dueAt) {
+    return { dueDate: null, dueTime: null };
+  }
+
+  return {
+    dueDate: new Date(Date.UTC(dueAt.getUTCFullYear(), dueAt.getUTCMonth(), dueAt.getUTCDate())),
+    dueTime: `${String(dueAt.getUTCHours()).padStart(2, "0")}:${String(dueAt.getUTCMinutes()).padStart(2, "0")}`,
+  };
+}
+
+export function buildTaskEntryProjection(input: { dueAt: Date | null; status: TaskStatus }) {
+  const due = splitDueAt(input.dueAt);
+  return {
+    dueDate: due.dueDate,
+    dueTime: due.dueTime,
+    status: mapTaskStatusToEntryStatus(input.status),
+    taskCompleted: input.status === TaskStatus.DONE,
+  };
+}
+
+export function deriveTaskCompletionUpdate(now: Date = new Date()) {
+  return {
+    status: EntryStatus.DONE,
+    taskCompleted: true,
+    completedAt: now,
+  };
+}
+
+export function deriveNoteToTaskTitle(input: { selectedText: string; title: string; content: string | null }) {
+  const trimmedSelected = input.selectedText.trim();
+  if (trimmedSelected.length > 0) return trimmedSelected.slice(0, 160);
+  if (input.title.trim().length > 0) return input.title.trim().slice(0, 160);
+  if (input.content?.trim()) return input.content.trim().slice(0, 160);
+  return "Converted note task";
+}
+
+export async function upsertEntryFromTask(input: {
+  organizationId: string;
+  task: {
+    id: string;
+    title: string;
+    description: string | null;
+    status: TaskStatus;
+    assigneePersonId: string;
+    createdByPersonId: string;
+    dueAt: Date | null;
+  };
+}) {
+  const projection = buildTaskEntryProjection({ dueAt: input.task.dueAt, status: input.task.status });
+
+  return db.entry.upsert({
+    where: { sourceTaskId: input.task.id },
+    create: {
+      organizationId: input.organizationId,
+      type: EntryType.TASK,
+      title: input.task.title,
+      content: input.task.description,
+      createdByPersonId: input.task.createdByPersonId,
+      assignedToPersonId: input.task.assigneePersonId,
+      visibility: EntryVisibility.STAFF_ONLY,
+      status: projection.status,
+      priority: EntryPriority.MEDIUM,
+      dueDate: projection.dueDate,
+      dueTime: projection.dueTime,
+      timezone: "UTC",
+      taskCompleted: projection.taskCompleted,
+      completedAt: input.task.status === TaskStatus.DONE ? new Date() : null,
+      sourceTaskId: input.task.id,
+    },
+    update: {
+      title: input.task.title,
+      content: input.task.description,
+      assignedToPersonId: input.task.assigneePersonId,
+      status: projection.status,
+      dueDate: projection.dueDate,
+      dueTime: projection.dueTime,
+      taskCompleted: projection.taskCompleted,
+      completedAt: input.task.status === TaskStatus.DONE ? new Date() : null,
+      version: { increment: 1 },
+    },
+    select: { id: true },
+  });
+}
+
+export async function upsertEntryFromNote(input: {
+  organizationId: string;
+  note: {
+    id: string;
+    body: string;
+    authorPersonId: string;
+    teamId: string | null;
+  };
+}) {
+  return db.entry.upsert({
+    where: { sourceNoteId: input.note.id },
+    create: {
+      organizationId: input.organizationId,
+      teamId: input.note.teamId,
+      type: EntryType.NOTE,
+      title: input.note.body.length > 120 ? `${input.note.body.slice(0, 117)}...` : input.note.body,
+      content: input.note.body,
+      createdByPersonId: input.note.authorPersonId,
+      visibility: EntryVisibility.STAFF_ONLY,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.MEDIUM,
+      sourceNoteId: input.note.id,
+    },
+    update: {
+      teamId: input.note.teamId,
+      title: input.note.body.length > 120 ? `${input.note.body.slice(0, 117)}...` : input.note.body,
+      content: input.note.body,
+      version: { increment: 1 },
+    },
+    select: { id: true },
+  });
+}
+
+export async function writeEntryActivity(input: {
+  organizationId: string;
+  entryId: string;
+  actorPersonId: string | null;
+  action: string;
+  metadata?: Prisma.JsonObject | null;
+}) {
+  await db.entryActivity.create({
+    data: {
+      organizationId: input.organizationId,
+      entryId: input.entryId,
+      actorPersonId: input.actorPersonId,
+      action: input.action,
+      metadataJson: input.metadata ? JSON.stringify(input.metadata) : null,
+    },
+  });
+}

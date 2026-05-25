@@ -85,6 +85,37 @@ enum TaskStatus {
   CANCELLED
 }
 
+enum EntryType {
+  TASK
+  NOTE
+  EVENT
+  DECISION
+  JOURNAL
+  HABIT
+  OBSERVATION
+}
+
+enum EntryVisibility {
+  STAFF_ONLY
+  TEAM_STAFF
+  ORGANIZATION_SCOPED
+}
+
+enum EntryStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+  ARCHIVED
+}
+
+enum EntryPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 enum InboxItemStatus {
   OPEN
   TRIAGED
@@ -261,6 +292,9 @@ model Organization {
   gearCheckouts               GearCheckout[]
   gearMaintenanceLogs         GearMaintenanceLog[]
   consumableTransactions      ConsumableTransaction[]
+  entries                     Entry[]
+  entryLinks                  EntryLink[]
+  entryActivities             EntryActivity[]
 }
 
 model Program {
@@ -300,6 +334,7 @@ model Team {
   auditEvents  AuditEvent[]
   resourceBookings ResourceBooking[]
   gearAssignments GearAssignment[]
+  entries      Entry[]
 
   @@index([organizationId, programId])
   @@unique([programId, name])
@@ -376,6 +411,10 @@ model Person {
   receivedGear               GearCheckout[]               @relation("GearCheckoutReceivedBy")
   gearMaintenanceLogs        GearMaintenanceLog[]
   recordedConsumableTransactions ConsumableTransaction[]
+  createdEntries             Entry[]                      @relation("EntryCreatedBy")
+  assignedEntries            Entry[]                      @relation("EntryAssignedTo")
+  createdEntryLinks          EntryLink[]                  @relation("EntryLinkCreatedBy")
+  entryActivities            EntryActivity[]              @relation("EntryActivityActor")
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
@@ -459,6 +498,7 @@ model ObservationNote {
   team         Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
   event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
   tasks        FollowUpTask[]
+  entry        Entry?       @relation("NoteEntry")
 
   @@index([organizationId, createdAt])
   @@index([organizationId, athletePersonId, createdAt])
@@ -488,6 +528,95 @@ model EntryRuntimeRef {
   @@index([organizationId, athletePersonId, createdAt])
   @@index([organizationId, teamId, createdAt])
   @@index([organizationId, eventId, createdAt])
+}
+
+model Entry {
+  id                 String          @id @default(cuid())
+  organizationId     String
+  teamId             String?
+  type               EntryType
+  title              String
+  content            String?
+  tags               String[]        @default([])
+  createdByPersonId  String
+  assignedToPersonId String?
+  visibility         EntryVisibility @default(STAFF_ONLY)
+  status             EntryStatus     @default(OPEN)
+  priority           EntryPriority   @default(MEDIUM)
+  dueDate            DateTime?
+  dueTime            String?
+  startDate          DateTime?
+  endDate            DateTime?
+  timezone           String?
+  parentEntryId      String?
+  version            Int             @default(1)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  deletedAt          DateTime?
+  taskCompleted      Boolean         @default(false)
+  completedAt        DateTime?
+  taskChecklistJson  String?
+  taskRemindersJson  String?
+  taskRecurrenceRule String?
+  noteIsPinned       Boolean         @default(false)
+  noteIsFavorite     Boolean         @default(false)
+  noteChecklistJson  String?
+  sourceTaskId       String?         @unique
+  sourceNoteId       String?         @unique
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  team         Team?            @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  createdBy    Person           @relation("EntryCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  assignedTo   Person?          @relation("EntryAssignedTo", fields: [assignedToPersonId], references: [id], onDelete: SetNull)
+  parentEntry  Entry?           @relation("EntryParentChild", fields: [parentEntryId], references: [id], onDelete: SetNull)
+  childEntries Entry[]          @relation("EntryParentChild")
+  linkedFrom   EntryLink[]      @relation("EntryLinkFrom")
+  linkedTo     EntryLink[]      @relation("EntryLinkTo")
+  activity     EntryActivity[]
+  sourceTask   FollowUpTask?    @relation("TaskEntry", fields: [sourceTaskId], references: [id], onDelete: SetNull)
+  sourceNote   ObservationNote? @relation("NoteEntry", fields: [sourceNoteId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, type, createdAt])
+  @@index([organizationId, status, dueDate])
+  @@index([organizationId, deletedAt])
+  @@index([organizationId, createdByPersonId])
+  @@index([organizationId, assignedToPersonId])
+  @@index([organizationId, parentEntryId])
+}
+
+model EntryLink {
+  id                String   @id @default(cuid())
+  organizationId    String
+  fromEntryId       String
+  toEntryId         String
+  createdByPersonId String
+  createdAt         DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  fromEntry    Entry        @relation("EntryLinkFrom", fields: [fromEntryId], references: [id], onDelete: Cascade)
+  toEntry      Entry        @relation("EntryLinkTo", fields: [toEntryId], references: [id], onDelete: Cascade)
+  createdBy    Person       @relation("EntryLinkCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, fromEntryId, toEntryId])
+  @@index([organizationId, fromEntryId])
+  @@index([organizationId, toEntryId])
+}
+
+model EntryActivity {
+  id             String   @id @default(cuid())
+  organizationId String
+  entryId        String
+  actorPersonId  String?
+  action         String
+  metadataJson   String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  entry        Entry        @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  actor        Person?      @relation("EntryActivityActor", fields: [actorPersonId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, entryId, createdAt])
+  @@index([organizationId, actorPersonId, createdAt])
 }
 
 model Event {
@@ -585,6 +714,7 @@ model FollowUpTask {
   sourceNote    ObservationNote? @relation(fields: [sourceNoteId], references: [id], onDelete: SetNull)
   sourceEvent   Event?           @relation(fields: [sourceEventId], references: [id], onDelete: SetNull)
   sourceInboxItem InboxRoutingItem? @relation(fields: [sourceInboxItemId], references: [id], onDelete: SetNull)
+  entry         Entry?           @relation("TaskEntry")
 
   @@index([organizationId, assigneePersonId, status, dueAt])
 }
