@@ -203,7 +203,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: adds staff-scoped move workflow (`/people/[personId]/move`) with `person.move` authorization, organization-safe team/program/season validation, non-destructive roster context transitions, duplicate guards, and person-detail move entry points while preserving lifecycle, role, guardian, FieldOps, and GearOps behavior.
 - [Phase 17D Validation Checklist](./PHASE_17D_VALIDATION_CHECKLIST.md)
   - Summary: confirms Arc 17D scope compliance, authorization/scoping correctness, transition safety, existing behavior preservation, and automated/manual validation steps.
-- Phase 17E — Inactive / Archive Workflow (planned)
+- [Phase 17E Inactive and Archive Member Workflow](./PHASE_17E_INACTIVE_ARCHIVE_MEMBER_WORKFLOW.md)
+  - Summary: adds staff-scoped inactive and archive lifecycle workflows (`POST /people/[personId]/inactive`, `POST /people/[personId]/archive`) with `person.deactivate` and `person.archive` authorization for ORGANIZATION_ADMIN, PROGRAM_DIRECTOR, and COACH; validates server-side lifecycle transitions; preserves all roster history, roles, guardian relationships, notes, tasks, attendance, and GearOps records; adds lifecycle action buttons with confirmation context on person detail; preserves all existing join, activate, and move behavior.
+- [Phase 17E Validation Checklist](./PHASE_17E_VALIDATION_CHECKLIST.md)
+  - Summary: confirms Arc 17E scope compliance, authorization correctness, lifecycle transition safety, referential data preservation, existing behavior preservation, and automated/manual validation steps.
 - Phase 17F — Season Rollover Workflow (planned)
 - Phase 17G — Guardian Relationship Maintenance (planned)
 - Phase 17H — Roster Lifecycle Dashboard / Readiness Integration (planned)

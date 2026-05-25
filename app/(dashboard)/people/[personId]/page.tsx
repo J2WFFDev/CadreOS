@@ -430,6 +430,7 @@ export default async function PersonDetailsPage({
   const programIdError = readSearchParam(resolvedSearchParams, "programIdError");
   const teamIdError = readSearchParam(resolvedSearchParams, "teamIdError");
   const activateError = readSearchParam(resolvedSearchParams, "activateError");
+  const lifecycleError = readSearchParam(resolvedSearchParams, "lifecycleError");
   const moveSuccess = readSearchParam(resolvedSearchParams, "moveSuccess");
 
   const selectedRoleType = (readSearchParam(resolvedSearchParams, "roleType") || RoleType.ATHLETE) as RoleType;
@@ -677,13 +678,18 @@ export default async function PersonDetailsPage({
               ? "font-medium text-green-700 dark:text-green-400"
               : person.lifecycleStatus === MemberLifecycleStatus.PROSPECT
                 ? "font-medium text-blue-700 dark:text-blue-400"
-                : "font-medium text-zinc-700 dark:text-zinc-300"
+                : person.lifecycleStatus === MemberLifecycleStatus.ARCHIVED
+                  ? "font-medium text-red-700 dark:text-red-400"
+                  : "font-medium text-zinc-700 dark:text-zinc-300"
           }>
             {formatEnumLabel(person.lifecycleStatus)}
           </span>
         </p>
         {activateError ? (
           <p className="mt-2 text-sm text-red-600">{activateError}</p>
+        ) : null}
+        {lifecycleError ? (
+          <p className="mt-2 text-sm text-red-600">{lifecycleError}</p>
         ) : null}
         {(person.lifecycleStatus === MemberLifecycleStatus.PROSPECT ||
           person.lifecycleStatus === MemberLifecycleStatus.INACTIVE ||
@@ -698,6 +704,36 @@ export default async function PersonDetailsPage({
             </button>
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
               Activating will change this person&apos;s status to Active. Existing roles, roster memberships, and relationships are not affected.
+            </p>
+          </form>
+        ) : null}
+        {(person.lifecycleStatus === MemberLifecycleStatus.ACTIVE ||
+          person.lifecycleStatus === MemberLifecycleStatus.PROSPECT ||
+          person.lifecycleStatus === MemberLifecycleStatus.ALUMNI) ? (
+          <form action={`/people/${person.id}/inactive`} method="post" className="mt-3">
+            <input type="hidden" name="confirm" value="1" />
+            <button
+              type="submit"
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Mark as inactive
+            </button>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Marking as inactive will change this person&apos;s status to Inactive. Roster history, roles, guardian relationships, and all operational records are preserved.
+            </p>
+          </form>
+        ) : null}
+        {person.lifecycleStatus !== MemberLifecycleStatus.ARCHIVED ? (
+          <form action={`/people/${person.id}/archive`} method="post" className="mt-3">
+            <input type="hidden" name="confirm" value="1" />
+            <button
+              type="submit"
+              className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
+            >
+              Archive member
+            </button>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Archiving will change this person&apos;s status to Archived. Roster history, notes, tasks, attendance, gear records, and all operational history are preserved without deletion.
             </p>
           </form>
         ) : null}
