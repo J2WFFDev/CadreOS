@@ -10,6 +10,10 @@ import {
 } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import {
+  summarizeAttendanceParticipation,
+  summarizeRsvpReadiness,
+} from "@/lib/attendance-event-reporting";
+import {
   compareFollowUpTasks,
   formatDateTime,
   formatEnumLabel,
@@ -376,6 +380,23 @@ export default async function EventDetailsPage({
   const rosterPersonIds = new Set(rosterMembers.map((person) => person.id));
   const attendanceByPersonId = new Map(event.attendance.map((record) => [record.person.id, record]));
   const missingRosterAttendance = rosterMembers.filter((person) => !attendanceByPersonId.has(person.id));
+  const attendanceParticipationSummary = summarizeAttendanceParticipation({
+    expectedPersonIds: rosterMembers.map((person) => person.id),
+    attendanceRecords: event.attendance.map((record) => ({
+      personId: record.person.id,
+      status: record.status,
+    })),
+  });
+  const rsvpReadinessSummary = summarizeRsvpReadiness({
+    expectedPersonIds: rosterMembers.map((person) => person.id),
+    rsvps: event.rsvps.map((rsvp) => ({
+      personId: rsvp.person.id,
+      status: rsvp.status,
+    })),
+  });
+  const noResponseRosterMembers = rosterMembers.filter((person) =>
+    rsvpReadinessSummary.noResponsePersonIds.includes(person.id),
+  );
   const eventTasks = event.tasks
     .filter((task) =>
       hasResolvedFollowUpTaskOperationalVisibility({
@@ -393,6 +414,8 @@ export default async function EventDetailsPage({
     )
     .sort(compareFollowUpTasks);
   const eventNotes = [...event.notes].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+  const currentTime = new Date();
+  const eventHasStarted = event.startsAt.getTime() <= currentTime.getTime();
   const attendancePeopleSorted = [...people].sort((a, b) => {
     const rosterWeightA = rosterPersonIds.has(a.id) ? 0 : 1;
     const rosterWeightB = rosterPersonIds.has(b.id) ? 0 : 1;
@@ -441,6 +464,7 @@ export default async function EventDetailsPage({
   ).length;
   const attendanceConcernCount = attendanceMissingCount + lateAttendanceCount + unexcusedAbsentAttendanceCount;
   const openTaskCount = eventTasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
+  const eventReadinessConcernCount = rsvpReadinessSummary.noResponseCount + openTaskCount;
   const followUpRequired = attendanceMissingCount > 0 || openTaskCount > 0;
   const [eventOperationalHistory, unresolvedEventOperationalHistory] = await Promise.all([
     getOperationalHistory({
@@ -617,6 +641,131 @@ export default async function EventDetailsPage({
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold">Participation and readiness reporting</h3>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Read-only attendance, RSVP, and readiness visibility using current
+              {selectedAttendanceSeason ? ` ${selectedAttendanceSeason.name}` : ""} roster context where available.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Link href="#event-rsvp" className="rounded-full border px-2 py-1">
+              RSVP details
+            </Link>
+            <Link href="#attendance-workflow" className="rounded-full border px-2 py-1">
+              Attendance capture
+            </Link>
+            {event.team ? (
+              <Link href={`/teams/${event.team.id}`} className="rounded-full border px-2 py-1">
+                Team context
+              </Link>
+            ) : null}
+            <Link href={`/programs/${event.program.id}`} className="rounded-full border px-2 py-1">
+              Program context
+            </Link>
+          </div>
+        </div>
+        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <dt className="font-medium">Expected roster participation</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{attendanceParticipationSummary.expectedAttendanceCount || "Not set"}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Attendance capture rate</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {attendanceParticipationSummary.expectedAttendanceCount > 0
+                ? `${attendanceParticipationSummary.capturedAttendanceCount}/${attendanceParticipationSummary.expectedAttendanceCount} (${attendanceParticipationSummary.captureRatePercent}%)`
+                : `${attendanceParticipationSummary.capturedAttendanceCount} captured`}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">RSVP response rate</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {rsvpReadinessSummary.expectedResponseCount > 0
+                ? `${rsvpReadinessSummary.respondedCount}/${rsvpReadinessSummary.expectedResponseCount} (${rsvpReadinessSummary.responseRatePercent}%)`
+                : `${rsvpReadinessSummary.respondedCount} responses`}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">{eventHasStarted ? "Operational concern signals" : "Upcoming readiness signals"}</dt>
+            <dd
+              className={
+                (eventHasStarted ? attendanceParticipationSummary.concernCount : eventReadinessConcernCount) > 0
+                  ? "text-amber-700 dark:text-amber-300"
+                  : "text-zinc-600 dark:text-zinc-400"
+              }
+            >
+              {eventHasStarted ? attendanceParticipationSummary.concernCount : eventReadinessConcernCount}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Present / late</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {attendanceParticipationSummary.presentCount} present · {attendanceParticipationSummary.lateCount} late
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Excused / unexcused absent</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {attendanceParticipationSummary.excusedAbsentCount} excused · {attendanceParticipationSummary.unexcusedAbsentCount} unexcused
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Going / maybe / not going</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {rsvpReadinessSummary.goingCount} going · {rsvpReadinessSummary.maybeCount} maybe · {rsvpReadinessSummary.notGoingCount} not going
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">{eventHasStarted ? "Missing attendance" : "No RSVP response"}</dt>
+            <dd
+              className={
+                (eventHasStarted
+                  ? attendanceParticipationSummary.missingAttendanceCount
+                  : rsvpReadinessSummary.noResponseCount) > 0
+                  ? "text-amber-700 dark:text-amber-300"
+                  : "text-zinc-600 dark:text-zinc-400"
+              }
+            >
+              {eventHasStarted
+                ? attendanceParticipationSummary.missingAttendanceCount
+                : rsvpReadinessSummary.noResponseCount}
+            </dd>
+          </div>
+        </dl>
+        {rsvpReadinessSummary.noResponseCount > 0 ? (
+          <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/20">
+            <h4 className="text-sm font-medium">Roster members with no RSVP response yet</h4>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              {rsvpReadinessSummary.noResponseCount} roster-linked participants have not responded.
+            </p>
+            <ul className="mt-2 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+              {noResponseRosterMembers.slice(0, 6).map((person) => (
+                <li key={person.id}>
+                  <Link href={`/people/${person.id}`} className="underline">
+                    {person.firstName} {person.lastName}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
+              Use the <Link href="#event-rsvp" className="underline">RSVP section</Link> and existing event workflows for follow-up.
+            </p>
+          </div>
+        ) : null}
+        {eventHasStarted && attendanceParticipationSummary.missingAttendanceCount > 0 ? (
+          <p className="mt-4 text-xs text-zinc-600 dark:text-zinc-400">
+            Missing attendance remains visible in the{" "}
+            <Link href="#attendance-workflow" className="underline">
+              attendance workflow
+            </Link>{" "}
+            for capture and review.
+          </p>
+        ) : null}
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-lg font-medium">Relationship workflow navigation</h3>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Use these links to continue event-linked attendance, note, follow-up, and recent-change review without leaving operational context.
@@ -785,7 +934,7 @@ export default async function EventDetailsPage({
         )}
       </div>
 
-      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+      <div id="event-rsvp" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-lg font-semibold">RSVPs (Intent / Availability)</h3>
         {event.rsvps.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">

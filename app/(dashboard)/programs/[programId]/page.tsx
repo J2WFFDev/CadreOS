@@ -2,6 +2,12 @@ import { MemberLifecycleStatus, ScopeType } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
+import {
+  summarizeAttendanceParticipation,
+  summarizeAttendanceTrend,
+  summarizeRsvpReadiness,
+} from "@/lib/attendance-event-reporting";
+import { canReadStaffOnlyContent, resolveActorRoleContext } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { canPerformAction } from "@/lib/permissions";
@@ -63,6 +69,12 @@ export default async function ProgramDetailsPage({
       </section>
     );
   }
+
+  const actorRoleContext = await resolveActorRoleContext({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const canViewAttendanceReporting = canReadStaffOnlyContent(actorRoleContext);
 
   let queryFailed = false;
   let program:
@@ -178,6 +190,7 @@ export default async function ProgramDetailsPage({
         },
         select: {
           id: true,
+          teamId: true,
           rosterRole: true,
           personId: true,
           person: {
@@ -208,6 +221,136 @@ export default async function ProgramDetailsPage({
   const selectedSeasonAthleteRoster = selectedSeasonRoster.filter((membership) => membership.rosterRole === "ATHLETE");
   const selectedSeasonAthletesMissingGuardianLinkage = selectedSeasonAthleteRoster.filter(
     (membership) => membership.person.athleteLinks.length === 0,
+  ).length;
+  const selectedSeasonRosterByTeamId = selectedSeasonRoster.reduce(
+    (rosterByTeamId, membership) => {
+      const personIds = rosterByTeamId.get(membership.teamId) ?? new Set<string>();
+      personIds.add(membership.personId);
+      rosterByTeamId.set(membership.teamId, personIds);
+      return rosterByTeamId;
+    },
+    new Map<string, Set<string>>(),
+  );
+  const now = new Date();
+  const [recentProgramEvents, upcomingProgramEvents] = canViewAttendanceReporting
+    ? await Promise.all([
+        db.event.findMany({
+          where: {
+            organizationId: scope.organizationId,
+            programId: program.id,
+            startsAt: { lt: now },
+          },
+          select: {
+            id: true,
+            title: true,
+            startsAt: true,
+            status: true,
+            teamId: true,
+            team: { select: { id: true, name: true } },
+            attendance: {
+              select: {
+                personId: true,
+                status: true,
+              },
+            },
+            rsvps: {
+              select: {
+                personId: true,
+                status: true,
+              },
+            },
+            tasks: {
+              select: {
+                status: true,
+              },
+            },
+          },
+          orderBy: [{ startsAt: "desc" }],
+          take: 6,
+        }),
+        db.event.findMany({
+          where: {
+            organizationId: scope.organizationId,
+            programId: program.id,
+            startsAt: { gte: now },
+          },
+          select: {
+            id: true,
+            title: true,
+            startsAt: true,
+            status: true,
+            teamId: true,
+            team: { select: { id: true, name: true } },
+            attendance: {
+              select: {
+                personId: true,
+                status: true,
+              },
+            },
+            rsvps: {
+              select: {
+                personId: true,
+                status: true,
+              },
+            },
+            tasks: {
+              select: {
+                status: true,
+              },
+            },
+          },
+          orderBy: [{ startsAt: "asc" }],
+          take: 6,
+        }),
+      ])
+    : [[], []];
+  const programAttendanceTrend = summarizeAttendanceTrend(
+    recentProgramEvents.map((event) => ({
+      startsAt: event.startsAt,
+      expectedPersonIds: [...(event.teamId ? selectedSeasonRosterByTeamId.get(event.teamId) ?? new Set<string>() : new Set<string>())],
+      attendanceRecords: event.attendance,
+    })),
+  );
+  const recentProgramAttendanceEntries = recentProgramEvents.map((event) => {
+    const expectedPersonIds = [
+      ...(event.teamId ? selectedSeasonRosterByTeamId.get(event.teamId) ?? new Set<string>() : new Set<string>()),
+    ];
+
+    return {
+      ...event,
+      attendanceSummary: summarizeAttendanceParticipation({
+        expectedPersonIds,
+        attendanceRecords: event.attendance,
+      }),
+      rsvpSummary: summarizeRsvpReadiness({
+        expectedPersonIds,
+        rsvps: event.rsvps,
+      }),
+    };
+  });
+  const upcomingProgramReadinessEntries = upcomingProgramEvents.map((event) => {
+    const expectedPersonIds = [
+      ...(event.teamId ? selectedSeasonRosterByTeamId.get(event.teamId) ?? new Set<string>() : new Set<string>()),
+    ];
+    const rsvpSummary = summarizeRsvpReadiness({
+      expectedPersonIds,
+      rsvps: event.rsvps,
+    });
+    const openTaskCount = event.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED").length;
+
+    return {
+      ...event,
+      rsvpSummary,
+      openTaskCount,
+      readinessConcernCount: rsvpSummary.noResponseCount + openTaskCount,
+    };
+  });
+  const upcomingProgramNoResponseCount = upcomingProgramReadinessEntries.reduce(
+    (count, event) => count + event.rsvpSummary.noResponseCount,
+    0,
+  );
+  const upcomingProgramReadinessConcernCount = upcomingProgramReadinessEntries.filter(
+    (event) => event.readinessConcernCount > 0,
   ).length;
 
   return (
@@ -257,6 +400,130 @@ export default async function ProgramDetailsPage({
           Athlete rows missing guardian linkage in selected season: {selectedSeasonAthletesMissingGuardianLinkage}.
         </p>
       </div>
+
+      {canViewAttendanceReporting ? (
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-medium">Attendance and event reporting</h3>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                Read-only participation, readiness, and trend visibility for current program teams.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-sm">
+              <Link href="/events?operationalIndicator=attendance_not_reviewed_recently" className="rounded-full border px-2 py-1">
+                Attendance review lane
+              </Link>
+              <Link href="/events?operationalIndicator=upcoming_operational_concern" className="rounded-full border px-2 py-1">
+                Upcoming readiness lane
+              </Link>
+            </div>
+          </div>
+          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <dt className="font-medium">Recent events reviewed</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">{programAttendanceTrend.reviewedEventCount}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Attendance coverage</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">{programAttendanceTrend.coveragePercent}%</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Trend</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">
+                {programAttendanceTrend.trendDirection === "insufficient_data"
+                  ? "Not enough history yet"
+                  : programAttendanceTrend.trendDirection === "up"
+                    ? `Improving (${programAttendanceTrend.priorCoveragePercent}% → ${programAttendanceTrend.recentCoveragePercent}%)`
+                    : programAttendanceTrend.trendDirection === "down"
+                      ? `Declining (${programAttendanceTrend.priorCoveragePercent}% → ${programAttendanceTrend.recentCoveragePercent}%)`
+                      : `Steady (${programAttendanceTrend.recentCoveragePercent}%)`}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">Complete / partial / missing</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">
+                {programAttendanceTrend.completeEvents} complete · {programAttendanceTrend.partialEvents} partial · {programAttendanceTrend.missingEvents} missing
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">Upcoming program events</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">{upcomingProgramEvents.length}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Upcoming no-response roster members</dt>
+              <dd className={upcomingProgramNoResponseCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+                {upcomingProgramNoResponseCount}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">Upcoming events needing readiness review</dt>
+              <dd className={upcomingProgramReadinessConcernCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+                {upcomingProgramReadinessConcernCount}
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div>
+              <h4 className="text-sm font-medium">Recent attendance trend</h4>
+              {recentProgramAttendanceEntries.length === 0 ? (
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  No past program events are available yet for attendance trend reporting.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-2 text-sm">
+                  {recentProgramAttendanceEntries.slice(0, 3).map((event) => (
+                    <li key={event.id} className="rounded-md border p-2">
+                      <Link href={`/events/${event.id}`} className="font-medium underline">
+                        {event.title}
+                      </Link>
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        {event.startsAt.toISOString().slice(0, 16).replace("T", " ")} UTC · {formatEnumLabel(event.status)}
+                      </p>
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        Team: {event.team ? <Link href={`/teams/${event.team.id}`} className="underline">{event.team.name}</Link> : "Unassigned"}
+                      </p>
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        Attendance: {event.attendanceSummary.capturedAttendanceCount}/{event.attendanceSummary.expectedAttendanceCount || 0}
+                        {event.attendanceSummary.expectedAttendanceCount > 0
+                          ? ` (${event.attendanceSummary.captureRatePercent}%)`
+                          : " captured"}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <h4 className="text-sm font-medium">Upcoming event readiness</h4>
+              {upcomingProgramReadinessEntries.length === 0 ? (
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  No upcoming program events are scheduled yet.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-2 text-sm">
+                  {upcomingProgramReadinessEntries.slice(0, 3).map((event) => (
+                    <li key={event.id} className="rounded-md border p-2">
+                      <Link href={`/events/${event.id}`} className="font-medium underline">
+                        {event.title}
+                      </Link>
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        {event.startsAt.toISOString().slice(0, 16).replace("T", " ")} UTC · {formatEnumLabel(event.status)}
+                      </p>
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        Team: {event.team ? <Link href={`/teams/${event.team.id}`} className="underline">{event.team.name}</Link> : "Unassigned"}
+                      </p>
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        No response: {event.rsvpSummary.noResponseCount} · Open tasks: {event.openTaskCount}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Seasons</h3>
