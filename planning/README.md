@@ -3,6 +3,7 @@
 CadreOS is an **Athlete Program Operating System**.
 
 ## Planning Documents
+- [**CadreOS \*Ops Domain Architecture** — Naming System, FieldOps vs ResourceOps, Platform Primitives](./CADRE_OPS_DOMAIN_ARCHITECTURE.md)
 - [Product Vision](./PRODUCT_VISION.md)
 - [PRD](./PRD.md)
 - [Feature Breakdown](./FEATURE_BREAKDOWN.md)
