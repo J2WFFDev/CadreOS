@@ -191,7 +191,10 @@ CadreOS is an **Athlete Program Operating System**.
   - Summary: defines Arc 17 purpose (join/activate/move/inactive/archive/rollover), confirms in-scope lifecycle areas and out-of-scope boundaries, documents current model fit and gaps for all relevant entities, proposes the 17A–17I phase sequence, and establishes authorization and privacy expectations before any schema or runtime work begins.
 - [Phase 17A Validation Checklist](./PHASE_17A_VALIDATION_CHECKLIST.md)
   - Summary: confirms documentation-only scope compliance, automated validation pass (lint/typecheck/build/prisma validate), documentation completeness, deferred boundary confirmation, authorization/privacy expectations, known risks, and Arc 17A closeout sign-off.
-- Phase 17B — Member Status and Lifecycle Model (planned)
+- [Phase 17B Member Status and Lifecycle Model](./PHASE_17B_MEMBER_STATUS_LIFECYCLE_MODEL.md)
+  - Summary: introduces minimal lifecycle schema support via an additive `Person.lifecycleStatus` enum field and organization+status index, preserves existing runtime behavior, and defers lifecycle workflows to later Arc 17 phases.
+- [Phase 17B Validation Checklist](./PHASE_17B_VALIDATION_CHECKLIST.md)
+  - Summary: confirms schema-additive compatibility, automated validation pass, scope guardrail compliance, and Arc 17B closeout readiness.
 - Phase 17C — Join / Activate Workflow (planned)
 - Phase 17D — Move Team / Program Workflow (planned)
 - Phase 17E — Inactive / Archive Workflow (planned)
