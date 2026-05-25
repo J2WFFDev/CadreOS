@@ -120,6 +120,7 @@ export default async function TaskDetailPage({
           | null;
         sourceEvent: { id: string; title: string; teamId: string | null; programId: string } | null;
         sourceInboxItem: { id: string; category: string; status: string } | null;
+        entry: { id: string } | null;
       }
     | null = null;
   let queryErrorMessage = "Unable to load task details right now. Please try again later.";
@@ -177,6 +178,7 @@ export default async function TaskDetailPage({
         },
         sourceEvent: { select: { id: true, title: true, teamId: true, programId: true } },
         sourceInboxItem: { select: { id: true, category: true, status: true } },
+        entry: { select: { id: true } },
       },
     });
   } catch (error) {
@@ -320,6 +322,7 @@ export default async function TaskDetailPage({
   const returnToValue = Array.isArray(returnToRaw) ? (returnToRaw[0] ?? "") : (returnToRaw ?? "");
   const returnTo = resolveSafeReturnPath(returnToValue, "/tasks");
   const editTaskHref = appendReturnToParam(`/tasks/${task.id}/edit`, `/tasks/${task.id}?returnTo=${encodeURIComponent(returnTo)}`);
+  const entryDetailHref = task.entry ? `/entries/${task.entry.id}` : null;
   let entryRuntimeSummary: Awaited<ReturnType<typeof getFollowUpTaskEntryRuntimeSummary>> | null = null;
   let entryRuntimeSummaryUnavailable = false;
 
@@ -344,6 +347,14 @@ export default async function TaskDetailPage({
           >
             Edit task
           </Link>
+          {entryDetailHref ? (
+            <Link
+              href={entryDetailHref}
+              className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Open entry
+            </Link>
+          ) : null}
         </div>
       </div>
 

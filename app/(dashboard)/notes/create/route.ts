@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeObservationNoteEntryRuntimeRef } from "@/lib/entry-runtime";
+import { upsertEntryFromNote } from "@/lib/entries/service";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
@@ -205,6 +206,7 @@ export async function POST(request: Request) {
       select: {
         id: true,
         organizationId: true,
+        body: true,
         authorPersonId: true,
         visibility: true,
         athletePersonId: true,
@@ -214,6 +216,15 @@ export async function POST(request: Request) {
     });
 
     try {
+      await upsertEntryFromNote({
+        organizationId: scope.organizationId,
+        note: {
+          id: createdNote.id,
+          body: createdNote.body,
+          authorPersonId: createdNote.authorPersonId,
+          teamId: createdNote.teamId,
+        },
+      });
       await writeObservationNoteEntryRuntimeRef({
         organizationId: scope.organizationId,
         note: createdNote,
