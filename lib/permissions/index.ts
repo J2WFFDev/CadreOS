@@ -9,6 +9,7 @@ type SupportedAction =
   | "season.update"
   | "person.create"
   | "person.update"
+  | "person.activate"
   | "team.create"
   | "rosterMembership.create"
   | "rosterMembership.delete"
@@ -59,6 +60,7 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "season.update",
     "person.create",
     "person.update",
+    "person.activate",
     "team.create",
     "rosterMembership.create",
     "rosterMembership.delete",
@@ -92,6 +94,7 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "season.create",
     "season.update",
     "team.create",
+    "person.activate",
     "rosterMembership.create",
     "rosterMembership.delete",
     "event.create",
@@ -119,6 +122,7 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "gearConsumableTransaction.update",
   ]),
   [RoleType.COACH]: new Set<SupportedAction>([
+    "person.activate",
     "rosterMembership.create",
     "rosterMembership.delete",
     "event.create",
@@ -178,6 +182,7 @@ const SUPPORTED_ACTIONS = new Set<SupportedAction>([
   "season.update",
   "person.create",
   "person.update",
+  "person.activate",
   "team.create",
   "rosterMembership.create",
   "rosterMembership.delete",

@@ -169,6 +169,7 @@ export default async function PeoplePage() {
         firstName: string;
         lastName: string;
         email: string | null;
+        lifecycleStatus: string;
         roles: Array<{
           roleType: string;
           scopeType: string;
@@ -313,6 +314,7 @@ export default async function PeoplePage() {
                 <th className="px-4 py-3 font-medium">First name</th>
                 <th className="px-4 py-3 font-medium">Last name</th>
                 <th className="px-4 py-3 font-medium">Email</th>
+                <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Roles</th>
                 <th className="px-4 py-3 font-medium">Team / Program</th>
                 {canViewGuardianRelationshipDetails ? (
@@ -331,6 +333,9 @@ export default async function PeoplePage() {
                     </td>
                     <td className="px-4 py-3">{person.lastName}</td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{person.email ?? "—"}</td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                      {person.lifecycleStatus.charAt(0).toUpperCase() + person.lifecycleStatus.slice(1).toLowerCase()}
+                    </td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                       {formatAssignmentSummary(person.roles)}
                     </td>

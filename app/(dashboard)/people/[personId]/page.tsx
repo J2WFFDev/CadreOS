@@ -1,4 +1,4 @@
-import { AttendanceStatus, RoleType, ScopeType } from "@prisma/client";
+import { AttendanceStatus, MemberLifecycleStatus, RoleType, ScopeType } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
@@ -177,6 +177,7 @@ export default async function PersonDetailsPage({
         lastName: string;
         email: string | null;
         phone: string | null;
+        lifecycleStatus: string;
         roles: Array<{
           id: string;
           roleType: string;
@@ -428,6 +429,7 @@ export default async function PersonDetailsPage({
   const scopeTypeError = readSearchParam(resolvedSearchParams, "scopeTypeError");
   const programIdError = readSearchParam(resolvedSearchParams, "programIdError");
   const teamIdError = readSearchParam(resolvedSearchParams, "teamIdError");
+  const activateError = readSearchParam(resolvedSearchParams, "activateError");
 
   const selectedRoleType = (readSearchParam(resolvedSearchParams, "roleType") || RoleType.ATHLETE) as RoleType;
   const selectedScopeType = (readSearchParam(resolvedSearchParams, "scopeType") || ScopeType.ORGANIZATION) as ScopeType;
@@ -654,6 +656,41 @@ export default async function PersonDetailsPage({
         <Link href={`/people/${person.id}/edit`} className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
           Edit person
         </Link>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="mb-2 text-lg font-medium">Member lifecycle status</h3>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Current status:{" "}
+          <span className={
+            person.lifecycleStatus === MemberLifecycleStatus.ACTIVE
+              ? "font-medium text-green-700 dark:text-green-400"
+              : person.lifecycleStatus === MemberLifecycleStatus.PROSPECT
+                ? "font-medium text-blue-700 dark:text-blue-400"
+                : "font-medium text-zinc-700 dark:text-zinc-300"
+          }>
+            {formatEnumLabel(person.lifecycleStatus)}
+          </span>
+        </p>
+        {activateError ? (
+          <p className="mt-2 text-sm text-red-600">{activateError}</p>
+        ) : null}
+        {(person.lifecycleStatus === MemberLifecycleStatus.PROSPECT ||
+          person.lifecycleStatus === MemberLifecycleStatus.INACTIVE ||
+          person.lifecycleStatus === MemberLifecycleStatus.ALUMNI) ? (
+          <form action={`/people/${person.id}/activate`} method="post" className="mt-3">
+            <input type="hidden" name="confirm" value="1" />
+            <button
+              type="submit"
+              className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black"
+            >
+              Activate member
+            </button>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Activating will change this person&apos;s status to Active. Existing roles, roster memberships, and relationships are not affected.
+            </p>
+          </form>
+        ) : null}
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">

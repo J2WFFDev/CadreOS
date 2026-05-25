@@ -11,6 +11,7 @@ import {
   GearInventoryType,
   GearItemLifecycleStatus,
   GearMaintenanceType,
+  MemberLifecycleStatus,
   PrecheckStatus,
   Prisma,
   RoleType,
@@ -74,6 +75,45 @@ export const personWorkflowSchema = z
     email: value.email.length === 0 ? null : value.email,
     phone: value.phone.length === 0 ? null : value.phone,
   }));
+
+export const joinPersonWorkflowSchema = z
+  .object({
+    firstName: z
+      .string()
+      .trim()
+      .min(1, "First name is required.")
+      .max(MAX_NAME_LENGTH, `First name must be ${MAX_NAME_LENGTH} characters or less.`),
+    lastName: z
+      .string()
+      .trim()
+      .min(1, "Last name is required.")
+      .max(MAX_NAME_LENGTH, `Last name must be ${MAX_NAME_LENGTH} characters or less.`),
+    email: z.string().trim().max(MAX_EMAIL_LENGTH, `Email must be ${MAX_EMAIL_LENGTH} characters or less.`),
+    phone: z.string().trim().max(MAX_PHONE_LENGTH, `Phone must be ${MAX_PHONE_LENGTH} characters or less.`),
+    lifecycleStatus: z.nativeEnum(MemberLifecycleStatus, {
+      message: "Lifecycle status must use an existing status value.",
+    }),
+  })
+  .superRefine((value, context) => {
+    if (value.email.length > 0 && !emailValidator.safeParse(value.email).success) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["email"],
+        message: "Enter a valid email address.",
+      });
+    }
+  })
+  .transform((value) => ({
+    firstName: value.firstName,
+    lastName: value.lastName,
+    email: value.email.length === 0 ? null : value.email,
+    phone: value.phone.length === 0 ? null : value.phone,
+    lifecycleStatus: value.lifecycleStatus,
+  }));
+
+export const memberLifecycleActivateSchema = z.object({
+  confirm: z.literal("1", { message: "Activation confirmation is required." }),
+});
 
 export const teamWorkflowSchema = z.object({
   name: z
@@ -1018,6 +1058,7 @@ export async function requirePhase1CMutationPermission(input: {
     | "program.update"
     | "person.create"
     | "person.update"
+    | "person.activate"
     | "team.create"
     | "season.create"
     | "season.update"
