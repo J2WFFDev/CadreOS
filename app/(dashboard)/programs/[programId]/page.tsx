@@ -1,4 +1,17 @@
-import { ApprovalStatus, BookingStatus, MemberLifecycleStatus, Prisma, ScopeType, TaskStatus } from "@prisma/client";
+import {
+  ApprovalStatus,
+  BookingStatus,
+  ConsumableTransactionType,
+  GearAssignmentStatus,
+  GearCheckoutStatus,
+  GearConditionStatus,
+  GearInventoryType,
+  GearItemLifecycleStatus,
+  MemberLifecycleStatus,
+  Prisma,
+  ScopeType,
+  TaskStatus,
+} from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
@@ -262,6 +275,16 @@ export default async function ProgramDetailsPage({
     OR: [
       { team: { is: { programId: program.id } } },
       { event: { is: { programId: program.id } } },
+    ],
+  };
+  const programGearItemWhere: Prisma.GearItemWhereInput = {
+    organizationId: scope.organizationId,
+    OR: [
+      { programId: program.id },
+      { assignments: { some: { assignedTeam: { is: { programId: program.id } } } } },
+      { assignments: { some: { assignedEvent: { is: { programId: program.id } } } } },
+      { checkouts: { some: { event: { is: { programId: program.id } } } } },
+      { consumableTransactions: { some: { event: { is: { programId: program.id } } } } },
     ],
   };
   const [recentProgramEvents, upcomingProgramEvents] = canViewAttendanceReporting
@@ -604,7 +627,24 @@ export default async function ProgramDetailsPage({
       return left.assigneeName.localeCompare(right.assigneeName);
     })
     .slice(0, 5);
-  const [programFieldOpsBookingCount, programFieldOpsPendingApprovals, programFieldOpsConflicts, programFieldOpsUpcomingBookings] =
+  const [
+    programFieldOpsBookingCount,
+    programFieldOpsPendingApprovals,
+    programFieldOpsConflicts,
+    programFieldOpsUpcomingBookings,
+    programGearVisibleItemCount,
+    programGearDurableCount,
+    programGearConsumableCount,
+    programGearAssignedOrCheckedOutCount,
+    programGearMaintenanceCount,
+    programGearConditionConcernCount,
+    programGearActiveAssignmentCount,
+    programGearOpenCheckoutCount,
+    programGearLowAvailabilityConsumableCount,
+    programGearLowAvailabilityConsumables,
+    programConsumableUsageAggregate30d,
+    programConsumableReplenishmentAggregate30d,
+  ] =
     canViewAttendanceReporting
       ? await Promise.all([
           db.resourceBooking.count({
@@ -652,10 +692,119 @@ export default async function ProgramDetailsPage({
             orderBy: [{ startsAt: "asc" }, { createdAt: "asc" }],
             take: 5,
           }),
+          db.gearItem.count({
+            where: programGearItemWhere,
+          }),
+          db.gearItem.count({
+            where: {
+              ...programGearItemWhere,
+              inventoryType: GearInventoryType.DURABLE,
+            },
+          }),
+          db.gearItem.count({
+            where: {
+              ...programGearItemWhere,
+              inventoryType: GearInventoryType.CONSUMABLE,
+            },
+          }),
+          db.gearItem.count({
+            where: {
+              ...programGearItemWhere,
+              lifecycleStatus: { in: [GearItemLifecycleStatus.ASSIGNED, GearItemLifecycleStatus.CHECKED_OUT] },
+            },
+          }),
+          db.gearItem.count({
+            where: {
+              ...programGearItemWhere,
+              lifecycleStatus: GearItemLifecycleStatus.MAINTENANCE,
+            },
+          }),
+          db.gearItem.count({
+            where: {
+              ...programGearItemWhere,
+              conditionStatus: { in: [GearConditionStatus.POOR, GearConditionStatus.DAMAGED] },
+            },
+          }),
+          db.gearAssignment.count({
+            where: {
+              organizationId: scope.organizationId,
+              status: { in: [GearAssignmentStatus.PENDING, GearAssignmentStatus.ACTIVE, GearAssignmentStatus.OVERDUE] },
+              gearItem: { is: programGearItemWhere },
+            },
+          }),
+          db.gearCheckout.count({
+            where: {
+              organizationId: scope.organizationId,
+              status: { in: [GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE] },
+              gearItem: { is: programGearItemWhere },
+            },
+          }),
+          db.gearItem.count({
+            where: {
+              ...programGearItemWhere,
+              inventoryType: GearInventoryType.CONSUMABLE,
+              quantityMin: { not: null },
+              quantityOnHand: { lte: db.gearItem.fields.quantityMin },
+            },
+          }),
+          db.gearItem.findMany({
+            where: {
+              ...programGearItemWhere,
+              inventoryType: GearInventoryType.CONSUMABLE,
+              quantityMin: { not: null },
+              quantityOnHand: { lte: db.gearItem.fields.quantityMin },
+            },
+            select: {
+              id: true,
+              name: true,
+              quantityOnHand: true,
+              quantityMin: true,
+            },
+            orderBy: [{ quantityOnHand: "asc" }, { updatedAt: "asc" }],
+            take: 5,
+          }),
+          db.consumableTransaction.aggregate({
+            where: {
+              organizationId: scope.organizationId,
+              recordedAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
+              gearItem: { is: programGearItemWhere },
+              transactionType: {
+                in: [
+                  ConsumableTransactionType.USED,
+                  ConsumableTransactionType.DISTRIBUTED,
+                  ConsumableTransactionType.DISPOSED,
+                ],
+              },
+            },
+            _sum: {
+              quantityDelta: true,
+            },
+          }),
+          db.consumableTransaction.aggregate({
+            where: {
+              organizationId: scope.organizationId,
+              recordedAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
+              gearItem: { is: programGearItemWhere },
+              transactionType: {
+                in: [ConsumableTransactionType.RECEIVED],
+              },
+            },
+            _sum: {
+              quantityDelta: true,
+            },
+          }),
         ])
-      : [0, 0, 0, []];
+      : [0, 0, 0, [], 0, 0, 0, 0, 0, 0, 0, 0, 0, [], { _sum: { quantityDelta: 0 } }, { _sum: { quantityDelta: 0 } }];
   const programFieldOpsResourcesInUse = new Set(programFieldOpsUpcomingBookings.map((booking) => booking.resource.id)).size;
   const programFieldOpsReadinessConcerns = programFieldOpsPendingApprovals + programFieldOpsConflicts;
+  const programConsumableUsageUnits30d = Math.abs(programConsumableUsageAggregate30d._sum.quantityDelta ?? 0);
+  const programConsumableReplenishmentUnits30d = Math.max(programConsumableReplenishmentAggregate30d._sum.quantityDelta ?? 0, 0);
+  const programConsumableNetDelta30d = programConsumableReplenishmentUnits30d - programConsumableUsageUnits30d;
+  const programGearReadinessConcerns =
+    programGearMaintenanceCount +
+    programGearConditionConcernCount +
+    programGearLowAvailabilityConsumableCount +
+    programGearOpenCheckoutCount;
 
   return (
     <section className="space-y-6">
@@ -862,6 +1011,107 @@ export default async function ProgramDetailsPage({
                 </ul>
               )}
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {canViewAttendanceReporting ? (
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-medium">GearOps operational readiness</h3>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                Read-only inventory, custody, maintenance, and consumable readiness visibility linked to this program.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-sm">
+              <Link href="/gear-ops" className="rounded-full border px-2 py-1">
+                GearOps overview
+              </Link>
+              <Link href="/gear-ops/items" className="rounded-full border px-2 py-1">
+                Item lane
+              </Link>
+            </div>
+          </div>
+          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <dt className="font-medium">Program-linked visible items</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">{programGearVisibleItemCount}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Durable / consumable</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">
+                {programGearDurableCount} / {programGearConsumableCount}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">Active assignments / open checkouts</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">
+                {programGearActiveAssignmentCount} / {programGearOpenCheckoutCount}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">Readiness concerns</dt>
+              <dd className={programGearReadinessConcerns > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+                {programGearReadinessConcerns}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">Assigned or checked out items</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">{programGearAssignedOrCheckedOutCount}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Maintenance lifecycle items</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">{programGearMaintenanceCount}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Condition concerns</dt>
+              <dd className={programGearConditionConcernCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+                {programGearConditionConcernCount}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">Low-availability consumables</dt>
+              <dd className={programGearLowAvailabilityConsumableCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+                {programGearLowAvailabilityConsumableCount}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">Consumable usage (30 days)</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">{programConsumableUsageUnits30d} units</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Consumable replenishment (30 days)</dt>
+              <dd className="text-zinc-600 dark:text-zinc-400">{programConsumableReplenishmentUnits30d} units</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Consumable net delta (30 days)</dt>
+              <dd className={programConsumableNetDelta30d < 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+                {programConsumableNetDelta30d > 0 ? "+" : ""}
+                {programConsumableNetDelta30d}
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-4">
+            <h4 className="text-sm font-medium">Low-availability consumables</h4>
+            {programGearLowAvailabilityConsumables.length === 0 ? (
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                No low-availability consumables are currently linked to this program context.
+              </p>
+            ) : (
+              <ul className="mt-2 space-y-2 text-sm">
+                {programGearLowAvailabilityConsumables.slice(0, 3).map((item) => (
+                  <li key={item.id} className="rounded-md border p-2">
+                    <Link href={`/gear-ops/items/${item.id}`} className="font-medium underline">
+                      {item.name}
+                    </Link>
+                    <p className="text-zinc-600 dark:text-zinc-400">
+                      On hand {item.quantityOnHand} · Min {item.quantityMin ?? "—"}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       ) : null}

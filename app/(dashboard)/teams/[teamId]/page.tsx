@@ -1,4 +1,17 @@
-import { ApprovalStatus, BookingStatus, MemberLifecycleStatus, RoleType, ScopeType } from "@prisma/client";
+import {
+  ApprovalStatus,
+  BookingStatus,
+  ConsumableTransactionType,
+  GearAssignmentStatus,
+  GearCheckoutStatus,
+  GearConditionStatus,
+  GearInventoryType,
+  GearItemLifecycleStatus,
+  MemberLifecycleStatus,
+  Prisma,
+  RoleType,
+  ScopeType,
+} from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
@@ -578,7 +591,34 @@ export default async function TeamDetailsPage({
     (count, event) => count + event.rsvpSummary.noResponseCount,
     0,
   );
-  const [teamFieldOpsBookingCount, teamFieldOpsPendingApprovals, teamFieldOpsConflicts, teamFieldOpsUpcomingBookings] =
+  const teamGearItemWhere: Prisma.GearItemWhereInput = {
+    organizationId: scope.organizationId,
+    OR: [
+      { assignments: { some: { assignedToTeamId: team.id } } },
+      { assignments: { some: { assignedEvent: { is: { teamId: team.id } } } } },
+      { checkouts: { some: { event: { is: { teamId: team.id } } } } },
+      { consumableTransactions: { some: { event: { is: { teamId: team.id } } } } },
+      { programId: team.program.id },
+    ],
+  };
+  const [
+    teamFieldOpsBookingCount,
+    teamFieldOpsPendingApprovals,
+    teamFieldOpsConflicts,
+    teamFieldOpsUpcomingBookings,
+    teamGearVisibleItemCount,
+    teamGearDurableCount,
+    teamGearConsumableCount,
+    teamGearAssignedOrCheckedOutCount,
+    teamGearMaintenanceCount,
+    teamGearConditionConcernCount,
+    teamGearActiveAssignmentCount,
+    teamGearOpenCheckoutCount,
+    teamGearLowAvailabilityConsumableCount,
+    teamGearLowAvailabilityConsumables,
+    teamConsumableUsageAggregate30d,
+    teamConsumableReplenishmentAggregate30d,
+  ] =
     await Promise.all([
       db.resourceBooking.count({
         where: {
@@ -625,9 +665,125 @@ export default async function TeamDetailsPage({
         orderBy: [{ startsAt: "asc" }, { createdAt: "asc" }],
         take: 5,
       }),
+      db.gearItem.count({
+        where: teamGearItemWhere,
+      }),
+      db.gearItem.count({
+        where: {
+          ...teamGearItemWhere,
+          inventoryType: GearInventoryType.DURABLE,
+        },
+      }),
+      db.gearItem.count({
+        where: {
+          ...teamGearItemWhere,
+          inventoryType: GearInventoryType.CONSUMABLE,
+        },
+      }),
+      db.gearItem.count({
+        where: {
+          ...teamGearItemWhere,
+          lifecycleStatus: { in: [GearItemLifecycleStatus.ASSIGNED, GearItemLifecycleStatus.CHECKED_OUT] },
+        },
+      }),
+      db.gearItem.count({
+        where: {
+          ...teamGearItemWhere,
+          lifecycleStatus: GearItemLifecycleStatus.MAINTENANCE,
+        },
+      }),
+      db.gearItem.count({
+        where: {
+          ...teamGearItemWhere,
+          conditionStatus: { in: [GearConditionStatus.POOR, GearConditionStatus.DAMAGED] },
+        },
+      }),
+      db.gearAssignment.count({
+        where: {
+          organizationId: scope.organizationId,
+          status: { in: [GearAssignmentStatus.PENDING, GearAssignmentStatus.ACTIVE, GearAssignmentStatus.OVERDUE] },
+          OR: [
+            { assignedToTeamId: team.id },
+            { assignedEvent: { is: { teamId: team.id } } },
+          ],
+          gearItem: { is: teamGearItemWhere },
+        },
+      }),
+      db.gearCheckout.count({
+        where: {
+          organizationId: scope.organizationId,
+          status: { in: [GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE] },
+          event: { is: { teamId: team.id } },
+          gearItem: { is: teamGearItemWhere },
+        },
+      }),
+      db.gearItem.count({
+        where: {
+          ...teamGearItemWhere,
+          inventoryType: GearInventoryType.CONSUMABLE,
+          quantityMin: { not: null },
+          quantityOnHand: { lte: db.gearItem.fields.quantityMin },
+        },
+      }),
+      db.gearItem.findMany({
+        where: {
+          ...teamGearItemWhere,
+          inventoryType: GearInventoryType.CONSUMABLE,
+          quantityMin: { not: null },
+          quantityOnHand: { lte: db.gearItem.fields.quantityMin },
+        },
+        select: {
+          id: true,
+          name: true,
+          quantityOnHand: true,
+          quantityMin: true,
+        },
+        orderBy: [{ quantityOnHand: "asc" }, { updatedAt: "asc" }],
+        take: 5,
+      }),
+      db.consumableTransaction.aggregate({
+        where: {
+          organizationId: scope.organizationId,
+          recordedAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
+          event: { is: { teamId: team.id } },
+          gearItem: { is: teamGearItemWhere },
+          transactionType: {
+            in: [
+              ConsumableTransactionType.USED,
+              ConsumableTransactionType.DISTRIBUTED,
+              ConsumableTransactionType.DISPOSED,
+            ],
+          },
+        },
+        _sum: {
+          quantityDelta: true,
+        },
+      }),
+      db.consumableTransaction.aggregate({
+        where: {
+          organizationId: scope.organizationId,
+          recordedAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
+          event: { is: { teamId: team.id } },
+          gearItem: { is: teamGearItemWhere },
+          transactionType: {
+            in: [ConsumableTransactionType.RECEIVED],
+          },
+        },
+        _sum: {
+          quantityDelta: true,
+        },
+      }),
     ]);
   const teamFieldOpsResourcesInUse = new Set(teamFieldOpsUpcomingBookings.map((booking) => booking.resource.id)).size;
   const teamFieldOpsReadinessConcerns = teamFieldOpsPendingApprovals + teamFieldOpsConflicts;
+  const teamConsumableUsageUnits30d = Math.abs(teamConsumableUsageAggregate30d._sum?.quantityDelta ?? 0);
+  const teamConsumableReplenishmentUnits30d = Math.max(teamConsumableReplenishmentAggregate30d._sum?.quantityDelta ?? 0, 0);
+  const teamConsumableNetDelta30d = teamConsumableReplenishmentUnits30d - teamConsumableUsageUnits30d;
+  const teamGearReadinessConcerns =
+    teamGearMaintenanceCount +
+    teamGearConditionConcernCount +
+    teamGearLowAvailabilityConsumableCount +
+    teamGearOpenCheckoutCount;
 
   return (
     <section className="space-y-6">
@@ -1042,6 +1198,105 @@ export default async function TeamDetailsPage({
                   </p>
                   <p className="text-zinc-600 dark:text-zinc-400">
                     Approval: {formatEnumLabel(booking.approvalStatus)} · {booking.facility.name} · {booking.resource.name}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-medium">GearOps operational readiness</h3>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Read-only inventory, custody, maintenance, and consumable readiness context linked to this team.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Link href="/gear-ops" className="rounded-full border px-2 py-1">
+              GearOps overview
+            </Link>
+            <Link href="/gear-ops/items" className="rounded-full border px-2 py-1">
+              Item lane
+            </Link>
+          </div>
+        </div>
+        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <dt className="font-medium">Team-linked visible items</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{teamGearVisibleItemCount}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Durable / consumable</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {teamGearDurableCount} / {teamGearConsumableCount}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Active assignments / open checkouts</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {teamGearActiveAssignmentCount} / {teamGearOpenCheckoutCount}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Readiness concerns</dt>
+            <dd className={teamGearReadinessConcerns > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {teamGearReadinessConcerns}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Assigned or checked out items</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{teamGearAssignedOrCheckedOutCount}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Maintenance lifecycle items</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{teamGearMaintenanceCount}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Condition concerns</dt>
+            <dd className={teamGearConditionConcernCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {teamGearConditionConcernCount}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Low-availability consumables</dt>
+            <dd className={teamGearLowAvailabilityConsumableCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {teamGearLowAvailabilityConsumableCount}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Consumable usage (30 days)</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{teamConsumableUsageUnits30d} units</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Consumable replenishment (30 days)</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{teamConsumableReplenishmentUnits30d} units</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Consumable net delta (30 days)</dt>
+            <dd className={teamConsumableNetDelta30d < 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+              {teamConsumableNetDelta30d > 0 ? "+" : ""}
+              {teamConsumableNetDelta30d}
+            </dd>
+          </div>
+        </dl>
+        <div className="mt-4">
+          <h4 className="text-sm font-medium">Low-availability consumables</h4>
+          {teamGearLowAvailabilityConsumables.length === 0 ? (
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              No low-availability consumables are currently linked to this team context.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-2 text-sm">
+              {teamGearLowAvailabilityConsumables.slice(0, 3).map((item) => (
+                <li key={item.id} className="rounded-md border p-2">
+                  <Link href={`/gear-ops/items/${item.id}`} className="font-medium underline">
+                    {item.name}
+                  </Link>
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    On hand {item.quantityOnHand} · Min {item.quantityMin ?? "—"}
                   </p>
                 </li>
               ))}
