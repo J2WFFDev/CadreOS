@@ -44,6 +44,7 @@ const RECENT_NOTE_WINDOW_DAYS = 30;
 const RECENT_OPERATIONAL_CHANGE_WINDOW_DAYS = 7;
 const STALE_UNRESOLVED_TASK_WINDOW_DAYS = 14;
 const EVENT_REVIEW_LOOKAHEAD_DAYS = 14;
+const ATTENDANCE_PARTICIPATION_EVENT_SAMPLE_SIZE = 30;
 
 const OPERATIONAL_REVIEW_CADENCE = [
   {
@@ -494,12 +495,21 @@ export default async function DashboardPage() {
           programs: number;
           teams: number;
           people: number;
+          activeMembers: number;
+          prospectMembers: number;
+          inactiveMembers: number;
+          archivedMembers: number;
+          alumniMembers: number;
           upcomingEvents: number;
           attendanceNeedingReview: number;
+          attendanceParticipationCoveragePercent: number;
+          attendanceParticipationEventsReviewed: number;
+          unresolvedFollowUps: number;
           overdueTasks: number;
           blockedTasks: number;
           staleUnreviewedTasks: number;
           recentNotes: number;
+          recentOperationalChanges: number;
           pendingFieldOpsApprovals: number;
           athletesMissingGuardianLinkage: number;
           teamsWithOperationalGaps: number;
@@ -639,6 +649,7 @@ export default async function DashboardPage() {
       upcomingEvents,
       attendanceReviewEvents,
       overdueTaskCount,
+      unresolvedFollowUpCount,
       overdueTasks,
       blockedTaskCount,
       blockedTasks,
@@ -726,7 +737,7 @@ export default async function DashboardPage() {
           _count: { select: { attendance: true } },
         },
         orderBy: [{ startsAt: "desc" }],
-        take: 30,
+        take: ATTENDANCE_PARTICIPATION_EVENT_SAMPLE_SIZE,
       }),
       db.followUpTask.count({
         where: {
@@ -734,6 +745,13 @@ export default async function DashboardPage() {
           ...scopedTaskWhere,
           status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS] },
           dueAt: { lt: currentTime },
+        },
+      }),
+      db.followUpTask.count({
+        where: {
+          organizationId: scope.organizationId,
+          ...scopedTaskWhere,
+          status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED] },
         },
       }),
       db.followUpTask.findMany({
@@ -1086,6 +1104,31 @@ export default async function DashboardPage() {
       attendanceNeedingReview.length = 5;
     }
 
+    const attendanceParticipationTotals = attendanceReviewEvents.reduce(
+      (totals, event) => {
+        if (!event.team) {
+          return totals;
+        }
+
+        const expectedAttendanceCount = new Set(event.team.roster.map((membership) => membership.personId)).size;
+        if (expectedAttendanceCount === 0) {
+          return totals;
+        }
+
+        totals.eventsReviewed += 1;
+        totals.expectedAttendance += expectedAttendanceCount;
+        totals.capturedAttendance += Math.min(event._count.attendance, expectedAttendanceCount);
+        return totals;
+      },
+      { eventsReviewed: 0, expectedAttendance: 0, capturedAttendance: 0 },
+    );
+    const attendanceParticipationCoveragePercent =
+      attendanceParticipationTotals.expectedAttendance > 0
+        ? Math.round(
+            (attendanceParticipationTotals.capturedAttendance / attendanceParticipationTotals.expectedAttendance) * 100,
+          )
+        : 0;
+
     const unresolvedEventConcerns = eventOperationalConcerns
       .map((event) => {
         const expectedAttendanceCount = new Set(event.team?.roster.map((membership) => membership.personId) ?? []).size;
@@ -1205,12 +1248,21 @@ export default async function DashboardPage() {
         programs: programCount,
         teams: teamCount,
         people: peopleCount,
+        activeMembers: lifecycleStatusCounts[MemberLifecycleStatus.ACTIVE],
+        prospectMembers: lifecycleStatusCounts[MemberLifecycleStatus.PROSPECT],
+        inactiveMembers: lifecycleStatusCounts[MemberLifecycleStatus.INACTIVE],
+        archivedMembers: lifecycleStatusCounts[MemberLifecycleStatus.ARCHIVED],
+        alumniMembers: lifecycleStatusCounts[MemberLifecycleStatus.ALUMNI],
         upcomingEvents: upcomingEventCount,
         attendanceNeedingReview: attendanceNeedingReview.length,
+        attendanceParticipationCoveragePercent,
+        attendanceParticipationEventsReviewed: attendanceParticipationTotals.eventsReviewed,
+        unresolvedFollowUps: unresolvedFollowUpCount,
         overdueTasks: overdueTaskCount,
         blockedTasks: blockedTaskCount,
         staleUnreviewedTasks: staleUnreviewedTaskCount,
         recentNotes: recentNoteCount,
+        recentOperationalChanges: recentOperationalHistory.length,
         pendingFieldOpsApprovals: pendingFieldOpsApprovalsCount,
         athletesMissingGuardianLinkage: athletesMissingGuardianLinkageCount,
         teamsWithOperationalGaps: teamOperationalGaps.length,
@@ -1508,6 +1560,11 @@ export default async function DashboardPage() {
               { label: "Programs", value: dashboardData.counts.programs, href: "/programs" },
               { label: "Teams", value: dashboardData.counts.teams, href: "/teams" },
               { label: "People", value: dashboardData.counts.people, href: "/people" },
+              { label: "Active members", value: dashboardData.counts.activeMembers, href: "/people" },
+              { label: "Prospects", value: dashboardData.counts.prospectMembers, href: "/people" },
+              { label: "Inactive members", value: dashboardData.counts.inactiveMembers, href: "/people" },
+              { label: "Archived members", value: dashboardData.counts.archivedMembers, href: "/people" },
+              { label: "Alumni", value: dashboardData.counts.alumniMembers, href: "/people" },
               {
                 label: "Upcoming events",
                 value: dashboardData.counts.upcomingEvents,
@@ -1517,6 +1574,17 @@ export default async function DashboardPage() {
                 label: "Attendance needing review",
                 value: dashboardData.counts.attendanceNeedingReview,
                 href: "/events?operationalIndicator=attendance_not_reviewed_recently",
+              },
+              {
+                label: "Attendance participation coverage",
+                value: dashboardData.counts.attendanceParticipationCoveragePercent,
+                href: "/events?operationalIndicator=attendance_not_reviewed_recently",
+                sublabel: `${dashboardData.counts.attendanceParticipationEventsReviewed} recent past team events reviewed (%)`,
+              },
+              {
+                label: "Open follow-up tasks",
+                value: dashboardData.counts.unresolvedFollowUps,
+                href: "/tasks?resolution=unresolved",
               },
               {
                 label: "Overdue follow-up tasks",
@@ -1544,6 +1612,12 @@ export default async function DashboardPage() {
                 value: dashboardData.counts.recentNotes,
                 href: "/notes",
                 sublabel: `Last ${RECENT_NOTE_WINDOW_DAYS} days`,
+              },
+              {
+                label: "Recent operational activity",
+                value: dashboardData.counts.recentOperationalChanges,
+                href: "#recent-operational-history",
+                sublabel: `Last ${RECENT_OPERATIONAL_CHANGE_WINDOW_DAYS} days`,
               },
               ...(canViewOrganizationLevelFieldOpsApprovals
                 ? [
