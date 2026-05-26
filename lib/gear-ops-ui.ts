@@ -172,7 +172,7 @@ export function getCheckoutTone(status: GearCheckoutStatus): LifecycleTone {
       return "warning";
     case "RETURNED":
       return "success";
-    case "VOIDED":
+    case "LOST":
       return "neutral";
     default:
       return "neutral";
@@ -191,8 +191,8 @@ export function getCheckoutLabel(status: GearCheckoutStatus): string {
       return "Overdue";
     case "RETURNED":
       return "Returned";
-    case "VOIDED":
-      return "Voided";
+    case "LOST":
+      return "Lost";
     default:
       return status;
   }
@@ -211,7 +211,7 @@ export function getAssignmentTone(status: GearAssignmentStatus): LifecycleTone {
     case "OVERDUE":
       return "warning";
     case "RETURNED":
-    case "COMPLETED":
+    case "TRANSFERRED":
       return "success";
     case "CANCELLED":
       return "neutral";
@@ -234,8 +234,8 @@ export function getAssignmentLabel(status: GearAssignmentStatus): string {
       return "Overdue";
     case "RETURNED":
       return "Returned";
-    case "COMPLETED":
-      return "Completed";
+    case "TRANSFERRED":
+      return "Transferred";
     case "CANCELLED":
       return "Cancelled";
     default:

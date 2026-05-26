@@ -10,6 +10,8 @@ import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
+import { GearOfflineForm } from "@/components/gear-ops/offline-form";
+import { GearPendingSubjectCard } from "@/components/gear-ops/pending-subject-card";
 import {
   deriveEventGearAssignmentStatus,
   deriveEventGearAvailability,
@@ -605,7 +607,17 @@ export default async function EventGearPage({
           )}
         </div>
 
-        <form action={`/events/${event.id}/gear/plan/save`} method="post" className="mt-4 grid gap-4 lg:grid-cols-2">
+        <GearOfflineForm
+          action={`/events/${event.id}/gear/plan/save`}
+          className="mt-4 grid gap-4 lg:grid-cols-2"
+          actionType="event.gear.plan.save"
+          subjectType="EVENT"
+          subjectId={event.id}
+          subjectLabel={event.title}
+          permissionKey="events.gear.plan.save"
+          returnHref={`/events/${event.id}/gear`}
+          queueLabel={`Event gear plan · ${event.title}`}
+        >
           <div className="space-y-1">
             <label htmlFor="status" className="text-sm font-medium">Plan status</label>
             <select id="status" name="status" defaultValue={plan?.status ?? EventGearPlanStatus.DRAFT} className="w-full rounded-md border px-3 py-2 text-sm">
@@ -663,7 +675,7 @@ export default async function EventGearPage({
               {plan ? "Update plan" : "Create plan"}
             </button>
           </div>
-        </form>
+        </GearOfflineForm>
       </div>
 
       {planSummary ? (
@@ -675,11 +687,28 @@ export default async function EventGearPage({
         </div>
       ) : null}
 
+      <GearPendingSubjectCard
+        subjectType="EVENT"
+        subjectId={event.id}
+        title="Pending event field actions"
+        emptyMessage="No local pending or failed event gear actions are attached to this event."
+      />
+
       <div id="requirements" className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
         <div className="space-y-4">
           <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
             <h3 className="text-lg font-semibold">Add event gear requirement</h3>
-            <form action={`/events/${event.id}/gear/requirements/create`} method="post" className="mt-4 grid gap-4 md:grid-cols-2">
+            <GearOfflineForm
+              action={`/events/${event.id}/gear/requirements/create`}
+              className="mt-4 grid gap-4 md:grid-cols-2"
+              actionType="event.gear.requirement.create"
+              subjectType="EVENT"
+              subjectId={event.id}
+              subjectLabel={event.title}
+              permissionKey="events.gear.requirement.create"
+              returnHref={`/events/${event.id}/gear`}
+              queueLabel={`Event requirement · ${event.title}`}
+            >
               <div className="space-y-1 md:col-span-2">
                 <label htmlFor="label" className="text-sm font-medium">Requirement label</label>
                 <input id="label" name="label" className="w-full rounded-md border px-3 py-2 text-sm" placeholder="Radios, timers, banners, first aid kit, cones..." />
@@ -710,7 +739,7 @@ export default async function EventGearPage({
                   Add requirement
                 </button>
               </div>
-            </form>
+            </GearOfflineForm>
             {!plan ? <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">Create the plan first to start adding requirements.</p> : null}
           </div>
 
@@ -747,7 +776,17 @@ export default async function EventGearPage({
                   </div>
                 </div>
 
-                <form action={`/events/${event.id}/gear/assignments/create`} method="post" className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_160px]">
+                <GearOfflineForm
+                  action={`/events/${event.id}/gear/assignments/create`}
+                  className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_160px]"
+                  actionType="event.gear.assignment.create"
+                  subjectType="EVENT"
+                  subjectId={event.id}
+                  subjectLabel={event.title}
+                  permissionKey="events.gear.assignment.create"
+                  returnHref={`/events/${event.id}/gear`}
+                  queueLabel={`Event assignment · ${requirement.label}`}
+                >
                   <input type="hidden" name="requirementId" value={requirement.id} />
                   <div className="space-y-1">
                     <label className="text-sm font-medium" htmlFor={`gearItemId-${requirement.id}`}>Assign specific inventory item</label>
@@ -766,7 +805,7 @@ export default async function EventGearPage({
                   <div className="flex items-end justify-end">
                     <button type="submit" className="rounded-md border px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">Assign item</button>
                   </div>
-                </form>
+                </GearOfflineForm>
 
                 {requirement.assignments.length === 0 ? (
                   <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">No inventory items are assigned to this requirement yet.</p>
@@ -822,14 +861,24 @@ export default async function EventGearPage({
 
                           <div className="mt-3 flex flex-wrap gap-2 text-sm">
                             {!assignment.stagedAt && !assignment.recoveredAt ? (
-                              <form action={`/events/${event.id}/gear/staging`} method="post" className="flex flex-wrap items-center gap-2">
+                              <GearOfflineForm
+                                action={`/events/${event.id}/gear/staging`}
+                                className="flex flex-wrap items-center gap-2"
+                                actionType="event.gear.staging"
+                                subjectType="EVENT"
+                                subjectId={event.id}
+                                subjectLabel={event.title}
+                                permissionKey="events.gear.staging"
+                                returnHref={`/events/${event.id}/gear`}
+                                queueLabel={`Event staging · ${assignment.gearItem.name}`}
+                              >
                                 <input type="hidden" name="eventGearAssignmentId" value={assignment.id} />
                                 <select name="stagedToLocationId" defaultValue={plan?.stagingLocationId ?? assignment.gearItem.location?.id ?? ""} className="rounded-md border px-2 py-1 text-sm">
                                   <option value="">Use current / no change</option>
                                   {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
                                 </select>
                                 <button type="submit" className="rounded-md border px-3 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800">Stage</button>
-                              </form>
+                              </GearOfflineForm>
                             ) : null}
                             {!latestEventCheckout && !assignment.recoveredAt ? (
                               <Link href={checkoutHref} className="rounded-md border px-3 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800">Issue / checkout</Link>
@@ -838,7 +887,17 @@ export default async function EventGearPage({
                               <Link href={returnHref} className="rounded-md border px-3 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800">Return / check in</Link>
                             ) : null}
                             {latestEventCheckout?.returnedAt && !assignment.recoveredAt ? (
-                              <form action={`/events/${event.id}/gear/recovery`} method="post" className="grid gap-2 rounded-md border p-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                              <GearOfflineForm
+                                action={`/events/${event.id}/gear/recovery`}
+                                className="grid gap-2 rounded-md border p-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                                actionType="event.gear.recovery"
+                                subjectType="EVENT"
+                                subjectId={event.id}
+                                subjectLabel={event.title}
+                                permissionKey="events.gear.recovery"
+                                returnHref={`/events/${event.id}/gear`}
+                                queueLabel={`Event recovery · ${assignment.gearItem.name}`}
+                              >
                                 <input type="hidden" name="eventGearAssignmentId" value={assignment.id} />
                                 <select name="recoveredToLocationId" defaultValue={plan?.recoveryLocationId ?? assignment.gearItem.location?.id ?? ""} className="rounded-md border px-2 py-1 text-sm">
                                   <option value="">No recovery location update</option>
@@ -851,7 +910,7 @@ export default async function EventGearPage({
                                 <label className="inline-flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400"><input type="checkbox" name="maintenanceFlag" defaultChecked={assignment.maintenanceFlag} /> Maintenance flag</label>
                                 <textarea name="recoveryNotes" rows={2} className="md:col-span-2 rounded-md border px-2 py-1 text-sm" placeholder="Damage, missing parts, consumable follow-up, cage notes..." />
                                 <div className="md:col-span-1 flex justify-end"><button type="submit" className="rounded-md border px-3 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800">Complete recovery</button></div>
-                              </form>
+                              </GearOfflineForm>
                             ) : null}
                             {assignment.gearItem.inventoryType === GearInventoryType.CONSUMABLE ? (
                               <Link href={`/gear-ops/items/${assignment.gearItem.id}/consumables/new?eventId=${event.id}&recordedAt=${encodeURIComponent(nowInputValue)}`} className="rounded-md border px-3 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800">Adjust consumable</Link>

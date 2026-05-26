@@ -21,6 +21,7 @@ import {
   GearLifecycleBadge,
   GearReadinessChip,
 } from "@/components/gear-ops/status-badge";
+import { GearPendingSubjectCard } from "@/components/gear-ops/pending-subject-card";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
 import {
@@ -31,7 +32,6 @@ import { deriveAvailabilitySignal } from "@/lib/gear-ops-ui";
 import {
   labelForMovementType,
   labelForOwnershipType,
-  labelForReadinessState,
 } from "@/lib/inventory-ops";
 import {
   labelForScanContext,
@@ -760,6 +760,13 @@ export default async function GearOpsItemDetailsPage({
           ))}
         </div>
       </div>
+
+      <GearPendingSubjectCard
+        subjectType="GEAR_ITEM"
+        subjectId={item.id}
+        title="Local pending activity"
+        emptyMessage="No local pending or failed actions are attached to this item."
+      />
 
       <dl id="readiness" className="grid gap-3 rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900 sm:grid-cols-2 lg:grid-cols-4">
         <div>

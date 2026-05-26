@@ -13,6 +13,7 @@ import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { GearDashboardCard } from "@/components/gear-ops/dashboard-card";
 import { GearExceptionPanel, type GearException } from "@/components/gear-ops/exception-panel";
+import { GearPendingDashboardCard } from "@/components/gear-ops/pending-dashboard-card";
 import { GearQuickActionGrid, type GearQuickAction } from "@/components/gear-ops/quick-action-card";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
@@ -304,6 +305,7 @@ export default async function GearOpsDashboardPage() {
           Inventory overview
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <GearPendingDashboardCard />
           <GearDashboardCard label="Total items" value={summary.totalItems} href="/gear-ops/items" />
           <GearDashboardCard label="Active / available" value={summary.activeAvailableItems} href="/gear-ops/items?lifecycleStatus=ACTIVE" tone="success" />
           <GearDashboardCard

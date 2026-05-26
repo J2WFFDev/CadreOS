@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { NavSidebar } from "@/components/nav-sidebar";
 import { QuickCaptureLauncher } from "@/components/dashboard/quick-capture-launcher";
+import { GearOfflineProvider } from "@/components/gear-ops/offline-provider";
 import { db } from "@/lib/db";
 import { countUnreadNotificationsForPerson } from "@/lib/notifications";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -64,7 +65,7 @@ export default async function DashboardLayout({
                 </p>
               </div>
             ) : null}
-            {children}
+            <GearOfflineProvider organizationId={scope.organizationId}>{children}</GearOfflineProvider>
           </div>
         </main>
       </div>
