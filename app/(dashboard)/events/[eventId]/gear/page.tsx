@@ -168,6 +168,25 @@ function loadEventGearEvent(organizationId: string, eventId: string) {
                           assignedEvent: { select: { id: true, title: true } },
                         },
                       },
+                      reservations: {
+                        where: {
+                          status: {
+                            in: [
+                              GearReservationStatus.ACTIVE,
+                              GearReservationStatus.PENDING_REVIEW,
+                              GearReservationStatus.CONFLICT,
+                            ],
+                          },
+                        },
+                        select: {
+                          mode: true,
+                          status: true,
+                          approvalStatus: true,
+                          windowStartAt: true,
+                          windowEndAt: true,
+                          reservedForEventId: true,
+                        },
+                      },
                       maintenanceLogs: {
                         orderBy: [{ performedAt: "desc" }, { createdAt: "desc" }],
                         take: 2,
