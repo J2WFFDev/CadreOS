@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { EntryPriority, EntryStatus, EntryType } from "@prisma/client";
+import { EntryPriority, EntryStatus, EntryType, OperationalGraphNodeType, OperationalRelationshipType } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { db } from "@/lib/db";
+import { labelForOperationalNodeType, labelForOperationalRelationshipType, listRelatedOperationalRecords } from "@/lib/operational-graph";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -65,6 +66,12 @@ export default async function EntryDetailPage({ params }: { params: Promise<{ en
       </section>
     );
   }
+
+  const relatedItems = await listRelatedOperationalRecords({
+    organizationId: scope.organizationId,
+    node: { nodeType: "ENTRY", nodeId: entry.id },
+    limit: 30,
+  });
 
   const linkedEntries = [
     ...entry.linkedFrom.map((item) => item.toEntry),
@@ -201,6 +208,48 @@ export default async function EntryDetailPage({ params }: { params: Promise<{ en
               </button>
             </form>
           </div>
+
+          <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
+            <h3 className="font-semibold">Operational graph link</h3>
+            <form action="/entries/relationships/link" method="post" className="mt-2 space-y-2">
+              <input type="hidden" name="fromNodeType" value="ENTRY" />
+              <input type="hidden" name="fromNodeId" value={entry.id} />
+              <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
+              <div className="space-y-1">
+                <label htmlFor="toNodeType" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                  Target type
+                </label>
+                <select id="toNodeType" name="toNodeType" defaultValue={OperationalGraphNodeType.ENTRY} className="w-full rounded-md border px-3 py-2 text-sm">
+                  {Object.values(OperationalGraphNodeType).map((value) => (
+                    <option key={value} value={value}>
+                      {labelForOperationalNodeType(value)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="toNodeId" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                  Target ID
+                </label>
+                <input id="toNodeId" name="toNodeId" placeholder="Target record ID" className="w-full rounded-md border px-3 py-2 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="relationshipType" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                  Relationship type
+                </label>
+                <select id="relationshipType" name="relationshipType" defaultValue={OperationalRelationshipType.RELATED_TO} className="w-full rounded-md border px-3 py-2 text-sm">
+                  {Object.values(OperationalRelationshipType).map((value) => (
+                    <option key={value} value={value}>
+                      {labelForOperationalRelationshipType(value)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                Link operational record
+              </button>
+            </form>
+          </div>
         </aside>
       </div>
 
@@ -215,6 +264,46 @@ export default async function EntryDetailPage({ params }: { params: Promise<{ en
                 <Link href={`/entries/${linked.id}`} className="underline">
                   {linked.type}: {linked.title}
                 </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="text-sm font-semibold">Related operational items</h3>
+        {relatedItems.length === 0 ? (
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No related operational items yet.</p>
+        ) : (
+          <ul className="mt-2 space-y-2 text-sm">
+            {relatedItems.map((item) => (
+              <li key={item.id} className="rounded-md border px-3 py-2">
+                <div className="font-medium">
+                  {item.direction === "OUTBOUND" ? "→" : "←"} {labelForOperationalRelationshipType(item.relationshipType)}
+                </div>
+                <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                  {labelForOperationalNodeType(item.node.nodeType)} · {item.node.subtitle ?? "Operational record"}
+                </div>
+                <div className="mt-1">
+                  {item.node.href ? (
+                    <Link href={item.node.href} className="underline">
+                      {item.node.title}
+                    </Link>
+                  ) : (
+                    <span>{item.node.title}</span>
+                  )}
+                </div>
+                <form action="/entries/relationships/unlink" method="post" className="mt-2">
+                  <input type="hidden" name="fromNodeType" value={item.direction === "OUTBOUND" ? "ENTRY" : item.node.nodeType} />
+                  <input type="hidden" name="fromNodeId" value={item.direction === "OUTBOUND" ? entry.id : item.node.nodeId} />
+                  <input type="hidden" name="toNodeType" value={item.direction === "OUTBOUND" ? item.node.nodeType : "ENTRY"} />
+                  <input type="hidden" name="toNodeId" value={item.direction === "OUTBOUND" ? item.node.nodeId : entry.id} />
+                  <input type="hidden" name="relationshipType" value={item.relationshipType} />
+                  <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
+                  <button type="submit" className="rounded-md border px-2 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                    Unlink
+                  </button>
+                </form>
               </li>
             ))}
           </ul>
