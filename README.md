@@ -19,16 +19,26 @@
   5. `20260526024000_arc19f_notifications_activity`
   6. `20260526143000_add_person_lifecycle_status`
   7. `20260526152000_add_gearops_core_tables`
-- The existing production database should be baselined only through:
-  - `20260526024000_arc19f_notifications_activity`
+- Use **Manual DB Schema Inventory** first to safely inspect table names and migration markers (no row data/secrets output).
 - One-time baseline flow for an existing production database:
   1. Merge the code that contains the migration files.
-  2. Run the **Manual DB Baseline** workflow against the same `DATABASE_URL` secret used by Vercel production.
-  3. That one-time workflow runs `npx prisma migrate status`, marks only the historical migrations above as applied via `npx prisma migrate resolve --applied <migration_name>`, then runs `npx prisma migrate deploy`.
+  2. Run **Manual DB Schema Inventory** and review:
+     - existing table names
+     - historical baseline marker presence
+     - protected migration marker presence
+     - missing target tables/columns vs `prisma/schema.prisma`
+  3. Run **Manual DB Baseline** only after reviewing inventory output.
+     - `baseline_migration=auto_detect_highest_existing` baselines only the contiguous historical migrations whose required tables/columns already exist.
+     - Explicit boundary selection fails safely when expected markers are missing.
+     - Protected migrations are never part of the baseline resolve list.
   4. Confirm `npx prisma migrate deploy` applies:
      - `20260526143000_add_person_lifecycle_status`
      - `20260526152000_add_gearops_core_tables`
   5. Redeploy the application build to Vercel after the database migration succeeds.
+- Decision guidance for non-empty databases with no Prisma migration history:
+  - If no historical Arc-19 markers exist, do **not** baseline Arc-19 migrations. Migrate forward (and add compatibility migrations only if concrete conflicts occur).
+  - If some historical markers exist contiguously, baseline only that verified contiguous subset.
+  - If database is empty-ish and has no production data value, perform reset/rebuild only with explicit approval.
 - Normal production runs after baseline:
   - `npx prisma migrate deploy`
 - Recommended order for production release:

@@ -1,0 +1,36 @@
+name: Manual DB Schema Inventory
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory-database:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install
+        run: npm ci
+
+      - name: Diagnostic DB identity (safe)
+        run: |
+          node -e "const raw = process.env.DATABASE_URL || ''; let provider = 'unknown'; let host = 'unparseable'; try { const parsed = new URL(raw); provider = (parsed.protocol || '').replace(':', '') || 'unknown'; host = parsed.hostname || 'unparseable'; } catch {} console.log('Database provider:', provider); console.log('Database host:', host); if (host.includes('-pooler.')) { console.error('Refusing schema inventory with pooled host. Configure MIGRATE_DATABASE_URL to direct Neon host.'); process.exit(1); }"
+
+      - name: Introspect live schema (safe)
+        run: npx prisma db pull --print --schema prisma/schema.prisma > /tmp/live-db-schema.prisma
+
+      - name: Print safe schema inventory report
+        run: node scripts/db-schema-inventory.mjs --live /tmp/live-db-schema.prisma --target prisma/schema.prisma

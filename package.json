@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "tsx --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
+    "db:schema-inventory": "node scripts/db-schema-inventory.mjs",
     "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
