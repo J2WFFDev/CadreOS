@@ -10,6 +10,7 @@ jobs:
   setup-database:
     runs-on: ubuntu-latest
     env:
+      # Must match Vercel Production DATABASE_URL value.
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     steps:
@@ -28,8 +29,15 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Apply Prisma schema
-        run: npx prisma db push
+      - name: Diagnostic DB identity (safe)
+        run: |
+          node -e "const raw = process.env.DATABASE_URL || ''; let provider = 'unknown'; let host = 'unparseable'; try { const parsed = new URL(raw); provider = (parsed.protocol || '').replace(':', '') || 'unknown'; host = parsed.hostname || 'unparseable'; } catch {} console.log('Database provider:', provider); console.log('Database host:', host);"
+
+      - name: Prisma migration status (diagnostic)
+        run: npx prisma migrate status || true
+
+      - name: Apply Prisma migrations
+        run: npx prisma migrate deploy
 
       - name: Run idempotent seed
         run: npm run prisma:seed
