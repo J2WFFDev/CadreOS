@@ -602,6 +602,32 @@ export default async function TeamDetailsPage({
       { programId: team.program.id },
     ],
   };
+  const defaultTeamOperationalSummary: [
+    number,
+    number,
+    number,
+    Array<{
+      id: string;
+      title: string;
+      startsAt: Date;
+      approvalStatus: ApprovalStatus;
+      status: BookingStatus;
+      facility: { id: string; name: string };
+      resource: { id: string; name: string };
+    }>,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    Array<{ id: string; name: string; quantityOnHand: number; quantityMin: number | null }>,
+    { _sum: { quantityDelta: number | null } },
+    { _sum: { quantityDelta: number | null } },
+  ] = [0, 0, 0, [], 0, 0, 0, 0, 0, 0, 0, 0, 0, [], { _sum: { quantityDelta: 0 } }, { _sum: { quantityDelta: 0 } }];
   const [
     teamFieldOpsBookingCount,
     teamFieldOpsPendingApprovals,
@@ -619,24 +645,25 @@ export default async function TeamDetailsPage({
     teamGearLowAvailabilityConsumables,
     teamConsumableUsageAggregate30d,
     teamConsumableReplenishmentAggregate30d,
-  ] =
-    await Promise.all([
+  ] = await (async () => {
+    try {
+      return await Promise.all([
       db.resourceBooking.count({
         where: {
-          organizationId: scope.organizationId,
+          organizationId: scope.organizationId!,
           teamId: team.id,
         },
       }),
       db.resourceBooking.count({
         where: {
-          organizationId: scope.organizationId,
+          organizationId: scope.organizationId!,
           teamId: team.id,
           approvalStatus: ApprovalStatus.PENDING,
         },
       }),
       db.resourceBooking.count({
         where: {
-          organizationId: scope.organizationId,
+          organizationId: scope.organizationId!,
           teamId: team.id,
           conflicts: {
             some: {},
@@ -645,7 +672,7 @@ export default async function TeamDetailsPage({
       }),
       db.resourceBooking.findMany({
         where: {
-          organizationId: scope.organizationId,
+          organizationId: scope.organizationId!,
           teamId: team.id,
           startsAt: {
             gte: now,
@@ -701,7 +728,7 @@ export default async function TeamDetailsPage({
       }),
       db.gearAssignment.count({
         where: {
-          organizationId: scope.organizationId,
+          organizationId: scope.organizationId!,
           status: { in: [GearAssignmentStatus.PENDING, GearAssignmentStatus.ACTIVE, GearAssignmentStatus.OVERDUE] },
           OR: [
             { assignedToTeamId: team.id },
@@ -712,7 +739,7 @@ export default async function TeamDetailsPage({
       }),
       db.gearCheckout.count({
         where: {
-          organizationId: scope.organizationId,
+          organizationId: scope.organizationId!,
           status: { in: [GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE] },
           event: { is: { teamId: team.id } },
           gearItem: { is: teamGearItemWhere },
@@ -744,7 +771,7 @@ export default async function TeamDetailsPage({
       }),
       db.consumableTransaction.aggregate({
         where: {
-          organizationId: scope.organizationId,
+          organizationId: scope.organizationId!,
           recordedAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
           event: { is: { teamId: team.id } },
           gearItem: { is: teamGearItemWhere },
@@ -762,7 +789,7 @@ export default async function TeamDetailsPage({
       }),
       db.consumableTransaction.aggregate({
         where: {
-          organizationId: scope.organizationId,
+          organizationId: scope.organizationId!,
           recordedAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
           event: { is: { teamId: team.id } },
           gearItem: { is: teamGearItemWhere },
@@ -774,7 +801,12 @@ export default async function TeamDetailsPage({
           quantityDelta: true,
         },
       }),
-    ]);
+      ]);
+    } catch (error) {
+      console.error("Team GearOps operational summary failed; rendering with fallback values.", error);
+      return defaultTeamOperationalSummary;
+    }
+  })();
   const teamFieldOpsResourcesInUse = new Set(teamFieldOpsUpcomingBookings.map((booking) => booking.resource.id)).size;
   const teamFieldOpsReadinessConcerns = teamFieldOpsPendingApprovals + teamFieldOpsConflicts;
   const teamConsumableUsageUnits30d = Math.abs(teamConsumableUsageAggregate30d._sum?.quantityDelta ?? 0);
