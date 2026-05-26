@@ -53,6 +53,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Arc 20G Event Gear Planning and Deployment](./PHASE_20G_EVENT_GEAR_PLANNING_AND_DEPLOYMENT.md)
 - [Arc 20H GearOps Operational Dashboards and Reporting](./PHASE_20H_GEAROPS_OPERATIONAL_DASHBOARDS_AND_REPORTING.md)
 - [Arc 20M GearOps Cross-Module Integration Readiness](./PHASE_20M_GEAROPS_CROSS_MODULE_INTEGRATION_READINESS.md)
+- [Arc 20N GearOps Release Candidate Stabilization](./PHASE_20N_GEAROPS_RELEASE_CANDIDATE_STABILIZATION.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)
 - [Phase 16C GearOps Catalog Read-Only Views](./PHASE_16C_GEAROPS_CATALOG_READ_ONLY_VIEWS.md)

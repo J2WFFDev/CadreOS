@@ -14,7 +14,6 @@
 
 import { db } from "@/lib/db";
 import type { GearGuardianApprovalBoundary } from "./types";
-import { formatGuardianApprovalBoundaryMessage, formatGuardianApprovalSummary } from "./types";
 import { resolveGearGuardianReferences } from "./resolver";
 
 // ── Category-level guardian approval check ───────────────────────────────────
