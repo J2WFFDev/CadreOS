@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { BackLink } from "@/components/dashboard/back-link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
@@ -86,12 +88,9 @@ export default async function NewInventoryLocationPage() {
           </div>
 
           <div className="flex justify-end gap-3">
-            <a
-              href="/gear-ops/locations"
-              className="rounded-md border px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            >
+            <Link href="/gear-ops/locations" className="rounded-md border px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800">
               Cancel
-            </a>
+            </Link>
             <button
               type="submit"
               className="rounded-md bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black"

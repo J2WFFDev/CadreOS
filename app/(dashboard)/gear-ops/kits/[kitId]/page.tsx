@@ -150,6 +150,12 @@ export default async function InventoryKitDetailPage({
                 Active
               </span>
             )}
+            <Link
+              href={`/gear-ops/labels?subjectType=INVENTORY_KIT&subjectId=${kit.id}&template=KIT_LOADOUT`}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Print label
+            </Link>
           </div>
         </div>
       </div>

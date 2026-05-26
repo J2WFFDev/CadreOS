@@ -650,6 +650,18 @@ export default async function GearOpsItemDetailsPage({
             >
               Scan center
             </Link>
+            <Link
+              href={`/gear-ops/labels?subjectType=GEAR_ITEM&subjectId=${item.id}&template=${item.inventoryType === GearInventoryType.CONSUMABLE ? "CONSUMABLE" : "INVENTORY_ITEM"}`}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Print label
+            </Link>
+            <Link
+              href={`/gear-ops/labels?subjectType=GEAR_ITEM&subjectId=${item.id}&template=CUSTODY_ASSIGNMENT`}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Custody label
+            </Link>
           </div>
         </div>
       </div>

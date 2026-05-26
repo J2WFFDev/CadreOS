@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
-import { formatGearOpsDateTime, formatGearOpsEnum, getGearLifecycleBadgeClass } from "@/lib/gear-ops";
+import { formatGearOpsEnum, getGearLifecycleBadgeClass } from "@/lib/gear-ops";
 import { resolveInventoryOpsReadAccess } from "@/lib/inventory-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -145,6 +145,12 @@ export default async function InventoryLocationDetailPage({
                 Active
               </span>
             )}
+            <Link
+              href={`/gear-ops/labels?subjectType=INVENTORY_LOCATION&subjectId=${location.id}&template=${location.locationCode ? "INVENTORY_LOCATION" : "TEMPORARY_OPERATIONAL"}`}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Print label
+            </Link>
           </div>
         </div>
       </div>

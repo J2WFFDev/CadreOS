@@ -316,6 +316,15 @@ export default async function GearOpsDashboardPage() {
       <PageHeader title="GearOps" description="Read-only catalog visibility for categories and gear inventory." />
       <GearOpsSubnav current="overview" />
 
+      <div className="flex flex-wrap justify-end gap-2">
+        <Link href="/gear-ops/labels" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+          Labels
+        </Link>
+        <Link href="/gear-ops/scan?scanContext=INVENTORY_LOOKUP" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+          Scan lookup
+        </Link>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label="Total categories" value={summary.totalCategories} href="/gear-ops/categories" />
         <SummaryCard label="Total gear items" value={summary.totalItems} href="/gear-ops/items" />
