@@ -93,6 +93,33 @@ enum EntryType {
   JOURNAL
   HABIT
   OBSERVATION
+  FOLLOW_UP
+  ACTIVITY
+  READINESS_ITEM
+}
+
+enum EntryObjectLinkTargetType {
+  PERSON
+  TEAM
+  PROGRAM
+  SEASON
+  EVENT
+  ATTENDANCE_RECORD
+  FACILITY
+  FACILITY_RESOURCE
+  RESOURCE_BOOKING
+  GEAR_ITEM
+  GEAR_ASSIGNMENT
+  GEAR_CHECKOUT
+  GEAR_MAINTENANCE_LOG
+  FOLLOW_UP_TASK
+  OBSERVATION_NOTE
+}
+
+enum EntryAssignmentRole {
+  OWNER
+  COLLABORATOR
+  REVIEWER
 }
 
 enum EntryVisibility {
@@ -295,6 +322,11 @@ model Organization {
   entries                     Entry[]
   entryLinks                  EntryLink[]
   entryActivities             EntryActivity[]
+  entryObjectLinks            EntryObjectLink[]
+  entryAssignments            EntryAssignment[]
+  entryStatusHistory          EntryStatusHistory[]
+  entryComments               EntryComment[]
+  entryReminders              EntryReminder[]
 }
 
 model Program {
@@ -412,9 +444,16 @@ model Person {
   gearMaintenanceLogs        GearMaintenanceLog[]
   recordedConsumableTransactions ConsumableTransaction[]
   createdEntries             Entry[]                      @relation("EntryCreatedBy")
+  updatedEntries             Entry[]                      @relation("EntryUpdatedBy")
   assignedEntries            Entry[]                      @relation("EntryAssignedTo")
   createdEntryLinks          EntryLink[]                  @relation("EntryLinkCreatedBy")
   entryActivities            EntryActivity[]              @relation("EntryActivityActor")
+  createdEntryObjectLinks    EntryObjectLink[]            @relation("EntryObjectLinkCreatedBy")
+  entryAssignments           EntryAssignment[]            @relation("EntryAssignmentToPerson")
+  givenEntryAssignments      EntryAssignment[]            @relation("EntryAssignmentByPerson")
+  entryStatusChanges         EntryStatusHistory[]         @relation("EntryStatusChangedBy")
+  entryComments              EntryComment[]               @relation("EntryCommentAuthor")
+  entryReminders             EntryReminder[]              @relation("EntryReminderPerson")
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
@@ -539,12 +578,14 @@ model Entry {
   content            String?
   tags               String[]        @default([])
   createdByPersonId  String
+  updatedByPersonId  String?
   assignedToPersonId String?
   visibility         EntryVisibility @default(STAFF_ONLY)
   status             EntryStatus     @default(OPEN)
   priority           EntryPriority   @default(MEDIUM)
   dueDate            DateTime?
   dueTime            String?
+  occurredAt         DateTime?
   startDate          DateTime?
   endDate            DateTime?
   timezone           String?
@@ -564,17 +605,23 @@ model Entry {
   sourceTaskId       String?         @unique
   sourceNoteId       String?         @unique
 
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  team         Team?            @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  createdBy    Person           @relation("EntryCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
-  assignedTo   Person?          @relation("EntryAssignedTo", fields: [assignedToPersonId], references: [id], onDelete: SetNull)
-  parentEntry  Entry?           @relation("EntryParentChild", fields: [parentEntryId], references: [id], onDelete: SetNull)
-  childEntries Entry[]          @relation("EntryParentChild")
-  linkedFrom   EntryLink[]      @relation("EntryLinkFrom")
-  linkedTo     EntryLink[]      @relation("EntryLinkTo")
-  activity     EntryActivity[]
-  sourceTask   FollowUpTask?    @relation("TaskEntry", fields: [sourceTaskId], references: [id], onDelete: SetNull)
-  sourceNote   ObservationNote? @relation("NoteEntry", fields: [sourceNoteId], references: [id], onDelete: SetNull)
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  team          Team?              @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  createdBy     Person             @relation("EntryCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  updatedBy     Person?            @relation("EntryUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+  assignedTo    Person?            @relation("EntryAssignedTo", fields: [assignedToPersonId], references: [id], onDelete: SetNull)
+  parentEntry   Entry?             @relation("EntryParentChild", fields: [parentEntryId], references: [id], onDelete: SetNull)
+  childEntries  Entry[]            @relation("EntryParentChild")
+  linkedFrom    EntryLink[]        @relation("EntryLinkFrom")
+  linkedTo      EntryLink[]        @relation("EntryLinkTo")
+  activity      EntryActivity[]
+  objectLinks   EntryObjectLink[]
+  assignments   EntryAssignment[]
+  statusHistory EntryStatusHistory[]
+  comments      EntryComment[]
+  reminders     EntryReminder[]
+  sourceTask    FollowUpTask?      @relation("TaskEntry", fields: [sourceTaskId], references: [id], onDelete: SetNull)
+  sourceNote    ObservationNote?   @relation("NoteEntry", fields: [sourceNoteId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, type, createdAt])
   @@index([organizationId, status, dueDate])
@@ -617,6 +664,106 @@ model EntryActivity {
 
   @@index([organizationId, entryId, createdAt])
   @@index([organizationId, actorPersonId, createdAt])
+}
+
+// Arc 19A: EntryObjectLink — polymorphic links from entries to CadreOS domain objects
+
+model EntryObjectLink {
+  id                String                    @id @default(cuid())
+  organizationId    String
+  entryId           String
+  targetType        EntryObjectLinkTargetType
+  targetId          String
+  createdByPersonId String
+  createdAt         DateTime                  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  entry        Entry        @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  createdBy    Person       @relation("EntryObjectLinkCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, entryId, targetType, targetId])
+  @@index([organizationId, entryId])
+  @@index([organizationId, targetType, targetId])
+}
+
+// Arc 19A: EntryAssignment — explicit assignment join table for multi-assignee and tracking support
+
+model EntryAssignment {
+  id                 String              @id @default(cuid())
+  organizationId     String
+  entryId            String
+  personId           String
+  role               EntryAssignmentRole @default(OWNER)
+  assignedByPersonId String?
+  assignedAt         DateTime            @default(now())
+  revokedAt          DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  entry        Entry        @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  person       Person       @relation("EntryAssignmentToPerson", fields: [personId], references: [id], onDelete: Restrict)
+  assignedBy   Person?      @relation("EntryAssignmentByPerson", fields: [assignedByPersonId], references: [id], onDelete: SetNull)
+
+  @@unique([entryId, personId, role])
+  @@index([organizationId, entryId])
+  @@index([organizationId, personId])
+}
+
+// Arc 19A: EntryStatusHistory — immutable audit log of status transitions
+
+model EntryStatusHistory {
+  id                String      @id @default(cuid())
+  organizationId    String
+  entryId           String
+  fromStatus        EntryStatus?
+  toStatus          EntryStatus
+  changedByPersonId String?
+  note              String?
+  changedAt         DateTime    @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  entry        Entry        @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  changedBy    Person?      @relation("EntryStatusChangedBy", fields: [changedByPersonId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, entryId, changedAt])
+}
+
+// Arc 19A: EntryComment — deferred placeholder; schema established for future activation
+
+model EntryComment {
+  id             String   @id @default(cuid())
+  organizationId String
+  entryId        String
+  authorPersonId String
+  body           String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  entry        Entry        @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  author       Person       @relation("EntryCommentAuthor", fields: [authorPersonId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, entryId, createdAt])
+}
+
+// Arc 19A: EntryReminder — deferred placeholder; schema established for future activation
+
+model EntryReminder {
+  id             String   @id @default(cuid())
+  organizationId String
+  entryId        String
+  personId       String
+  remindAt       DateTime
+  createdAt      DateTime @default(now())
+  sentAt         DateTime?
+  dismissedAt    DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  entry        Entry        @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  person       Person       @relation("EntryReminderPerson", fields: [personId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, entryId])
+  @@index([organizationId, personId])
 }
 
 model Event {
