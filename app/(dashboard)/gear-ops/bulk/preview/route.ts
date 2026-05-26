@@ -4,10 +4,6 @@ import { previewGearImport, type GearImportMode } from "@/lib/gear-bulk-ops";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 
-function isImportMode(value: string): value is GearImportMode {
-  return value === "CREATE_ONLY" || value === "CREATE_OR_UPDATE";
-}
-
 export async function POST(request: Request) {
   const scope = await getOrganizationScope();
 
@@ -38,7 +34,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "CSV payload is required." }, { status: 400 });
   }
 
-  const mode = isImportMode(body.mode ?? "") ? body.mode : "CREATE_ONLY";
+  const mode: GearImportMode = body.mode === "CREATE_OR_UPDATE" ? "CREATE_OR_UPDATE" : "CREATE_ONLY";
   const preview = await previewGearImport({
     organizationId: scope.organizationId,
     csvText: body.csvText,

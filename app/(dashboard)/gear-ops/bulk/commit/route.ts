@@ -4,10 +4,6 @@ import { commitGearImport, type GearImportMode } from "@/lib/gear-bulk-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isPermissionDeniedError, requirePhase1CMutationPermission } from "@/lib/workflows";
 
-function isImportMode(value: string): value is GearImportMode {
-  return value === "CREATE_ONLY" || value === "CREATE_OR_UPDATE";
-}
-
 export async function POST(request: Request) {
   const scope = await getOrganizationScope();
 
@@ -19,10 +15,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "No organization context is available yet." }, { status: 400 });
   }
 
+  const body = (await request.json().catch(() => null)) as { csvText?: string; mode?: string } | null;
+  const mode: GearImportMode = body?.mode === "CREATE_OR_UPDATE" ? "CREATE_OR_UPDATE" : "CREATE_ONLY";
+
   try {
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
-      action: "gear.bulk.import.commit",
+      action: mode === "CREATE_OR_UPDATE" ? "gearItem.update" : "gearItem.create",
     });
   } catch (error) {
     return NextResponse.json(
@@ -31,13 +30,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = (await request.json().catch(() => null)) as { csvText?: string; mode?: string } | null;
-
   if (!body?.csvText || typeof body.csvText !== "string") {
     return NextResponse.json({ ok: false, error: "CSV payload is required." }, { status: 400 });
   }
-
-  const mode = isImportMode(body.mode ?? "") ? body.mode : "CREATE_ONLY";
   const result = await commitGearImport({
     organizationId: scope.organizationId,
     csvText: body.csvText,

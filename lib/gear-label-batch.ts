@@ -43,8 +43,9 @@ export async function listLabelBatchItems(filter: LabelBatchFilter) {
 
   return Promise.all(
     items.map(async (item) => {
-      const scanValue = item.barcodeValue?.trim() ? `BC:${item.barcodeValue.trim()}` : `ITEM:${item.id}`;
-      const printableValue = item.barcodeValue?.trim() || item.serialNumber?.trim() || item.sku?.trim() || `ITEM-${item.id.slice(-6).toUpperCase()}`;
+      const trimmedBarcodeValue = item.barcodeValue?.trim() || "";
+      const scanValue = trimmedBarcodeValue ? `BC:${trimmedBarcodeValue}` : `ITEM:${item.id}`;
+      const printableValue = trimmedBarcodeValue || item.serialNumber?.trim() || item.sku?.trim() || `ITEM-${item.id.slice(-6).toUpperCase()}`;
       const symbols = await renderLabelSymbols([{ kind: "QR", value: scanValue, label: "QR identifier" }]);
 
       return {

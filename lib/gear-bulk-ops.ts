@@ -440,6 +440,8 @@ export async function previewGearImport(input: {
       continue;
     }
 
+    const issueCountBeforeValidation = issues.length;
+
     const readinessToken = normalizeToken(row.values.readiness_status);
     const readinessState = readinessToken ? READINESS_ALIAS[readinessToken] ?? null : null;
     if (readinessToken && !readinessState) {
@@ -471,8 +473,9 @@ export async function previewGearImport(input: {
           ? GearItemLifecycleStatus.ACTIVE
           : LIFECYCLE_ALIAS[normalizeToken(row.values.active)] ?? GearItemLifecycleStatus.ACTIVE;
 
-    const quantityOnHand = parseOptionalInt(row.values.quantity) ?? (category.inventoryType === "CONSUMABLE" ? -1 : 1);
-    if (category.inventoryType === "CONSUMABLE" && quantityOnHand < 0) {
+    const quantityValue = parseOptionalInt(row.values.quantity);
+    const quantityOnHand = quantityValue ?? (category.inventoryType === "CONSUMABLE" ? 0 : 1);
+    if (category.inventoryType === "CONSUMABLE" && quantityValue === null) {
       issues.push({ rowNumber: row.rowNumber, field: "quantity", message: "Consumables require a valid integer quantity." });
     }
 
@@ -503,6 +506,10 @@ export async function previewGearImport(input: {
       });
     }
 
+    if (issues.length > issueCountBeforeValidation) {
+      continue;
+    }
+
     previewRows.push({
       rowNumber: row.rowNumber,
       action,
@@ -515,7 +522,7 @@ export async function previewGearImport(input: {
       conditionStatus,
       ownershipType,
       readinessState,
-      quantityOnHand: quantityOnHand < 0 ? 0 : quantityOnHand,
+      quantityOnHand,
       quantityMin,
       serialNumber: identifierParts.serialNumber,
       barcodeValue: identifierParts.barcodeValue,
@@ -870,9 +877,9 @@ export async function buildGearExportCsv(input: {
       ["session_id", "audit_id", "audit_name", "started_at", "completed_at", "result_count", "discrepancy_count"],
       ...sessions.map((session) => [
         session.id,
-        session.audit.id,
-        session.audit.name,
-        session.startedAt.toISOString(),
+        session.audit?.id ?? "",
+        session.audit?.name ?? "",
+        session.startedAt?.toISOString() ?? "",
         session.completedAt?.toISOString() ?? "",
         session._count.results,
         session._count.discrepancies,

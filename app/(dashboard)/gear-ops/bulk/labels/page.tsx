@@ -76,9 +76,11 @@ export default async function GearBulkLabelSheetPage({ searchParams }: { searchP
           locationId: locationId || undefined,
           eventId: eventId || undefined,
           itemIds: itemIds
-            .split(",")
-            .map((value) => value.trim())
-            .filter(Boolean),
+            ? itemIds
+                .split(",")
+                .map((value) => value.trim())
+                .filter(Boolean)
+            : [],
         })
       : Promise.resolve([]),
   ]);
