@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum OrgStatus {
@@ -427,6 +427,21 @@ enum ConsumableTransactionType {
   ADJUSTED
 }
 
+enum EventGearPlanStatus {
+  DRAFT
+  READY_TO_STAGE
+  STAGED
+  DEPLOYED
+  RECOVERING
+  COMPLETED
+}
+
+enum EventGearRequirementType {
+  REQUIRED
+  OPTIONAL
+  SUPPORT
+}
+
 // Arc 19E: Workflow orchestration enums
 
 enum WorkflowTemplateType {
@@ -484,59 +499,62 @@ model Organization {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  programs                    Program[]
-  people                      Person[]
-  users                       UserAccount[]
-  teams                       Team[]
-  seasons                     Season[]
-  roleAssignments             RoleAssignment[]
+  programs                     Program[]
+  people                       Person[]
+  users                        UserAccount[]
+  teams                        Team[]
+  seasons                      Season[]
+  roleAssignments              RoleAssignment[]
   athleteGuardianRelationships AthleteGuardianRelationship[]
-  rosterMemberships           RosterMembership[]
-  observationNotes            ObservationNote[]
-  events                      Event[]
-  rsvps                       RSVP[]
-  attendanceRecords           AttendanceRecord[]
-  followUpTasks               FollowUpTask[]
-  entryRuntimeRefs            EntryRuntimeRef[]
-  inboxRoutingItems           InboxRoutingItem[]
-  auditEvents                 AuditEvent[]
-  facilities                  Facility[]
-  facilityResources           FacilityResource[]
-  resourceBookings            ResourceBooking[]
-  bookingConflicts            BookingConflict[]
-  gearCategories              GearCategory[]
-  gearItems                   GearItem[]
-  gearAssignments             GearAssignment[]
-  gearCheckouts               GearCheckout[]
-  gearMaintenanceLogs         GearMaintenanceLog[]
-  consumableTransactions      ConsumableTransaction[]
-  inventoryLocations          InventoryLocation[]
-  inventoryMovements          InventoryMovement[]
-  inventoryKits               InventoryKit[]
-  inventoryKitItems           InventoryKitItem[]
-  inventoryScanEvents         InventoryScanEvent[]
-  inventoryAudits             InventoryAudit[]
-  inventoryAuditSessions      InventoryAuditSession[]
-  inventoryAuditResults       InventoryAuditResult[]
-  inventoryAuditDiscrepancies InventoryAuditDiscrepancy[]
-  inventoryAuditCheckpoints   InventoryAuditCheckpoint[]
-  entries                     Entry[]
-  entryLinks                  EntryLink[]
-  entryActivities             EntryActivity[]
-  entryObjectLinks            EntryObjectLink[]
-  entryAssignments            EntryAssignment[]
-  entryStatusHistory          EntryStatusHistory[]
-  entryComments               EntryComment[]
-  entryReminders              EntryReminder[]
-  operationalRelationships    OperationalRelationship[]
-  workflowTemplates           WorkflowTemplate[]
-  workflowRuns                WorkflowRun[]
-  workflowStepEntries         WorkflowStepEntry[]
-  awarenessEvents             AwarenessEvent[]
-  notifications               Notification[]
-  notificationReadStates      NotificationReadState[]
-  notificationPreferences     NotificationPreference[]
-  notificationDigests         NotificationDigest[]
+  rosterMemberships            RosterMembership[]
+  observationNotes             ObservationNote[]
+  events                       Event[]
+  rsvps                        RSVP[]
+  attendanceRecords            AttendanceRecord[]
+  followUpTasks                FollowUpTask[]
+  entryRuntimeRefs             EntryRuntimeRef[]
+  inboxRoutingItems            InboxRoutingItem[]
+  auditEvents                  AuditEvent[]
+  facilities                   Facility[]
+  facilityResources            FacilityResource[]
+  resourceBookings             ResourceBooking[]
+  bookingConflicts             BookingConflict[]
+  gearCategories               GearCategory[]
+  gearItems                    GearItem[]
+  gearAssignments              GearAssignment[]
+  gearCheckouts                GearCheckout[]
+  gearMaintenanceLogs          GearMaintenanceLog[]
+  consumableTransactions       ConsumableTransaction[]
+  eventGearPlans               EventGearPlan[]
+  eventGearRequirements        EventGearRequirement[]
+  eventGearAssignments         EventGearAssignment[]
+  inventoryLocations           InventoryLocation[]
+  inventoryMovements           InventoryMovement[]
+  inventoryKits                InventoryKit[]
+  inventoryKitItems            InventoryKitItem[]
+  inventoryScanEvents          InventoryScanEvent[]
+  inventoryAudits              InventoryAudit[]
+  inventoryAuditSessions       InventoryAuditSession[]
+  inventoryAuditResults        InventoryAuditResult[]
+  inventoryAuditDiscrepancies  InventoryAuditDiscrepancy[]
+  inventoryAuditCheckpoints    InventoryAuditCheckpoint[]
+  entries                      Entry[]
+  entryLinks                   EntryLink[]
+  entryActivities              EntryActivity[]
+  entryObjectLinks             EntryObjectLink[]
+  entryAssignments             EntryAssignment[]
+  entryStatusHistory           EntryStatusHistory[]
+  entryComments                EntryComment[]
+  entryReminders               EntryReminder[]
+  operationalRelationships     OperationalRelationship[]
+  workflowTemplates            WorkflowTemplate[]
+  workflowRuns                 WorkflowRun[]
+  workflowStepEntries          WorkflowStepEntry[]
+  awarenessEvents              AwarenessEvent[]
+  notifications                Notification[]
+  notificationReadStates       NotificationReadState[]
+  notificationPreferences      NotificationPreference[]
+  notificationDigests          NotificationDigest[]
 }
 
 model Program {
@@ -546,17 +564,17 @@ model Program {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  teams        Team[]
-  seasons      Season[]
-  roles        RoleAssignment[]
-  events       Event[]
-  auditEvents  AuditEvent[]
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  teams            Team[]
+  seasons          Season[]
+  roles            RoleAssignment[]
+  events           Event[]
+  auditEvents      AuditEvent[]
   resourceBookings ResourceBooking[]
-  gearItems    GearItem[]
+  gearItems        GearItem[]
 
-  @@index([organizationId])
   @@unique([organizationId, name])
+  @@index([organizationId])
 }
 
 model Team {
@@ -567,37 +585,37 @@ model Team {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  program      Program      @relation(fields: [programId], references: [id], onDelete: Restrict)
-  roles        RoleAssignment[]
-  roster       RosterMembership[]
-  notes        ObservationNote[]
-  events       Event[]
-  auditEvents  AuditEvent[]
+  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  program          Program            @relation(fields: [programId], references: [id], onDelete: Restrict)
+  roles            RoleAssignment[]
+  roster           RosterMembership[]
+  notes            ObservationNote[]
+  events           Event[]
+  auditEvents      AuditEvent[]
   resourceBookings ResourceBooking[]
-  gearAssignments GearAssignment[]
-  entries      Entry[]
+  gearAssignments  GearAssignment[]
+  entries          Entry[]
 
-  @@index([organizationId, programId])
   @@unique([programId, name])
+  @@index([organizationId, programId])
 }
 
 model Season {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   programId      String
   name           String
   startDate      DateTime?
   endDate        DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  program      Program      @relation(fields: [programId], references: [id], onDelete: Restrict)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  program      Program            @relation(fields: [programId], references: [id], onDelete: Restrict)
   roster       RosterMembership[]
 
-  @@index([organizationId, programId])
   @@unique([programId, name])
+  @@index([organizationId, programId])
 }
 
 model UserAccount {
@@ -615,73 +633,78 @@ model UserAccount {
 }
 
 model Person {
-  id             String   @id @default(cuid())
-  organizationId String
+  id              String                @id @default(cuid())
+  organizationId  String
   lifecycleStatus MemberLifecycleStatus @default(ACTIVE)
-  firstName      String
-  lastName       String
-  email          String?
-  phone          String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
 
-  organization               Organization                  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  userAccounts               UserAccount[]
-  roles                      RoleAssignment[]
-  roster                     RosterMembership[]
-  authoredNotes              ObservationNote[]            @relation("NoteAuthor")
-  athleteNotes               ObservationNote[]            @relation("NoteAthlete")
-  eventRsvps                 RSVP[]
-  attendance                 AttendanceRecord[]           @relation("AttendancePerson")
-  markedAttendanceRecords    AttendanceRecord[]           @relation("AttendanceMarkedBy")
-  assignedTasks              FollowUpTask[]               @relation("TaskAssignee")
-  createdTasks               FollowUpTask[]               @relation("TaskCreator")
-  authoredEntryRuntimeRefs   EntryRuntimeRef[]            @relation("EntryRuntimeRefAuthor")
-  guardianLinks              AthleteGuardianRelationship[] @relation("GuardianSide")
-  athleteLinks               AthleteGuardianRelationship[] @relation("AthleteSide")
-  ownedInboxRoutingItems     InboxRoutingItem[]           @relation("InboxOwner")
-  createdInboxRoutingItems   InboxRoutingItem[]           @relation("InboxCreatedBy")
-  createdEvents              Event[]                      @relation("EventCreatedBy")
-  actorAuditEvents           AuditEvent[]                 @relation("AuditActor")
-  requestedBookings          ResourceBooking[]            @relation("BookingRequestedBy")
-  approvedBookings           ResourceBooking[]            @relation("BookingApprovedBy")
-  assignedGear               GearAssignment[]             @relation("GearAssignmentToPerson")
-  createdGearAssignments     GearAssignment[]             @relation("GearAssignmentByPerson")
-  checkedOutGear             GearCheckout[]               @relation("GearCheckoutTakenBy")
-  issuedGear                 GearCheckout[]               @relation("GearCheckoutIssuedBy")
-  returnedGear               GearCheckout[]               @relation("GearCheckoutReturnedBy")
-  receivedGear               GearCheckout[]               @relation("GearCheckoutReceivedBy")
-  gearMaintenanceLogs        GearMaintenanceLog[]
-  recordedConsumableTransactions ConsumableTransaction[]
-  createdEntries             Entry[]                      @relation("EntryCreatedBy")
-  updatedEntries             Entry[]                      @relation("EntryUpdatedBy")
-  assignedEntries            Entry[]                      @relation("EntryAssignedTo")
-  createdEntryLinks          EntryLink[]                  @relation("EntryLinkCreatedBy")
-  entryActivities            EntryActivity[]              @relation("EntryActivityActor")
-  createdEntryObjectLinks    EntryObjectLink[]            @relation("EntryObjectLinkCreatedBy")
-  entryAssignments           EntryAssignment[]            @relation("EntryAssignmentToPerson")
-  givenEntryAssignments      EntryAssignment[]            @relation("EntryAssignmentByPerson")
-  entryStatusChanges         EntryStatusHistory[]         @relation("EntryStatusChangedBy")
-  entryComments              EntryComment[]               @relation("EntryCommentAuthor")
-  entryReminders             EntryReminder[]              @relation("EntryReminderPerson")
-  createdOperationalRelationships OperationalRelationship[] @relation("OperationalRelationshipCreatedBy")
-  createdWorkflowTemplates   WorkflowTemplate[]           @relation("WorkflowTemplateCreatedBy")
-  startedWorkflowRuns        WorkflowRun[]                @relation("WorkflowRunStartedBy")
-  awarenessEvents            AwarenessEvent[]             @relation("AwarenessEventActor")
-  notificationReadStates     NotificationReadState[]
-  notificationPreferences    NotificationPreference[]
-  notificationDigests        NotificationDigest[]
-  actorInventoryMovements    InventoryMovement[]          @relation("InventoryMovementActor")
-  custodyInventoryMovements  InventoryMovement[]          @relation("InventoryMovementCustody")
-  ownedInventoryKits         InventoryKit[]               @relation("InventoryKitOwner")
-  inventoryScanEvents        InventoryScanEvent[]         @relation("InventoryScanEventActor")
-  createdInventoryAudits     InventoryAudit[]             @relation("InventoryAuditCreatedBy")
-  startedInventoryAuditSessions InventoryAuditSession[]   @relation("InventoryAuditSessionStartedBy")
-  completedInventoryAuditSessions InventoryAuditSession[] @relation("InventoryAuditSessionCompletedBy")
-  verifiedInventoryAuditResults InventoryAuditResult[]    @relation("InventoryAuditResultVerifiedBy")
-  resolvedInventoryAuditDiscrepancies InventoryAuditDiscrepancy[] @relation("InventoryAuditDiscrepancyResolvedBy")
-  expectedCustodyInventoryAuditResults InventoryAuditResult[] @relation("InventoryAuditExpectedCustody")
-  observedCustodyInventoryAuditResults InventoryAuditResult[] @relation("InventoryAuditObservedCustody")
+  organization                         Organization                  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  userAccounts                         UserAccount[]
+  roles                                RoleAssignment[]
+  roster                               RosterMembership[]
+  authoredNotes                        ObservationNote[]             @relation("NoteAuthor")
+  athleteNotes                         ObservationNote[]             @relation("NoteAthlete")
+  eventRsvps                           RSVP[]
+  attendance                           AttendanceRecord[]            @relation("AttendancePerson")
+  markedAttendanceRecords              AttendanceRecord[]            @relation("AttendanceMarkedBy")
+  assignedTasks                        FollowUpTask[]                @relation("TaskAssignee")
+  createdTasks                         FollowUpTask[]                @relation("TaskCreator")
+  authoredEntryRuntimeRefs             EntryRuntimeRef[]             @relation("EntryRuntimeRefAuthor")
+  guardianLinks                        AthleteGuardianRelationship[] @relation("GuardianSide")
+  athleteLinks                         AthleteGuardianRelationship[] @relation("AthleteSide")
+  ownedInboxRoutingItems               InboxRoutingItem[]            @relation("InboxOwner")
+  createdInboxRoutingItems             InboxRoutingItem[]            @relation("InboxCreatedBy")
+  createdEvents                        Event[]                       @relation("EventCreatedBy")
+  actorAuditEvents                     AuditEvent[]                  @relation("AuditActor")
+  requestedBookings                    ResourceBooking[]             @relation("BookingRequestedBy")
+  approvedBookings                     ResourceBooking[]             @relation("BookingApprovedBy")
+  assignedGear                         GearAssignment[]              @relation("GearAssignmentToPerson")
+  createdGearAssignments               GearAssignment[]              @relation("GearAssignmentByPerson")
+  checkedOutGear                       GearCheckout[]                @relation("GearCheckoutTakenBy")
+  issuedGear                           GearCheckout[]                @relation("GearCheckoutIssuedBy")
+  returnedGear                         GearCheckout[]                @relation("GearCheckoutReturnedBy")
+  receivedGear                         GearCheckout[]                @relation("GearCheckoutReceivedBy")
+  gearMaintenanceLogs                  GearMaintenanceLog[]
+  recordedConsumableTransactions       ConsumableTransaction[]
+  createdEventGearPlans                EventGearPlan[]               @relation("EventGearPlanCreatedBy")
+  preparedEventGearPlans               EventGearPlan[]               @relation("EventGearPlanPreparedBy")
+  createdEventGearAssignments          EventGearAssignment[]         @relation("EventGearAssignmentCreatedBy")
+  stagedEventGearAssignments           EventGearAssignment[]         @relation("EventGearAssignmentStagedBy")
+  recoveredEventGearAssignments        EventGearAssignment[]         @relation("EventGearAssignmentRecoveredBy")
+  createdEntries                       Entry[]                       @relation("EntryCreatedBy")
+  updatedEntries                       Entry[]                       @relation("EntryUpdatedBy")
+  assignedEntries                      Entry[]                       @relation("EntryAssignedTo")
+  createdEntryLinks                    EntryLink[]                   @relation("EntryLinkCreatedBy")
+  entryActivities                      EntryActivity[]               @relation("EntryActivityActor")
+  createdEntryObjectLinks              EntryObjectLink[]             @relation("EntryObjectLinkCreatedBy")
+  entryAssignments                     EntryAssignment[]             @relation("EntryAssignmentToPerson")
+  givenEntryAssignments                EntryAssignment[]             @relation("EntryAssignmentByPerson")
+  entryStatusChanges                   EntryStatusHistory[]          @relation("EntryStatusChangedBy")
+  entryComments                        EntryComment[]                @relation("EntryCommentAuthor")
+  entryReminders                       EntryReminder[]               @relation("EntryReminderPerson")
+  createdOperationalRelationships      OperationalRelationship[]     @relation("OperationalRelationshipCreatedBy")
+  createdWorkflowTemplates             WorkflowTemplate[]            @relation("WorkflowTemplateCreatedBy")
+  startedWorkflowRuns                  WorkflowRun[]                 @relation("WorkflowRunStartedBy")
+  awarenessEvents                      AwarenessEvent[]              @relation("AwarenessEventActor")
+  notificationReadStates               NotificationReadState[]
+  notificationPreferences              NotificationPreference[]
+  notificationDigests                  NotificationDigest[]
+  actorInventoryMovements              InventoryMovement[]           @relation("InventoryMovementActor")
+  custodyInventoryMovements            InventoryMovement[]           @relation("InventoryMovementCustody")
+  ownedInventoryKits                   InventoryKit[]                @relation("InventoryKitOwner")
+  inventoryScanEvents                  InventoryScanEvent[]          @relation("InventoryScanEventActor")
+  createdInventoryAudits               InventoryAudit[]              @relation("InventoryAuditCreatedBy")
+  startedInventoryAuditSessions        InventoryAuditSession[]       @relation("InventoryAuditSessionStartedBy")
+  completedInventoryAuditSessions      InventoryAuditSession[]       @relation("InventoryAuditSessionCompletedBy")
+  verifiedInventoryAuditResults        InventoryAuditResult[]        @relation("InventoryAuditResultVerifiedBy")
+  resolvedInventoryAuditDiscrepancies  InventoryAuditDiscrepancy[]   @relation("InventoryAuditDiscrepancyResolvedBy")
+  expectedCustodyInventoryAuditResults InventoryAuditResult[]        @relation("InventoryAuditExpectedCustody")
+  observedCustodyInventoryAuditResults InventoryAuditResult[]        @relation("InventoryAuditObservedCustody")
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
@@ -704,9 +727,9 @@ model RoleAssignment {
   program      Program?     @relation(fields: [programId], references: [id], onDelete: Restrict)
   team         Team?        @relation(fields: [teamId], references: [id], onDelete: Restrict)
 
+  @@unique([personId, roleType, scopeType, programId, teamId])
   @@index([organizationId, personId])
   @@index([organizationId, roleType, scopeType])
-  @@unique([personId, roleType, scopeType, programId, teamId])
 }
 
 model AthleteGuardianRelationship {
@@ -722,9 +745,9 @@ model AthleteGuardianRelationship {
   athlete      Person       @relation("AthleteSide", fields: [athletePersonId], references: [id], onDelete: Cascade)
   guardian     Person       @relation("GuardianSide", fields: [guardianPersonId], references: [id], onDelete: Cascade)
 
+  @@unique([organizationId, athletePersonId, guardianPersonId, relationshipType])
   @@index([organizationId, athletePersonId])
   @@index([organizationId, guardianPersonId])
-  @@unique([organizationId, athletePersonId, guardianPersonId, relationshipType])
 }
 
 model RosterMembership {
@@ -742,9 +765,9 @@ model RosterMembership {
   season       Season       @relation(fields: [seasonId], references: [id], onDelete: Restrict)
   person       Person       @relation(fields: [personId], references: [id], onDelete: Restrict)
 
+  @@unique([teamId, seasonId, personId])
   @@index([organizationId, teamId, seasonId])
   @@index([organizationId, personId])
-  @@unique([teamId, seasonId, personId])
 }
 
 model ObservationNote {
@@ -759,13 +782,13 @@ model ObservationNote {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  author       Person       @relation("NoteAuthor", fields: [authorPersonId], references: [id], onDelete: Restrict)
-  athlete      Person?      @relation("NoteAthlete", fields: [athletePersonId], references: [id], onDelete: SetNull)
-  team         Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  author       Person         @relation("NoteAuthor", fields: [authorPersonId], references: [id], onDelete: Restrict)
+  athlete      Person?        @relation("NoteAthlete", fields: [athletePersonId], references: [id], onDelete: SetNull)
+  team         Team?          @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  event        Event?         @relation(fields: [eventId], references: [id], onDelete: SetNull)
   tasks        FollowUpTask[]
-  entry        Entry?       @relation("NoteEntry")
+  entry        Entry?         @relation("NoteEntry")
 
   @@index([organizationId, createdAt])
   @@index([organizationId, athletePersonId, createdAt])
@@ -773,18 +796,18 @@ model ObservationNote {
 }
 
 model EntryRuntimeRef {
-  id               String                          @id @default(cuid())
-  organizationId   String
-  sourceModelType  EntryRuntimeSourceModelType
-  sourceModelId    String
-  entryKind        EntryRuntimeKind
-  authorPersonId   String
-  visibilityClass  EntryRuntimeVisibilityClass
-  athletePersonId  String?
-  teamId           String?
-  eventId          String?
-  createdAt        DateTime                        @default(now())
-  updatedAt        DateTime                        @updatedAt
+  id              String                      @id @default(cuid())
+  organizationId  String
+  sourceModelType EntryRuntimeSourceModelType
+  sourceModelId   String
+  entryKind       EntryRuntimeKind
+  authorPersonId  String
+  visibilityClass EntryRuntimeVisibilityClass
+  athletePersonId String?
+  teamId          String?
+  eventId         String?
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   author       Person       @relation("EntryRuntimeRefAuthor", fields: [authorPersonId], references: [id], onDelete: Restrict)
@@ -833,23 +856,23 @@ model Entry {
   sourceTaskId       String?         @unique
   sourceNoteId       String?         @unique
 
-  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  team          Team?              @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  createdBy     Person             @relation("EntryCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
-  updatedBy     Person?            @relation("EntryUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
-  assignedTo    Person?            @relation("EntryAssignedTo", fields: [assignedToPersonId], references: [id], onDelete: SetNull)
-  parentEntry   Entry?             @relation("EntryParentChild", fields: [parentEntryId], references: [id], onDelete: SetNull)
-  childEntries  Entry[]            @relation("EntryParentChild")
-  linkedFrom    EntryLink[]        @relation("EntryLinkFrom")
-  linkedTo      EntryLink[]        @relation("EntryLinkTo")
-  activity      EntryActivity[]
-  objectLinks   EntryObjectLink[]
-  assignments   EntryAssignment[]
-  statusHistory EntryStatusHistory[]
-  comments      EntryComment[]
-  reminders     EntryReminder[]
-  sourceTask    FollowUpTask?      @relation("TaskEntry", fields: [sourceTaskId], references: [id], onDelete: SetNull)
-  sourceNote    ObservationNote?   @relation("NoteEntry", fields: [sourceNoteId], references: [id], onDelete: SetNull)
+  organization         Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  team                 Team?                @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  createdBy            Person               @relation("EntryCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  updatedBy            Person?              @relation("EntryUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+  assignedTo           Person?              @relation("EntryAssignedTo", fields: [assignedToPersonId], references: [id], onDelete: SetNull)
+  parentEntry          Entry?               @relation("EntryParentChild", fields: [parentEntryId], references: [id], onDelete: SetNull)
+  childEntries         Entry[]              @relation("EntryParentChild")
+  linkedFrom           EntryLink[]          @relation("EntryLinkFrom")
+  linkedTo             EntryLink[]          @relation("EntryLinkTo")
+  activity             EntryActivity[]
+  objectLinks          EntryObjectLink[]
+  assignments          EntryAssignment[]
+  statusHistory        EntryStatusHistory[]
+  comments             EntryComment[]
+  reminders            EntryReminder[]
+  sourceTask           FollowUpTask?        @relation("TaskEntry", fields: [sourceTaskId], references: [id], onDelete: SetNull)
+  sourceNote           ObservationNote?     @relation("NoteEntry", fields: [sourceNoteId], references: [id], onDelete: SetNull)
   anchoredWorkflowRuns WorkflowRun[]
   workflowStepEntry    WorkflowStepEntry?
   awarenessEvents      AwarenessEvent[]
@@ -966,14 +989,14 @@ model EntryAssignment {
 // Arc 19A: EntryStatusHistory — immutable audit log of status transitions
 
 model EntryStatusHistory {
-  id                String      @id @default(cuid())
+  id                String       @id @default(cuid())
   organizationId    String
   entryId           String
   fromStatus        EntryStatus?
   toStatus          EntryStatus
   changedByPersonId String?
   note              String?
-  changedAt         DateTime    @default(now())
+  changedAt         DateTime     @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   entry        Entry        @relation(fields: [entryId], references: [id], onDelete: Cascade)
@@ -985,13 +1008,13 @@ model EntryStatusHistory {
 // Arc 19A: EntryComment — deferred placeholder; schema established for future activation
 
 model EntryComment {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   entryId        String
   authorPersonId String
   body           String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
@@ -1004,12 +1027,12 @@ model EntryComment {
 // Arc 19A: EntryReminder — deferred placeholder; schema established for future activation
 
 model EntryReminder {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   entryId        String
   personId       String
   remindAt       DateTime
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
   sentAt         DateTime?
   dismissedAt    DateTime?
 
@@ -1036,19 +1059,20 @@ model Event {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  program      Program      @relation(fields: [programId], references: [id], onDelete: Restrict)
-  team         Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  createdBy    Person       @relation("EventCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
-  rsvps        RSVP[]
-  attendance   AttendanceRecord[]
-  notes        ObservationNote[]
-  tasks        FollowUpTask[]
-  resourceBookings ResourceBooking[]
-  gearAssignments GearAssignment[]
-  gearCheckouts   GearCheckout[]
+  organization           Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  program                Program                 @relation(fields: [programId], references: [id], onDelete: Restrict)
+  team                   Team?                   @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  createdBy              Person                  @relation("EventCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  rsvps                  RSVP[]
+  attendance             AttendanceRecord[]
+  notes                  ObservationNote[]
+  tasks                  FollowUpTask[]
+  resourceBookings       ResourceBooking[]
+  gearAssignments        GearAssignment[]
+  gearCheckouts          GearCheckout[]
   consumableTransactions ConsumableTransaction[]
-  awarenessEvents AwarenessEvent[]
+  gearPlan               EventGearPlan?
+  awarenessEvents        AwarenessEvent[]
 
   @@index([organizationId, startsAt])
   @@index([organizationId, teamId, startsAt])
@@ -1069,9 +1093,9 @@ model RSVP {
   event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
   person       Person       @relation(fields: [personId], references: [id], onDelete: Restrict)
 
+  @@unique([eventId, personId])
   @@index([organizationId, eventId])
   @@index([organizationId, personId])
-  @@unique([eventId, personId])
 }
 
 model AttendanceRecord {
@@ -1091,9 +1115,9 @@ model AttendanceRecord {
   person       Person       @relation("AttendancePerson", fields: [personId], references: [id], onDelete: Restrict)
   markedBy     Person       @relation("AttendanceMarkedBy", fields: [markedByPersonId], references: [id], onDelete: Restrict)
 
+  @@unique([eventId, personId])
   @@index([organizationId, eventId])
   @@index([organizationId, personId])
-  @@unique([eventId, personId])
 }
 
 model FollowUpTask {
@@ -1111,13 +1135,13 @@ model FollowUpTask {
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 
-  organization  Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  assignee      Person           @relation("TaskAssignee", fields: [assigneePersonId], references: [id], onDelete: Restrict)
-  createdBy     Person           @relation("TaskCreator", fields: [createdByPersonId], references: [id], onDelete: Restrict)
-  sourceNote    ObservationNote? @relation(fields: [sourceNoteId], references: [id], onDelete: SetNull)
-  sourceEvent   Event?           @relation(fields: [sourceEventId], references: [id], onDelete: SetNull)
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignee        Person            @relation("TaskAssignee", fields: [assigneePersonId], references: [id], onDelete: Restrict)
+  createdBy       Person            @relation("TaskCreator", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  sourceNote      ObservationNote?  @relation(fields: [sourceNoteId], references: [id], onDelete: SetNull)
+  sourceEvent     Event?            @relation(fields: [sourceEventId], references: [id], onDelete: SetNull)
   sourceInboxItem InboxRoutingItem? @relation(fields: [sourceInboxItemId], references: [id], onDelete: SetNull)
-  entry         Entry?           @relation("TaskEntry")
+  entry           Entry?            @relation("TaskEntry")
 
   @@index([organizationId, assigneePersonId, status, dueAt])
 }
@@ -1135,9 +1159,9 @@ model InboxRoutingItem {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  owner        Person?       @relation("InboxOwner", fields: [ownerPersonId], references: [id], onDelete: SetNull)
-  createdBy    Person        @relation("InboxCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  owner        Person?        @relation("InboxOwner", fields: [ownerPersonId], references: [id], onDelete: SetNull)
+  createdBy    Person         @relation("InboxCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
   tasks        FollowUpTask[]
 
   @@index([organizationId, status, priority])
@@ -1184,7 +1208,7 @@ model Facility {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   resources    FacilityResource[]
   bookings     ResourceBooking[]
 
@@ -1204,8 +1228,8 @@ model FacilityResource {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  facility     Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  facility     Facility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   bookings     ResourceBooking[]
 
   @@index([organizationId])
@@ -1234,15 +1258,15 @@ model ResourceBooking {
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  facility     Facility         @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  resource     FacilityResource @relation(fields: [resourceId], references: [id], onDelete: Restrict)
-  program      Program?         @relation(fields: [programId], references: [id], onDelete: SetNull)
-  team         Team?            @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  event        Event?           @relation(fields: [eventId], references: [id], onDelete: SetNull)
-  requestedBy  Person           @relation("BookingRequestedBy", fields: [requestedByPersonId], references: [id], onDelete: Restrict)
-  approvedBy   Person?          @relation("BookingApprovedBy", fields: [approvedByPersonId], references: [id], onDelete: SetNull)
-  conflicts    BookingConflict[] @relation("BookingConflicts")
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  facility         Facility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  resource         FacilityResource  @relation(fields: [resourceId], references: [id], onDelete: Restrict)
+  program          Program?          @relation(fields: [programId], references: [id], onDelete: SetNull)
+  team             Team?             @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  event            Event?            @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  requestedBy      Person            @relation("BookingRequestedBy", fields: [requestedByPersonId], references: [id], onDelete: Restrict)
+  approvedBy       Person?           @relation("BookingApprovedBy", fields: [approvedByPersonId], references: [id], onDelete: SetNull)
+  conflicts        BookingConflict[] @relation("BookingConflicts")
   relatedConflicts BookingConflict[] @relation("RelatedBookingConflicts")
 
   @@index([organizationId])
@@ -1266,8 +1290,8 @@ model BookingConflict {
   createdAt        DateTime         @default(now())
   resolvedAt       DateTime?
 
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  booking        ResourceBooking @relation("BookingConflicts", fields: [bookingId], references: [id], onDelete: Cascade)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  booking        ResourceBooking  @relation("BookingConflicts", fields: [bookingId], references: [id], onDelete: Cascade)
   relatedBooking ResourceBooking? @relation("RelatedBookingConflicts", fields: [relatedBookingId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
@@ -1287,54 +1311,56 @@ model GearCategory {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  gearItems     GearItem[]
+  organization          Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  gearItems             GearItem[]
+  eventGearRequirements EventGearRequirement[]
 
-  @@index([organizationId, inventoryType])
   @@unique([organizationId, name])
+  @@index([organizationId, inventoryType])
 }
 
 model GearItem {
-  id                  String                   @id @default(cuid())
-  organizationId      String
-  programId           String?
-  gearCategoryId      String
-  name                String
-  inventoryType       GearInventoryType
-  sku                 String?
-  serialNumber        String?
-  quantityOnHand      Int                      @default(0)
-  quantityMin         Int?
-  lifecycleStatus     GearItemLifecycleStatus  @default(ACTIVE)
-  conditionStatus     GearConditionStatus?
-  ownershipType       InventoryOwnershipType?
-  readinessState      InventoryReadinessState?
-  locationId          String?
-  barcodeValue        String?
-  notes               String?
-  createdAt           DateTime                 @default(now())
-  updatedAt           DateTime                 @updatedAt
+  id              String                   @id @default(cuid())
+  organizationId  String
+  programId       String?
+  gearCategoryId  String
+  name            String
+  inventoryType   GearInventoryType
+  sku             String?
+  serialNumber    String?
+  quantityOnHand  Int                      @default(0)
+  quantityMin     Int?
+  lifecycleStatus GearItemLifecycleStatus  @default(ACTIVE)
+  conditionStatus GearConditionStatus?
+  ownershipType   InventoryOwnershipType?
+  readinessState  InventoryReadinessState?
+  locationId      String?
+  barcodeValue    String?
+  notes           String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
-  organization           Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  program                Program?                @relation(fields: [programId], references: [id], onDelete: SetNull)
-  category               GearCategory            @relation(fields: [gearCategoryId], references: [id], onDelete: Restrict)
-  location               InventoryLocation?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  assignments            GearAssignment[]
-  checkouts              GearCheckout[]
-  maintenanceLogs        GearMaintenanceLog[]
-  consumableTransactions ConsumableTransaction[]
-  inventoryMovements     InventoryMovement[]
-  kitItems               InventoryKitItem[]
-  scanEvents             InventoryScanEvent[]
+  organization                Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  program                     Program?                    @relation(fields: [programId], references: [id], onDelete: SetNull)
+  category                    GearCategory                @relation(fields: [gearCategoryId], references: [id], onDelete: Restrict)
+  location                    InventoryLocation?          @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  assignments                 GearAssignment[]
+  checkouts                   GearCheckout[]
+  maintenanceLogs             GearMaintenanceLog[]
+  consumableTransactions      ConsumableTransaction[]
+  eventGearAssignments        EventGearAssignment[]
+  inventoryMovements          InventoryMovement[]
+  kitItems                    InventoryKitItem[]
+  scanEvents                  InventoryScanEvent[]
   inventoryAuditResults       InventoryAuditResult[]
   inventoryAuditDiscrepancies InventoryAuditDiscrepancy[]
 
+  @@unique([organizationId, serialNumber])
   @@index([organizationId, gearCategoryId])
   @@index([organizationId, programId])
   @@index([organizationId, inventoryType, lifecycleStatus])
   @@index([organizationId, locationId])
   @@index([organizationId, readinessState])
-  @@unique([organizationId, serialNumber])
 }
 
 model GearAssignment {
@@ -1353,12 +1379,12 @@ model GearAssignment {
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  gearItem      GearItem      @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
-  assignedTo    Person?       @relation("GearAssignmentToPerson", fields: [assignedToPersonId], references: [id], onDelete: SetNull)
-  assignedTeam  Team?         @relation(fields: [assignedToTeamId], references: [id], onDelete: SetNull)
-  assignedEvent Event?        @relation(fields: [assignedToEventId], references: [id], onDelete: SetNull)
-  assignedBy    Person        @relation("GearAssignmentByPerson", fields: [assignedByPersonId], references: [id], onDelete: Restrict)
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  gearItem      GearItem     @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  assignedTo    Person?      @relation("GearAssignmentToPerson", fields: [assignedToPersonId], references: [id], onDelete: SetNull)
+  assignedTeam  Team?        @relation(fields: [assignedToTeamId], references: [id], onDelete: SetNull)
+  assignedEvent Event?       @relation(fields: [assignedToEventId], references: [id], onDelete: SetNull)
+  assignedBy    Person       @relation("GearAssignmentByPerson", fields: [assignedByPersonId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, gearItemId, status])
   @@index([organizationId, assignedToPersonId, status])
@@ -1368,31 +1394,31 @@ model GearAssignment {
 }
 
 model GearCheckout {
-  id                 String             @id @default(cuid())
-  organizationId     String
-  gearItemId         String
-  eventId            String?
-  checkedOutById     String
-  issuedById         String
-  returnedById       String?
-  receivedById       String?
-  checkedOutAt       DateTime           @default(now())
-  expectedReturnAt   DateTime?
-  returnedAt         DateTime?
-  status             GearCheckoutStatus @default(OPEN)
-  conditionOnReturn  GearConditionStatus?
-  purposeNotes       String?
-  returnNotes        String?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id                String               @id @default(cuid())
+  organizationId    String
+  gearItemId        String
+  eventId           String?
+  checkedOutById    String
+  issuedById        String
+  returnedById      String?
+  receivedById      String?
+  checkedOutAt      DateTime             @default(now())
+  expectedReturnAt  DateTime?
+  returnedAt        DateTime?
+  status            GearCheckoutStatus   @default(OPEN)
+  conditionOnReturn GearConditionStatus?
+  purposeNotes      String?
+  returnNotes       String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  gearItem      GearItem      @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
-  event         Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
-  checkedOutBy  Person        @relation("GearCheckoutTakenBy", fields: [checkedOutById], references: [id], onDelete: Restrict)
-  issuedBy      Person        @relation("GearCheckoutIssuedBy", fields: [issuedById], references: [id], onDelete: Restrict)
-  returnedBy    Person?       @relation("GearCheckoutReturnedBy", fields: [returnedById], references: [id], onDelete: SetNull)
-  receivedBy    Person?       @relation("GearCheckoutReceivedBy", fields: [receivedById], references: [id], onDelete: SetNull)
+  gearItem     GearItem     @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  checkedOutBy Person       @relation("GearCheckoutTakenBy", fields: [checkedOutById], references: [id], onDelete: Restrict)
+  issuedBy     Person       @relation("GearCheckoutIssuedBy", fields: [issuedById], references: [id], onDelete: Restrict)
+  returnedBy   Person?      @relation("GearCheckoutReturnedBy", fields: [returnedById], references: [id], onDelete: SetNull)
+  receivedBy   Person?      @relation("GearCheckoutReceivedBy", fields: [receivedById], references: [id], onDelete: SetNull)
 
   @@index([organizationId, gearItemId, status])
   @@index([organizationId, checkedOutById, status])
@@ -1402,21 +1428,21 @@ model GearCheckout {
 }
 
 model GearMaintenanceLog {
-  id                  String              @id @default(cuid())
+  id                  String               @id @default(cuid())
   organizationId      String
   gearItemId          String
   performedByPersonId String
   maintenanceType     GearMaintenanceType
-  performedAt         DateTime            @default(now())
+  performedAt         DateTime             @default(now())
   conditionBefore     GearConditionStatus?
   conditionAfter      GearConditionStatus?
   notes               String
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  gearItem      GearItem      @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
-  performedBy   Person        @relation(fields: [performedByPersonId], references: [id], onDelete: Restrict)
+  gearItem     GearItem     @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  performedBy  Person       @relation(fields: [performedByPersonId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, gearItemId, performedAt])
   @@index([organizationId, performedByPersonId, performedAt])
@@ -1424,26 +1450,117 @@ model GearMaintenanceLog {
 }
 
 model ConsumableTransaction {
-  id                  String                    @id @default(cuid())
-  organizationId      String
-  gearItemId          String
-  transactionType     ConsumableTransactionType
-  quantityDelta       Int
-  recordedByPersonId  String
-  eventId             String?
-  recordedAt          DateTime                  @default(now())
-  notes               String?
-  createdAt           DateTime                  @default(now())
+  id                 String                    @id @default(cuid())
+  organizationId     String
+  gearItemId         String
+  transactionType    ConsumableTransactionType
+  quantityDelta      Int
+  recordedByPersonId String
+  eventId            String?
+  recordedAt         DateTime                  @default(now())
+  notes              String?
+  createdAt          DateTime                  @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  gearItem      GearItem      @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
-  recordedBy    Person        @relation(fields: [recordedByPersonId], references: [id], onDelete: Restrict)
-  event         Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  gearItem     GearItem     @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  recordedBy   Person       @relation(fields: [recordedByPersonId], references: [id], onDelete: Restrict)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, gearItemId, recordedAt])
   @@index([organizationId, transactionType, recordedAt])
   @@index([organizationId, recordedByPersonId, recordedAt])
   @@index([organizationId, eventId, recordedAt])
+}
+
+model EventGearPlan {
+  id                     String              @id @default(cuid())
+  organizationId         String
+  eventId                String              @unique
+  status                 EventGearPlanStatus @default(DRAFT)
+  stagingLocationId      String?
+  recoveryLocationId     String?
+  deploymentLocationText String?
+  checklistNotes         String?
+  stagingNotes           String?
+  recoveryNotes          String?
+  readinessCheckedAt     DateTime?
+  preparedByPersonId     String?
+  preparedAt             DateTime?
+  createdByPersonId      String
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  event            Event                  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  stagingLocation  InventoryLocation?     @relation("EventGearPlanStagingLocation", fields: [stagingLocationId], references: [id], onDelete: SetNull)
+  recoveryLocation InventoryLocation?     @relation("EventGearPlanRecoveryLocation", fields: [recoveryLocationId], references: [id], onDelete: SetNull)
+  preparedBy       Person?                @relation("EventGearPlanPreparedBy", fields: [preparedByPersonId], references: [id], onDelete: SetNull)
+  createdBy        Person                 @relation("EventGearPlanCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  requirements     EventGearRequirement[]
+  assignments      EventGearAssignment[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, eventId])
+}
+
+model EventGearRequirement {
+  id              String                   @id @default(cuid())
+  organizationId  String
+  planId          String
+  gearCategoryId  String?
+  label           String
+  requirementType EventGearRequirementType @default(REQUIRED)
+  quantityNeeded  Int                      @default(1)
+  notes           String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plan         EventGearPlan         @relation(fields: [planId], references: [id], onDelete: Cascade)
+  gearCategory GearCategory?         @relation(fields: [gearCategoryId], references: [id], onDelete: SetNull)
+  assignments  EventGearAssignment[]
+
+  @@index([organizationId, planId, requirementType])
+  @@index([organizationId, gearCategoryId])
+}
+
+model EventGearAssignment {
+  id                    String               @id @default(cuid())
+  organizationId        String
+  planId                String
+  requirementId         String
+  gearItemId            String
+  assignedByPersonId    String
+  assignedAt            DateTime             @default(now())
+  stagedByPersonId      String?
+  stagedAt              DateTime?
+  stagedFromLocationId  String?
+  stagedToLocationId    String?
+  recoveredByPersonId   String?
+  recoveredAt           DateTime?
+  recoveredToLocationId String?
+  conditionOnRecovery   GearConditionStatus?
+  maintenanceFlag       Boolean              @default(false)
+  notes                 String?
+  recoveryNotes         String?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plan                EventGearPlan        @relation(fields: [planId], references: [id], onDelete: Cascade)
+  requirement         EventGearRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  gearItem            GearItem             @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  assignedBy          Person               @relation("EventGearAssignmentCreatedBy", fields: [assignedByPersonId], references: [id], onDelete: Restrict)
+  stagedBy            Person?              @relation("EventGearAssignmentStagedBy", fields: [stagedByPersonId], references: [id], onDelete: SetNull)
+  recoveredBy         Person?              @relation("EventGearAssignmentRecoveredBy", fields: [recoveredByPersonId], references: [id], onDelete: SetNull)
+  stagedFromLocation  InventoryLocation?   @relation("EventGearAssignmentStagedFromLocation", fields: [stagedFromLocationId], references: [id], onDelete: SetNull)
+  stagedToLocation    InventoryLocation?   @relation("EventGearAssignmentStagedToLocation", fields: [stagedToLocationId], references: [id], onDelete: SetNull)
+  recoveredToLocation InventoryLocation?   @relation("EventGearAssignmentRecoveredToLocation", fields: [recoveredToLocationId], references: [id], onDelete: SetNull)
+
+  @@unique([planId, gearItemId])
+  @@index([organizationId, planId, assignedAt])
+  @@index([organizationId, requirementId, assignedAt])
+  @@index([organizationId, gearItemId, assignedAt])
 }
 
 // Arc 19E: WorkflowTemplate — reusable, organization-scoped operational workflow templates.
@@ -1462,7 +1579,7 @@ model WorkflowTemplate {
   archivedAt        DateTime?
 
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  createdBy    Person         @relation("WorkflowTemplateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  createdBy    Person        @relation("WorkflowTemplateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
   runs         WorkflowRun[]
 
   @@index([organizationId])
@@ -1487,13 +1604,13 @@ model WorkflowRun {
   cancelledAt        DateTime?
   metadataJson       String?
 
-  organization      Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  workflowTemplate  WorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Restrict)
-  anchorEntry       Entry?           @relation(fields: [anchorEntryId], references: [id], onDelete: SetNull)
-  startedBy         Person           @relation("WorkflowRunStartedBy", fields: [startedByPersonId], references: [id], onDelete: Restrict)
-  stepEntries       WorkflowStepEntry[]
-  awarenessEvents   AwarenessEvent[]
-  notifications     Notification[]
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  workflowTemplate WorkflowTemplate    @relation(fields: [workflowTemplateId], references: [id], onDelete: Restrict)
+  anchorEntry      Entry?              @relation(fields: [anchorEntryId], references: [id], onDelete: SetNull)
+  startedBy        Person              @relation("WorkflowRunStartedBy", fields: [startedByPersonId], references: [id], onDelete: Restrict)
+  stepEntries      WorkflowStepEntry[]
+  awarenessEvents  AwarenessEvent[]
+  notifications    Notification[]
 
   @@index([organizationId, status])
   @@index([organizationId, workflowTemplateId])
@@ -1521,29 +1638,29 @@ model WorkflowStepEntry {
 }
 
 model AwarenessEvent {
-  id                 String             @id @default(cuid())
-  organizationId     String
-  eventType          AwarenessEventType
-  category           NotificationCategory
-  priority           EntryPriority      @default(MEDIUM)
-  aggregateKey       String
-  title              String
-  body               String
-  href               String
-  entryId            String?
-  workflowRunId      String?
-  eventId            String?
-  teamId             String?
-  actorPersonId      String?
-  metadataJson       String?
-  occurredAt         DateTime           @default(now())
-  createdAt          DateTime           @default(now())
+  id             String               @id @default(cuid())
+  organizationId String
+  eventType      AwarenessEventType
+  category       NotificationCategory
+  priority       EntryPriority        @default(MEDIUM)
+  aggregateKey   String
+  title          String
+  body           String
+  href           String
+  entryId        String?
+  workflowRunId  String?
+  eventId        String?
+  teamId         String?
+  actorPersonId  String?
+  metadataJson   String?
+  occurredAt     DateTime             @default(now())
+  createdAt      DateTime             @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  entry        Entry?       @relation(fields: [entryId], references: [id], onDelete: SetNull)
-  workflowRun  WorkflowRun? @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
-  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
-  actor        Person?      @relation("AwarenessEventActor", fields: [actorPersonId], references: [id], onDelete: SetNull)
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  entry         Entry?         @relation(fields: [entryId], references: [id], onDelete: SetNull)
+  workflowRun   WorkflowRun?   @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+  event         Event?         @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  actor         Person?        @relation("AwarenessEventActor", fields: [actorPersonId], references: [id], onDelete: SetNull)
   notifications Notification[] @relation("NotificationLatestAwarenessEvent")
 
   @@index([organizationId, category, occurredAt])
@@ -1573,10 +1690,10 @@ model Notification {
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
 
-  organization         Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  latestAwarenessEvent AwarenessEvent       @relation("NotificationLatestAwarenessEvent", fields: [latestAwarenessEventId], references: [id], onDelete: Restrict)
-  entry                Entry?               @relation(fields: [entryId], references: [id], onDelete: SetNull)
-  workflowRun          WorkflowRun?         @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+  organization         Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  latestAwarenessEvent AwarenessEvent          @relation("NotificationLatestAwarenessEvent", fields: [latestAwarenessEventId], references: [id], onDelete: Restrict)
+  entry                Entry?                  @relation(fields: [entryId], references: [id], onDelete: SetNull)
+  workflowRun          WorkflowRun?            @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
   readStates           NotificationReadState[]
 
   @@unique([organizationId, aggregateKey])
@@ -1586,15 +1703,15 @@ model Notification {
 }
 
 model NotificationReadState {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   notificationId String
   personId       String
   readAt         DateTime?
   archivedAt     DateTime?
-  deliveredAt    DateTime @default(now())
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  deliveredAt    DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
@@ -1631,25 +1748,25 @@ model NotificationPreference {
 }
 
 model NotificationDigest {
-  id               String                     @id @default(cuid())
-  organizationId   String
-  personId         String
-  status           NotificationDigestStatus   @default(PENDING)
-  deliveryTiming   NotificationDeliveryTiming @default(DIGEST_ONLY)
-  windowStartsAt   DateTime
-  windowEndsAt     DateTime
+  id                  String                     @id @default(cuid())
+  organizationId      String
+  personId            String
+  status              NotificationDigestStatus   @default(PENDING)
+  deliveryTiming      NotificationDeliveryTiming @default(DIGEST_ONLY)
+  windowStartsAt      DateTime
+  windowEndsAt        DateTime
   notificationIdsJson String?
-  builtAt          DateTime?
-  dismissedAt      DateTime?
-  createdAt        DateTime                   @default(now())
-  updatedAt        DateTime                   @updatedAt
+  builtAt             DateTime?
+  dismissedAt         DateTime?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   person       Person       @relation(fields: [personId], references: [id], onDelete: Cascade)
 
+  @@unique([organizationId, personId, deliveryTiming, windowStartsAt, windowEndsAt])
   @@index([organizationId, personId, status, windowStartsAt])
   @@index([organizationId, status, windowEndsAt])
-  @@unique([organizationId, personId, deliveryTiming, windowStartsAt, windowEndsAt])
 }
 
 // Arc 20A: Inventory Operations Architecture
@@ -1666,15 +1783,20 @@ model InventoryLocation {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  parentLocation  InventoryLocation?  @relation("LocationHierarchy", fields: [parentLocationId], references: [id], onDelete: SetNull)
-  childLocations  InventoryLocation[] @relation("LocationHierarchy")
-  gearItems       GearItem[]
-  movementsFrom   InventoryMovement[] @relation("MovementFromLocation")
-  movementsTo     InventoryMovement[] @relation("MovementToLocation")
-  scanEvents      InventoryScanEvent[]
-  inventoryAuditExpectedLocationResults InventoryAuditResult[] @relation("InventoryAuditExpectedLocation")
-  inventoryAuditObservedLocationResults InventoryAuditResult[] @relation("InventoryAuditObservedLocation")
+  organization                          Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  parentLocation                        InventoryLocation?          @relation("LocationHierarchy", fields: [parentLocationId], references: [id], onDelete: SetNull)
+  childLocations                        InventoryLocation[]         @relation("LocationHierarchy")
+  gearItems                             GearItem[]
+  movementsFrom                         InventoryMovement[]         @relation("MovementFromLocation")
+  movementsTo                           InventoryMovement[]         @relation("MovementToLocation")
+  scanEvents                            InventoryScanEvent[]
+  eventGearPlansAsStagingLocation       EventGearPlan[]             @relation("EventGearPlanStagingLocation")
+  eventGearPlansAsRecoveryLocation      EventGearPlan[]             @relation("EventGearPlanRecoveryLocation")
+  stagedEventGearAssignmentsFrom        EventGearAssignment[]       @relation("EventGearAssignmentStagedFromLocation")
+  stagedEventGearAssignmentsTo          EventGearAssignment[]       @relation("EventGearAssignmentStagedToLocation")
+  recoveredEventGearAssignments         EventGearAssignment[]       @relation("EventGearAssignmentRecoveredToLocation")
+  inventoryAuditExpectedLocationResults InventoryAuditResult[]      @relation("InventoryAuditExpectedLocation")
+  inventoryAuditObservedLocationResults InventoryAuditResult[]      @relation("InventoryAuditObservedLocation")
   inventoryAuditDiscrepancies           InventoryAuditDiscrepancy[]
 
   @@unique([organizationId, name])
@@ -1737,13 +1859,13 @@ model InventoryKit {
 
 // InventoryKitItem — join table linking GearItems to InventoryKits with quantity and metadata
 model InventoryKitItem {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   kitId          String
   gearItemId     String
-  quantity       Int      @default(1)
+  quantity       Int       @default(1)
   notes          String?
-  addedAt        DateTime @default(now())
+  addedAt        DateTime  @default(now())
   removedAt      DateTime?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
@@ -1772,10 +1894,10 @@ model InventoryScanEvent {
   metadataJson            String?
   createdAt               DateTime @default(now())
 
-  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  actor        Person?            @relation("InventoryScanEventActor", fields: [actorPersonId], references: [id], onDelete: SetNull)
-  gearItem     GearItem?          @relation(fields: [gearItemId], references: [id], onDelete: SetNull)
-  location     InventoryLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  actor        Person?                @relation("InventoryScanEventActor", fields: [actorPersonId], references: [id], onDelete: SetNull)
+  gearItem     GearItem?              @relation(fields: [gearItemId], references: [id], onDelete: SetNull)
+  location     InventoryLocation?     @relation(fields: [locationId], references: [id], onDelete: SetNull)
   auditResults InventoryAuditResult[]
 
   @@index([organizationId, createdAt])
@@ -1803,19 +1925,19 @@ model InventoryAudit {
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
-  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  createdBy    Person                 @relation("InventoryAuditCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy    Person                  @relation("InventoryAuditCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
   sessions     InventoryAuditSession[]
 
+  @@unique([organizationId, name])
   @@index([organizationId, auditType])
   @@index([organizationId, scope])
   @@index([organizationId, archivedAt])
   @@index([organizationId, nextScheduledAt])
-  @@unique([organizationId, name])
 }
 
 model InventoryAuditSession {
-  id                  String                     @id @default(cuid())
+  id                  String                      @id @default(cuid())
   organizationId      String
   inventoryAuditId    String?
   title               String
@@ -1827,15 +1949,15 @@ model InventoryAuditSession {
   startedByPersonId   String?
   completedByPersonId String?
   notes               String?
-  createdAt           DateTime                   @default(now())
-  updatedAt           DateTime                   @updatedAt
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
 
-  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  audit        InventoryAudit?            @relation(fields: [inventoryAuditId], references: [id], onDelete: SetNull)
-  startedBy    Person?                    @relation("InventoryAuditSessionStartedBy", fields: [startedByPersonId], references: [id], onDelete: SetNull)
-  completedBy  Person?                    @relation("InventoryAuditSessionCompletedBy", fields: [completedByPersonId], references: [id], onDelete: SetNull)
-  checkpoints  InventoryAuditCheckpoint[]
-  results      InventoryAuditResult[]
+  organization  Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  audit         InventoryAudit?             @relation(fields: [inventoryAuditId], references: [id], onDelete: SetNull)
+  startedBy     Person?                     @relation("InventoryAuditSessionStartedBy", fields: [startedByPersonId], references: [id], onDelete: SetNull)
+  completedBy   Person?                     @relation("InventoryAuditSessionCompletedBy", fields: [completedByPersonId], references: [id], onDelete: SetNull)
+  checkpoints   InventoryAuditCheckpoint[]
+  results       InventoryAuditResult[]
   discrepancies InventoryAuditDiscrepancy[]
 
   @@index([organizationId, status, startedAt])
@@ -1844,18 +1966,18 @@ model InventoryAuditSession {
 }
 
 model InventoryAuditCheckpoint {
-  id                    String                       @id @default(cuid())
-  organizationId        String
-  auditSessionId        String
-  label                 String
-  orderIndex            Int                          @default(0)
-  status                InventoryAuditCheckpointStatus @default(PENDING)
-  expectedItemCount     Int?
-  verifiedItemCount     Int                          @default(0)
-  discrepancyCount      Int                          @default(0)
-  notes                 String?
-  createdAt             DateTime                     @default(now())
-  updatedAt             DateTime                     @updatedAt
+  id                String                         @id @default(cuid())
+  organizationId    String
+  auditSessionId    String
+  label             String
+  orderIndex        Int                            @default(0)
+  status            InventoryAuditCheckpointStatus @default(PENDING)
+  expectedItemCount Int?
+  verifiedItemCount Int                            @default(0)
+  discrepancyCount  Int                            @default(0)
+  notes             String?
+  createdAt         DateTime                       @default(now())
+  updatedAt         DateTime                       @updatedAt
 
   organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   auditSession InventoryAuditSession @relation(fields: [auditSessionId], references: [id], onDelete: Cascade)
@@ -1865,7 +1987,7 @@ model InventoryAuditCheckpoint {
 }
 
 model InventoryAuditResult {
-  id                      String                    @id @default(cuid())
+  id                      String                      @id @default(cuid())
   organizationId          String
   auditSessionId          String
   gearItemId              String?
@@ -1882,21 +2004,21 @@ model InventoryAuditResult {
   observedConditionStatus GearConditionStatus?
   scannedCode             String?
   notes                   String?
-  verifiedAt              DateTime                  @default(now())
+  verifiedAt              DateTime                    @default(now())
   verifiedByPersonId      String?
-  createdAt               DateTime                  @default(now())
-  updatedAt               DateTime                  @updatedAt
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
 
-  organization         Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  auditSession         InventoryAuditSession   @relation(fields: [auditSessionId], references: [id], onDelete: Cascade)
-  gearItem             GearItem?               @relation(fields: [gearItemId], references: [id], onDelete: SetNull)
-  scanEvent            InventoryScanEvent?     @relation(fields: [scanEventId], references: [id], onDelete: SetNull)
-  expectedLocation     InventoryLocation?      @relation("InventoryAuditExpectedLocation", fields: [expectedLocationId], references: [id], onDelete: SetNull)
-  observedLocation     InventoryLocation?      @relation("InventoryAuditObservedLocation", fields: [observedLocationId], references: [id], onDelete: SetNull)
-  expectedCustodyPerson Person?                @relation("InventoryAuditExpectedCustody", fields: [expectedCustodyPersonId], references: [id], onDelete: SetNull)
-  observedCustodyPerson Person?                @relation("InventoryAuditObservedCustody", fields: [observedCustodyPersonId], references: [id], onDelete: SetNull)
-  verifiedBy           Person?                 @relation("InventoryAuditResultVerifiedBy", fields: [verifiedByPersonId], references: [id], onDelete: SetNull)
-  discrepancies        InventoryAuditDiscrepancy[]
+  organization          Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  auditSession          InventoryAuditSession       @relation(fields: [auditSessionId], references: [id], onDelete: Cascade)
+  gearItem              GearItem?                   @relation(fields: [gearItemId], references: [id], onDelete: SetNull)
+  scanEvent             InventoryScanEvent?         @relation(fields: [scanEventId], references: [id], onDelete: SetNull)
+  expectedLocation      InventoryLocation?          @relation("InventoryAuditExpectedLocation", fields: [expectedLocationId], references: [id], onDelete: SetNull)
+  observedLocation      InventoryLocation?          @relation("InventoryAuditObservedLocation", fields: [observedLocationId], references: [id], onDelete: SetNull)
+  expectedCustodyPerson Person?                     @relation("InventoryAuditExpectedCustody", fields: [expectedCustodyPersonId], references: [id], onDelete: SetNull)
+  observedCustodyPerson Person?                     @relation("InventoryAuditObservedCustody", fields: [observedCustodyPersonId], references: [id], onDelete: SetNull)
+  verifiedBy            Person?                     @relation("InventoryAuditResultVerifiedBy", fields: [verifiedByPersonId], references: [id], onDelete: SetNull)
+  discrepancies         InventoryAuditDiscrepancy[]
 
   @@index([organizationId, auditSessionId, verificationStatus])
   @@index([organizationId, gearItemId, verifiedAt])
@@ -1906,7 +2028,7 @@ model InventoryAuditResult {
 }
 
 model InventoryAuditDiscrepancy {
-  id                 String                   @id @default(cuid())
+  id                 String                     @id @default(cuid())
   organizationId     String
   auditSessionId     String
   auditResultId      String?
@@ -1916,12 +2038,12 @@ model InventoryAuditDiscrepancy {
   status             InventoryDiscrepancyStatus @default(OPEN)
   summary            String
   details            String?
-  detectedAt         DateTime                 @default(now())
+  detectedAt         DateTime                   @default(now())
   resolvedAt         DateTime?
   resolvedByPersonId String?
   resolutionNotes    String?
-  createdAt          DateTime                 @default(now())
-  updatedAt          DateTime                 @updatedAt
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
 
   organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   auditSession InventoryAuditSession @relation(fields: [auditSessionId], references: [id], onDelete: Cascade)
