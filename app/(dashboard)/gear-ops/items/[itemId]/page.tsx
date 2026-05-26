@@ -38,7 +38,8 @@ import {
 } from "@/lib/inventory-scan";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { isSchemaUnavailableError } from "@/lib/workflows";
+import { resolveMobileInventoryActions } from "@/lib/rapid-inventory-ops";
+import { formatDateTimeInputValue, isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -373,6 +374,20 @@ export default async function GearOpsItemDetailsPage({
   const scanContextRaw = readSearchParam("scanContext");
   const scanContext = SCAN_CONTEXTS.includes(scanContextRaw as ScanContext) ? (scanContextRaw as ScanContext) : null;
   const scanValue = readSearchParam("scanValue");
+  const rapidNowInputValue = formatDateTimeInputValue(new Date());
+  const primaryCheckout = currentCheckouts[0] ?? null;
+  const primaryAssignment = currentAssignments[0] ?? null;
+  const rapidActions = resolveMobileInventoryActions({
+    itemId: gearItem.id,
+    inventoryType: gearItem.inventoryType,
+    lifecycleStatus: gearItem.lifecycleStatus,
+    readinessState: gearItem.readinessState,
+    scanContext,
+    nowInputValue: rapidNowInputValue,
+    currentCheckoutId: primaryCheckout?.id ?? null,
+    currentAssignmentId: primaryAssignment?.id ?? null,
+    locationId: gearItem.location?.id ?? null,
+  });
 
   function renderAssignmentCard(assignment: (typeof gearItem.assignments)[number]) {
     const assignmentProgram = assignment.assignedEvent?.program ?? assignment.assignedTeam?.program ?? gearItem.program;
@@ -675,7 +690,72 @@ export default async function GearOpsItemDetailsPage({
         </div>
       ) : null}
 
-      <dl className="grid gap-3 rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900 sm:grid-cols-2 lg:grid-cols-4">
+      <div id="rapid-ops" className="space-y-3 rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-medium">Rapid field actions</h3>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Keep scan follow-through low-friction with the next operational action surfaced here.
+            </p>
+          </div>
+          <Link
+            href={`/gear-ops/scan?scanContext=${scanContext ?? "INVENTORY_LOOKUP"}&scanValue=${encodeURIComponent(scanValue || item.id)}`}
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Continue scanning
+          </Link>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-[1.1fr,0.9fr]">
+          <article className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              {scanContext ? labelForScanContext(scanContext) : "Mobile inventory action"}
+            </p>
+            <p className="mt-2 text-base font-semibold">{rapidActions.primaryAction.label}</p>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{rapidActions.primaryAction.detail}</p>
+            <div className="mt-3">
+              <Link
+                href={rapidActions.primaryAction.href}
+                className="inline-flex rounded-md bg-black px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+              >
+                {rapidActions.primaryAction.label}
+              </Link>
+            </div>
+          </article>
+
+          <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+            {rapidActions.quickCustodyFlows.map((action) => (
+              <Link
+                key={action.key}
+                href={action.href}
+                className="rounded-lg border p-3 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              >
+                <p className="font-medium">{action.label}</p>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{action.detail}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {rapidActions.actions.map((action) => (
+            <Link
+              key={action.key}
+              href={action.href}
+              className={`rounded-lg border p-3 text-sm transition ${
+                action.tone === "primary"
+                  ? "border-zinc-900 bg-zinc-100 dark:border-zinc-100 dark:bg-zinc-800"
+                  : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              }`}
+            >
+              <p className="font-medium">{action.label}</p>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{action.detail}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <dl id="readiness" className="grid gap-3 rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Program</dt>
           <dd className="text-zinc-600 dark:text-zinc-400">
@@ -790,7 +870,7 @@ export default async function GearOpsItemDetailsPage({
               )}
             </div>
 
-            <div className="space-y-3">
+            <div id="scan-activity" className="space-y-3">
               <h3 className="text-lg font-medium">Recent scan activity</h3>
               {item.scanEvents.length === 0 ? (
                 <EmptyState message="No scan activity is currently recorded for this item." />
@@ -844,7 +924,7 @@ export default async function GearOpsItemDetailsPage({
         )}
       </div>
 
-      <div className="space-y-3">
+      <div id="checkouts" className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-lg font-medium">Checkouts</h3>
           <Link
@@ -960,7 +1040,7 @@ export default async function GearOpsItemDetailsPage({
           </div>
         )}
       </div>
-      <div className="space-y-3">
+      <div id="movement-history" className="space-y-3">
         <h3 className="text-lg font-medium">Inventory movement history</h3>
         {item.inventoryMovements.length === 0 ? (
           <EmptyState message="No inventory movement history is currently recorded for this item." />
