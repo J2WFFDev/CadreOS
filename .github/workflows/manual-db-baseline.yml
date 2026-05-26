@@ -8,11 +8,12 @@ on:
         required: true
         type: string
       baseline_migration:
-        description: "Historical migration boundary to mark as applied (inclusive)."
+        description: "Historical migration boundary to mark as applied (inclusive), or auto-detect highest verifiable boundary."
         required: true
         type: choice
-        default: 20260526024000_arc19f_notifications_activity
+        default: auto_detect_highest_existing
         options:
+          - auto_detect_highest_existing
           - 20260525153000_entry_system
           - 20260526004640_arc19a_operational_entry_architecture
           - 20260526014000_arc19d_operational_graph
@@ -70,95 +71,82 @@ jobs:
 
       - name: Select baseline boundary and resolve list
         run: |
-          selected="${{ inputs.baseline_migration }}"
-          echo "Selected baseline boundary migration: $selected"
+          selected_input="${{ inputs.baseline_migration }}"
+          echo "Selected baseline input: $selected_input"
+          printf "SELECTED_BASELINE_INPUT=%s\n" "$selected_input" >> "$GITHUB_ENV"
 
-          if ! grep -Fxq "$selected" <<< "$BASELINE_MIGRATIONS"; then
+          if [ "$selected_input" != "auto_detect_highest_existing" ] && ! grep -Fxq "$selected_input" <<< "$BASELINE_MIGRATIONS"; then
             echo "Selected baseline migration is not in allowed historical migration list."
             exit 1
           fi
 
-          if grep -Fxq "$selected" <<< "$PROTECTED_MIGRATIONS"; then
-            echo "Refusing to baseline protected migration: $selected"
-            exit 1
-          fi
-
-          resolve_list=""
-          found_selected=0
-          while IFS= read -r migration; do
-            if [ -z "$migration" ]; then
-              continue
-            fi
-            resolve_list="${resolve_list}${migration}"$'\n'
-            if [ "$migration" = "$selected" ]; then
-              found_selected=1
-              break
-            fi
-          done <<< "$BASELINE_MIGRATIONS"
-
-          if [ "$found_selected" -ne 1 ]; then
-            echo "Unable to build baseline resolve list."
-            exit 1
-          fi
-
-          echo "Baseline migrations to resolve (inclusive):"
-          printf '%s' "$resolve_list"
-          printf "BASELINE_RESOLVE_LIST<<EOF\n%sEOF\n" "$resolve_list" >> "$GITHUB_ENV"
-
-      - name: Inspect current production schema assumptions (safe)
+      - name: Inspect current production schema inventory (safe)
         run: |
           npx prisma db pull --print --schema prisma/schema.prisma > /tmp/live-db-schema.prisma
+          if [ "${SELECTED_BASELINE_INPUT}" = "auto_detect_highest_existing" ]; then
+            node scripts/db-schema-inventory.mjs --live /tmp/live-db-schema.prisma --target prisma/schema.prisma --format json > /tmp/db-schema-inventory.json
+          else
+            node scripts/db-schema-inventory.mjs --live /tmp/live-db-schema.prisma --target prisma/schema.prisma --selected "${SELECTED_BASELINE_INPUT}" --format json > /tmp/db-schema-inventory.json
+          fi
+          node scripts/db-schema-inventory.mjs --live /tmp/live-db-schema.prisma --target prisma/schema.prisma
 
-          echo "Schema markers for historical baseline migrations:"
-          if grep -Eq '^model Entry ' /tmp/live-db-schema.prisma; then echo "  ✅ Entry"; else echo "  ❌ Entry"; fi
-          if grep -Eq '^model EntryObjectLink ' /tmp/live-db-schema.prisma; then echo "  ✅ EntryObjectLink"; else echo "  ❌ EntryObjectLink"; fi
-          if grep -Eq '^model OperationalRelationship ' /tmp/live-db-schema.prisma; then echo "  ✅ OperationalRelationship"; else echo "  ❌ OperationalRelationship"; fi
-          if grep -Eq '^model WorkflowTemplate ' /tmp/live-db-schema.prisma; then echo "  ✅ WorkflowTemplate"; else echo "  ❌ WorkflowTemplate"; fi
-          if grep -Eq '^model Notification ' /tmp/live-db-schema.prisma; then echo "  ✅ Notification"; else echo "  ❌ Notification"; fi
-
-          echo "Schema markers for protected post-baseline migrations:"
-          if awk '/^model Person \{/,/^}/' /tmp/live-db-schema.prisma | grep -q 'lifecycleStatus'; then echo "  ⚠️ Person.lifecycleStatus already exists"; else echo "  ⏳ Person.lifecycleStatus not present"; fi
-          if grep -Eq '^model GearItem ' /tmp/live-db-schema.prisma; then echo "  ⚠️ GearItem already exists"; else echo "  ⏳ GearItem not present"; fi
-
-      - name: Verify selected baseline migrations exist in DB schema
+      - name: Resolve baseline decision from live inventory
         run: |
-          while IFS= read -r migration; do
-            if [ -z "$migration" ]; then
-              continue
-            fi
+          node - <<'NODE'
+          const fs = require("node:fs");
+          const inventory = JSON.parse(fs.readFileSync("/tmp/db-schema-inventory.json", "utf8"));
+          const selectedInput = process.env.SELECTED_BASELINE_INPUT;
+          const protectedMigrations = (process.env.PROTECTED_MIGRATIONS || "")
+            .split("\n")
+            .map((v) => v.trim())
+            .filter(Boolean);
 
-            case "$migration" in
-              "20260525153000_entry_system")
-                pattern='^model Entry '
-                marker='Entry'
-                ;;
-              "20260526004640_arc19a_operational_entry_architecture")
-                pattern='^model EntryObjectLink '
-                marker='EntryObjectLink'
-                ;;
-              "20260526014000_arc19d_operational_graph")
-                pattern='^model OperationalRelationship '
-                marker='OperationalRelationship'
-                ;;
-              "20260526020000_arc19e_workflow_orchestration")
-                pattern='^model WorkflowTemplate '
-                marker='WorkflowTemplate'
-                ;;
-              "20260526024000_arc19f_notifications_activity")
-                pattern='^model Notification '
-                marker='Notification'
-                ;;
-              *)
-                echo "Unknown migration in baseline resolve list: $migration"
-                exit 1
-                ;;
-            esac
+          const eligible = inventory.baselineEligibleMigrations || [];
+          let selected = selectedInput;
+          let resolveList = [];
 
-            if ! grep -Eq "$pattern" /tmp/live-db-schema.prisma; then
-              echo "Refusing to baseline $migration because expected marker '$marker' is missing from live DB."
-              exit 1
-            fi
-          done <<< "$BASELINE_RESOLVE_LIST"
+          if (selectedInput === "auto_detect_highest_existing") {
+            if (eligible.length === 0) {
+              console.error("No historical baseline migration markers were found in the live DB.");
+              console.error("Decision: do not baseline. This database must be migrated (or receive compatibility migrations) instead of baseline-resolved.");
+              console.error(`Next recommended action: ${inventory.nextRecommendedAction}`);
+              process.exit(1);
+            }
+            selected = eligible[eligible.length - 1];
+            resolveList = [...eligible];
+          } else {
+            if (!eligible.includes(selectedInput)) {
+              const blocked = (inventory.baselineStates || []).find((s) => !s.ok);
+              console.error(`Refusing to baseline through ${selectedInput} because required live markers are missing.`);
+              if (blocked) {
+                console.error(`First blocked migration: ${blocked.migration}`);
+                if (blocked.missing?.length) {
+                  console.error(`Missing markers: ${blocked.missing.join(", ")}`);
+                }
+              }
+              console.error(`Next recommended action: ${inventory.nextRecommendedAction}`);
+              process.exit(1);
+            }
+            resolveList = eligible.slice(0, eligible.indexOf(selectedInput) + 1);
+          }
+
+          const protectedInResolve = resolveList.filter((m) => protectedMigrations.includes(m));
+          if (protectedInResolve.length > 0) {
+            console.error(`Refusing to baseline protected migrations: ${protectedInResolve.join(", ")}`);
+            process.exit(1);
+          }
+
+          const envFile = process.env.GITHUB_ENV;
+          fs.appendFileSync(envFile, `SELECTED_BASELINE=${selected}\n`);
+          fs.appendFileSync(envFile, `BASELINE_RESOLVE_LIST<<EOF\n${resolveList.join("\n")}\nEOF\n`);
+          console.log(`Resolved baseline boundary: ${selected}`);
+          console.log("Baseline migrations to resolve (inclusive):");
+          for (const migration of resolveList) {
+            console.log(`- ${migration}`);
+          }
+          console.log(`Classification: ${inventory.classification}`);
+          console.log(`Next recommended action: ${inventory.nextRecommendedAction}`);
+          NODE
 
       - name: Mark selected historical migrations as applied
         run: |
