@@ -29,6 +29,7 @@ An Entry may represent:
 - Event
 - Decision
 - Contact Note
+- Journal (athlete journaling)
 
 Entries should support:
 - type
@@ -161,6 +162,30 @@ Guidance:
 
 **Related workflows:** Governance, operational alignment, and accountability tracking.
 
+### Journal
+
+**Purpose:** Athlete reflection and development journaling, either freeform or prompt-driven.
+
+**Examples:**
+- Pre-practice reflection
+- Post-practice reflection
+- Match preparation/check-in
+- Match review and confidence reflection
+- Goal-setting follow-up
+
+**Possible statuses:**
+- `DRAFT`
+- `FINAL`
+- `ARCHIVED`
+
+**Creation sources:**
+- `FREEFORM`
+- `PROMPT_ASSIGNED`
+- `PROMPT_SCHEDULED`
+- `PROMPT_SELF_SELECTED`
+
+**Related workflows:** prompt library selection, coach/staff assignment, scheduled due windows, guardian-safe feed visibility, and version/audit retention.
+
 ### Contact Note
 
 **Purpose:** Interaction history with a person or external contact.
@@ -283,19 +308,20 @@ Reasons:
 Recommendation:
 Start with Feed + Tasks + Notes before true messaging.
 
-## 11. Private Journal
+## 11. Athlete Journal (First-Class Entry Type)
 
-Private Journal should start as a view/filter over Entries, not a separate system.
+Athlete journaling should be a first-class `EntryType` (`JOURNAL`) rather than only a generic private view/filter.
 
-Potential use cases:
-- coach reflection
-- private practice notes
-- personal task capture
-- draft observations before filing
-- weekly review
+Core behavior:
+- Athlete-authored journal entries support freeform or prompt-driven reflection.
+- Journal status lifecycle is `DRAFT` -> `FINAL` -> `ARCHIVED`.
+- Journal entries preserve edit/version history and status transition timestamps.
+- Journal entries can be linked to assignments/tasks for due and completion tracking.
 
-Visibility default:
-Private to author unless explicitly changed.
+Visibility baseline:
+- Default audience starts as athlete + policy-allowed stakeholders.
+- Guardian visibility is relationship and policy aware.
+- Coach/staff visibility must be explicitly policy-evaluated and not globally assumed.
 
 ## 12. Communication Routing Concept
 
@@ -305,7 +331,7 @@ Future routing options:
 - Program Feed
 - DM
 - Group Chat
-- Private Journal
+- Athlete Journal
 - Task list
 - Event schedule
 
@@ -376,7 +402,7 @@ To avoid overlap with active Team/Member phase IDs, Entry/Inbox work uses a sepa
 - Entry Track E1: Minimal Inbox capture
 - Entry Track E2: Entry triage and filing
 - Entry Track E3: Decision entries
-- Entry Track E4: Private Journal view
+- Entry Track E4: First-class Athlete Journal (entry type + lifecycle + visibility policy)
 - Entry Track E5: Role-aware Feed
 - Entry Track E6: Contact Notes
 - Entry Track E7: Migration from current Notes/Tasks/Events if needed

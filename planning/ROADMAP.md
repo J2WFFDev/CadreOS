@@ -19,7 +19,7 @@ This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the
 - **Future deferred track:** Entry/Inbox/Journal architecture and migration work.
 - `ObservationNote` and `FollowUpTask` remain the implemented runtime workflows today.
 - Unified `Entry` migration is intentionally deferred and remains planning-only.
-- Feed/Journal/Messaging concepts remain deferred and must not be implemented in the active Team/Member slice.
+- Feed/Journal/Messaging runtime implementation remains deferred in the active Team/Member slice; athlete journaling requirements are captured as planning-only scope for a later Entry/Task/Feed arc.
 
 ### Built now (active MVP surface)
 - Organization/program/team/person records with scoped role assignments.
@@ -37,6 +37,7 @@ This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the
 ### Not built yet (planned/future)
 - Communications/announcements runtime module.
 - Athlete development plans/goals/progress workflows.
+- Athlete journaling runtime workflows (first-class `JOURNAL` entry type, prompt lifecycle, assignment, and policy-aware feed visibility).
 - GearOps equipment lifecycle.
 - Advanced reporting/analytics and cross-module intelligence.
 
@@ -50,7 +51,7 @@ This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the
 | FieldOps | **MVP complete (Phase 6K closeout); expansion paused.** | Provides facility/resource booking with conflict-aware approval flow. | Strong: Facility/Resource/Booking/Conflict models are implemented. | Medium for maintenance; High for next feature expansion | Medium if expanded too early | Planning-only backlog hygiene PR: move recurring/notifications/calendar/recommendations to deferred backlog and keep FieldOps in maintenance mode. |
 | Team/member management | **Partially implemented** (team CRUD + roster add flows exist; member lifecycle and richer role workflows are limited). | Direct coach value: keep squads accurate, role ownership clear, and season operations reliable. | Strong: Team, RosterMembership, RoleAssignment, Season already support incremental improvements. | Medium | Low-Medium | Add planning + acceptance criteria for roster/member lifecycle actions (join, move, inactive, season rollover) using existing models only. |
 | Parent/guardian relationships | **Partially implemented** (AthleteGuardianRelationship modeled; read visibility constraints documented; full guardian workflow deferred). | High trust/safety value for family-aware operations and controlled visibility. | Strong: AthleteGuardianRelationship + Person/UserAccount link patterns already exist. | Medium | Medium-High (privacy/authorization leakage risk) | Define minimal relationship-management slice boundaries and authorization rules in planning/AC docs without new runtime surfaces. |
-| Athlete development | **Not implemented** (goals/plans/progress remain planned). | Long-term program differentiation and athlete progress continuity. | Weak-to-moderate: base Person/Team/Event/Note records exist but dedicated development model is absent. | High | High | Author a narrow planning spec for first development artifact (e.g., simple goal record) while keeping out of immediate build queue. |
+| Athlete development | **Planning defined; runtime not implemented** (goals/plans/progress and athlete journaling remain planned). | Long-term program differentiation and athlete progress continuity. | Moderate: Person/Team/Event/Task/guardian relationship foundations exist; dedicated journaling/prompt/version models are still missing. | High | High | Prioritize planning-first athlete journaling roadmap with phased delivery (`JOURNAL` entry type, prompt/task integration, guardian-safe visibility, and version history) before runtime build starts. |
 | Attendance/events | **Implemented core workflow** (event CRUD + RSVP + attendance capture). | Core daily operations and participation accountability. | Strong: Event, RSVP, AttendanceRecord are established and used. | Medium | Low-Medium | Document incremental polish backlog for attendance/event reliability (data consistency/reporting UX) without broad scope growth. |
 | Task/action tracking | **Implemented core workflow** (FollowUpTask create/list/detail/edit with source links). | Ensures follow-through from coaching and operational work. | Strong: FollowUpTask links into notes/events and person assignments. | Medium | Low | Plan a focused backlog PR for task-state ergonomics and ownership clarity using current schema. |
 | Notes/observations/journal entries | **Partially implemented** (`ObservationNote` live; unified Entry/Inbox/Journal is planning-only). | Captures coaching memory and creates downstream action context. | Strong for notes today; moderate for future unified model (requires migration strategy). | Medium-High | Medium | Tighten Phase 7 planning docs to separate “current notes flow” from “future unified entry model” and define migration guardrails. |
@@ -114,7 +115,8 @@ This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the
 4. **Phase 7G:** FollowUpTask operational clarity — task list/detail readability, lightweight filtering, overdue/blocked visibility, and relationship clarity with notes/events/inbox references while staying on the current task model
 5. **Phase 7H:** Team/Member + Notes/Tasks operational hardening closeout — validate implemented behavior, document deferred scope, define manual checklist coverage, and formalize next-track decision options
 6. **Later (deferred Entry/Inbox track):** Entry/Inbox schema implementation and migration planning under a separate track label to avoid overlap with Team/Member phase IDs
-7. **Then:** Reporting uplift, then deferred FieldOps/GearOps expansions as separate module tracks
+7. **Deferred athlete development journaling track:** Implement first-class athlete journaling in phases (entry type, prompt workflows, task scheduling, feed visibility controls, and version history) under Entry/Feed readiness gates
+8. **Then:** Reporting uplift, then deferred FieldOps/GearOps expansions as separate module tracks
 
 ---
 
