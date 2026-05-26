@@ -17,6 +17,7 @@
 import { EntryStatus, EntryVisibility } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { writeEntryActivity } from "@/lib/entries/service";
 import {
   computeStepDueDate,
   parseWorkflowSteps,
@@ -37,26 +38,6 @@ import type {
   WorkflowTemplateDetail,
   WorkflowTemplateView,
 } from "./types";
-
-// ── Activity helper ─────────────────────────────────────────────────────────
-
-async function writeWorkflowActivity(input: {
-  organizationId: string;
-  entryId: string;
-  actorPersonId: string | null;
-  action: string;
-  metadata?: Record<string, unknown> | null;
-}) {
-  await db.entryActivity.create({
-    data: {
-      organizationId: input.organizationId,
-      entryId: input.entryId,
-      actorPersonId: input.actorPersonId,
-      action: input.action,
-      metadataJson: input.metadata ? JSON.stringify(input.metadata) : null,
-    },
-  });
-}
 
 // ── Template CRUD ───────────────────────────────────────────────────────────
 
@@ -284,18 +265,16 @@ export async function startWorkflowRun(input: StartWorkflowRunInput) {
     },
   });
 
-  await db.entryActivity.create({
-    data: {
-      organizationId: input.organizationId,
-      entryId: stepEntry.id,
-      actorPersonId: input.startedByPersonId,
-      action: WORKFLOW_ACTIVITY_ACTIONS.RUN_STARTED,
-      metadataJson: JSON.stringify({ workflowRunId: run.id, templateName: template.name, stepIndex: 0 }),
-    },
+  await writeEntryActivity({
+    organizationId: input.organizationId,
+    entryId: stepEntry.id,
+    actorPersonId: input.startedByPersonId,
+    action: WORKFLOW_ACTIVITY_ACTIONS.RUN_STARTED,
+    metadata: { workflowRunId: run.id, templateName: template.name, stepIndex: 0 },
   });
 
   if (input.anchorEntryId) {
-    await writeWorkflowActivity({
+    await writeEntryActivity({
       organizationId: input.organizationId,
       entryId: input.anchorEntryId,
       actorPersonId: input.startedByPersonId,
@@ -356,14 +335,12 @@ export async function advanceWorkflowRun(input: AdvanceWorkflowRunInput) {
     data: { completedAt: new Date() },
   });
 
-  await db.entryActivity.create({
-    data: {
-      organizationId: input.organizationId,
-      entryId: currentStepEntry.entryId,
-      actorPersonId: input.actorPersonId,
-      action: WORKFLOW_ACTIVITY_ACTIONS.STEP_COMPLETED,
-      metadataJson: JSON.stringify({ workflowRunId: run.id, stepIndex: currentIndex }),
-    },
+  await writeEntryActivity({
+    organizationId: input.organizationId,
+    entryId: currentStepEntry.entryId,
+    actorPersonId: input.actorPersonId,
+    action: WORKFLOW_ACTIVITY_ACTIONS.STEP_COMPLETED,
+    metadata: { workflowRunId: run.id, stepIndex: currentIndex },
   });
 
   const nextIndex = currentIndex + 1;
@@ -412,17 +389,15 @@ export async function advanceWorkflowRun(input: AdvanceWorkflowRunInput) {
     data: { currentStepIndex: nextIndex },
   });
 
-  await db.entryActivity.create({
-    data: {
-      organizationId: input.organizationId,
-      entryId: nextEntry.id,
-      actorPersonId: input.actorPersonId,
-      action: WORKFLOW_ACTIVITY_ACTIONS.RUN_STARTED,
-      metadataJson: JSON.stringify({
-        workflowRunId: run.id,
-        templateName: run.workflowTemplate.name,
-        stepIndex: nextIndex,
-      }),
+  await writeEntryActivity({
+    organizationId: input.organizationId,
+    entryId: nextEntry.id,
+    actorPersonId: input.actorPersonId,
+    action: WORKFLOW_ACTIVITY_ACTIONS.RUN_STARTED,
+    metadata: {
+      workflowRunId: run.id,
+      templateName: run.workflowTemplate.name,
+      stepIndex: nextIndex,
     },
   });
 
@@ -467,7 +442,7 @@ export async function cancelWorkflowRun(input: CancelWorkflowRunInput) {
   });
 
   if (run.anchorEntryId) {
-    await writeWorkflowActivity({
+    await writeEntryActivity({
       organizationId: input.organizationId,
       entryId: run.anchorEntryId,
       actorPersonId: input.actorPersonId,

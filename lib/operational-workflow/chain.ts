@@ -15,6 +15,7 @@
 import { EntryStatus, EntryVisibility, OperationalRelationshipType } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { writeEntryActivity } from "@/lib/entries/service";
 import { computeStepDueDate, WORKFLOW_ACTIVITY_ACTIONS } from "./types";
 import type { FollowUpChainStep, StartFollowUpChainInput } from "./types";
 
@@ -99,17 +100,15 @@ export async function startFollowUpChain(input: StartFollowUpChainInput): Promis
       update: { removedAt: null },
     });
 
-    await db.entryActivity.create({
-      data: {
-        organizationId: input.organizationId,
-        entryId: entry.id,
-        actorPersonId: input.createdByPersonId,
-        action: WORKFLOW_ACTIVITY_ACTIONS.CHAIN_CREATED,
-        metadataJson: JSON.stringify({
-          anchorEntryId: input.anchorEntryId,
-          stepIndex: i,
-          previousEntryId,
-        }),
+    await writeEntryActivity({
+      organizationId: input.organizationId,
+      entryId: entry.id,
+      actorPersonId: input.createdByPersonId,
+      action: WORKFLOW_ACTIVITY_ACTIONS.CHAIN_CREATED,
+      metadata: {
+        anchorEntryId: input.anchorEntryId,
+        stepIndex: i,
+        previousEntryId,
       },
     });
 
@@ -118,14 +117,12 @@ export async function startFollowUpChain(input: StartFollowUpChainInput): Promis
     previousAssignee = assignee;
   }
 
-  await db.entryActivity.create({
-    data: {
-      organizationId: input.organizationId,
-      entryId: anchorEntry.id,
-      actorPersonId: input.createdByPersonId,
-      action: WORKFLOW_ACTIVITY_ACTIONS.CHAIN_CREATED,
-      metadataJson: JSON.stringify({ stepCount: input.steps.length, firstStepEntryId: stepEntryIds[0] }),
-    },
+  await writeEntryActivity({
+    organizationId: input.organizationId,
+    entryId: anchorEntry.id,
+    actorPersonId: input.createdByPersonId,
+    action: WORKFLOW_ACTIVITY_ACTIONS.CHAIN_CREATED,
+    metadata: { stepCount: input.steps.length, firstStepEntryId: stepEntryIds[0] },
   });
 
   return { anchorEntryId: anchorEntry.id, stepEntryIds };

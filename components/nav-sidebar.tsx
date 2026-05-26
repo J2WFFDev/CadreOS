@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/feed", label: "Feed" },
+  { href: "/notifications", label: "Notifications" },
   { href: "/reports", label: "Reports" },
   { href: "/people", label: "People" },
   { href: "/programs", label: "Programs" },
@@ -22,7 +23,7 @@ const NAV_LINKS = [
   { href: "/account", label: "Account" },
 ] as const;
 
-export function NavSidebar() {
+export function NavSidebar({ unreadNotificationCount = 0 }: { unreadNotificationCount?: number }) {
   const pathname = usePathname();
 
   return (
@@ -40,11 +41,16 @@ export function NavSidebar() {
                 href={link.href}
                 className={
                   isActive
-                    ? "block rounded-md px-3 py-2 text-sm font-medium bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
-                    : "block rounded-md px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                    ? "flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
+                    : "flex items-center justify-between rounded-md px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
                 }
               >
-                {link.label}
+                <span>{link.label}</span>
+                {link.href === "/notifications" && unreadNotificationCount > 0 ? (
+                  <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-black px-1.5 py-0.5 text-[10px] font-semibold text-white dark:bg-white dark:text-black">
+                    {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                  </span>
+                ) : null}
               </Link>
             </li>
           );

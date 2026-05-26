@@ -12,6 +12,7 @@
 import { EntryAssignmentRole, EntryStatus, EntryVisibility, type Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { emitEntryActivityAwareness } from "@/lib/notifications";
 import { ENTRY_ACTIVITY_ACTIONS } from "./types";
 import type {
   AssignEntryInput,
@@ -345,4 +346,16 @@ export async function writeEntryActivity(input: {
       metadataJson: input.metadata ? JSON.stringify(input.metadata) : null,
     },
   });
+
+  try {
+    await emitEntryActivityAwareness({
+      organizationId: input.organizationId,
+      entryId: input.entryId,
+      actorPersonId: input.actorPersonId,
+      action: input.action,
+      metadata: (input.metadata as Record<string, unknown> | null | undefined) ?? null,
+    });
+  } catch {
+    // Notification routing is non-authoritative and must not block operational entry writes.
+  }
 }

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeFollowUpTaskEntryRuntimeRef } from "@/lib/entry-runtime";
-import { upsertEntryFromTask } from "@/lib/entries/service";
+import { upsertEntryFromTask, writeEntryActivity } from "@/lib/entries/service";
 import {
   classifyFollowUpTaskOperationalVisibility,
   classifyObservationNoteOperationalVisibility,
@@ -319,7 +319,7 @@ export async function POST(request: Request) {
     });
 
     try {
-      await upsertEntryFromTask({
+      const entry = await upsertEntryFromTask({
         organizationId: scope.organizationId,
         task: {
           id: createdTask.id,
@@ -329,6 +329,16 @@ export async function POST(request: Request) {
           assigneePersonId: parsed.data.assigneePersonId,
           createdByPersonId,
           dueAt: parsed.data.dueAt,
+        },
+      });
+      await writeEntryActivity({
+        organizationId: scope.organizationId,
+        entryId: entry.id,
+        actorPersonId: createdByPersonId,
+        action: "entry.created",
+        metadata: {
+          sourceTaskId: createdTask.id,
+          assignedToPersonId: parsed.data.assigneePersonId,
         },
       });
       await writeFollowUpTaskEntryRuntimeRef({

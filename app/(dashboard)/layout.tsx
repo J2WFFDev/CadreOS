@@ -4,6 +4,7 @@ import Link from "next/link";
 import { NavSidebar } from "@/components/nav-sidebar";
 import { QuickCaptureLauncher } from "@/components/dashboard/quick-capture-launcher";
 import { db } from "@/lib/db";
+import { countUnreadNotificationsForPerson } from "@/lib/notifications";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export default async function DashboardLayout({
@@ -22,6 +23,10 @@ export default async function DashboardLayout({
           take: 200,
         })
       : [];
+  const unreadNotificationCount =
+    scope.databaseReady && scope.organizationId && scope.auth.personId
+      ? await countUnreadNotificationsForPerson(scope.organizationId, scope.auth.personId)
+      : 0;
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -45,7 +50,7 @@ export default async function DashboardLayout({
         </div>
       </header>
       <div className="flex min-h-[calc(100vh-49px)]">
-        <NavSidebar />
+        <NavSidebar unreadNotificationCount={unreadNotificationCount} />
         <main className="flex-1 overflow-auto p-6">
           <div className="mx-auto w-full max-w-5xl space-y-4">
             {shouldShowLinkingBanner ? (

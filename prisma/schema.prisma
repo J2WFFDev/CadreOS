@@ -335,6 +335,40 @@ enum WorkflowRunStatus {
   CANCELLED
 }
 
+enum AwarenessEventType {
+  ENTRY_ASSIGNED
+  ASSIGNMENT_UPDATED
+  FOLLOW_UP_CREATED
+  READINESS_ISSUE_DETECTED
+  WORKFLOW_STEP_ATTENTION
+  WORKFLOW_RUN_UPDATED
+  OPERATIONAL_STATUS_CHANGED
+  LINKED_OPERATIONAL_UPDATE
+  ATTENDANCE_REQUIRES_REVIEW
+}
+
+enum NotificationCategory {
+  ASSIGNMENT
+  FOLLOW_UP
+  READINESS
+  WORKFLOW
+  STATUS
+  LINKED_ISSUE
+  ATTENDANCE
+}
+
+enum NotificationDeliveryTiming {
+  IMMEDIATE
+  DIGEST_ONLY
+  OFF
+}
+
+enum NotificationDigestStatus {
+  PENDING
+  BUILT
+  DISMISSED
+}
+
 model Organization {
   id        String    @id @default(cuid())
   name      String
@@ -380,6 +414,11 @@ model Organization {
   workflowTemplates           WorkflowTemplate[]
   workflowRuns                WorkflowRun[]
   workflowStepEntries         WorkflowStepEntry[]
+  awarenessEvents             AwarenessEvent[]
+  notifications               Notification[]
+  notificationReadStates      NotificationReadState[]
+  notificationPreferences     NotificationPreference[]
+  notificationDigests         NotificationDigest[]
 }
 
 model Program {
@@ -510,6 +549,10 @@ model Person {
   createdOperationalRelationships OperationalRelationship[] @relation("OperationalRelationshipCreatedBy")
   createdWorkflowTemplates   WorkflowTemplate[]           @relation("WorkflowTemplateCreatedBy")
   startedWorkflowRuns        WorkflowRun[]                @relation("WorkflowRunStartedBy")
+  awarenessEvents            AwarenessEvent[]             @relation("AwarenessEventActor")
+  notificationReadStates     NotificationReadState[]
+  notificationPreferences    NotificationPreference[]
+  notificationDigests        NotificationDigest[]
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
@@ -680,6 +723,8 @@ model Entry {
   sourceNote    ObservationNote?   @relation("NoteEntry", fields: [sourceNoteId], references: [id], onDelete: SetNull)
   anchoredWorkflowRuns WorkflowRun[]
   workflowStepEntry    WorkflowStepEntry?
+  awarenessEvents      AwarenessEvent[]
+  notifications        Notification[]
 
   @@index([organizationId, type, createdAt])
   @@index([organizationId, status, dueDate])
@@ -874,6 +919,7 @@ model Event {
   gearAssignments GearAssignment[]
   gearCheckouts   GearCheckout[]
   consumableTransactions ConsumableTransaction[]
+  awarenessEvents AwarenessEvent[]
 
   @@index([organizationId, startsAt])
   @@index([organizationId, teamId, startsAt])
@@ -1305,6 +1351,8 @@ model WorkflowRun {
   anchorEntry       Entry?           @relation(fields: [anchorEntryId], references: [id], onDelete: SetNull)
   startedBy         Person           @relation("WorkflowRunStartedBy", fields: [startedByPersonId], references: [id], onDelete: Restrict)
   stepEntries       WorkflowStepEntry[]
+  awarenessEvents   AwarenessEvent[]
+  notifications     Notification[]
 
   @@index([organizationId, status])
   @@index([organizationId, workflowTemplateId])
@@ -1329,4 +1377,136 @@ model WorkflowStepEntry {
 
   @@index([organizationId, workflowRunId])
   @@index([organizationId, entryId])
+}
+
+model AwarenessEvent {
+  id                 String             @id @default(cuid())
+  organizationId     String
+  eventType          AwarenessEventType
+  category           NotificationCategory
+  priority           EntryPriority      @default(MEDIUM)
+  aggregateKey       String
+  title              String
+  body               String
+  href               String
+  entryId            String?
+  workflowRunId      String?
+  eventId            String?
+  teamId             String?
+  actorPersonId      String?
+  metadataJson       String?
+  occurredAt         DateTime           @default(now())
+  createdAt          DateTime           @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  entry        Entry?       @relation(fields: [entryId], references: [id], onDelete: SetNull)
+  workflowRun  WorkflowRun? @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  actor        Person?      @relation("AwarenessEventActor", fields: [actorPersonId], references: [id], onDelete: SetNull)
+  notifications Notification[] @relation("NotificationLatestAwarenessEvent")
+
+  @@index([organizationId, category, occurredAt])
+  @@index([organizationId, aggregateKey, occurredAt])
+  @@index([organizationId, actorPersonId, occurredAt])
+  @@index([organizationId, entryId, occurredAt])
+  @@index([organizationId, workflowRunId, occurredAt])
+  @@index([organizationId, eventId, occurredAt])
+}
+
+model Notification {
+  id                     String               @id @default(cuid())
+  organizationId         String
+  aggregateKey           String
+  category               NotificationCategory
+  priority               EntryPriority        @default(MEDIUM)
+  latestAwarenessEventId String
+  entryId                String?
+  workflowRunId          String?
+  teamId                 String?
+  title                  String
+  body                   String
+  href                   String
+  eventCount             Int                  @default(1)
+  firstEventAt           DateTime
+  lastEventAt            DateTime
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  organization         Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  latestAwarenessEvent AwarenessEvent       @relation("NotificationLatestAwarenessEvent", fields: [latestAwarenessEventId], references: [id], onDelete: Restrict)
+  entry                Entry?               @relation(fields: [entryId], references: [id], onDelete: SetNull)
+  workflowRun          WorkflowRun?         @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+  readStates           NotificationReadState[]
+
+  @@unique([organizationId, aggregateKey])
+  @@index([organizationId, category, lastEventAt])
+  @@index([organizationId, entryId])
+  @@index([organizationId, workflowRunId])
+}
+
+model NotificationReadState {
+  id             String   @id @default(cuid())
+  organizationId String
+  notificationId String
+  personId       String
+  readAt         DateTime?
+  archivedAt     DateTime?
+  deliveredAt    DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  person       Person       @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, personId])
+  @@index([organizationId, personId, readAt])
+  @@index([organizationId, personId, archivedAt, deliveredAt])
+}
+
+model NotificationPreference {
+  id                 String                     @id @default(cuid())
+  organizationId     String
+  personId           String
+  minimumPriority    EntryPriority              @default(LOW)
+  deliveryTiming     NotificationDeliveryTiming @default(IMMEDIATE)
+  digestWindowHours  Int                        @default(24)
+  assignmentEnabled  Boolean                    @default(true)
+  followUpEnabled    Boolean                    @default(true)
+  readinessEnabled   Boolean                    @default(true)
+  workflowEnabled    Boolean                    @default(true)
+  statusEnabled      Boolean                    @default(true)
+  linkedIssueEnabled Boolean                    @default(true)
+  attendanceEnabled  Boolean                    @default(true)
+  dueEnabled         Boolean                    @default(true)
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  person       Person       @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, personId])
+  @@index([organizationId, personId, deliveryTiming])
+}
+
+model NotificationDigest {
+  id               String                     @id @default(cuid())
+  organizationId   String
+  personId         String
+  status           NotificationDigestStatus   @default(PENDING)
+  deliveryTiming   NotificationDeliveryTiming @default(DIGEST_ONLY)
+  windowStartsAt   DateTime
+  windowEndsAt     DateTime
+  notificationIdsJson String?
+  builtAt          DateTime?
+  dismissedAt      DateTime?
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  person       Person       @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, personId, status, windowStartsAt])
+  @@index([organizationId, status, windowEndsAt])
+  @@unique([organizationId, personId, deliveryTiming, windowStartsAt, windowEndsAt])
 }
