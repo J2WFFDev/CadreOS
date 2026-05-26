@@ -329,6 +329,7 @@ export default async function TeamDetailsPage({
   const requestedSeasonId = readSearchParam(resolvedSearchParams, "seasonId");
   const selectedSeasonForView =
     team.program.seasons.find((season) => season.id === requestedSeasonId) ?? selectedSeason;
+  const hasNoSeasonConfigured = team.program.seasons.length === 0;
   const selectedSeasonRosterMembers = selectedSeasonForView
     ? team.roster.filter((membership) => membership.season.id === selectedSeasonForView.id)
     : [];
@@ -814,6 +815,18 @@ export default async function TeamDetailsPage({
       {roleSuccess ? (
         <div className="rounded-lg border border-green-300 bg-green-50 p-4 dark:border-green-700 dark:bg-green-950/40">
           <p className="text-sm text-green-900 dark:text-green-200">{roleSuccess}</p>
+        </div>
+      ) : null}
+
+      {hasNoSeasonConfigured ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
+          <p className="text-sm text-amber-900 dark:text-amber-200">No season has been created yet.</p>
+          <Link
+            href={`/programs/${team.program.id}/seasons/new`}
+            className="mt-2 inline-block text-sm underline hover:text-amber-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:text-amber-100"
+          >
+            Create the first season
+          </Link>
         </div>
       ) : null}
 
@@ -1462,9 +1475,7 @@ export default async function TeamDetailsPage({
         {rosterError ? <p className="mb-3 text-sm text-red-600">{rosterError}</p> : null}
 
         {!selectedSeasonForView ? (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Add or seed a season for this program before adding roster members.
-          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">No season has been created yet.</p>
         ) : availablePeople.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             All organization people are already on this team for the selected season.
