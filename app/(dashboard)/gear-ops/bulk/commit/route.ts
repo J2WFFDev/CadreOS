@@ -14,13 +14,14 @@ export async function POST(request: Request) {
   if (!scope.organizationId) {
     return NextResponse.json({ ok: false, error: "No organization context is available yet." }, { status: 400 });
   }
+  const organizationId = scope.organizationId;
 
   const body = (await request.json().catch(() => null)) as { csvText?: string; mode?: string } | null;
   const mode: GearImportMode = body?.mode === "CREATE_OR_UPDATE" ? "CREATE_OR_UPDATE" : "CREATE_ONLY";
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: mode === "CREATE_OR_UPDATE" ? "gearItem.update" : "gearItem.create",
     });
   } catch (error) {
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "CSV payload is required." }, { status: 400 });
   }
   const result = await commitGearImport({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     csvText: body.csvText,
     mode,
   });

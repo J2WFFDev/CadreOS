@@ -85,6 +85,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = gearConsumableTransactionWorkflowSchema.safeParse(values);
 
@@ -109,12 +110,12 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "gearConsumableTransaction.create",
     });
 
     const item = await db.gearItem.findFirst({
-      where: { id: itemId, organizationId: scope.organizationId },
+      where: { id: itemId, organizationId: organizationId },
       select: { id: true, inventoryType: true },
     });
 
@@ -140,7 +141,7 @@ export async function POST(
 
     if (parsed.data.eventId) {
       const event = await db.event.findFirst({
-        where: { id: parsed.data.eventId, organizationId: scope.organizationId },
+        where: { id: parsed.data.eventId, organizationId: organizationId },
         select: { id: true },
       });
 
@@ -159,7 +160,7 @@ export async function POST(
     }
 
     const recordedByPersonId = await resolveActorPersonId({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });
@@ -177,7 +178,7 @@ export async function POST(
     await db.$transaction(async (tx) => {
       await tx.consumableTransaction.create({
         data: {
-          organizationId: scope.organizationId!,
+          organizationId: organizationId!,
           gearItemId: itemId,
           transactionType: parsed.data.transactionType,
           quantityDelta: parsed.data.quantityDelta,

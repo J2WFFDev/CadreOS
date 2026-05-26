@@ -10,9 +10,10 @@ export async function GET() {
   if (!scope.databaseReady || !scope.organizationId) {
     return NextResponse.json({ error: "Organization context is unavailable." }, { status: 400 });
   }
+  const organizationId = scope.organizationId;
 
   const access = await resolveGearOpsReadAccess({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     actorPersonId: scope.auth.personId,
     workflow: "gear-ops.bulk.template",
   });

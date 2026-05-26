@@ -80,6 +80,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = roleAssignmentWorkflowSchema.safeParse(values);
 
@@ -103,7 +104,7 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "roleAssignment.create",
       programId: parsed.data.programId,
       teamId: parsed.data.teamId,
@@ -112,7 +113,7 @@ export async function POST(
     const person = await db.person.findFirst({
       where: {
         id: personId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: {
         id: true,
@@ -136,7 +137,7 @@ export async function POST(
       const program = await db.program.findFirst({
         where: {
           id: parsed.data.programId ?? "",
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: {
           id: true,
@@ -163,7 +164,7 @@ export async function POST(
       const team = await db.team.findFirst({
         where: {
           id: parsed.data.teamId ?? "",
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: {
           id: true,
@@ -203,7 +204,7 @@ export async function POST(
 
     const existing = await db.roleAssignment.findFirst({
       where: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         personId: person.id,
         roleType: parsed.data.roleType,
         scopeType: parsed.data.scopeType,
@@ -227,7 +228,7 @@ export async function POST(
 
     await db.roleAssignment.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         personId: person.id,
         roleType: parsed.data.roleType,
         scopeType: parsed.data.scopeType,

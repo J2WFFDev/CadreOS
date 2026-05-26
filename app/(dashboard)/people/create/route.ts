@@ -81,6 +81,7 @@ export async function POST(request: Request) {
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = joinPersonWorkflowSchema.safeParse(values);
 
@@ -105,13 +106,13 @@ export async function POST(request: Request) {
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "person.create",
     });
 
     const person = await db.person.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
         email: parsed.data.email,

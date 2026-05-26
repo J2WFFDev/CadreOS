@@ -17,11 +17,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   if (!scope.databaseReady || !scope.organizationId) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
+  const organizationId = scope.organizationId;
 
   try {
     await requirePermission({
       actorUserId: scope.auth.clerkUserId,
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "entry.update",
     });
   } catch {
@@ -41,7 +42,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     : undefined;
 
   const entry = await db.entry.findFirst({
-    where: { id: entryId, organizationId: scope.organizationId, deletedAt: null },
+    where: { id: entryId, organizationId: organizationId, deletedAt: null },
     select: { id: true, sourceTaskId: true, sourceNoteId: true },
   });
 
@@ -83,7 +84,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   }
 
   await writeEntryActivity({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     entryId: entry.id,
     actorPersonId: scope.auth.personId,
     action: ENTRY_ACTIVITY_ACTIONS.UPDATED,

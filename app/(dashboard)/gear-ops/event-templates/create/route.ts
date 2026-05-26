@@ -88,6 +88,7 @@ export async function POST(request: Request) {
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = eventGearRequirementTemplateWorkflowSchema.safeParse(values);
   if (!parsed.success) {
@@ -107,7 +108,7 @@ export async function POST(request: Request) {
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "eventGearRequirementTemplate.create",
     });
 
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
       const category = await db.gearCategory.findFirst({
         where: {
           id: parsed.data.gearCategoryId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: { id: true },
       });
@@ -134,7 +135,7 @@ export async function POST(request: Request) {
 
     await db.eventGearRequirementTemplate.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         name: parsed.data.name,
         label: parsed.data.label,
         gearCategoryId: parsed.data.gearCategoryId,

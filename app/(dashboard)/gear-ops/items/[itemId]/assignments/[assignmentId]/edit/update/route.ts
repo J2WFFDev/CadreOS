@@ -88,6 +88,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = gearAssignmentWorkflowSchema.safeParse(values);
 
@@ -114,14 +115,14 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "gearAssignment.update",
     });
 
     // Cross-org reference guard: person
     if (parsed.data.assignedToPersonId) {
       const person = await db.person.findFirst({
-        where: { id: parsed.data.assignedToPersonId, organizationId: scope.organizationId },
+        where: { id: parsed.data.assignedToPersonId, organizationId: organizationId },
         select: { id: true },
       });
 
@@ -142,7 +143,7 @@ export async function POST(
     // Cross-org reference guard: team
     if (parsed.data.assignedToTeamId) {
       const team = await db.team.findFirst({
-        where: { id: parsed.data.assignedToTeamId, organizationId: scope.organizationId },
+        where: { id: parsed.data.assignedToTeamId, organizationId: organizationId },
         select: { id: true },
       });
 
@@ -163,7 +164,7 @@ export async function POST(
     // Cross-org reference guard: event
     if (parsed.data.assignedToEventId) {
       const event = await db.event.findFirst({
-        where: { id: parsed.data.assignedToEventId, organizationId: scope.organizationId },
+        where: { id: parsed.data.assignedToEventId, organizationId: organizationId },
         select: { id: true },
       });
 
@@ -185,7 +186,7 @@ export async function POST(
       where: {
         id: assignmentId,
         gearItemId: itemId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       data: {
         status: parsed.data.status,

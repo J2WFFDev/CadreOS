@@ -81,6 +81,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = noteWorkflowSchema.safeParse(values);
 
@@ -101,7 +102,7 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "note.update",
       noteId,
       teamId: parsed.data.teamId,
@@ -112,7 +113,7 @@ export async function POST(
       const athlete = await db.person.findFirst({
         where: {
           id: parsed.data.athletePersonId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: { id: true },
       });
@@ -133,7 +134,7 @@ export async function POST(
       const team = await db.team.findFirst({
         where: {
           id: parsed.data.teamId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: { id: true },
       });
@@ -154,7 +155,7 @@ export async function POST(
       const event = await db.event.findFirst({
         where: {
           id: parsed.data.eventId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: { id: true, teamId: true },
       });
@@ -185,7 +186,7 @@ export async function POST(
     const updated = await db.observationNote.updateMany({
       where: {
         id: noteId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       data: {
         body: parsed.data.body,
@@ -209,7 +210,7 @@ export async function POST(
       const updatedNote = await db.observationNote.findFirst({
         where: {
           id: noteId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: {
           id: true,
@@ -225,7 +226,7 @@ export async function POST(
 
       if (updatedNote) {
         await upsertEntryFromNote({
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
           note: {
             id: updatedNote.id,
             body: updatedNote.body,
@@ -234,7 +235,7 @@ export async function POST(
           },
         });
         await writeObservationNoteEntryRuntimeRef({
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
           note: updatedNote,
         });
       }

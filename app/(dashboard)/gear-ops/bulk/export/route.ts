@@ -14,9 +14,10 @@ export async function GET(request: Request) {
   if (!scope.databaseReady || !scope.organizationId) {
     return NextResponse.json({ error: "Organization context is unavailable." }, { status: 400 });
   }
+  const organizationId = scope.organizationId;
 
   const access = await resolveGearOpsReadAccess({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     actorPersonId: scope.auth.personId,
     workflow: "gear-ops.bulk.export",
   });
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
   }
 
   const { fileName, csv } = await buildGearExportCsv({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     dataset: datasetRaw,
   });
 

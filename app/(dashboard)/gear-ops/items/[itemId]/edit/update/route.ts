@@ -98,6 +98,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = gearItemWorkflowSchema.safeParse(values);
 
@@ -128,7 +129,7 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "gearItem.update",
     });
 
@@ -136,7 +137,7 @@ export async function POST(
     const category = await db.gearCategory.findFirst({
       where: {
         id: parsed.data.gearCategoryId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: { id: true },
     });
@@ -159,7 +160,7 @@ export async function POST(
       const program = await db.program.findFirst({
         where: {
           id: parsed.data.programId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: { id: true },
       });
@@ -181,7 +182,7 @@ export async function POST(
     const updated = await db.gearItem.updateMany({
       where: {
         id: itemId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       data: {
         name: parsed.data.name,

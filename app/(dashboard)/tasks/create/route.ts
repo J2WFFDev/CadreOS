@@ -108,6 +108,7 @@ export async function POST(request: Request) {
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = followUpTaskWorkflowSchema.safeParse(values);
 
@@ -134,7 +135,7 @@ export async function POST(request: Request) {
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "task.create",
       noteId: parsed.data.sourceNoteId,
       eventId: parsed.data.sourceEventId,
@@ -143,7 +144,7 @@ export async function POST(request: Request) {
     const assignee = await db.person.findFirst({
       where: {
         id: parsed.data.assigneePersonId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: { id: true },
     });
@@ -174,7 +175,7 @@ export async function POST(request: Request) {
       sourceNote = await db.observationNote.findFirst({
         where: {
           id: parsed.data.sourceNoteId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: {
           id: true,
@@ -222,7 +223,7 @@ export async function POST(request: Request) {
       ? await db.event.findFirst({
         where: {
           id: parsed.data.sourceEventId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: { id: true, teamId: true, programId: true },
       })
@@ -282,7 +283,7 @@ export async function POST(request: Request) {
     }
 
     const createdByPersonId = await resolveFollowUpTaskCreatorPersonId(
-      scope.organizationId,
+      organizationId,
       scope.auth.clerkUserId,
       scope.auth.personId,
     );
@@ -299,7 +300,7 @@ export async function POST(request: Request) {
 
     const createdTask = await db.followUpTask.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         title: parsed.data.title,
         description: parsed.data.description,
         status: parsed.data.status,
@@ -320,7 +321,7 @@ export async function POST(request: Request) {
 
     try {
       const entry = await upsertEntryFromTask({
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         task: {
           id: createdTask.id,
           title: parsed.data.title,
@@ -332,7 +333,7 @@ export async function POST(request: Request) {
         },
       });
       await writeEntryActivity({
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         entryId: entry.id,
         actorPersonId: createdByPersonId,
         action: "entry.created",
@@ -342,7 +343,7 @@ export async function POST(request: Request) {
         },
       });
       await writeFollowUpTaskEntryRuntimeRef({
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         task: {
           id: createdTask.id,
           organizationId: createdTask.organizationId,

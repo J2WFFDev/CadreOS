@@ -83,6 +83,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = attendanceWorkflowSchema.safeParse(values);
 
@@ -105,7 +106,7 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "attendance.upsert",
       eventId,
     });
@@ -113,7 +114,7 @@ export async function POST(
     const event = await db.event.findFirst({
       where: {
         id: eventId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: {
         id: true,
@@ -136,7 +137,7 @@ export async function POST(
     const person = await db.person.findFirst({
       where: {
         id: parsed.data.personId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: {
         id: true,
@@ -159,7 +160,7 @@ export async function POST(
     if (event.teamId) {
       const teamSeasons = await db.season.findMany({
         where: {
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
           programId: event.programId,
         },
         select: {
@@ -202,7 +203,7 @@ export async function POST(
     }
 
     const markedByPersonId = await resolveActorPersonId({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });
@@ -245,7 +246,7 @@ export async function POST(
 
     try {
       await emitAttendanceAwareness({
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         eventId: event.id,
         actorPersonId: markedByPersonId,
         personId: person.id,

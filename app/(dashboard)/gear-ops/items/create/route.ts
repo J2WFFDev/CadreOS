@@ -96,6 +96,7 @@ export async function POST(request: Request) {
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = gearItemWorkflowSchema.safeParse(values);
 
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "gearItem.create",
     });
 
@@ -134,7 +135,7 @@ export async function POST(request: Request) {
     const category = await db.gearCategory.findFirst({
       where: {
         id: parsed.data.gearCategoryId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: { id: true },
     });
@@ -157,7 +158,7 @@ export async function POST(request: Request) {
       const program = await db.program.findFirst({
         where: {
           id: parsed.data.programId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: { id: true },
       });
@@ -178,7 +179,7 @@ export async function POST(request: Request) {
 
     const created = await db.gearItem.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         name: parsed.data.name,
         gearCategoryId: parsed.data.gearCategoryId,
         inventoryType: parsed.data.inventoryType,

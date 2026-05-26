@@ -43,6 +43,7 @@ export async function POST(
   if (!scope.organizationId) {
     return NextResponse.redirect(buildRedirectUrl(request.url, itemId, nextStatus, "No organization context is available yet."), 303);
   }
+  const organizationId = scope.organizationId;
 
   const allowedStatuses = new Set<GearReservationStatus>([
     GearReservationStatus.ACTIVE,
@@ -59,12 +60,12 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "gearReservation.update",
     });
 
     const actorPersonId = await resolveActorPersonId({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });
@@ -74,7 +75,7 @@ export async function POST(
     }
 
     const reservation = await db.gearReservation.findFirst({
-      where: { id: reservationId, gearItemId: itemId, organizationId: scope.organizationId },
+      where: { id: reservationId, gearItemId: itemId, organizationId: organizationId },
       select: { id: true, gearItemId: true },
     });
 
@@ -120,7 +121,7 @@ export async function POST(
       ) {
         await tx.inventoryMovement.create({
           data: {
-            organizationId: scope.organizationId!,
+            organizationId: organizationId!,
             gearItemId: itemId,
             movementType: InventoryMovementType.RESERVATION_RELEASED,
             actorPersonId,

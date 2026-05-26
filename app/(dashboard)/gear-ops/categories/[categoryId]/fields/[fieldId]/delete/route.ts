@@ -36,10 +36,11 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "gearCategoryField.delete",
     });
 
@@ -47,7 +48,7 @@ export async function POST(
       where: {
         id: fieldId,
         categoryId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
     });
 

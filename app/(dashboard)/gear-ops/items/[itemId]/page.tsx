@@ -163,6 +163,7 @@ export default async function GearOpsItemDetailsPage({
         }>;
         reservations: Array<{
           id: string;
+          gearItemId: string;
           mode: GearReservationMode;
           status: GearReservationStatus;
           approvalStatus: import("@prisma/client").ApprovalStatus;
@@ -171,6 +172,10 @@ export default async function GearOpsItemDetailsPage({
           quantityRequested: number;
           windowStartAt: Date;
           windowEndAt: Date;
+          reservedForPersonId: string | null;
+          reservedForTeamId: string | null;
+          reservedForEventId: string | null;
+          programId: string | null;
           notes: string | null;
           releaseReason: string | null;
           conflictSummary: string | null;
@@ -295,6 +300,7 @@ export default async function GearOpsItemDetailsPage({
         reservations: {
           select: {
             id: true,
+            gearItemId: true,
             mode: true,
             status: true,
             approvalStatus: true,
@@ -303,6 +309,10 @@ export default async function GearOpsItemDetailsPage({
             quantityRequested: true,
             windowStartAt: true,
             windowEndAt: true,
+            reservedForPersonId: true,
+            reservedForTeamId: true,
+            reservedForEventId: true,
+            programId: true,
             notes: true,
             releaseReason: true,
             conflictSummary: true,
@@ -413,21 +423,17 @@ export default async function GearOpsItemDetailsPage({
   const currentCheckoutStatuses = new Set<GearCheckoutStatus>([GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE]);
   const currentCheckouts = gearItem.checkouts.filter((checkout) => currentCheckoutStatuses.has(checkout.status));
   const checkoutHistory = gearItem.checkouts.filter((checkout) => !currentCheckoutStatuses.has(checkout.status));
-  const currentReservations = gearItem.reservations.filter((reservation) =>
-    ![
-      GearReservationStatus.RELEASED,
-      GearReservationStatus.CANCELED,
-      GearReservationStatus.FULFILLED,
-      GearReservationStatus.EXPIRED,
-    ].includes(deriveGearReservationEffectiveStatus(reservation)),
+  const terminalReservationStatuses = new Set<GearReservationStatus>([
+    GearReservationStatus.RELEASED,
+    GearReservationStatus.CANCELED,
+    GearReservationStatus.FULFILLED,
+    GearReservationStatus.EXPIRED,
+  ]);
+  const currentReservations = gearItem.reservations.filter(
+    (reservation) => !terminalReservationStatuses.has(deriveGearReservationEffectiveStatus(reservation)),
   );
   const reservationHistory = gearItem.reservations.filter((reservation) =>
-    [
-      GearReservationStatus.RELEASED,
-      GearReservationStatus.CANCELED,
-      GearReservationStatus.FULFILLED,
-      GearReservationStatus.EXPIRED,
-    ].includes(deriveGearReservationEffectiveStatus(reservation)),
+    terminalReservationStatuses.has(deriveGearReservationEffectiveStatus(reservation)),
   );
   const reservationSummary = summarizeGearReservations(gearItem.reservations);
   const recentMaintenanceLogs = gearItem.maintenanceLogs.slice(0, 3);
@@ -706,12 +712,12 @@ export default async function GearOpsItemDetailsPage({
       ) : null}
       {reservation.notes ? <p className="mt-2 text-zinc-600 dark:text-zinc-400">{reservation.notes}</p> : null}
       {reservation.releaseReason ? <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Release note: {reservation.releaseReason}</p> : null}
-      {[
+      {new Set<GearReservationStatus>([
         GearReservationStatus.ACTIVE,
         GearReservationStatus.PENDING_REVIEW,
         GearReservationStatus.CONFLICT,
         GearReservationStatus.DRAFT,
-      ].includes(effectiveStatus) ? (
+      ]).has(effectiveStatus) ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {reservation.reservedEvent ? (
             <Link href={`/events/${reservation.reservedEvent.id}/gear`} className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">

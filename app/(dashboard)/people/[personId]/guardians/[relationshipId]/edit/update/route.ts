@@ -94,6 +94,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = guardianRelationshipWorkflowSchema.safeParse(values);
 
@@ -117,7 +118,7 @@ export async function POST(
     const person = await db.person.findFirst({
       where: {
         id: personId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: {
         id: true,
@@ -153,7 +154,7 @@ export async function POST(
 
     const permissionScope = derivePermissionScope(person);
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "guardianRelationship.update",
       programId: permissionScope.programId,
       teamId: permissionScope.teamId,
@@ -162,7 +163,7 @@ export async function POST(
     const relationship = await db.athleteGuardianRelationship.findFirst({
       where: {
         id: relationshipId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         athletePersonId: person.id,
       },
       select: {
@@ -183,7 +184,7 @@ export async function POST(
     const guardian = await db.person.findFirst({
       where: {
         id: parsed.data.guardianPersonId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: {
         id: true,
@@ -218,7 +219,7 @@ export async function POST(
 
     const duplicatePair = await db.athleteGuardianRelationship.findFirst({
       where: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         athletePersonId: person.id,
         guardianPersonId: guardian.id,
         id: { not: relationship.id },

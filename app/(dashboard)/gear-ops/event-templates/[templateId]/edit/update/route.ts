@@ -90,6 +90,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = eventGearRequirementTemplateWorkflowSchema.safeParse(values);
   if (!parsed.success) {
@@ -109,7 +110,7 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "eventGearRequirementTemplate.update",
     });
 
@@ -117,7 +118,7 @@ export async function POST(
       const category = await db.gearCategory.findFirst({
         where: {
           id: parsed.data.gearCategoryId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: { id: true },
       });
@@ -137,7 +138,7 @@ export async function POST(
     const updated = await db.eventGearRequirementTemplate.updateMany({
       where: {
         id: templateId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       data: {
         name: parsed.data.name,

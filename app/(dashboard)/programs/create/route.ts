@@ -58,6 +58,7 @@ export async function POST(request: Request) {
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = programWorkflowSchema.safeParse(values);
 
@@ -78,13 +79,13 @@ export async function POST(request: Request) {
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "program.create",
     });
 
     const existingProgram = await db.program.findFirst({
       where: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         name: parsed.data.name,
       },
       select: { id: true },
@@ -105,7 +106,7 @@ export async function POST(request: Request) {
 
     await db.program.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         name: parsed.data.name,
       },
     });

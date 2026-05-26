@@ -102,6 +102,7 @@ export async function POST(request: Request) {
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = eventWorkflowSchema.safeParse(values);
 
@@ -129,7 +130,7 @@ export async function POST(request: Request) {
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "event.create",
       programId: parsed.data.programId,
       teamId: parsed.data.teamId,
@@ -138,7 +139,7 @@ export async function POST(request: Request) {
     const program = await db.program.findFirst({
       where: {
         id: parsed.data.programId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: { id: true },
     });
@@ -160,7 +161,7 @@ export async function POST(request: Request) {
       const team = await db.team.findFirst({
         where: {
           id: parsed.data.teamId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
           programId: parsed.data.programId,
         },
         select: { id: true },
@@ -181,7 +182,7 @@ export async function POST(request: Request) {
     }
 
     const createdByPersonId = await resolveActorPersonId({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });
@@ -198,7 +199,7 @@ export async function POST(request: Request) {
 
     const createdEvent = await db.event.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         title: parsed.data.title,
         eventType: parsed.data.eventType,
         status: parsed.data.status,

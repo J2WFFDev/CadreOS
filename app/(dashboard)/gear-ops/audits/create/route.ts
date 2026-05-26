@@ -13,9 +13,10 @@ export async function POST(request: Request) {
   if (!scope.organizationId) {
     return new Response("No organization context.", { status: 400 });
   }
+  const organizationId = scope.organizationId;
 
   const access = await resolveInventoryAuditWriteAccess({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     actorPersonId: scope.auth.personId,
     workflow: "inventory-audit.create",
   });
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
   }
 
   const createdByPersonId = await resolveActorPersonId({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     clerkUserId: scope.auth.clerkUserId,
     preferredPersonId: scope.auth.personId,
   });
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
   const nextScheduledAt = nextScheduledAtRaw.length > 0 ? new Date(nextScheduledAtRaw) : null;
 
   const audit = await createInventoryAudit({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     createdByPersonId,
     name,
     description,

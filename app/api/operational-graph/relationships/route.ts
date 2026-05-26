@@ -18,6 +18,7 @@ export async function GET(request: Request) {
   if (!scope.databaseReady || !scope.organizationId) {
     return NextResponse.json({ error: "Organization context unavailable." }, { status: 400 });
   }
+  const organizationId = scope.organizationId;
 
   const url = new URL(request.url);
   const nodeType = String(url.searchParams.get("nodeType") ?? "").trim().toUpperCase();
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
   }
 
   const related = await listRelatedOperationalRecords({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     node: { nodeType, nodeId },
     limit: Number.isNaN(limit) ? 30 : Math.max(1, Math.min(limit, 100)),
   });
@@ -42,6 +43,8 @@ export async function POST(request: Request) {
   if (!scope.databaseReady || !scope.organizationId || !scope.auth.personId) {
     return NextResponse.json({ error: "Organization context unavailable." }, { status: 400 });
   }
+
+  const organizationId = scope.organizationId;
 
   const body = await request.json().catch(() => null);
   const fromNodeType = String(body?.fromNodeType ?? "").trim().toUpperCase();
@@ -63,13 +66,13 @@ export async function POST(request: Request) {
 
   await requirePermission({
     actorUserId: scope.auth.clerkUserId,
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     action: "entry.update",
   });
 
   try {
     const relationship = await linkOperationalRecords({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       from: { nodeType: fromNodeType, nodeId: fromNodeId },
       to: { nodeType: toNodeType, nodeId: toNodeId },
       relationshipType,
@@ -88,6 +91,8 @@ export async function DELETE(request: Request) {
   if (!scope.databaseReady || !scope.organizationId || !scope.auth.personId) {
     return NextResponse.json({ error: "Organization context unavailable." }, { status: 400 });
   }
+
+  const organizationId = scope.organizationId;
 
   const body = await request.json().catch(() => null);
   const fromNodeType = String(body?.fromNodeType ?? "").trim().toUpperCase();
@@ -108,13 +113,13 @@ export async function DELETE(request: Request) {
 
   await requirePermission({
     actorUserId: scope.auth.clerkUserId,
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     action: "entry.update",
   });
 
   try {
     const relationship = await unlinkOperationalRecords({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       from: { nodeType: fromNodeType, nodeId: fromNodeId },
       to: { nodeType: toNodeType, nodeId: toNodeId },
       relationshipType,

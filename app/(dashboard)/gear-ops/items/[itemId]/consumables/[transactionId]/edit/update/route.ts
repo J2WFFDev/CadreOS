@@ -92,6 +92,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = gearConsumableTransactionWorkflowSchema.safeParse(values);
 
@@ -116,12 +117,12 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "gearConsumableTransaction.update",
     });
 
     const item = await db.gearItem.findFirst({
-      where: { id: itemId, organizationId: scope.organizationId },
+      where: { id: itemId, organizationId: organizationId },
       select: { id: true, inventoryType: true },
     });
 
@@ -147,7 +148,7 @@ export async function POST(
 
     if (parsed.data.eventId) {
       const event = await db.event.findFirst({
-        where: { id: parsed.data.eventId, organizationId: scope.organizationId },
+        where: { id: parsed.data.eventId, organizationId: organizationId },
         select: { id: true },
       });
 
@@ -170,7 +171,7 @@ export async function POST(
         where: {
           id: transactionId,
           gearItemId: itemId,
-          organizationId: scope.organizationId!,
+          organizationId: organizationId!,
         },
         select: { quantityDelta: true },
       });
@@ -183,7 +184,7 @@ export async function POST(
         where: {
           id: transactionId,
           gearItemId: itemId,
-          organizationId: scope.organizationId!,
+          organizationId: organizationId!,
         },
         data: {
           transactionType: parsed.data.transactionType,

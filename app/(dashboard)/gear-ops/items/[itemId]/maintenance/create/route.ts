@@ -85,6 +85,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = gearMaintenanceWorkflowSchema.safeParse(values);
 
@@ -110,12 +111,12 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "gearMaintenance.create",
     });
 
     const item = await db.gearItem.findFirst({
-      where: { id: itemId, organizationId: scope.organizationId },
+      where: { id: itemId, organizationId: organizationId },
       select: { id: true },
     });
 
@@ -130,7 +131,7 @@ export async function POST(
     }
 
     const performedBy = await db.person.findFirst({
-      where: { id: parsed.data.performedByPersonId, organizationId: scope.organizationId },
+      where: { id: parsed.data.performedByPersonId, organizationId: organizationId },
       select: { id: true },
     });
 
@@ -149,7 +150,7 @@ export async function POST(
 
     await db.gearMaintenanceLog.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         gearItemId: itemId,
         performedByPersonId: parsed.data.performedByPersonId,
         maintenanceType: parsed.data.maintenanceType,

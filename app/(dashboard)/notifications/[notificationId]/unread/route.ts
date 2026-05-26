@@ -13,9 +13,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ not
   if (!scope.databaseReady || !scope.organizationId || !scope.auth.personId) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
+  const organizationId = scope.organizationId;
 
   await setNotificationReadState({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     personId: scope.auth.personId,
     notificationId,
     read: false,

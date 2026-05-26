@@ -78,6 +78,7 @@ export async function POST(request: Request) {
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = noteWorkflowSchema.safeParse(values);
 
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "note.create",
       teamId: parsed.data.teamId,
       eventId: parsed.data.eventId,
@@ -108,7 +109,7 @@ export async function POST(request: Request) {
       const athlete = await db.person.findFirst({
         where: {
           id: parsed.data.athletePersonId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: { id: true },
       });
@@ -129,7 +130,7 @@ export async function POST(request: Request) {
       const team = await db.team.findFirst({
         where: {
           id: parsed.data.teamId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: { id: true },
       });
@@ -150,7 +151,7 @@ export async function POST(request: Request) {
       const event = await db.event.findFirst({
         where: {
           id: parsed.data.eventId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: { id: true, teamId: true },
       });
@@ -179,7 +180,7 @@ export async function POST(request: Request) {
     }
 
     const authorPersonId = await resolveActorPersonId({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });
@@ -196,7 +197,7 @@ export async function POST(request: Request) {
 
     const createdNote = await db.observationNote.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         authorPersonId,
         body: parsed.data.body,
         athletePersonId: parsed.data.athletePersonId,
@@ -217,7 +218,7 @@ export async function POST(request: Request) {
 
     try {
       await upsertEntryFromNote({
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         note: {
           id: createdNote.id,
           body: createdNote.body,
@@ -226,7 +227,7 @@ export async function POST(request: Request) {
         },
       });
       await writeObservationNoteEntryRuntimeRef({
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         note: createdNote,
       });
     } catch {

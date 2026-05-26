@@ -111,6 +111,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = followUpTaskWorkflowSchema.safeParse(values);
 
@@ -137,7 +138,7 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "task.update",
       taskId,
       noteId: parsed.data.sourceNoteId,
@@ -147,7 +148,7 @@ export async function POST(
     const existingTask = await db.followUpTask.findFirst({
       where: {
         id: taskId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: { status: true },
     });
@@ -155,7 +156,7 @@ export async function POST(
     const assignee = await db.person.findFirst({
       where: {
         id: parsed.data.assigneePersonId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: { id: true },
     });
@@ -186,7 +187,7 @@ export async function POST(
       sourceNote = await db.observationNote.findFirst({
         where: {
           id: parsed.data.sourceNoteId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: {
           id: true,
@@ -234,7 +235,7 @@ export async function POST(
       ? await db.event.findFirst({
         where: {
           id: parsed.data.sourceEventId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: { id: true, teamId: true, programId: true },
       })
@@ -296,7 +297,7 @@ export async function POST(
     const updated = await db.followUpTask.updateMany({
       where: {
         id: taskId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       data: {
         title: parsed.data.title,
@@ -323,7 +324,7 @@ export async function POST(
       const updatedTask = await db.followUpTask.findFirst({
         where: {
           id: taskId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         select: {
           id: true,
@@ -347,7 +348,7 @@ export async function POST(
 
       if (updatedTask) {
         const entry = await upsertEntryFromTask({
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
           task: {
             id: updatedTask.id,
             title: parsed.data.title,
@@ -359,7 +360,7 @@ export async function POST(
           },
         });
         await writeEntryActivity({
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
           entryId: entry.id,
           actorPersonId: scope.auth.personId,
           action: existingTask?.status && existingTask.status !== parsed.data.status ? "entry.status_changed" : "entry.updated",
@@ -370,7 +371,7 @@ export async function POST(
           },
         });
         await writeFollowUpTaskEntryRuntimeRef({
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
           task: {
             id: updatedTask.id,
             organizationId: updatedTask.organizationId,

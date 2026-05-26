@@ -21,9 +21,10 @@ export async function POST(
   if (!scope.organizationId) {
     return new Response("No organization context.", { status: 400 });
   }
+  const organizationId = scope.organizationId;
 
   const access = await resolveInventoryAuditWriteAccess({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     actorPersonId: scope.auth.personId,
     workflow: "inventory-audit.session.verify",
   });
@@ -41,7 +42,7 @@ export async function POST(
   const discrepancyTypeRaw = ((formData.get("discrepancyType") as string | null) ?? "").trim();
 
   const verifiedByPersonId = await resolveActorPersonId({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     clerkUserId: scope.auth.clerkUserId,
     preferredPersonId: scope.auth.personId,
   });
@@ -60,12 +61,12 @@ export async function POST(
   let scanEventId: string | null = null;
   if (scanValue.length > 0) {
     const resolved = await resolveScan({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       scanValue,
     });
 
     const scanEvent = await writeScanEvent({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       actorPersonId: verifiedByPersonId ?? null,
       scanContext: "INVENTORY_VERIFICATION",
       identifier: resolved.identifier,
@@ -86,7 +87,7 @@ export async function POST(
   }
 
   await recordInventoryAuditVerification({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     auditSessionId: sessionId,
     verificationStatus,
     verifiedByPersonId: verifiedByPersonId ?? null,
