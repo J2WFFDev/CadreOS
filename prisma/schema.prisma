@@ -116,6 +116,39 @@ enum EntryObjectLinkTargetType {
   OBSERVATION_NOTE
 }
 
+enum OperationalGraphNodeType {
+  ENTRY
+  PERSON
+  TEAM
+  PROGRAM
+  SEASON
+  EVENT
+  ATTENDANCE_RECORD
+  FACILITY
+  FACILITY_RESOURCE
+  RESOURCE_BOOKING
+  GEAR_ITEM
+  GEAR_ASSIGNMENT
+  GEAR_CHECKOUT
+  GEAR_MAINTENANCE_LOG
+  CONSUMABLE_TRANSACTION
+  FOLLOW_UP_TASK
+  OBSERVATION_NOTE
+  ROSTER_MEMBERSHIP
+  ATHLETE_GUARDIAN_RELATIONSHIP
+}
+
+enum OperationalRelationshipType {
+  RELATED_TO
+  BLOCKED_BY
+  FOLLOW_UP_TO
+  CREATED_FROM
+  IMPACTS
+  ASSIGNED_FOR
+  OBSERVED_DURING
+  READINESS_FOR
+}
+
 enum EntryAssignmentRole {
   OWNER
   COLLABORATOR
@@ -327,6 +360,7 @@ model Organization {
   entryStatusHistory          EntryStatusHistory[]
   entryComments               EntryComment[]
   entryReminders              EntryReminder[]
+  operationalRelationships    OperationalRelationship[]
 }
 
 model Program {
@@ -454,6 +488,7 @@ model Person {
   entryStatusChanges         EntryStatusHistory[]         @relation("EntryStatusChangedBy")
   entryComments              EntryComment[]               @relation("EntryCommentAuthor")
   entryReminders             EntryReminder[]              @relation("EntryReminderPerson")
+  createdOperationalRelationships OperationalRelationship[] @relation("OperationalRelationshipCreatedBy")
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
@@ -647,6 +682,29 @@ model EntryLink {
   @@unique([organizationId, fromEntryId, toEntryId])
   @@index([organizationId, fromEntryId])
   @@index([organizationId, toEntryId])
+}
+
+model OperationalRelationship {
+  id                String                      @id @default(cuid())
+  organizationId    String
+  fromNodeType      OperationalGraphNodeType
+  fromNodeId        String
+  toNodeType        OperationalGraphNodeType
+  toNodeId          String
+  relationshipType  OperationalRelationshipType
+  createdByPersonId String
+  metadataJson      String?
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+  removedAt         DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy    Person       @relation("OperationalRelationshipCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, fromNodeType, fromNodeId, toNodeType, toNodeId, relationshipType])
+  @@index([organizationId, fromNodeType, fromNodeId, removedAt])
+  @@index([organizationId, toNodeType, toNodeId, removedAt])
+  @@index([organizationId, relationshipType, createdAt])
 }
 
 model EntryActivity {

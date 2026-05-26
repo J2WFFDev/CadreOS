@@ -41,6 +41,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Arc 19A Unified Operational Entry Architecture](./PHASE_19A_UNIFIED_OPERATIONAL_ENTRY_ARCHITECTURE.md)
 - [Arc 19B Unified Feed & Today View](./PHASE_19B_UNIFIED_FEED_TODAY_VIEW.md)
 - [Arc 19C Quick Capture System](./PHASE_19C_QUICK_CAPTURE_SYSTEM.md)
+- [Arc 19D Cross-Linking & Operational Graph](./PHASE_19D_CROSS_LINKING_OPERATIONAL_GRAPH.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)
 - [Phase 16C GearOps Catalog Read-Only Views](./PHASE_16C_GEAROPS_CATALOG_READ_ONLY_VIEWS.md)

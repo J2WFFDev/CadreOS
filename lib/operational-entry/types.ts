@@ -126,6 +126,8 @@ export const ENTRY_ACTIVITY_ACTIONS = {
   ASSIGNMENT_REVOKED: "entry.assignment_revoked",
   OBJECT_LINK_ADDED: "entry.object_link_added",
   OBJECT_LINK_REMOVED: "entry.object_link_removed",
+  GRAPH_LINK_ADDED: "entry.graph_link_added",
+  GRAPH_LINK_REMOVED: "entry.graph_link_removed",
   COMPLETED: "entry.completed",
   DELETED: "entry.deleted",
   RESTORED: "entry.restored",

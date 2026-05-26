@@ -12,6 +12,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { parseQuickAddEntryInput } from "@/lib/entries/parser";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
+import { linkOperationalRecords, mapEntryObjectLinkTargetToGraphNodeType } from "@/lib/operational-graph";
 import { createOperationalEntry, linkEntryToObject, writeEntryActivity } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { requirePermission } from "@/lib/permissions";
@@ -25,6 +26,12 @@ import {
 import { resolveActorPersonId } from "@/lib/user-account";
 
 type ContextTarget = { targetType: EntryObjectLinkTargetType; targetId: string };
+
+function defaultContextRelationshipType(targetType: EntryObjectLinkTargetType) {
+  if (targetType === EntryObjectLinkTargetType.EVENT) return "OBSERVED_DURING" as const;
+  if (targetType === EntryObjectLinkTargetType.RESOURCE_BOOKING) return "READINESS_FOR" as const;
+  return "RELATED_TO" as const;
+}
 
 async function resolveContextTarget(input: {
   organizationId: string;
@@ -198,6 +205,14 @@ export async function POST(request: Request) {
         targetId: contextTarget.targetId,
         createdByPersonId: actorPersonId,
       });
+
+      await linkOperationalRecords({
+        organizationId: scope.organizationId,
+        from: { nodeType: "ENTRY", nodeId: createdEntry.id },
+        to: { nodeType: mapEntryObjectLinkTargetToGraphNodeType(contextTarget.targetType), nodeId: contextTarget.targetId },
+        relationshipType: defaultContextRelationshipType(contextTarget.targetType),
+        createdByPersonId: actorPersonId,
+      });
     }
 
     return NextResponse.redirect(new URL(`/entries/${createdEntry.id}`, request.url), 303);
@@ -244,6 +259,14 @@ export async function POST(request: Request) {
         targetId: contextTarget.targetId,
         createdByPersonId: actorPersonId,
       });
+
+      await linkOperationalRecords({
+        organizationId: scope.organizationId,
+        from: { nodeType: "ENTRY", nodeId: createdEntry.id },
+        to: { nodeType: mapEntryObjectLinkTargetToGraphNodeType(contextTarget.targetType), nodeId: contextTarget.targetId },
+        relationshipType: defaultContextRelationshipType(contextTarget.targetType),
+        createdByPersonId: actorPersonId,
+      });
     }
 
     return NextResponse.redirect(new URL(`/entries/${createdEntry.id}`, request.url), 303);
@@ -279,6 +302,14 @@ export async function POST(request: Request) {
       entryId: createdEntry.id,
       targetType: contextTarget.targetType,
       targetId: contextTarget.targetId,
+      createdByPersonId: actorPersonId,
+    });
+
+    await linkOperationalRecords({
+      organizationId: scope.organizationId,
+      from: { nodeType: "ENTRY", nodeId: createdEntry.id },
+      to: { nodeType: mapEntryObjectLinkTargetToGraphNodeType(contextTarget.targetType), nodeId: contextTarget.targetId },
+      relationshipType: defaultContextRelationshipType(contextTarget.targetType),
       createdByPersonId: actorPersonId,
     });
   }

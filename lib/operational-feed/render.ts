@@ -63,6 +63,8 @@ const ACTIVITY_ACTION_LABELS: Record<string, string> = {
   "entry.assignment_revoked": "Assignment removed",
   "entry.object_link_added": "Linked to object",
   "entry.object_link_removed": "Unlinked from object",
+  "entry.graph_link_added": "Graph link added",
+  "entry.graph_link_removed": "Graph link removed",
   "entry.completed": "Completed",
   "entry.deleted": "Deleted",
   "entry.restored": "Restored",
