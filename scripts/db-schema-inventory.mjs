@@ -18,6 +18,32 @@ const BUILTIN_SCALARS = new Set([
 
 const BASELINE_MIGRATION_MARKERS = [
   {
+    migration: "20260525000000_initial_cadreos_core",
+    requires: [
+      { table: "Organization" },
+      { table: "Program" },
+      { table: "Team" },
+      { table: "Season" },
+      { table: "UserAccount" },
+      { table: "Person" },
+      { table: "RoleAssignment" },
+      { table: "AthleteGuardianRelationship" },
+      { table: "RosterMembership" },
+      { table: "ObservationNote" },
+      { table: "EntryRuntimeRef" },
+      { table: "Event" },
+      { table: "RSVP" },
+      { table: "AttendanceRecord" },
+      { table: "FollowUpTask" },
+      { table: "InboxRoutingItem" },
+      { table: "AuditEvent" },
+      { table: "Facility" },
+      { table: "FacilityResource" },
+      { table: "ResourceBooking" },
+      { table: "BookingConflict" },
+    ],
+  },
+  {
     migration: "20260525153000_entry_system",
     requires: [
       { table: "Entry" },
@@ -291,7 +317,7 @@ function determineNextAction({ tableNames, baselineEligibleMigrations, baselineS
     return "Option A/C hybrid: baseline only verified existing historical migrations, then apply remaining migrations with deploy.";
   }
   if (classification === "partially migrated Arc-19+ schema") {
-    return "Option A: historical Arc-19 baseline markers are present. Baseline verified historical migrations, then deploy pending protected migrations.";
+    return "Option A: historical core and Arc-19 baseline markers are present. Baseline verified historical migrations, then deploy pending protected migrations.";
   }
   return "Option C: run migrate deploy carefully and add compatibility migration only for concrete conflicts.";
 }

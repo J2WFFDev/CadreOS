@@ -14,6 +14,7 @@ on:
         default: auto_detect_highest_existing
         options:
           - auto_detect_highest_existing
+          - 20260525000000_initial_cadreos_core
           - 20260525153000_entry_system
           - 20260526004640_arc19a_operational_entry_architecture
           - 20260526014000_arc19d_operational_graph
@@ -30,6 +31,7 @@ jobs:
       # Use direct connection for Prisma migrations (avoid pooled runtime endpoint).
       DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
       BASELINE_MIGRATIONS: |
+        20260525000000_initial_cadreos_core
         20260525153000_entry_system
         20260526004640_arc19a_operational_entry_architecture
         20260526014000_arc19d_operational_graph
