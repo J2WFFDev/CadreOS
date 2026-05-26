@@ -128,6 +128,20 @@ export default async function EventDetailsPage({
             }
           | null;
         createdBy: { id: string; firstName: string; lastName: string } | null;
+        gearPlan:
+          | {
+              id: string;
+              status: string;
+              _count: {
+                requirements: number;
+                assignments: number;
+              };
+            }
+          | null;
+        _count: {
+          gearCheckouts: number;
+          consumableTransactions: number;
+        };
         tasks: Array<{
           id: string;
           title: string;
@@ -215,6 +229,24 @@ export default async function EventDetailsPage({
             },
           },
           createdBy: { select: { id: true, firstName: true, lastName: true } },
+          gearPlan: {
+            select: {
+              id: true,
+              status: true,
+              _count: {
+                select: {
+                  requirements: true,
+                  assignments: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              gearCheckouts: true,
+              consumableTransactions: true,
+            },
+          },
           tasks: {
             where: buildSupportedTaskSourceNoteVisibilityWhere(),
             select: {
@@ -520,6 +552,12 @@ export default async function EventDetailsPage({
           >
             Add note
           </Link>
+          <Link
+            href={`/events/${event.id}/gear`}
+            className="inline-flex min-h-9 items-center rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Event gear
+          </Link>
           <Link href={fieldOpsBookingHref} className="inline-flex min-h-9 items-center rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
             Request FieldOps booking
           </Link>
@@ -766,6 +804,43 @@ export default async function EventDetailsPage({
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-medium">Event gear operations</h3>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Plan required gear, stage from vault or cage locations, and continue rapid checkout / return workflows without leaving event context.
+            </p>
+          </div>
+          <Link href={`/events/${event.id}/gear`} className="rounded-full border px-2 py-1 text-sm">
+            Open event gear plan
+          </Link>
+        </div>
+        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <dt className="font-medium">Plan status</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{event.gearPlan ? formatEnumLabel(event.gearPlan.status) : "Not created"}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Planned requirements</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{event.gearPlan?._count.requirements ?? 0}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Assigned plan items</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{event.gearPlan?._count.assignments ?? 0}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Event custody / consumables</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {event._count.gearCheckouts} checkouts · {event._count.consumableTransactions} consumable records
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-xs text-zinc-600 dark:text-zinc-400">
+          Use the event gear plan for readiness review, requirement gaps, staging, deployment links, recovery review, and event-linked gear history.
+        </p>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-lg font-medium">Relationship workflow navigation</h3>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Use these links to continue event-linked attendance, note, follow-up, and recent-change review without leaving operational context.
@@ -797,6 +872,9 @@ export default async function EventDetailsPage({
           </Link>
           <Link href="#operational-history" className="rounded-full border px-2 py-1">
             Event change history
+          </Link>
+          <Link href={`/events/${event.id}/gear`} className="rounded-full border px-2 py-1">
+            Event gear plan
           </Link>
           {event.team ? (
             <Link

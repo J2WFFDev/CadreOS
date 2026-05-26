@@ -36,6 +36,11 @@ type SupportedAction =
   | "gearCategory.update"
   | "gearItem.create"
   | "gearItem.update"
+  | "eventGearPlan.create"
+  | "eventGearPlan.update"
+  | "eventGearRequirement.create"
+  | "eventGearAssignment.create"
+  | "eventGearAssignment.update"
   | "gearAssignment.create"
   | "gearAssignment.update"
   | "gearCheckout.create"
@@ -99,6 +104,11 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "gearCategory.update",
     "gearItem.create",
     "gearItem.update",
+    "eventGearPlan.create",
+    "eventGearPlan.update",
+    "eventGearRequirement.create",
+    "eventGearAssignment.create",
+    "eventGearAssignment.update",
     "gearAssignment.create",
     "gearAssignment.update",
     "gearCheckout.create",
@@ -142,6 +152,11 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "gearCategory.update",
     "gearItem.create",
     "gearItem.update",
+    "eventGearPlan.create",
+    "eventGearPlan.update",
+    "eventGearRequirement.create",
+    "eventGearAssignment.create",
+    "eventGearAssignment.update",
     "gearAssignment.create",
     "gearAssignment.update",
     "gearCheckout.create",
@@ -174,6 +189,11 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "booking.create",
     "gearItem.create",
     "gearItem.update",
+    "eventGearPlan.create",
+    "eventGearPlan.update",
+    "eventGearRequirement.create",
+    "eventGearAssignment.create",
+    "eventGearAssignment.update",
     "gearAssignment.create",
     "gearAssignment.update",
     "gearCheckout.create",
@@ -259,6 +279,11 @@ const SUPPORTED_ACTIONS = new Set<SupportedAction>([
   "gearCategory.update",
   "gearItem.create",
   "gearItem.update",
+  "eventGearPlan.create",
+  "eventGearPlan.update",
+  "eventGearRequirement.create",
+  "eventGearAssignment.create",
+  "eventGearAssignment.update",
   "gearAssignment.create",
   "gearAssignment.update",
   "gearCheckout.create",
