@@ -821,7 +821,10 @@ export default async function TeamDetailsPage({
       {hasNoSeasonConfigured ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
           <p className="text-sm text-amber-900 dark:text-amber-200">No season has been created yet.</p>
-          <Link href={`/programs/${team.program.id}/seasons/new`} className="mt-2 inline-block text-sm underline">
+          <Link
+            href={`/programs/${team.program.id}/seasons/new`}
+            className="mt-2 inline-block text-sm underline hover:text-amber-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:text-amber-100"
+          >
             Create the first season
           </Link>
         </div>

@@ -1398,11 +1398,11 @@ type SeasonLike = {
   endDate: Date | null;
 };
 
-function isSeasonLike(season: SeasonLike | null | undefined): season is SeasonLike {
+function isSeasonLike(season: SeasonLike): season is SeasonLike {
   return Boolean(season?.id && season?.name);
 }
 
-export function selectSeededOrCurrentSeason(seasons: Array<SeasonLike | null | undefined>): SeasonLike | null {
+export function selectSeededOrCurrentSeason(seasons: Array<SeasonLike>): SeasonLike | null {
   const safeSeasons = seasons.filter(isSeasonLike);
 
   if (safeSeasons.length === 0) {
