@@ -5,6 +5,11 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { labelForScanContext, resolveInventoryScanReadAccess, SCAN_CONTEXTS } from "@/lib/inventory-scan";
+import {
+  buildRapidOperationHref,
+  findRapidOperationPresetByScanContext,
+  INVENTORY_ACTION_PRESETS,
+} from "@/lib/rapid-inventory-ops";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +70,11 @@ export default async function GearOpsScanPage({
   const scanContext = readSearchParam(resolvedSearchParams, "scanContext");
   const error = readSearchParam(resolvedSearchParams, "error");
   const info = readSearchParam(resolvedSearchParams, "info");
+  const currentPreset = findRapidOperationPresetByScanContext(
+    SCAN_CONTEXTS.includes(scanContext as (typeof SCAN_CONTEXTS)[number])
+      ? (scanContext as (typeof SCAN_CONTEXTS)[number])
+      : null,
+  );
 
   return (
     <section className="space-y-4">
@@ -81,48 +91,85 @@ export default async function GearOpsScanPage({
         </div>
       ) : null}
 
-      <form action="/gear-ops/scan/resolve" method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <div className="space-y-1">
-          <label htmlFor="scanValue" className="text-sm font-medium">
-            Scan barcode / QR
-          </label>
-          <input
-            id="scanValue"
-            name="scanValue"
-            defaultValue={scanValue}
-            autoFocus
-            autoComplete="off"
-            inputMode="text"
-            className="w-full rounded-md border px-3 py-3 text-base"
-            placeholder="Scan or enter code"
-          />
-        </div>
+      <div className="grid gap-3 md:grid-cols-[1.2fr,0.8fr]">
+        <form action="/gear-ops/scan/resolve" method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Current rapid mode</p>
+            <h3 className="mt-1 text-base font-semibold">{currentPreset.title}</h3>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{currentPreset.description}</p>
+            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{currentPreset.followThroughLabel}</p>
+          </div>
 
-        <div className="space-y-1">
-          <label htmlFor="scanContext" className="text-sm font-medium">
-            Scan context
-          </label>
-          <select
-            id="scanContext"
-            name="scanContext"
-            defaultValue={scanContext || "INVENTORY_LOOKUP"}
-            className="w-full rounded-md border px-3 py-2 text-sm"
+          <div className="space-y-1">
+            <label htmlFor="scanValue" className="text-sm font-medium">
+              Scan barcode / QR
+            </label>
+            <input
+              id="scanValue"
+              name="scanValue"
+              defaultValue={scanValue}
+              autoFocus
+              autoComplete="off"
+              inputMode="text"
+              className="w-full rounded-md border px-3 py-3 text-base"
+              placeholder="Scan or enter code"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="scanContext" className="text-sm font-medium">
+              Scan context
+            </label>
+            <select
+              id="scanContext"
+              name="scanContext"
+              defaultValue={scanContext || currentPreset.scanContext}
+              className="w-full rounded-md border px-3 py-2 text-sm"
+            >
+              {SCAN_CONTEXTS.map((context) => (
+                <option key={context} value={context}>
+                  {labelForScanContext(context)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full rounded-md bg-black px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
           >
-            {SCAN_CONTEXTS.map((context) => (
-              <option key={context} value={context}>
-                {labelForScanContext(context)}
-              </option>
-            ))}
-          </select>
-        </div>
+            {currentPreset.primaryActionLabel}
+          </button>
+        </form>
 
-        <button
-          type="submit"
-          className="w-full rounded-md bg-black px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-        >
-          Resolve scan
-        </button>
-      </form>
+        <div className="space-y-3 rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <div>
+            <h3 className="text-sm font-medium">Rapid operation presets</h3>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Pick a field mode once, then keep scanning with the same follow-through target.
+            </p>
+          </div>
+          <div className="grid gap-2">
+            {INVENTORY_ACTION_PRESETS.map((preset) => {
+              const isActive = preset.scanContext === currentPreset.scanContext;
+              return (
+                <Link
+                  key={preset.key}
+                  href={buildRapidOperationHref(preset.scanContext, scanValue || undefined)}
+                  className={`rounded-lg border p-3 text-sm transition ${
+                    isActive
+                      ? "border-zinc-900 bg-zinc-100 text-zinc-900 dark:border-zinc-100 dark:bg-zinc-800 dark:text-zinc-50"
+                      : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                  }`}
+                >
+                  <p className="font-medium">{preset.title}</p>
+                  <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">{preset.description}</p>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
 
       <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
         <p className="font-medium">Rapid contexts</p>
@@ -130,12 +177,16 @@ export default async function GearOpsScanPage({
           {SCAN_CONTEXTS.map((context) => (
             <Link
               key={context}
-              href={`/gear-ops/scan?scanContext=${context}`}
+              href={buildRapidOperationHref(context)}
               className="rounded-md border px-2.5 py-1.5 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
             >
               {labelForScanContext(context)}
             </Link>
           ))}
+        </div>
+        <div className="mt-3 grid gap-2 text-xs text-zinc-500 dark:text-zinc-400 sm:grid-cols-2">
+          <p>Check-in reuses the active checkout record so return verification stays low-friction.</p>
+          <p>Vault, audit, and readiness presets keep operators in the same scan-first flow without extra navigation.</p>
         </div>
       </div>
     </section>
