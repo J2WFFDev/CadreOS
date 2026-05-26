@@ -61,6 +61,9 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Install postgresql-client
+        run: sudo apt-get install -y --no-install-recommends postgresql-client
+
       - name: Generate Prisma client
         run: npx prisma generate
 
@@ -150,10 +153,32 @@ jobs:
           console.log(`Next recommended action: ${inventory.nextRecommendedAction}`);
           NODE
 
+      - name: Resolve failed non-applied migrations
+        run: |
+          failed_migration="20260526180000_arc20g_event_gear_planning"
+          failed_count=$(psql "$DATABASE_URL" -tAc \
+            "SELECT COUNT(*) FROM _prisma_migrations WHERE migration_name = '${failed_migration}' AND finished_at IS NULL AND rolled_back_at IS NULL" \
+            2>/dev/null | tr -d '[:space:]' || echo "0")
+          if [ "${failed_count:-0}" -gt "0" ]; then
+            echo "Found failed (un-finished) migration ${failed_migration} — resolving as rolled-back for safe recovery."
+            npx prisma migrate resolve --rolled-back "${failed_migration}"
+          else
+            echo "No failed un-finished entry for ${failed_migration} — no action needed."
+          fi
+
       - name: Mark selected historical migrations as applied
         run: |
           while IFS= read -r migration; do
             if [ -z "$migration" ]; then
+              continue
+            fi
+
+            already_applied=$(psql "$DATABASE_URL" -tAc \
+              "SELECT COUNT(*) FROM _prisma_migrations WHERE migration_name = '${migration}' AND finished_at IS NOT NULL AND rolled_back_at IS NULL" \
+              2>/dev/null | tr -d '[:space:]' || echo "0")
+
+            if [ "${already_applied:-0}" -gt "0" ]; then
+              echo "Skipping (already applied): $migration"
               continue
             fi
 
