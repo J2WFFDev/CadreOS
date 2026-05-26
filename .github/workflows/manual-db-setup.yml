@@ -33,7 +33,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
-          node -e "const raw = process.env.DATABASE_URL || ''; let provider = 'unknown'; let host = 'unparseable'; try { const parsed = new URL(raw); provider = (parsed.protocol || '').replace(':', '') || 'unknown'; host = parsed.hostname || 'unparseable'; } catch {} console.log('Database provider:', provider); console.log('Database host:', host);"
+          node -e "const raw = process.env.DATABASE_URL || ''; let provider = 'unknown'; let host = 'unparseable'; try { const parsed = new URL(raw); provider = (parsed.protocol || '').replace(':', '') || 'unknown'; host = parsed.hostname || 'unparseable'; } catch {} console.log('Database provider:', provider); console.log('Database host:', host); if (host.includes('-pooler.')) { console.error('Refusing migrate deploy with pooled host. Configure MIGRATE_DATABASE_URL to direct Neon host.'); process.exit(1); }"
 
       - name: Prisma migration status (diagnostic)
         env:
@@ -59,6 +59,11 @@ jobs:
             sleep 10
             attempt=$((attempt + 1))
           done
+
+      - name: Prisma migration status after deploy (diagnostic)
+        env:
+          DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
+        run: npx prisma migrate status || true
 
       - name: Run idempotent seed
         run: npm run prisma:seed

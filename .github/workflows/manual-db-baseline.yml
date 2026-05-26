@@ -7,6 +7,17 @@ on:
         description: "Type BASELINE_PRODUCTION_DB to confirm the one-time production baseline run."
         required: true
         type: string
+      baseline_migration:
+        description: "Historical migration boundary to mark as applied (inclusive)."
+        required: true
+        type: choice
+        default: 20260526024000_arc19f_notifications_activity
+        options:
+          - 20260525153000_entry_system
+          - 20260526004640_arc19a_operational_entry_architecture
+          - 20260526014000_arc19d_operational_graph
+          - 20260526020000_arc19e_workflow_orchestration
+          - 20260526024000_arc19f_notifications_activity
 
 permissions:
   contents: read
@@ -15,15 +26,17 @@ jobs:
   baseline-database:
     runs-on: ubuntu-latest
     env:
-      # Must match Vercel Production DATABASE_URL value.
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      BASELINE_BOUNDARY_MIGRATION: 20260526024000_arc19f_notifications_activity
+      # Use direct connection for Prisma migrations (avoid pooled runtime endpoint).
+      DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
       BASELINE_MIGRATIONS: |
         20260525153000_entry_system
         20260526004640_arc19a_operational_entry_architecture
         20260526014000_arc19d_operational_graph
         20260526020000_arc19e_workflow_orchestration
         20260526024000_arc19f_notifications_activity
+      PROTECTED_MIGRATIONS: |
+        20260526143000_add_person_lifecycle_status
+        20260526152000_add_gearops_core_tables
 
     steps:
       - name: Confirm one-time baseline intent
@@ -50,28 +63,128 @@ jobs:
 
       - name: Diagnostic DB identity (safe)
         run: |
-          node -e "const raw = process.env.DATABASE_URL || ''; let provider = 'unknown'; let host = 'unparseable'; try { const parsed = new URL(raw); provider = (parsed.protocol || '').replace(':', '') || 'unknown'; host = parsed.hostname || 'unparseable'; } catch {} console.log('Database provider:', provider); console.log('Database host:', host);"
+          node -e "const raw = process.env.DATABASE_URL || ''; let provider = 'unknown'; let host = 'unparseable'; try { const parsed = new URL(raw); provider = (parsed.protocol || '').replace(':', '') || 'unknown'; host = parsed.hostname || 'unparseable'; } catch {} console.log('Database provider:', provider); console.log('Database host:', host); if (host.includes('-pooler.')) { console.error('Refusing baseline with pooled host. Configure MIGRATE_DATABASE_URL to direct Neon host.'); process.exit(1); }"
 
       - name: Prisma migration status before baseline (diagnostic)
         run: npx prisma migrate status || true
 
-      - name: Mark historical migrations as applied
+      - name: Select baseline boundary and resolve list
         run: |
-          echo "Baseline boundary migration: ${BASELINE_BOUNDARY_MIGRATION}"
+          selected="${{ inputs.baseline_migration }}"
+          echo "Selected baseline boundary migration: $selected"
+
+          if ! grep -Fxq "$selected" <<< "$BASELINE_MIGRATIONS"; then
+            echo "Selected baseline migration is not in allowed historical migration list."
+            exit 1
+          fi
+
+          if grep -Fxq "$selected" <<< "$PROTECTED_MIGRATIONS"; then
+            echo "Refusing to baseline protected migration: $selected"
+            exit 1
+          fi
+
+          resolve_list=""
+          found_selected=0
+          while IFS= read -r migration; do
+            if [ -z "$migration" ]; then
+              continue
+            fi
+            resolve_list="${resolve_list}${migration}"$'\n'
+            if [ "$migration" = "$selected" ]; then
+              found_selected=1
+              break
+            fi
+          done <<< "$BASELINE_MIGRATIONS"
+
+          if [ "$found_selected" -ne 1 ]; then
+            echo "Unable to build baseline resolve list."
+            exit 1
+          fi
+
+          echo "Baseline migrations to resolve (inclusive):"
+          printf '%s' "$resolve_list"
+          printf "BASELINE_RESOLVE_LIST<<EOF\n%sEOF\n" "$resolve_list" >> "$GITHUB_ENV"
+
+      - name: Inspect current production schema assumptions (safe)
+        run: |
+          npx prisma db pull --print --schema prisma/schema.prisma > /tmp/live-db-schema.prisma
+
+          echo "Schema markers for historical baseline migrations:"
+          if grep -Eq '^model Entry ' /tmp/live-db-schema.prisma; then echo "  ✅ Entry"; else echo "  ❌ Entry"; fi
+          if grep -Eq '^model EntryObjectLink ' /tmp/live-db-schema.prisma; then echo "  ✅ EntryObjectLink"; else echo "  ❌ EntryObjectLink"; fi
+          if grep -Eq '^model OperationalRelationship ' /tmp/live-db-schema.prisma; then echo "  ✅ OperationalRelationship"; else echo "  ❌ OperationalRelationship"; fi
+          if grep -Eq '^model WorkflowTemplate ' /tmp/live-db-schema.prisma; then echo "  ✅ WorkflowTemplate"; else echo "  ❌ WorkflowTemplate"; fi
+          if grep -Eq '^model Notification ' /tmp/live-db-schema.prisma; then echo "  ✅ Notification"; else echo "  ❌ Notification"; fi
+
+          echo "Schema markers for protected post-baseline migrations:"
+          if awk '/^model Person \{/,/^}/' /tmp/live-db-schema.prisma | grep -q 'lifecycleStatus'; then echo "  ⚠️ Person.lifecycleStatus already exists"; else echo "  ⏳ Person.lifecycleStatus not present"; fi
+          if grep -Eq '^model GearItem ' /tmp/live-db-schema.prisma; then echo "  ⚠️ GearItem already exists"; else echo "  ⏳ GearItem not present"; fi
+
+      - name: Verify selected baseline migrations exist in DB schema
+        run: |
           while IFS= read -r migration; do
             if [ -z "$migration" ]; then
               continue
             fi
 
-            echo "Marking historical migration as applied: $migration"
+            case "$migration" in
+              "20260525153000_entry_system")
+                pattern='^model Entry '
+                marker='Entry'
+                ;;
+              "20260526004640_arc19a_operational_entry_architecture")
+                pattern='^model EntryObjectLink '
+                marker='EntryObjectLink'
+                ;;
+              "20260526014000_arc19d_operational_graph")
+                pattern='^model OperationalRelationship '
+                marker='OperationalRelationship'
+                ;;
+              "20260526020000_arc19e_workflow_orchestration")
+                pattern='^model WorkflowTemplate '
+                marker='WorkflowTemplate'
+                ;;
+              "20260526024000_arc19f_notifications_activity")
+                pattern='^model Notification '
+                marker='Notification'
+                ;;
+              *)
+                echo "Unknown migration in baseline resolve list: $migration"
+                exit 1
+                ;;
+            esac
+
+            if ! grep -Eq "$pattern" /tmp/live-db-schema.prisma; then
+              echo "Refusing to baseline $migration because expected marker '$marker' is missing from live DB."
+              exit 1
+            fi
+          done <<< "$BASELINE_RESOLVE_LIST"
+
+      - name: Mark selected historical migrations as applied
+        run: |
+          while IFS= read -r migration; do
+            if [ -z "$migration" ]; then
+              continue
+            fi
+
+            echo "Resolving migration as applied: $migration"
             npx prisma migrate resolve --applied "$migration"
-          done <<< "$BASELINE_MIGRATIONS"
+          done <<< "$BASELINE_RESOLVE_LIST"
 
       - name: Prisma migration status after baseline (diagnostic)
         run: npx prisma migrate status || true
 
-      - name: Apply pending Prisma migrations
-        run: npx prisma migrate deploy
-
-      - name: Prisma migration status after deploy (diagnostic)
-        run: npx prisma migrate status || true
+      - name: Confirm protected post-baseline migrations remain pending
+        run: |
+          status_output="$(npx prisma migrate status 2>&1 || true)"
+          echo "$status_output"
+          while IFS= read -r migration; do
+            if [ -z "$migration" ]; then
+              continue
+            fi
+            if echo "$status_output" | grep -Fq "$migration"; then
+              echo "✅ Still pending (as expected): $migration"
+            else
+              echo "ℹ️ Not pending: $migration (it may already be applied, resolved, or schema-matched from a prior run)"
+            fi
+          done <<< "$PROTECTED_MIGRATIONS"
