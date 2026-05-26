@@ -15,6 +15,7 @@ type SubnavKey =
   | "items"
   | "scan"
   | "kits"
+  | "bulk"
   | "reports"
   | "event-templates"
   | "locations"
@@ -36,6 +37,7 @@ const GEAR_OPS_GROUPS: SubnavGroup[] = [
       { href: "/gear-ops/items", label: "Items", key: "items" },
       { href: "/gear-ops/scan", label: "Scan", key: "scan" },
       { href: "/gear-ops/kits", label: "Kits", key: "kits" },
+      { href: "/gear-ops/bulk", label: "Bulk Ops", key: "bulk" },
     ],
   },
   {
