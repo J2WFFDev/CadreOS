@@ -111,3 +111,73 @@ Each entry follows this structure:
 **Alternatives considered:** Module-specific status vocabularies. Rejected due to fragmentation and training burden.
 
 **Impact:** All future module UI implementations should use the canonical status vocabulary defined in `status-language.md`. Module-specific extensions are allowed but must document their relationship to shared statuses.
+
+---
+
+## DEC-008 — Today-First, Role-Filtered, Module-Backed Experience
+
+**Decision:** CadreOS UI surfaces should be Today-first and role-filtered while remaining module-backed under the hood.
+
+**Date:** Design System Readiness, Confirmed Product Decision Capture
+
+**Rationale:** Users should see what needs attention today without first navigating internal system module structures. Role-filtering reduces cognitive load and surfaces only relevant tasks while preserving module ownership of workflows and data.
+
+**Alternatives considered:** Module-first navigation and role-locked product variants. Rejected because they increase learning burden and hide cross-domain operational work that users need to complete today.
+
+**Impact:** Navigation, home surfaces, and task queues must prioritize "what needs attention now" by role. Internal module names remain valid for architecture and implementation references.
+
+---
+
+## DEC-009 — User-Facing Task-Oriented Navigation Labels
+
+**Decision:** User-facing navigation should use simple operational labels: Today, People, Events, Gear, Facilities, Tasks, Reports, Admin.
+
+**Date:** Design System Readiness, Confirmed Product Decision Capture
+
+**Rationale:** Operational language is easier for staff and field users than internal module naming. It supports multi-role usage without requiring users to understand implementation boundaries.
+
+**Alternatives considered:** Exposing internal module names in primary navigation (TeamOps, GearOps, FieldOps, etc.). Rejected for user-facing surfaces; retained for internal architecture documentation.
+
+**Impact:** Future UI navigation implementations should map user-facing labels to internal module routes/services while keeping architecture docs module-specific.
+
+---
+
+## DEC-010 — Offline Boundary is Field Capture, Not Full Offline Admin
+
+**Decision:** Offline capability is bounded to Field Capture workflows and excludes full offline administrative operations.
+
+**Date:** Design System Readiness, Confirmed Product Decision Capture
+
+**Rationale:** Field operations benefit from deferred capture and sync, while administrative/security operations require immediate authoritative validation and conflict prevention.
+
+**Alternatives considered:** Broad offline capability across all admin surfaces. Rejected due to security, policy, and conflict risk.
+
+**Impact:** Offline design and sync work must focus on capture-safe workflows and preserve hard online boundaries for security, configuration, and high-conflict operations.
+
+---
+
+## DEC-011 — Color is Reserved for Operational Status and Severity
+
+**Decision:** Color should primarily communicate operational status and severity, not module/category identity when those uses conflict.
+
+**Date:** Design System Readiness, Confirmed Product Decision Capture
+
+**Rationale:** Cross-module work requires quick interpretation of urgency and current state. Using color for module identity first weakens operational readability.
+
+**Alternatives considered:** Module-colored navigation/status systems. Rejected where they reduce status clarity.
+
+**Impact:** Shared status semantics govern color usage across surfaces. Object/module type should be communicated with iconography and labels, and workflow stage with steppers/timelines/progress indicators.
+
+---
+
+## DEC-012 — GearOps Pilot Workflow is the Reference Validation Path
+
+**Decision:** The GearOps pilot workflow is confirmed as: scan/select asset → identify athlete/event/purpose → validate readiness and permissions → check out asset → record custody event → show confirmation → queue sync if offline.
+
+**Date:** Design System Readiness, Confirmed Product Decision Capture
+
+**Rationale:** This flow combines identity, permissions, custody, readiness, offline capture, sync, and audit visibility in a single operational path.
+
+**Alternatives considered:** Piloting simpler workflows first (attendance-only, scheduling-only). Deferred as follow-on pilots.
+
+**Impact:** GearOps pilot documentation should remain the primary design-system proving ground before scaling patterns to other modules.

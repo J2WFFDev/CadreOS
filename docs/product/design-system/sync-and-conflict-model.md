@@ -10,6 +10,8 @@ CadreOS's offline sync model is based on **append-only operational events**. Rat
 
 Server-side state derivation from the event log then determines current entity state.
 
+This model applies to the confirmed **Field Capture offline boundary** only. It is not a design for full offline administrative mode.
+
 ---
 
 ## Core Principle: Append-Only Operational Events

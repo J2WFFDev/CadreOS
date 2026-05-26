@@ -6,26 +6,39 @@ This document defines the navigation structure for CadreOS across platform conte
 
 ## Overview
 
-Navigation in CadreOS is domain-organized at the top level, with context-sensitive secondary navigation within domains. Navigation patterns vary by platform and UI mode.
+Navigation in CadreOS is user-facing and task-oriented at the top level, with context-sensitive secondary navigation within each area. Navigation patterns vary by platform and UI mode.
 
 ---
 
-## Top-Level Navigation Domains
+## Top-Level User-Facing Navigation
 
-These domains are stable across all modes and platforms, though their presentation varies.
+These user-facing navigation labels are stable across modes and platforms:
 
-| Domain | Purpose | Current Status |
-|---|---|---|
-| Dashboard / Home | Overview, quick actions, today view | Planned (Arc 19B) |
-| Events | Event management, attendance, scheduling | Active |
-| People / Roster | Athletes, staff, guardians, roles | Active |
-| Teams | Team composition, context, readiness | Active |
-| Notes | Observations, follow-up, operational capture | Active |
-| Tasks | Follow-up actions, assignments, resolution | Active |
-| GearOps | Gear catalog, custody, maintenance, readiness | Active |
-| FieldOps | Resource booking, facility management | Active |
-| Reporting | Operational summaries, exports | Active (Arc 18) |
-| Settings | Organization, configuration, roles | Active |
+| Navigation Label | Purpose |
+|---|---|
+| Today | Current-day attention queue, quick actions, role-prioritized work |
+| People | Athletes, staff, guardians, roster context |
+| Events | Scheduling, attendance, event readiness and operations |
+| Gear | Asset catalog, checkout/return, custody, maintenance, readiness |
+| Facilities | Facilities, resources, bookings, setup readiness |
+| Tasks | Follow-up work, assignments, completion tracking |
+| Reports | Operational summaries, exports, analytics access |
+| Admin | Configuration, role/security setup, system-level controls |
+
+### Internal Module Mapping (Architecture)
+
+Internal module names remain valid in architecture and technical documentation, but user-facing UI should use clearer operational labels.
+
+| User-Facing Navigation | Primary Internal Modules |
+|---|---|
+| Today | TaskOps, EventOps, GearOps, TeamOps, FieldOps (aggregated by role) |
+| People | TeamOps |
+| Events | EventOps |
+| Gear | GearOps |
+| Facilities | FieldOps, ResourceOps |
+| Tasks | TaskOps |
+| Reports | Reporting |
+| Admin | Admin/configuration |
 
 ---
 
@@ -37,22 +50,14 @@ These domains are stable across all modes and platforms, though their presentati
 
 ```
 [Sidebar]
-  Dashboard
-  Events
+  Today
   People
-    └── Roster
-    └── Teams
-  Notes
+  Events
+  Gear
+  Facilities
   Tasks
-  GearOps
-    └── Catalog
-    └── Assignments
-    └── Maintenance
-  FieldOps
-    └── Resources
-    └── Bookings
-  Reporting
-  Settings
+  Reports
+  Admin
 
 [Main Content Area]
   [PageHeader]
@@ -79,7 +84,7 @@ These domains are stable across all modes and platforms, though their presentati
   [Card list | Action flow | Scan view]
 
 [Bottom Tab Bar]
-  Home | Events | GearOps | People | More
+  Today | Events | Gear | People | More
 ```
 
 **Behavior:**
@@ -91,11 +96,11 @@ These domains are stable across all modes and platforms, though their presentati
 - No InspectorDrawer on mobile (separate detail screen instead)
 
 **Tab bar items (proposed):**
-1. Home (today view, quick actions)
+1. Today (today view, quick actions)
 2. Events (upcoming events, attendance)
-3. GearOps (quick checkout, scan)
+3. Gear (quick checkout, scan)
 4. People (quick lookup, roster)
-5. More (Notes, Tasks, Reporting, Settings)
+5. More (Facilities, Tasks, Reports, Admin)
 
 ---
 

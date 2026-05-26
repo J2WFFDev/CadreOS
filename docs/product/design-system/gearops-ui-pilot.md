@@ -8,13 +8,21 @@ This document defines GearOps as the first module to be piloted under the CadreO
 
 GearOps is the richest intersection of CadreOS platform concerns:
 
-- **Custody tracking:** Assets have custodians, transfer histories, and return chains.
-- **Location context:** Assets exist at specific locations and move between them.
-- **Mobile field use:** Checkout and return happen at practice, competitions, and events — not at a desk.
-- **Scan workflows:** Barcode/QR scanning is a natural entry point for asset identification.
-- **Readiness state:** Assets must be inspected and validated before use.
-- **Maintenance logging:** Condition reports and maintenance intakes require structured capture.
-- **Offline sync concerns:** Field checkout and return are prime offline candidates.
+- **Asset identity:** Scan/search and durable item identity handling.
+- **Ownership:** Organization, program, and assignment ownership context.
+- **Custody:** Checkout, return, and transfer chains with actor attribution.
+- **Location:** Physical location and movement context.
+- **Purpose:** Event/practice/general-use intent at checkout time.
+- **Readiness:** Condition and readiness gating before checkout.
+- **Maintenance:** Intake/reporting and readiness impact.
+- **Permission validation:** Role/policy checks before custody operations.
+- **Guardian-related constraints:** Policy/approval dependencies where required.
+- **Scan-assisted workflows:** Scan-first field operations with fallback search.
+- **Offline field capture:** Capture-safe operations while disconnected.
+- **Sync queue:** Deferred submission and conflict handling expectations.
+- **Audit history:** High-fidelity operational traceability.
+- **Admin/raw detail:** Full operator visibility remains available.
+- **Guided/mobile flow:** Simplified, high-speed field execution UX.
 
 By piloting the design system on GearOps, we validate the most complex combination of patterns before applying them to simpler modules.
 
@@ -24,7 +32,7 @@ By piloting the design system on GearOps, we validate the most complex combinati
 
 The workflow piloted across all three interface models is:
 
-> **Scan or select asset → Identify athlete/event/purpose → Validate permissions/readiness → Check out asset → Record custody event → Show confirmation → Sync if offline**
+> **Scan or select asset → identify athlete/event/purpose → validate readiness and permissions → check out asset → record custody event → show confirmation → queue sync if offline**
 
 This workflow is the gear checkout flow. It covers the full arc of a field operation from identification through confirmation and sync.
 

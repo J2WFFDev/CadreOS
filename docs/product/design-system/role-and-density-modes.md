@@ -15,6 +15,30 @@ CadreOS supports two coexisting UI modes. These are not separate applications or
 
 ---
 
+## Role Experience Model (Confirmed)
+
+CadreOS uses a **Today-first, role-filtered, module-backed** experience model:
+
+- **Today-first:** users land on what needs attention now.
+- **Role-filtered:** actions and context are scoped to role and permission.
+- **Module-backed:** TeamOps, GearOps, FieldOps, ResourceOps, EventOps, TaskOps, Reporting, and Admin modules still own workflows and data.
+- **User-facing language:** UI should not force users to think in internal module names.
+
+### Role Experience Examples
+
+| Role | Today-first focus |
+|---|---|
+| Program Admin | Cross-program blockers, approvals, staffing/resource gaps, unresolved conflicts, admin-required exceptions |
+| Head Coach | Team readiness, event staffing/attendance gaps, gear readiness blockers, critical athlete updates |
+| Assistant Coach | Assigned attendance tasks, athlete follow-up tasks, event setup checklist items, quick readiness checks |
+| Parent / Guardian | Athlete-related approvals, required responses, upcoming event obligations, policy acknowledgments |
+| Athlete | Personal readiness steps, assigned gear expectations, event participation status, required acknowledgments |
+| Volunteer | Assigned check-in/setup tasks, shift readiness, required briefings, completion confirmations |
+| Equipment Manager | Checkout/return queues, maintenance intake, custody anomalies, readiness blockers |
+| Facility / Range Manager | Facility setup readiness, booking conflicts requiring action, safety checklist and availability issues |
+
+---
+
 ## Mode 1: Admin / Operator Mode
 
 ### Description
