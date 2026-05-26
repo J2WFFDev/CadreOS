@@ -91,6 +91,8 @@ export async function POST(
     );
   }
 
+  const organizationId = scope.organizationId;
+
   const parsed = gearAssignmentWorkflowSchema.safeParse(values);
 
   if (!parsed.success) {
@@ -116,13 +118,13 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId,
       action: "gearAssignment.create",
     });
 
     // Verify item belongs to this organization
     const item = await db.gearItem.findFirst({
-      where: { id: itemId, organizationId: scope.organizationId },
+      where: { id: itemId, organizationId },
       select: { id: true },
     });
 
@@ -139,7 +141,7 @@ export async function POST(
     // Cross-org reference guard: person
     if (parsed.data.assignedToPersonId) {
       const person = await db.person.findFirst({
-        where: { id: parsed.data.assignedToPersonId, organizationId: scope.organizationId },
+        where: { id: parsed.data.assignedToPersonId, organizationId },
         select: { id: true },
       });
 
@@ -160,7 +162,7 @@ export async function POST(
     // Cross-org reference guard: team
     if (parsed.data.assignedToTeamId) {
       const team = await db.team.findFirst({
-        where: { id: parsed.data.assignedToTeamId, organizationId: scope.organizationId },
+        where: { id: parsed.data.assignedToTeamId, organizationId },
         select: { id: true },
       });
 
@@ -181,7 +183,7 @@ export async function POST(
     // Cross-org reference guard: event
     if (parsed.data.assignedToEventId) {
       const event = await db.event.findFirst({
-        where: { id: parsed.data.assignedToEventId, organizationId: scope.organizationId },
+        where: { id: parsed.data.assignedToEventId, organizationId },
         select: { id: true },
       });
 
@@ -200,7 +202,7 @@ export async function POST(
     }
 
     const assignedByPersonId = await resolveActorPersonId({
-      organizationId: scope.organizationId,
+      organizationId,
       clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });
@@ -218,7 +220,7 @@ export async function POST(
     await db.$transaction(async (tx) => {
       await tx.gearAssignment.create({
         data: {
-          organizationId: scope.organizationId,
+          organizationId,
           gearItemId: itemId,
           assignedByPersonId,
           status: parsed.data.status,
@@ -233,7 +235,7 @@ export async function POST(
 
       const reservations = await tx.gearReservation.findMany({
         where: {
-          organizationId: scope.organizationId,
+          organizationId,
           gearItemId: itemId,
           status: {
             in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW, GearReservationStatus.CONFLICT],
@@ -277,7 +279,7 @@ export async function POST(
 
         await tx.inventoryMovement.create({
           data: {
-            organizationId: scope.organizationId,
+            organizationId,
             gearItemId: itemId,
             movementType: InventoryMovementType.RESERVATION_RELEASED,
             actorPersonId: assignedByPersonId,

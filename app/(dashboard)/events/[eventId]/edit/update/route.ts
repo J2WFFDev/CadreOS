@@ -106,6 +106,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = eventWorkflowSchema.safeParse(values);
 
@@ -133,7 +134,7 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "event.update",
       eventId,
       programId: parsed.data.programId,
@@ -143,7 +144,7 @@ export async function POST(
     const existingEvent = await db.event.findFirst({
       where: {
         id: eventId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: { status: true },
     });
@@ -151,7 +152,7 @@ export async function POST(
     const program = await db.program.findFirst({
       where: {
         id: parsed.data.programId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: { id: true },
     });
@@ -173,7 +174,7 @@ export async function POST(
       const team = await db.team.findFirst({
         where: {
           id: parsed.data.teamId,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
           programId: parsed.data.programId,
         },
         select: { id: true },
@@ -196,7 +197,7 @@ export async function POST(
     const updated = await db.event.updateMany({
       where: {
         id: eventId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       data: {
         title: parsed.data.title,
@@ -222,7 +223,7 @@ export async function POST(
 
     try {
       await emitEventStatusAwareness({
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         eventId,
         actorPersonId: scope.auth.personId,
         fromStatus: existingEvent?.status ?? null,

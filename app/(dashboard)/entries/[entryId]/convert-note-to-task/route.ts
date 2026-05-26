@@ -19,17 +19,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   if (!scope.databaseReady || !scope.organizationId || !scope.auth.personId) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
+  const organizationId = scope.organizationId;
 
   try {
     await Promise.all([
       requirePermission({
         actorUserId: scope.auth.clerkUserId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         action: "entry.update",
       }),
       requirePermission({
         actorUserId: scope.auth.clerkUserId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         action: "task.create",
       }),
     ]);
@@ -38,7 +39,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   }
 
   const entry = await db.entry.findFirst({
-    where: { id: entryId, organizationId: scope.organizationId, deletedAt: null },
+    where: { id: entryId, organizationId: organizationId, deletedAt: null },
     select: { id: true, type: true, sourceNoteId: true, sourceTaskId: true, title: true, content: true },
   });
 
@@ -54,7 +55,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
   const createdTask = await db.followUpTask.create({
     data: {
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       title: taskTitle,
       description: entry.content,
       status: TaskStatus.OPEN,
@@ -78,7 +79,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   });
 
   await writeEntryActivity({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     entryId: entry.id,
     actorPersonId: scope.auth.personId,
     action: ENTRY_ACTIVITY_ACTIONS.NOTE_TO_TASK_CONVERTED,

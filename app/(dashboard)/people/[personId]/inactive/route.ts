@@ -50,6 +50,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = memberLifecycleInactiveSchema.safeParse(values);
 
@@ -62,14 +63,14 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "person.deactivate",
     });
 
     const person = await db.person.findFirst({
       where: {
         id: personId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: {
         id: true,
@@ -98,7 +99,7 @@ export async function POST(
     await db.person.update({
       where: {
         id: personId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       data: {
         lifecycleStatus: MemberLifecycleStatus.INACTIVE,

@@ -14,9 +14,10 @@ export async function POST(request: Request) {
   if (!scope.organizationId) {
     return NextResponse.json({ ok: false, error: "No organization context is available yet." }, { status: 400 });
   }
+  const organizationId = scope.organizationId;
 
   const access = await resolveGearOpsReadAccess({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     actorPersonId: scope.auth.personId,
     workflow: "gear-ops.bulk.preview",
   });
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
 
   const mode: GearImportMode = body.mode === "CREATE_OR_UPDATE" ? "CREATE_OR_UPDATE" : "CREATE_ONLY";
   const preview = await previewGearImport({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     csvText: body.csvText,
     mode,
   });

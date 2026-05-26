@@ -57,6 +57,7 @@ export async function POST(
   if (!scope.organizationId) {
     return NextResponse.redirect(buildRedirectUrl(request.url, categoryId, "fieldError", "No organization context is available yet."), 303);
   }
+  const organizationId = scope.organizationId;
 
   const parsed = gearCategoryFieldWorkflowSchema.safeParse(values);
   if (!parsed.success) {
@@ -75,14 +76,14 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "gearCategoryField.create",
     });
 
     const category = await db.gearCategory.findFirst({
       where: {
         id: categoryId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: { id: true },
     });
@@ -96,7 +97,7 @@ export async function POST(
 
     await db.gearCategoryField.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         categoryId,
         fieldKey: parsed.data.fieldKey,
         fieldLabel: parsed.data.fieldLabel,

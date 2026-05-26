@@ -60,6 +60,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
   if (!scope.organizationId) {
     return NextResponse.redirect(redirectTo(request.url, eventId, { requirementError: "No organization context is available yet." }), 303);
   }
+  const organizationId = scope.organizationId;
 
   const parsed = schema.safeParse(values);
   if (!parsed.success) {
@@ -73,13 +74,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "eventGearRequirement.create",
       eventId,
     });
 
     const plan = await db.eventGearPlan.findFirst({
-      where: { organizationId: scope.organizationId, eventId },
+      where: { organizationId: organizationId, eventId },
       select: { id: true },
     });
 
@@ -93,7 +94,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     const gearCategoryId = normalizeOptional(parsed.data.gearCategoryId ?? "");
     if (gearCategoryId) {
       const category = await db.gearCategory.findFirst({
-        where: { id: gearCategoryId, organizationId: scope.organizationId },
+        where: { id: gearCategoryId, organizationId: organizationId },
         select: { id: true },
       });
 
@@ -106,14 +107,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     }
 
     const actorPersonId = await resolveActorPersonId({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });
 
     const requirement = await db.eventGearRequirement.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         planId: plan.id,
         label: parsed.data.label,
         requirementType: parsed.data.requirementType,
@@ -124,7 +125,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     });
 
     await writeAuditEvent({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       actorPersonId,
       action: "eventGearRequirement.created",
       entityType: "eventGearRequirement",

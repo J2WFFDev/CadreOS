@@ -67,6 +67,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
   if (!scope.organizationId) {
     return NextResponse.redirect(redirectTo(request.url, eventId, { recoveryError: "No organization context is available yet." }), 303);
   }
+  const organizationId = scope.organizationId;
 
   const parsed = schema.safeParse(values);
   if (!parsed.success) {
@@ -78,7 +79,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "eventGearAssignment.update",
       eventId,
     });
@@ -86,7 +87,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     const assignment = await db.eventGearAssignment.findFirst({
       where: {
         id: parsed.data.eventGearAssignmentId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         plan: { eventId },
       },
       select: {
@@ -119,7 +120,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     const recoveredToLocationId = normalizeOptional(parsed.data.recoveredToLocationId ?? "") ?? assignment.plan.recoveryLocationId;
     if (recoveredToLocationId) {
       const location = await db.inventoryLocation.findFirst({
-        where: { id: recoveredToLocationId, organizationId: scope.organizationId },
+        where: { id: recoveredToLocationId, organizationId: organizationId },
         select: { id: true },
       });
       if (!location) {
@@ -131,7 +132,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     }
 
     const actorPersonId = await resolveActorPersonId({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });
@@ -145,7 +146,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
 
     const latestCheckout = await db.gearCheckout.findFirst({
       where: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         gearItemId: assignment.gearItemId,
         eventId,
       },
@@ -177,7 +178,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     });
 
     await recordInventoryMovement({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       gearItemId: assignment.gearItemId,
       movementType:
         latestCheckout && latestCheckout.returnedAt
@@ -211,7 +212,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     if (maintenanceFlag || conditionOnRecovery === "POOR" || conditionOnRecovery === "DAMAGED") {
       await db.gearMaintenanceLog.create({
         data: {
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
           gearItemId: assignment.gearItemId,
           performedByPersonId: actorPersonId,
           maintenanceType: GearMaintenanceType.INSPECTION,
@@ -233,7 +234,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     });
 
     await writeAuditEvent({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       actorPersonId,
       action: "eventGearAssignment.recovered",
       entityType: "eventGearAssignment",

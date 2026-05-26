@@ -35,6 +35,7 @@ export async function POST(request: Request) {
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   if (!scope.auth.userAccountId) {
     return NextResponse.redirect(
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
   const person = await db.person.findFirst({
     where: {
       id: personId,
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
     },
     select: { id: true },
   });

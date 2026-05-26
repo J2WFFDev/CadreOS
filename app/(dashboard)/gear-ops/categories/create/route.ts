@@ -112,6 +112,7 @@ export async function POST(request: Request) {
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = gearCategoryWorkflowSchema.safeParse(values);
 
@@ -144,13 +145,13 @@ export async function POST(request: Request) {
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "gearCategory.create",
     });
 
     const created = await db.gearCategory.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         name: parsed.data.name,
         inventoryType: parsed.data.inventoryType,
         description: parsed.data.description,

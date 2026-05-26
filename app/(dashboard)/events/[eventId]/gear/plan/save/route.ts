@@ -64,6 +64,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
   if (!scope.organizationId) {
     return NextResponse.redirect(redirectTo(request.url, eventId, { planError: "No organization context is available yet." }), 303);
   }
+  const organizationId = scope.organizationId;
 
   const parsed = schema.safeParse(values);
   if (!parsed.success) {
@@ -75,18 +76,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
 
   try {
     const existingPlan = await db.eventGearPlan.findFirst({
-      where: { organizationId: scope.organizationId, eventId },
+      where: { organizationId: organizationId, eventId },
       select: { id: true, preparedAt: true },
     });
 
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: existingPlan ? "eventGearPlan.update" : "eventGearPlan.create",
       eventId,
     });
 
     const event = await db.event.findFirst({
-      where: { id: eventId, organizationId: scope.organizationId },
+      where: { id: eventId, organizationId: organizationId },
       select: { id: true, title: true },
     });
 
@@ -100,7 +101,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     ] as const) {
       if (!locationId) continue;
       const location = await db.inventoryLocation.findFirst({
-        where: { id: locationId, organizationId: scope.organizationId },
+        where: { id: locationId, organizationId: organizationId },
         select: { id: true },
       });
       if (!location) {
@@ -112,7 +113,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     }
 
     const actorPersonId = await resolveActorPersonId({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });
@@ -129,7 +130,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     const saved = await db.eventGearPlan.upsert({
       where: { eventId },
       create: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         eventId,
         createdByPersonId: actorPersonId,
         status,
@@ -158,7 +159,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     });
 
     await writeAuditEvent({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       actorPersonId,
       action: existingPlan ? "eventGearPlan.updated" : "eventGearPlan.created",
       entityType: "eventGearPlan",

@@ -47,9 +47,10 @@ export async function POST(request: Request) {
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const access = await resolveInventoryScanWriteAccess({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     actorPersonId: scope.auth.personId,
     workflow: "gear-ops.scan.resolve.write",
   });
@@ -66,13 +67,13 @@ export async function POST(request: Request) {
   }
 
   const resolved = await resolveScan({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     scanValue,
   });
 
   if (!resolved.match) {
     await writeScanEvent({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       actorPersonId: scope.auth.personId,
       scanContext,
       identifier: resolved.identifier,
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
   });
 
   await writeScanEvent({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     actorPersonId: scope.auth.personId,
     scanContext,
     identifier: resolved.identifier,

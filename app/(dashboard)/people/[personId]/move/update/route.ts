@@ -96,6 +96,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = memberMoveWorkflowSchema.safeParse(values);
 
@@ -120,7 +121,7 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "person.move",
       programId: parsed.data.programId,
       teamId: parsed.data.teamId,
@@ -130,7 +131,7 @@ export async function POST(
     const person = await db.person.findFirst({
       where: {
         id: personId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: {
         id: true,
@@ -150,7 +151,7 @@ export async function POST(
     const program = await db.program.findFirst({
       where: {
         id: parsed.data.programId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: {
         id: true,
@@ -173,7 +174,7 @@ export async function POST(
     const team = await db.team.findFirst({
       where: {
         id: parsed.data.teamId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: {
         id: true,
@@ -210,7 +211,7 @@ export async function POST(
     const season = await db.season.findFirst({
       where: {
         id: parsed.data.seasonId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: {
         id: true,
@@ -249,7 +250,7 @@ export async function POST(
       ? await db.rosterMembership.findFirst({
           where: {
             id: parsed.data.sourceMembershipId,
-            organizationId: scope.organizationId,
+            organizationId: organizationId,
             personId: person.id,
           },
           select: {
@@ -276,7 +277,7 @@ export async function POST(
 
     const existingTargetMembership = await db.rosterMembership.findFirst({
       where: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         personId: person.id,
         teamId: team.id,
         seasonId: season.id,
@@ -302,7 +303,7 @@ export async function POST(
     if (!sourceMembership || sourceMembership.seasonId !== season.id) {
       const sameProgramSeasonMembership = await db.rosterMembership.findFirst({
         where: {
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
           personId: person.id,
           seasonId: season.id,
           team: {
@@ -340,7 +341,7 @@ export async function POST(
       await db.rosterMembership.update({
         where: {
           id: sourceMembership.id,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         data: {
           teamId: team.id,
@@ -352,7 +353,7 @@ export async function POST(
     } else if (!existingTargetMembership) {
       await db.rosterMembership.create({
         data: {
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
           personId: person.id,
           teamId: team.id,
           seasonId: season.id,
@@ -364,7 +365,7 @@ export async function POST(
       await db.rosterMembership.update({
         where: {
           id: existingTargetMembership.id,
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
         },
         data: {
           rosterRole: parsed.data.rosterRole,

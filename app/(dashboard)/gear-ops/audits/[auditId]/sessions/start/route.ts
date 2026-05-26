@@ -19,9 +19,10 @@ export async function POST(
   if (!scope.organizationId) {
     return new Response("No organization context.", { status: 400 });
   }
+  const organizationId = scope.organizationId;
 
   const access = await resolveInventoryAuditWriteAccess({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     actorPersonId: scope.auth.personId,
     workflow: "inventory-audit.session.start",
   });
@@ -35,13 +36,13 @@ export async function POST(
   const notes = ((formData.get("notes") as string | null) ?? "").trim() || null;
 
   const startedByPersonId = await resolveActorPersonId({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     clerkUserId: scope.auth.clerkUserId,
     preferredPersonId: scope.auth.personId,
   });
 
   const session = await startInventoryAuditSession({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     auditId,
     title: title || `Audit session ${new Date().toLocaleString()}`,
     notes,

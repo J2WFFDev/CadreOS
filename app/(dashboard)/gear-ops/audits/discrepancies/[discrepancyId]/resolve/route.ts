@@ -20,9 +20,10 @@ export async function POST(
   if (!scope.organizationId) {
     return new Response("No organization context.", { status: 400 });
   }
+  const organizationId = scope.organizationId;
 
   const access = await resolveInventoryAuditWriteAccess({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     actorPersonId: scope.auth.personId,
     workflow: "inventory-audit.discrepancy.resolve",
   });
@@ -35,13 +36,13 @@ export async function POST(
   const resolutionAction = ((formData.get("resolutionAction") as string | null) ?? "RESOLVE").trim();
   const resolutionNotes = ((formData.get("resolutionNotes") as string | null) ?? "").trim() || null;
   const resolvedByPersonId = await resolveActorPersonId({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     clerkUserId: scope.auth.clerkUserId,
     preferredPersonId: scope.auth.personId,
   });
 
   await resolveInventoryAuditDiscrepancy({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     discrepancyId,
     resolvedByPersonId: resolvedByPersonId ?? null,
     resolutionNotes,
@@ -49,7 +50,7 @@ export async function POST(
   });
 
   const discrepancy = await db.inventoryAuditDiscrepancy.findFirst({
-    where: { id: discrepancyId, organizationId: scope.organizationId },
+    where: { id: discrepancyId, organizationId: organizationId },
     select: { auditSessionId: true },
   });
 

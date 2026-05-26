@@ -44,9 +44,10 @@ export async function POST(request: Request) {
   if (!scope.organizationId) {
     return NextResponse.redirect(buildRedirectUrl(request.url, "error", "No organization context is available yet."), 303);
   }
+  const organizationId = scope.organizationId;
 
   const access = await resolveGearOpsAdminAccess({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     actorPersonId: scope.auth.personId,
   });
 
@@ -68,12 +69,12 @@ export async function POST(request: Request) {
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "gearOpsSettings.update",
     });
 
     await db.gearOpsOrganizationSettings.upsert({
-      where: { organizationId: scope.organizationId },
+      where: { organizationId: organizationId },
       update: {
         defaultCustodyMode: parsed.data.defaultCustodyMode,
         enableGuardianApproval: parsed.data.enableGuardianApproval,
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
         adminNotes: parsed.data.adminNotes,
       },
       create: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         defaultCustodyMode: parsed.data.defaultCustodyMode,
         enableGuardianApproval: parsed.data.enableGuardianApproval,
         enableConsumableTracking: parsed.data.enableConsumableTracking,

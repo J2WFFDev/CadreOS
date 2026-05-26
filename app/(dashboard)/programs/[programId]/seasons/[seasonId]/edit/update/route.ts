@@ -74,6 +74,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = seasonWorkflowSchema.safeParse(values);
 
@@ -96,7 +97,7 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "season.update",
       programId,
       seasonId,
@@ -106,7 +107,7 @@ export async function POST(
       where: {
         id: seasonId,
         programId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: {
         id: true,
@@ -125,7 +126,7 @@ export async function POST(
 
     const existingSeason = await db.season.findFirst({
       where: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         programId,
         name: parsed.data.name,
         NOT: {
@@ -154,7 +155,7 @@ export async function POST(
       where: {
         id: seasonId,
         programId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       data: {
         name: parsed.data.name,

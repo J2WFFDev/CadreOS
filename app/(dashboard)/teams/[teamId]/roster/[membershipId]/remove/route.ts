@@ -48,10 +48,11 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "rosterMembership.delete",
       teamId,
     });
@@ -60,7 +61,7 @@ export async function POST(
       where: {
         id: membershipId,
         teamId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
     });
 

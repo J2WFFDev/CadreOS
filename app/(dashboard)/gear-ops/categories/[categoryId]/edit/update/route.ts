@@ -117,6 +117,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = gearCategoryWorkflowSchema.safeParse(values);
 
@@ -149,14 +150,14 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "gearCategory.update",
     });
 
     const updated = await db.gearCategory.updateMany({
       where: {
         id: categoryId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       data: {
         name: parsed.data.name,

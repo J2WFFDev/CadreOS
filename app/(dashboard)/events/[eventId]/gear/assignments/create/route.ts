@@ -55,6 +55,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
   if (!scope.organizationId) {
     return NextResponse.redirect(redirectTo(request.url, eventId, { assignmentError: "No organization context is available yet." }), 303);
   }
+  const organizationId = scope.organizationId;
 
   const parsed = schema.safeParse(values);
   if (!parsed.success) {
@@ -66,13 +67,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "eventGearAssignment.create",
       eventId,
     });
 
     const plan = await db.eventGearPlan.findFirst({
-      where: { organizationId: scope.organizationId, eventId },
+      where: { organizationId: organizationId, eventId },
       select: { id: true },
     });
 
@@ -86,7 +87,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     const requirement = await db.eventGearRequirement.findFirst({
       where: {
         id: parsed.data.requirementId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         planId: plan.id,
       },
       select: { id: true },
@@ -100,7 +101,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     }
 
     const gearItem = await db.gearItem.findFirst({
-      where: { id: parsed.data.gearItemId, organizationId: scope.organizationId },
+      where: { id: parsed.data.gearItemId, organizationId: organizationId },
       select: { id: true },
     });
 
@@ -112,7 +113,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     }
 
     const existing = await db.eventGearAssignment.findFirst({
-      where: { organizationId: scope.organizationId, planId: plan.id, gearItemId: parsed.data.gearItemId },
+      where: { organizationId: organizationId, planId: plan.id, gearItemId: parsed.data.gearItemId },
       select: { id: true },
     });
 
@@ -124,7 +125,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     }
 
     const actorPersonId = await resolveActorPersonId({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });
@@ -138,7 +139,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
 
     const assignment = await db.eventGearAssignment.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         planId: plan.id,
         requirementId: requirement.id,
         gearItemId: parsed.data.gearItemId,
@@ -148,7 +149,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     });
 
     await writeAuditEvent({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       actorPersonId,
       action: "eventGearAssignment.created",
       entityType: "eventGearAssignment",

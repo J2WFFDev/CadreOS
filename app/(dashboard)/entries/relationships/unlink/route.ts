@@ -38,15 +38,17 @@ export async function POST(request: Request) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
 
+  const organizationId = scope.organizationId;
+
   try {
     await requirePermission({
       actorUserId: scope.auth.clerkUserId,
-      organizationId: scope.organizationId,
+      organizationId,
       action: "entry.update",
     });
 
     await unlinkOperationalRecords({
-      organizationId: scope.organizationId,
+      organizationId,
       from: { nodeType: fromNodeType, nodeId: fromNodeId },
       to: { nodeType: toNodeType, nodeId: toNodeId },
       relationshipType,

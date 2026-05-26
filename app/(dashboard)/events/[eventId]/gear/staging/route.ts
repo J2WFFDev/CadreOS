@@ -55,6 +55,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
   if (!scope.organizationId) {
     return NextResponse.redirect(redirectTo(request.url, eventId, { stagingError: "No organization context is available yet." }), 303);
   }
+  const organizationId = scope.organizationId;
 
   const parsed = schema.safeParse(values);
   if (!parsed.success) {
@@ -66,7 +67,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "eventGearAssignment.update",
       eventId,
     });
@@ -74,7 +75,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     const assignment = await db.eventGearAssignment.findFirst({
       where: {
         id: parsed.data.eventGearAssignmentId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         plan: { eventId },
       },
       select: {
@@ -94,7 +95,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     const stagedToLocationId = normalizeOptional(parsed.data.stagedToLocationId ?? "") ?? assignment.plan.stagingLocationId;
     if (stagedToLocationId) {
       const location = await db.inventoryLocation.findFirst({
-        where: { id: stagedToLocationId, organizationId: scope.organizationId },
+        where: { id: stagedToLocationId, organizationId: organizationId },
         select: { id: true },
       });
       if (!location) {
@@ -106,7 +107,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     }
 
     const actorPersonId = await resolveActorPersonId({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });
@@ -131,7 +132,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
 
     if (stagedToLocationId || assignment.gearItem.locationId) {
       await recordInventoryMovement({
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         gearItemId: assignment.gearItemId,
         movementType: InventoryMovementType.MOVED_TO_LOCATION,
         actorPersonId,
@@ -157,7 +158,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     }
 
     await writeAuditEvent({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       actorPersonId,
       action: "eventGearAssignment.staged",
       entityType: "eventGearAssignment",

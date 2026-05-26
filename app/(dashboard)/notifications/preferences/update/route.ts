@@ -17,13 +17,14 @@ export async function POST(request: Request) {
   if (!scope.databaseReady || !scope.organizationId || !scope.auth.personId) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
+  const organizationId = scope.organizationId;
 
   const minimumPriority = String(formData.get("minimumPriority") ?? "MEDIUM").toUpperCase();
   const deliveryTiming = String(formData.get("deliveryTiming") ?? "IMMEDIATE").toUpperCase();
   const digestWindowHours = Number.parseInt(String(formData.get("digestWindowHours") ?? "24"), 10);
 
   await updateNotificationPreferences({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     personId: scope.auth.personId,
     values: {
       minimumPriority: Object.values(EntryPriority).includes(minimumPriority as EntryPriority)

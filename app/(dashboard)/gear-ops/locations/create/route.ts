@@ -11,9 +11,10 @@ export async function POST(request: Request) {
   if (!scope.organizationId) {
     return new Response("No organization context.", { status: 400 });
   }
+  const organizationId = scope.organizationId;
 
   const access = await resolveInventoryOpsWriteAccess({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     actorPersonId: scope.auth.personId,
     workflow: "inventory-ops.locations.create",
   });
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
   }
 
   const location = await createInventoryLocation({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     name,
     locationCode,
     description,

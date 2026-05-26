@@ -92,9 +92,10 @@ export async function POST(request: Request) {
   if (!scope.databaseReady || !scope.organizationId || !effectiveInput) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
+  const organizationId = scope.organizationId;
 
   const actorPersonId = await resolveActorPersonId({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     clerkUserId: scope.auth.clerkUserId,
     preferredPersonId: scope.auth.personId,
   });
@@ -125,7 +126,7 @@ export async function POST(request: Request) {
   const dueAt = mergeDueAt(dueDate, dueTime);
 
   const contextTarget = await resolveContextTarget({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     rawTargetType: rawContextTargetType,
     rawTargetId: rawContextTargetId,
   });
@@ -136,7 +137,7 @@ export async function POST(request: Request) {
   try {
     await requirePermission({
       actorUserId: scope.auth.clerkUserId,
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: entryType === EntryType.TASK ? "task.create" : entryType === EntryType.NOTE ? "note.create" : "entry.create",
       teamId: scopedTeamId,
       eventId: scopedEventId,
@@ -148,7 +149,7 @@ export async function POST(request: Request) {
   const resolvedAssigneePersonId = rawAssigneePersonId
     ? (
         await db.person.findFirst({
-          where: { id: rawAssigneePersonId, organizationId: scope.organizationId },
+          where: { id: rawAssigneePersonId, organizationId: organizationId },
           select: { id: true },
         })
       )?.id ?? null
@@ -160,7 +161,7 @@ export async function POST(request: Request) {
   if (entryType === EntryType.TASK) {
     const createdTask = await db.followUpTask.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         title,
         description: content,
         status: TaskStatus.OPEN,
@@ -172,7 +173,7 @@ export async function POST(request: Request) {
     });
 
     const createdEntry = await createOperationalEntry({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       type: EntryType.TASK,
       title,
       content,
@@ -190,7 +191,7 @@ export async function POST(request: Request) {
     });
 
     await writeEntryActivity({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       entryId: createdEntry.id,
       actorPersonId,
       action: quickAddAction,
@@ -199,7 +200,7 @@ export async function POST(request: Request) {
 
     if (contextTarget) {
       await linkEntryToObject({
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         entryId: createdEntry.id,
         targetType: contextTarget.targetType,
         targetId: contextTarget.targetId,
@@ -207,7 +208,7 @@ export async function POST(request: Request) {
       });
 
       await linkOperationalRecords({
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         from: { nodeType: "ENTRY", nodeId: createdEntry.id },
         to: { nodeType: mapEntryObjectLinkTargetToGraphNodeType(contextTarget.targetType), nodeId: contextTarget.targetId },
         relationshipType: defaultContextRelationshipType(contextTarget.targetType),
@@ -221,7 +222,7 @@ export async function POST(request: Request) {
   if (entryType === EntryType.NOTE) {
     const createdNote = await db.observationNote.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         authorPersonId: actorPersonId,
         body: content,
         visibility: NoteVisibility.STAFF_ONLY,
@@ -230,7 +231,7 @@ export async function POST(request: Request) {
     });
 
     const createdEntry = await createOperationalEntry({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       type: EntryType.NOTE,
       title,
       content,
@@ -244,7 +245,7 @@ export async function POST(request: Request) {
     });
 
     await writeEntryActivity({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       entryId: createdEntry.id,
       actorPersonId,
       action: quickAddAction,
@@ -253,7 +254,7 @@ export async function POST(request: Request) {
 
     if (contextTarget) {
       await linkEntryToObject({
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         entryId: createdEntry.id,
         targetType: contextTarget.targetType,
         targetId: contextTarget.targetId,
@@ -261,7 +262,7 @@ export async function POST(request: Request) {
       });
 
       await linkOperationalRecords({
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         from: { nodeType: "ENTRY", nodeId: createdEntry.id },
         to: { nodeType: mapEntryObjectLinkTargetToGraphNodeType(contextTarget.targetType), nodeId: contextTarget.targetId },
         relationshipType: defaultContextRelationshipType(contextTarget.targetType),
@@ -273,7 +274,7 @@ export async function POST(request: Request) {
   }
 
   const createdEntry = await createOperationalEntry({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     type: entryType,
     title,
     content,
@@ -289,7 +290,7 @@ export async function POST(request: Request) {
   });
 
   await writeEntryActivity({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     entryId: createdEntry.id,
     actorPersonId,
     action: quickAddAction,
@@ -298,7 +299,7 @@ export async function POST(request: Request) {
 
   if (contextTarget) {
     await linkEntryToObject({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       entryId: createdEntry.id,
       targetType: contextTarget.targetType,
       targetId: contextTarget.targetId,
@@ -306,7 +307,7 @@ export async function POST(request: Request) {
     });
 
     await linkOperationalRecords({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       from: { nodeType: "ENTRY", nodeId: createdEntry.id },
       to: { nodeType: mapEntryObjectLinkTargetToGraphNodeType(contextTarget.targetType), nodeId: contextTarget.targetId },
       relationshipType: defaultContextRelationshipType(contextTarget.targetType),

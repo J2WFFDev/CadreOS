@@ -12,7 +12,8 @@ export async function POST(request: Request) {
   if (!scope.databaseReady || !scope.organizationId || !scope.auth.personId) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
+  const organizationId = scope.organizationId;
 
-  await markAllNotificationsRead(scope.organizationId, scope.auth.personId);
+  await markAllNotificationsRead(organizationId, scope.auth.personId);
   return NextResponse.redirect(new URL(returnTo, request.url), 303);
 }

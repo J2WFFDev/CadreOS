@@ -17,11 +17,12 @@ export async function POST(request: Request) {
   if (!scope.databaseReady || !scope.organizationId || !scope.auth.personId || !fromEntryId || !toEntryId || fromEntryId === toEntryId) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
+  const organizationId = scope.organizationId;
 
   try {
     await requirePermission({
       actorUserId: scope.auth.clerkUserId,
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "entry.update",
     });
   } catch {
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
 
   const entries = await db.entry.findMany({
     where: {
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       id: { in: [fromEntryId, toEntryId] },
       deletedAt: null,
     },
@@ -44,13 +45,13 @@ export async function POST(request: Request) {
   await db.entryLink.upsert({
     where: {
       organizationId_fromEntryId_toEntryId: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         fromEntryId,
         toEntryId,
       },
     },
     create: {
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       fromEntryId,
       toEntryId,
       createdByPersonId: scope.auth.personId,
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
   });
 
   await writeEntryActivity({
-    organizationId: scope.organizationId,
+    organizationId: organizationId,
     entryId: fromEntryId,
     actorPersonId: scope.auth.personId,
     action: "entry.linked",

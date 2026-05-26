@@ -1127,11 +1127,11 @@ export const gearReservationWorkflowSchema = z
   })
   .superRefine((value, context) => {
     if (
-      ![
+      !new Set<GearReservationStatus>([
         GearReservationStatus.DRAFT,
         GearReservationStatus.ACTIVE,
         GearReservationStatus.PENDING_REVIEW,
-      ].includes(value.status)
+      ]).has(value.status)
     ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,

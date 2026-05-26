@@ -79,6 +79,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = personWorkflowSchema.safeParse(values);
 
@@ -102,14 +103,14 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "person.update",
     });
 
     const updated = await db.person.updateMany({
       where: {
         id: personId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       data: {
         firstName: parsed.data.firstName,

@@ -63,6 +63,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   if (!decision) {
     return NextResponse.redirect(
@@ -79,7 +80,7 @@ export async function POST(
     const booking = await db.resourceBooking.findFirst({
       where: {
         id: bookingId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: {
         id: true,
@@ -103,7 +104,7 @@ export async function POST(
     }
 
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: decision === "approve" ? "booking.approve" : "booking.deny",
       programId: booking.programId,
       teamId: booking.teamId,
@@ -139,7 +140,7 @@ export async function POST(
     if (decision === "approve") {
       const blockingConflictCount = await db.bookingConflict.count({
         where: {
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
           bookingId: booking.id,
           severity: ConflictSeverity.BLOCKING,
           resolvedAt: null,
@@ -160,7 +161,7 @@ export async function POST(
     }
 
     const actorPersonId = await resolveActorPersonId({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });

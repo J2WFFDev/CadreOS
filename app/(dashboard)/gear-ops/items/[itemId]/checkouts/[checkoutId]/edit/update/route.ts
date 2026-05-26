@@ -107,6 +107,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = gearCheckoutWorkflowSchema.safeParse(values);
 
@@ -138,11 +139,11 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "gearCheckout.update",
     });
 
-    if (!(await ensurePersonInOrganization(parsed.data.checkedOutById, scope.organizationId))) {
+    if (!(await ensurePersonInOrganization(parsed.data.checkedOutById, organizationId))) {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, itemId, checkoutId, {
           values,
@@ -155,7 +156,7 @@ export async function POST(
       );
     }
 
-    if (!(await ensurePersonInOrganization(parsed.data.issuedById, scope.organizationId))) {
+    if (!(await ensurePersonInOrganization(parsed.data.issuedById, organizationId))) {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, itemId, checkoutId, {
           values,
@@ -168,7 +169,7 @@ export async function POST(
       );
     }
 
-    if (parsed.data.returnedById && !(await ensurePersonInOrganization(parsed.data.returnedById, scope.organizationId))) {
+    if (parsed.data.returnedById && !(await ensurePersonInOrganization(parsed.data.returnedById, organizationId))) {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, itemId, checkoutId, {
           values,
@@ -181,7 +182,7 @@ export async function POST(
       );
     }
 
-    if (parsed.data.receivedById && !(await ensurePersonInOrganization(parsed.data.receivedById, scope.organizationId))) {
+    if (parsed.data.receivedById && !(await ensurePersonInOrganization(parsed.data.receivedById, organizationId))) {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, itemId, checkoutId, {
           values,
@@ -196,7 +197,7 @@ export async function POST(
 
     if (parsed.data.eventId) {
       const event = await db.event.findFirst({
-        where: { id: parsed.data.eventId, organizationId: scope.organizationId },
+        where: { id: parsed.data.eventId, organizationId: organizationId },
         select: { id: true },
       });
 
@@ -218,7 +219,7 @@ export async function POST(
       where: {
         id: checkoutId,
         gearItemId: itemId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       data: {
         status: parsed.data.status,

@@ -71,18 +71,13 @@ async function ensureRecordInOrganization(
   id: string,
   organizationId: string,
 ) {
-  const delegates = {
-    person: db.person,
-    team: db.team,
-    event: db.event,
-    program: db.program,
-  } as const;
-
-  const record = await delegates[kind].findFirst({
-    where: { id, organizationId },
-    select: { id: true },
-  });
-
+  const where = { id, organizationId };
+  const select = { id: true };
+  let record: { id: string } | null = null;
+  if (kind === "person") record = await db.person.findFirst({ where, select });
+  else if (kind === "team") record = await db.team.findFirst({ where, select });
+  else if (kind === "event") record = await db.event.findFirst({ where, select });
+  else record = await db.program.findFirst({ where, select });
   return Boolean(record);
 }
 
@@ -128,6 +123,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = gearReservationWorkflowSchema.safeParse(values);
   if (!parsed.success) {
@@ -157,12 +153,12 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "gearReservation.create",
     });
 
     const item = await db.gearItem.findFirst({
-      where: { id: itemId, organizationId: scope.organizationId },
+      where: { id: itemId, organizationId: organizationId },
       select: {
         id: true,
         inventoryType: true,
@@ -186,7 +182,7 @@ export async function POST(
       ["event", parsed.data.reservedForEventId, "reservedForEventId"],
       ["program", parsed.data.programId, "programId"],
     ] as const) {
-      if (value && !(await ensureRecordInOrganization(kind, value, scope.organizationId))) {
+      if (value && !(await ensureRecordInOrganization(kind, value, organizationId))) {
         return NextResponse.redirect(
           buildErrorRedirectUrl(request.url, itemId, {
             values,
@@ -199,7 +195,7 @@ export async function POST(
     }
 
     const requestedByPersonId = await resolveActorPersonId({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       clerkUserId: scope.auth.clerkUserId,
       preferredPersonId: scope.auth.personId,
     });
@@ -217,7 +213,7 @@ export async function POST(
     const [existingReservations, currentOpenCheckoutCount, currentAssignmentCount] = await Promise.all([
       db.gearReservation.findMany({
         where: {
-          organizationId: scope.organizationId,
+          organizationId: organizationId,
           gearItemId: itemId,
           status: { in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW, GearReservationStatus.CONFLICT] },
         },
@@ -240,10 +236,10 @@ export async function POST(
         },
       }),
       db.gearCheckout.count({
-        where: { organizationId: scope.organizationId, gearItemId: itemId, status: { in: ["OPEN", "OVERDUE"] } },
+        where: { organizationId: organizationId, gearItemId: itemId, status: { in: ["OPEN", "OVERDUE"] } },
       }),
       db.gearAssignment.count({
-        where: { organizationId: scope.organizationId, gearItemId: itemId, status: { in: ["PENDING", "ACTIVE", "OVERDUE"] } },
+        where: { organizationId: organizationId, gearItemId: itemId, status: { in: ["PENDING", "ACTIVE", "OVERDUE"] } },
       }),
     ]);
 
@@ -293,7 +289,7 @@ export async function POST(
     const reservation = await db.$transaction(async (tx) => {
       const createdReservation = await tx.gearReservation.create({
         data: {
-          organizationId: scope.organizationId!,
+          organizationId: organizationId!,
           gearItemId: itemId,
           programId: parsed.data.programId,
           reservedForPersonId: parsed.data.reservedForPersonId,
@@ -316,7 +312,7 @@ export async function POST(
       if (status !== GearReservationStatus.DRAFT) {
         await tx.inventoryMovement.create({
           data: {
-            organizationId: scope.organizationId!,
+            organizationId: organizationId!,
             gearItemId: itemId,
             movementType: InventoryMovementType.RESERVED,
             actorPersonId: requestedByPersonId,

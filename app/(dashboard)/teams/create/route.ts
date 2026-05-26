@@ -64,6 +64,7 @@ export async function POST(request: Request) {
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = teamWorkflowSchema.safeParse(values);
 
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "team.create",
       programId: parsed.data.programId,
     });
@@ -93,7 +94,7 @@ export async function POST(request: Request) {
     const program = await db.program.findFirst({
       where: {
         id: parsed.data.programId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: { id: true },
     });
@@ -113,7 +114,7 @@ export async function POST(request: Request) {
 
     await db.team.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         programId: parsed.data.programId,
         name: parsed.data.name,
       },

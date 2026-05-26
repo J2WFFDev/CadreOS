@@ -74,6 +74,7 @@ export async function POST(
       303,
     );
   }
+  const organizationId = scope.organizationId;
 
   const parsed = rosterMembershipWorkflowSchema.safeParse(values);
 
@@ -96,7 +97,7 @@ export async function POST(
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: scope.organizationId,
+      organizationId: organizationId,
       action: "rosterMembership.create",
       teamId,
     });
@@ -104,7 +105,7 @@ export async function POST(
     const team = await db.team.findFirst({
       where: {
         id: teamId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: {
         id: true,
@@ -124,7 +125,7 @@ export async function POST(
 
     const seasons = await db.season.findMany({
       where: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         programId: team.programId,
       },
       orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
@@ -148,7 +149,7 @@ export async function POST(
     const person = await db.person.findFirst({
       where: {
         id: parsed.data.personId,
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
       },
       select: {
         id: true,
@@ -193,7 +194,7 @@ export async function POST(
 
     await db.rosterMembership.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId: organizationId,
         teamId: team.id,
         seasonId: selectedSeason.id,
         personId: person.id,
