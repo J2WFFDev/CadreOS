@@ -2,7 +2,7 @@
 
 ## Status
 
-Documentation/design complete.  
+Documentation/design complete.
 No delivery-channel runtime, notification center, preference engine, or external provider integration is introduced in this arc.
 
 ## Arc Intent
@@ -59,7 +59,7 @@ This arc explicitly does **not** build:
 
 ### Key rule
 
-GearOps may say **“this event is notification-worthy”**.  
+GearOps may say **“this event is notification-worthy”**.
 GearOps must not say **“send this email/SMS/push now.”**
 
 ---
@@ -113,7 +113,7 @@ No delivery-channel assumption is made at step 4.
 | `URGENT` | Time-sensitive issue with meaningful operational impact | missing/unreturned gear, readiness issue before event |
 | `BLOCKER` | Current workflow or event readiness is materially blocked | reservation/hold conflict blocking deployment, out-of-service item on required event plan |
 
-Severity is descriptive metadata only.  
+Severity is descriptive metadata only.
 It does not imply a specific channel, timing, or escalation behavior.
 
 ---
@@ -145,6 +145,7 @@ Recipient logic must stay **role-aware**, **organization-scoped**, and **permiss
 
 | Recipient role intent | When it is a candidate | Notes |
 | --- | --- | --- |
+| Current operator (staff) | Offline review, pending-action reconciliation, action-failed follow-up | Internal operational audience only |
 | Current custody holder | Checkout/check-in/custody changes, overdue/unreturned reminders, damage/missing follow-up | Use only when custody holder is known and in-org |
 | Prior custody holder | Custody transfer, discrepancy follow-up, return accountability review | Usually internal/staff review only |
 | Assigned person / athlete | Assignment change, reservation fulfillment, readiness impact on their assigned gear | Keep payload minimal for athlete-facing futures |
@@ -230,9 +231,9 @@ Recipient logic must stay **role-aware**, **organization-scoped**, and **permiss
 
 | Event | Default severity | Primary recipient intents | Notes |
 | --- | --- | --- | --- |
-| Pending/offline action failed | `WARNING` | current operator review audience, administrator | Only after server-confirmed failure/reconcile result |
-| Pending/offline action needs review | `ACTION_NEEDED` | current operator review audience, administrator | In-app/admin review candidate |
-| Online-required action blocked | `ACTION_NEEDED` | current operator review audience | Local UX continuity signal, not final history |
+| Pending/offline action failed | `WARNING` | current operator (staff), administrator | Only after server-confirmed failure/reconcile result |
+| Pending/offline action needs review | `ACTION_NEEDED` | current operator (staff), administrator | In-app/admin review candidate |
+| Online-required action blocked | `ACTION_NEEDED` | current operator (staff) | Local UX continuity signal, not final history |
 
 ### H) Admin / Data Operations
 
