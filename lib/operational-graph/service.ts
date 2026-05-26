@@ -1,4 +1,4 @@
-import type { OperationalGraphNodeType, OperationalRelationshipType } from "@prisma/client";
+import type { OperationalRelationshipType } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import type {
