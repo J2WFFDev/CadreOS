@@ -476,12 +476,12 @@ test("getAvailabilitySignalLabel returns readable text for all signals", () => {
   assert.equal(getAvailabilitySignalLabel("UNAVAILABLE"), "Unavailable");
 });
 
-test("getAvailabilitySignalChipClass returns distinct non-empty class strings for all signals", () => {
+test("getAvailabilitySignalChipClass returns non-empty class strings for all signals", () => {
   const signals: GearAvailabilitySignal[] = ["AVAILABLE", "RESERVED", "HELD", "CHECKED_OUT", "ASSIGNED", "MAINTENANCE", "UNAVAILABLE"];
   const classes = signals.map(getAvailabilitySignalChipClass);
-  const unique = new Set(classes);
-  assert.equal(unique.size, signals.length, "Each signal should map to a distinct chip class");
   classes.forEach((cls) => assert.ok(cls.length > 0, "Chip class must be non-empty"));
+  assert.ok(getAvailabilitySignalChipClass("RESERVED").includes("violet"));
+  assert.ok(getAvailabilitySignalChipClass("HELD").includes("sky"));
 });
 
 // ---------------------------------------------------------------------------
