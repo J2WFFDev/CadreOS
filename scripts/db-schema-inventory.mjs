@@ -228,7 +228,6 @@ function resolveBaselineCandidates(migrationStates) {
 function classifyDatabase(tableNames) {
   const t = new Set(tableNames);
   const nonPrismaTables = tableNames.filter((name) => !name.startsWith("_prisma_"));
-  const has = (name) => t.has(name);
   const hasAny = (names) => names.some((n) => t.has(n));
 
   const authTables = ["Organization", "Person", "RoleAssignment", "UserAccount"];
