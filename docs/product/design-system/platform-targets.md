@@ -101,19 +101,20 @@ Desktop Web (current)
 
 **Primary users:** Field staff, coaches in environments with limited or no connectivity
 
-**Primary use cases:**
+**Primary use cases (Field Capture boundary):**
 - Attendance capture in no-connectivity environments
 - GearOps gear checkout, return, and custody transfer offline
 - Readiness verification offline
 - Event setup checklist offline
 - Maintenance intake offline
+- Volunteer check-in and notes/observations capture offline
 - Sync queue with conflict review on reconnect
 
 **UI mode:** Field/Mobile Mode (scan-optimized, offline-aware)
 
 **Density:** Minimal — large targets, high-contrast status indicators, offline banners, sync queue indicators
 
-**Connectivity:** Offline-capable with sync on reconnect
+**Connectivity:** Offline-capable for field capture workflows with sync on reconnect; not full offline admin mode
 
 **Technical approach (future options):**
 - React Native with shared business logic from web

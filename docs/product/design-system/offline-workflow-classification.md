@@ -14,6 +14,36 @@ Not all workflows are equally suitable for offline operation. Some require real-
 
 ---
 
+## Product Boundary (Confirmed)
+
+CadreOS offline support is explicitly bounded to **Field Capture mode**, not full offline admin mode.
+
+### Offline-suitable workflows (Field Capture)
+
+- attendance capture
+- gear checkout when pre-authorized
+- gear return
+- custody transfer capture
+- readiness checklist
+- maintenance intake
+- event setup checklist
+- volunteer check-in
+- notes and observations
+
+### Online-required or restricted workflows
+
+- role/security changes
+- guardian approval changes unless pre-authorized rules exist
+- major schedule changes
+- resource conflict overrides
+- deleting records
+- admin configuration
+- reporting and analytics generation
+
+This boundary protects future sync architecture from high-risk admin and security conflicts.
+
+---
+
 ## Classification Definitions
 
 ### Online Required
@@ -219,8 +249,14 @@ Additional context, caveats, or implementation considerations.
 | Readiness Verification | ✅ Yes | Low | Low |
 | Maintenance Intake | ✅ Yes | Low | Low |
 | Event Setup Checklist | ✅ Yes | Low | Medium |
+| Volunteer Check-In | ✅ Yes | Low | Low |
+| Notes and Observations | ✅ Yes | Low | Low |
 | Guardian Approval | ⚠️ With caution | Medium | Low |
 | User / Role Management | ❌ No | N/A | N/A |
+| Major Schedule Changes | ❌ No | N/A | N/A |
+| Resource Conflict Overrides | ❌ No | N/A | N/A |
+| Record Deletion | ❌ No | N/A | N/A |
+| Admin Configuration | ❌ No | N/A | N/A |
 | Reporting | ❌ No | N/A | N/A |
 | Resource Booking | ❌ No | N/A | N/A |
 | Facility Setup | ❌ No | N/A | N/A |

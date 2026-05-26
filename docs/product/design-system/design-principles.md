@@ -99,6 +99,20 @@ System state (what the data says) and action affordance (what the user can do) a
 
 ---
 
+## 13. Today-First, Role-Filtered, Module-Backed
+
+Design priority should be: show what needs attention today, filtered by role and permissions, while preserving module-backed workflow ownership in implementation.
+
+Users should not need to know internal module names to complete operational work. Internal module naming remains valid in architecture and technical documentation.
+
+---
+
+## 14. Status Color Semantics Over Module Branding
+
+Color should primarily encode operational status and severity. Module or object type should be conveyed through iconography and labels, and workflow stage should be conveyed through steppers/timelines/progress components.
+
+---
+
 ## Applying These Principles
 
 When designing a new screen or component:

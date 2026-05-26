@@ -47,3 +47,17 @@ Current roadmap arcs (Phases 16–20 and beyond) proceed as planned. When a futu
 ## Guiding Constraint
 
 > Do not remove admin/operator visibility. Do not disrupt the current roadmap order. These documents prepare for the future without blocking the present.
+
+---
+
+## Confirmed Product Decisions (Captured)
+
+The following confirmed product decisions are now treated as design-system constraints:
+
+1. **Role Experience Model:** Today-first, role-filtered, module-backed.
+2. **Navigation Model:** User-facing, task-oriented labels (Today, People, Events, Gear, Facilities, Tasks, Reports, Admin).
+3. **Offline Boundary Model:** Field Capture mode only (not full offline admin mode).
+4. **Visual Status Model:** Color communicates operational status/severity first.
+5. **Design Pilot:** GearOps remains the first pilot because it exercises the most complex operational and offline-adjacent UX requirements.
+
+These are documentation and decision-capture updates only. They do not alter roadmap arc order and do not require immediate UI implementation changes.

@@ -12,6 +12,29 @@ This vocabulary defines canonical status values. Modules should use these values
 
 ---
 
+## Visual Status Model (Confirmed)
+
+CadreOS visual design uses color primarily for operational status and severity.
+
+- **Color = operational meaning**
+- **Icon/label = object or module type**
+- **Stepper/timeline/progress indicator = workflow stage**
+- **Badge text = current state**
+
+Avoid using color primarily as a module/category identifier when that conflicts with status meaning.
+
+The primary color-semantic status set is:
+- Ready
+- Pending
+- Blocked
+- Needs Review
+- Overdue
+- Complete
+- Incomplete
+- Archived
+
+---
+
 ## Canonical Status Vocabulary
 
 ### Ready
