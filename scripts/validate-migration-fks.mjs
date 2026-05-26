@@ -36,16 +36,16 @@ for (const migrationDir of migrations) {
 
   const sql = readFileSync(sqlPath, "utf-8");
 
-  // Discover tables created by this migration.
-  const createPattern = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"/gi;
+  // Discover tables created by this migration (quoted or unquoted identifiers).
+  const createPattern = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"?([A-Za-z_][A-Za-z0-9_]*)"?/gi;
   let match;
   while ((match = createPattern.exec(sql)) !== null) {
     knownTables.add(match[1]);
   }
 
-  // Verify every REFERENCES target is a known table.
-  // Matches: REFERENCES "TableName"( or REFERENCES "TableName" (
-  const refPattern = /REFERENCES\s+"([^"]+)"\s*\(/gi;
+  // Verify every REFERENCES target is a known table (quoted or unquoted identifiers).
+  // Matches: REFERENCES "TableName"( or REFERENCES TableName(
+  const refPattern = /REFERENCES\s+"?([A-Za-z_][A-Za-z0-9_]*)"?\s*\(/gi;
   while ((match = refPattern.exec(sql)) !== null) {
     const table = match[1];
     if (!knownTables.has(table)) {
