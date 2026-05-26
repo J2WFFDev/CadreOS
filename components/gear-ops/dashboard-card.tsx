@@ -10,7 +10,7 @@
 
 import Link from "next/link";
 
-import { toneToChipClass, type LifecycleTone } from "@/lib/gear-ops-ui";
+import { type LifecycleTone } from "@/lib/gear-ops-ui";
 
 export function GearDashboardCard({
   label,

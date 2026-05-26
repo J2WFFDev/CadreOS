@@ -3,6 +3,7 @@ import { GearAssignmentStatus } from "@prisma/client";
 import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { FormActions } from "@/components/dashboard/form-actions";
+import { GearOfflineForm } from "@/components/gear-ops/offline-form";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
 import { formatGearOpsEnum } from "@/lib/gear-ops";
@@ -157,10 +158,16 @@ export default async function AssignGearItemPage({
 
       {generalError ? <ErrorMessage message={generalError} /> : null}
 
-      <form
+      <GearOfflineForm
         action={`/gear-ops/items/${item.id}/assign/create`}
-        method="post"
         className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900"
+        actionType="gear.assignment.create"
+        subjectType="GEAR_ITEM"
+        subjectId={item.id}
+        subjectLabel={item.name}
+        permissionKey="gearAssignment.create"
+        returnHref={`/gear-ops/items/${item.id}`}
+        queueLabel={`Gear assignment · ${item.name}`}
       >
         <div className="space-y-1">
           <label htmlFor="status" className="text-sm font-medium">
@@ -304,7 +311,7 @@ export default async function AssignGearItemPage({
         </div>
 
         <FormActions submitLabel="Create assignment" cancelHref={`/gear-ops/items/${item.id}`} />
-      </form>
+      </GearOfflineForm>
     </section>
   );
 }

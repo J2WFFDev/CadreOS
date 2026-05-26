@@ -31,6 +31,7 @@ The current admin visibility — raw IDs, audit logs, relationship tables, workf
 | [status-language.md](./status-language.md) | Shared status vocabulary for all modules |
 | [component-patterns.md](./component-patterns.md) | Reusable future component catalog |
 | [offline-workflow-classification.md](./offline-workflow-classification.md) | Workflow offline suitability matrix |
+| [gearops-mobile-offline-foundation.md](./gearops-mobile-offline-foundation.md) | Implemented Arc 20K mobile/offline foundation boundaries and behavior |
 | [sync-and-conflict-model.md](./sync-and-conflict-model.md) | Preferred append-only sync and conflict resolution model |
 | [gearops-ui-pilot.md](./gearops-ui-pilot.md) | GearOps as the first future design system pilot |
 
