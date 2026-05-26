@@ -52,13 +52,13 @@ CREATE TABLE "OperationalRelationship" (
   CONSTRAINT "OperationalRelationship_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "OperationalRelationship_organizationId_fromNodeType_fromNodeId_toNodeType_toNodeId_relationshipType_key"
+CREATE UNIQUE INDEX "OperationalRelationship_organizationId_fromNodeType_fromNod_key"
   ON "OperationalRelationship"("organizationId", "fromNodeType", "fromNodeId", "toNodeType", "toNodeId", "relationshipType");
-CREATE INDEX "OperationalRelationship_organizationId_fromNodeType_fromNodeId_removedAt_idx"
+CREATE INDEX "OperationalRelationship_organizationId_fromNodeType_fromNod_idx"
   ON "OperationalRelationship"("organizationId", "fromNodeType", "fromNodeId", "removedAt");
-CREATE INDEX "OperationalRelationship_organizationId_toNodeType_toNodeId_removedAt_idx"
+CREATE INDEX "OperationalRelationship_organizationId_toNodeType_toNodeId__idx"
   ON "OperationalRelationship"("organizationId", "toNodeType", "toNodeId", "removedAt");
-CREATE INDEX "OperationalRelationship_organizationId_relationshipType_createdAt_idx"
+CREATE INDEX "OperationalRelationship_organizationId_relationshipType_cre_idx"
   ON "OperationalRelationship"("organizationId", "relationshipType", "createdAt");
 
 ALTER TABLE "OperationalRelationship"
