@@ -9,6 +9,8 @@ import type {
   InventoryReadinessState,
 } from "@prisma/client";
 
+export const THIRTY_DAYS_IN_MS = 30 * 24 * 60 * 60 * 1000;
+
 export type GearOpsAssignmentSnapshot = {
   id: string;
   gearItemId: string;
@@ -97,6 +99,17 @@ export type GearOpsException = {
   href: string;
 };
 
+function isPastDue(expectedReturnAt: Date | null, now: Date) {
+  return expectedReturnAt !== null && expectedReturnAt.getTime() < now.getTime();
+}
+
+function calculatePercent(numerator: number, denominator: number) {
+  if (denominator <= 0) {
+    return 0;
+  }
+  return Math.round((numerator / denominator) * 100);
+}
+
 function toKey(value: string | null | undefined) {
   return value && value.length > 0 ? value : "__none__";
 }
@@ -135,7 +148,7 @@ export function isOverdueAssignment(assignment: GearOpsAssignmentSnapshot, now =
     return false;
   }
 
-  return assignment.status === "OVERDUE" || (assignment.expectedReturnAt !== null && assignment.expectedReturnAt.getTime() < now.getTime());
+  return assignment.status === "OVERDUE" || isPastDue(assignment.expectedReturnAt, now);
 }
 
 export function isOverdueCheckout(checkout: GearOpsCheckoutSnapshot, now = new Date()) {
@@ -143,7 +156,7 @@ export function isOverdueCheckout(checkout: GearOpsCheckoutSnapshot, now = new D
     return false;
   }
 
-  return checkout.status === "OVERDUE" || (checkout.expectedReturnAt !== null && checkout.expectedReturnAt.getTime() < now.getTime());
+  return checkout.status === "OVERDUE" || isPastDue(checkout.expectedReturnAt, now);
 }
 
 export function filterGearOpsItems(items: GearOpsItemSnapshot[], filter: GearOpsReportFilter) {
@@ -218,7 +231,7 @@ export function summarizeReadiness(items: GearOpsItemSnapshot[]) {
     }
   }
 
-  summary.readyPercent = summary.total > 0 ? Math.round((summary.ready / summary.total) * 100) : 0;
+  summary.readyPercent = calculatePercent(summary.ready, summary.total);
   return summary;
 }
 
@@ -227,11 +240,15 @@ export function summarizeCustody(
   checkouts: GearOpsCheckoutSnapshot[],
   now = new Date(),
 ) {
-  const assignmentStates = ["PENDING", "ACTIVE", "OVERDUE"] as const;
-  const checkoutStates = ["OPEN", "OVERDUE"] as const;
-
-  const activeAssignments = assignments.filter((assignment) => assignmentStates.includes(assignment.status));
-  const openCheckouts = checkouts.filter((checkout) => checkoutStates.includes(checkout.status));
+  const activeAssignments = assignments.filter(
+    (assignment) =>
+      assignment.status === "PENDING" ||
+      assignment.status === "ACTIVE" ||
+      assignment.status === "OVERDUE",
+  );
+  const openCheckouts = checkouts.filter(
+    (checkout) => checkout.status === "OPEN" || checkout.status === "OVERDUE",
+  );
 
   const holders = new Set<string>();
   activeAssignments.forEach((assignment) => {
@@ -304,7 +321,7 @@ export function summarizeConsumables(
   transactions: GearOpsConsumableTransactionSnapshot[],
   now = new Date(),
 ) {
-  const threshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const threshold = new Date(now.getTime() - THIRTY_DAYS_IN_MS);
   let adjustments30d = 0;
 
   for (const transaction of transactions) {
@@ -370,7 +387,7 @@ export function summarizeEventRequirements(requirements: GearOpsEventRequirement
 
   const values = Array.from(groupedByEvent.values());
   values.forEach((value) => {
-    value.readinessPercent = value.quantityNeeded > 0 ? Math.round((value.readyCount / value.quantityNeeded) * 100) : 0;
+    value.readinessPercent = calculatePercent(value.readyCount, value.quantityNeeded);
   });
 
   values.sort((left, right) => {

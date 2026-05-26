@@ -1,9 +1,6 @@
 import {
-  ConsumableTransactionType,
   GearAssignmentStatus,
   GearCheckoutStatus,
-  GearConditionStatus,
-  GearInventoryType,
   GearItemLifecycleStatus,
   InventoryOwnershipType,
   InventoryReadinessState,
@@ -29,6 +26,7 @@ import {
   summarizeLocations,
   summarizeMaintenance,
   summarizeReadiness,
+  THIRTY_DAYS_IN_MS,
   type GearOpsEventRequirementSnapshot,
   type GearOpsItemSnapshot,
   type GearOpsReportFilter,
@@ -41,6 +39,67 @@ import { isSchemaUnavailableError } from "@/lib/workflows";
 export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
+const MAX_EXCEPTION_ROWS = 30;
+const MAX_LIST_ROWS = 12;
+
+type GearItemRow = {
+  id: string;
+  name: string;
+  inventoryType: GearOpsItemSnapshot["inventoryType"];
+  lifecycleStatus: GearOpsItemSnapshot["lifecycleStatus"];
+  conditionStatus: GearOpsItemSnapshot["conditionStatus"];
+  ownershipType: GearOpsItemSnapshot["ownershipType"];
+  readinessState: GearOpsItemSnapshot["readinessState"];
+  quantityOnHand: number;
+  quantityMin: number | null;
+  category: { id: string; name: string };
+  location: { id: string; name: string } | null;
+  assignments: Array<{
+    id: string;
+    status: GearAssignmentStatus;
+    expectedReturnAt: Date | null;
+    returnedAt: Date | null;
+    assignedToPersonId: string | null;
+    assignedToEventId: string | null;
+    assignedTo: { id: string; firstName: string; lastName: string } | null;
+    assignedEvent: { id: string; title: string } | null;
+  }>;
+  checkouts: Array<{
+    id: string;
+    status: GearCheckoutStatus;
+    expectedReturnAt: Date | null;
+    returnedAt: Date | null;
+    checkedOutAt: Date;
+    checkedOutBy: { id: string; firstName: string; lastName: string };
+    event: { id: string; title: string } | null;
+  }>;
+};
+
+type ConsumableTransactionRow = {
+  id: string;
+  gearItemId: string;
+  transactionType: "RECEIVED" | "USED" | "DISTRIBUTED" | "DISPOSED" | "ADJUSTED";
+  quantityDelta: number;
+  recordedAt: Date;
+};
+
+type EventRequirementRow = {
+  quantityNeeded: number;
+  plan: { event: { id: string; title: string } };
+  assignments: Array<{
+    stagedAt: Date | null;
+    recoveredAt: Date | null;
+    gearItem: EventRequirementItemState;
+  }>;
+};
+
+type EventRequirementItemState = Pick<
+  GearOpsItemSnapshot,
+  "lifecycleStatus" | "readinessState" | "conditionStatus" | "quantityOnHand" | "quantityMin"
+> & {
+  checkouts: Array<{ status: GearCheckoutStatus; returnedAt: Date | null; eventId: string | null }>;
+  assignments: Array<{ assignedToEventId: string | null }>;
+};
 
 function readSearchParam(searchParams: SearchParams, key: string) {
   const value = searchParams[key];
@@ -163,15 +222,15 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
   const filter = resolveFilter(resolvedSearchParams);
   const itemWhere = buildFilterWhere(filter, access.where);
   const now = new Date();
-  const transactionThreshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const transactionThreshold = new Date(now.getTime() - THIRTY_DAYS_IN_MS);
 
-  let gearItems: Awaited<ReturnType<typeof db.gearItem.findMany>> | null = null;
-  let transactions: Awaited<ReturnType<typeof db.consumableTransaction.findMany>> | null = null;
-  let eventRequirements: Awaited<ReturnType<typeof db.eventGearRequirement.findMany>> | null = null;
+  let gearItems: GearItemRow[] | null = null;
+  let transactions: ConsumableTransactionRow[] | null = null;
+  let eventRequirements: EventRequirementRow[] | null = null;
   let queryErrorMessage = "Unable to load GearOps reporting data right now. Please try again later.";
 
   try {
-    [gearItems, transactions, eventRequirements] = await Promise.all([
+    const [itemRows, transactionRows, requirementRows] = await Promise.all([
       db.gearItem.findMany({
         where: itemWhere,
         select: {
@@ -267,6 +326,10 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
         },
       }),
     ]);
+
+    gearItems = itemRows as GearItemRow[];
+    transactions = transactionRows as ConsumableTransactionRow[];
+    eventRequirements = requirementRows as EventRequirementRow[];
   } catch (error) {
     if (isSchemaUnavailableError(error)) {
       queryErrorMessage = "Database schema is not available yet. Run database setup before loading GearOps reports.";
@@ -554,7 +617,7 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
           <EmptyState message="No exceptions are visible for the selected filters." />
         ) : (
           <ul className="mt-2 space-y-2 text-sm">
-            {exceptions.slice(0, 30).map((exception) => (
+            {exceptions.slice(0, MAX_EXCEPTION_ROWS).map((exception) => (
               <li key={exception.id} className="rounded-md border p-2">
                 <p className="font-medium">{exception.title}</p>
                 <p className="text-zinc-600 dark:text-zinc-400">{exception.detail}</p>
@@ -574,7 +637,7 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No out-of-service gear visible.</p>
           ) : (
             <ul className="mt-2 space-y-1 text-sm">
-              {outOfService.slice(0, 12).map((item) => (
+              {outOfService.slice(0, MAX_LIST_ROWS).map((item) => (
                 <li key={item.id} className="rounded-md border p-2">
                   <Link href={`/gear-ops/items/${item.id}`} className="underline">
                     {item.name}
@@ -595,7 +658,7 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No overdue or unreturned items visible.</p>
           ) : (
             <ul className="mt-2 space-y-1 text-sm">
-              {overdue.slice(0, 12).map((entry) => (
+              {overdue.slice(0, MAX_LIST_ROWS).map((entry) => (
                 <li key={entry.id} className="rounded-md border p-2">
                   <p className="font-medium">{entry.title}</p>
                   <p className="text-zinc-600 dark:text-zinc-400">{entry.detail}</p>
@@ -616,7 +679,7 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No location rows visible.</p>
           ) : (
             <ul className="mt-2 space-y-1 text-sm">
-              {locationSummary.slice(0, 12).map((location) => (
+              {locationSummary.slice(0, MAX_LIST_ROWS).map((location) => (
                 <li key={`${location.locationId ?? "none"}-${location.locationName}`} className="flex justify-between rounded-md border px-2 py-1.5">
                   <span>{location.locationName}</span>
                   <span>{location.count}</span>
@@ -631,7 +694,7 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No event gear rows visible.</p>
           ) : (
             <ul className="mt-2 space-y-1 text-sm">
-              {eventSummary.slice(0, 12).map((event) => (
+              {eventSummary.slice(0, MAX_LIST_ROWS).map((event) => (
                 <li key={event.eventId} className="rounded-md border p-2">
                   <Link href={`/events/${event.eventId}/gear`} className="underline">
                     {event.eventTitle}
@@ -652,7 +715,7 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No recent consumable activity is visible.</p>
         ) : (
           <ul className="mt-2 space-y-1 text-sm">
-            {transactions.slice(0, 12).map((transaction) => (
+            {transactions.slice(0, MAX_LIST_ROWS).map((transaction) => (
               <li key={transaction.id} className="rounded-md border p-2">
                 <p className="font-medium">
                   {formatGearOpsEnum(transaction.transactionType)} · {transaction.quantityDelta > 0 ? "+" : ""}

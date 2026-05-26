@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildGearOpsExceptions,
   filterGearOpsItems,
+  type GearOpsItemSnapshot,
   isLowConsumableItem,
   isMaintenanceNeededItem,
   isOutOfServiceItem,
@@ -18,7 +19,7 @@ import {
 const now = new Date("2026-05-26T12:00:00Z");
 
 function buildItem(overrides: Partial<Parameters<typeof filterGearOpsItems>[0][number]> = {}) {
-  return {
+  const base: GearOpsItemSnapshot = {
     id: "item-1",
     name: "Duty Radio",
     categoryId: "cat-radios",
@@ -34,6 +35,10 @@ function buildItem(overrides: Partial<Parameters<typeof filterGearOpsItems>[0][n
     quantityMin: null,
     assignments: [],
     checkouts: [],
+  };
+
+  return {
+    ...base,
     ...overrides,
   };
 }
