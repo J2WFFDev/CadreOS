@@ -26,6 +26,9 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Install postgresql-client
+        run: sudo apt-get install -y --no-install-recommends postgresql-client
+
       - name: Generate Prisma client
         run: npx prisma generate
 
@@ -39,6 +42,25 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
         run: npx prisma migrate status || true
+
+      - name: Resolve failed arc20g migration if stuck
+        env:
+          DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
+        run: |
+          failed_migration="20260526180000_arc20g_event_gear_planning"
+          if ! echo "${failed_migration}" | grep -Eq '^[A-Za-z0-9_]+$'; then
+            echo "Unexpected characters in migration name: ${failed_migration}" >&2
+            exit 1
+          fi
+          failed_count=$(psql "$DATABASE_URL" -tAc \
+            "SELECT COUNT(*) FROM _prisma_migrations WHERE migration_name = '${failed_migration}' AND finished_at IS NULL AND rolled_back_at IS NULL" \
+            2>/dev/null | tr -d '[:space:]' || echo "0")
+          if [ "${failed_count:-0}" -gt "0" ]; then
+            echo "Found failed (un-finished) migration ${failed_migration} — resolving as rolled-back before deploy."
+            npx prisma migrate resolve --rolled-back "${failed_migration}"
+          else
+            echo "No failed un-finished entry for ${failed_migration} — no action needed."
+          fi
 
       - name: Apply pending Prisma migrations (post-baseline)
         env:

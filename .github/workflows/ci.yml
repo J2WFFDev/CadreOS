@@ -36,3 +36,7 @@ jobs:
         run: npx prisma validate
         env:
           DATABASE_URL: postgresql://cadreos:cadreos@localhost:5432/cadreos
+
+
+      - name: Migration FK validation
+        run: node scripts/validate-migration-fks.mjs
