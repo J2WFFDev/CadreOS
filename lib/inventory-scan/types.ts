@@ -193,6 +193,10 @@ function appendQuery(path: string, params: URLSearchParams) {
   return query.length > 0 ? `${path}?${query}` : path;
 }
 
+function appendHash(path: string, hash?: string) {
+  return hash ? `${path}#${hash}` : path;
+}
+
 export function resolveScanTargetPath(input: {
   scanContext: ScanContext;
   match: ScanResolveMatch;
@@ -209,31 +213,13 @@ export function resolveScanTargetPath(input: {
     return appendQuery(`/gear-ops/locations/${input.match.id}`, params);
   }
 
-  if (input.scanContext === "CHECKOUT") {
-    return appendQuery(`/gear-ops/items/${input.match.id}/checkout`, params);
+  const itemTarget = appendQuery(`/gear-ops/items/${input.match.id}`, params);
+
+  if (input.scanContext === "INVENTORY_LOOKUP") {
+    return itemTarget;
   }
 
-  if (input.scanContext === "ASSIGNMENT") {
-    return appendQuery(`/gear-ops/items/${input.match.id}/assign`, params);
-  }
-
-  if (input.scanContext === "CHECKIN" && input.match.openCheckoutId) {
-    return appendQuery(`/gear-ops/items/${input.match.id}/checkouts/${input.match.openCheckoutId}/edit`, params);
-  }
-
-  if (input.scanContext === "CAGE_VAULT") {
-    return appendQuery(`/gear-ops/items/${input.match.id}`, params);
-  }
-
-  if (input.scanContext === "AUDIT_PREP") {
-    return appendQuery(`/gear-ops/items/${input.match.id}`, params);
-  }
-
-  if (input.scanContext === "INVENTORY_VERIFICATION") {
-    return appendQuery(`/gear-ops/items/${input.match.id}`, params);
-  }
-
-  return appendQuery(`/gear-ops/items/${input.match.id}`, params);
+  return appendHash(itemTarget, "rapid-ops");
 }
 
 export function isOpenCheckoutStatus(status: GearCheckoutStatus): boolean {

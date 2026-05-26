@@ -24,7 +24,7 @@ test("parseInventoryIdentifier recognizes implicit gear item IDs", () => {
   assert.equal(parsed.identifierType, "GEAR_ITEM_ID");
 });
 
-test("resolveScanTargetPath routes checkout scans to checkout workflow", () => {
+test("resolveScanTargetPath routes checkout scans to rapid item workflow", () => {
   const target = resolveScanTargetPath({
     scanContext: "CHECKOUT",
     scanValue: "ABC-001",
@@ -38,10 +38,12 @@ test("resolveScanTargetPath routes checkout scans to checkout workflow", () => {
     },
   });
 
-  assert.ok(target.startsWith("/gear-ops/items/item-1/checkout?"));
+  assert.ok(target.startsWith("/gear-ops/items/item-1?"));
+  assert.ok(target.includes("scanContext=CHECKOUT"));
+  assert.ok(target.endsWith("#rapid-ops"));
 });
 
-test("resolveScanTargetPath routes check-in scans to active checkout edit when present", () => {
+test("resolveScanTargetPath routes check-in scans to rapid item workflow even with an active checkout", () => {
   const target = resolveScanTargetPath({
     scanContext: "CHECKIN",
     scanValue: "ABC-001",
@@ -55,7 +57,9 @@ test("resolveScanTargetPath routes check-in scans to active checkout edit when p
     },
   });
 
-  assert.ok(target.startsWith("/gear-ops/items/item-1/checkouts/co-1/edit?"));
+  assert.ok(target.startsWith("/gear-ops/items/item-1?"));
+  assert.ok(target.includes("scanContext=CHECKIN"));
+  assert.ok(target.endsWith("#rapid-ops"));
 });
 
 test("labelForScanContext returns readable labels", () => {
