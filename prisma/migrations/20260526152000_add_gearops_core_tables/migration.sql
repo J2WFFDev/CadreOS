@@ -48,6 +48,13 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
+DO $$
+BEGIN
+  CREATE TYPE "GearLocationClassification" AS ENUM ('VAULT', 'CAGE', 'LOCKER', 'TRAILER', 'BAY', 'FIELD', 'ROOM', 'STORAGE_AREA', 'GENERAL', 'OTHER');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 -- Create dependency table used by GearItem
 CREATE TABLE IF NOT EXISTS "GearCategory" (
   "id" TEXT NOT NULL,
@@ -58,6 +65,20 @@ CREATE TABLE IF NOT EXISTS "GearCategory" (
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "GearCategory_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE IF NOT EXISTS "InventoryLocation" (
+  "id" TEXT NOT NULL,
+  "organizationId" TEXT NOT NULL,
+  "name" TEXT NOT NULL,
+  "description" TEXT,
+  "locationCode" TEXT,
+  "parentLocationId" TEXT,
+  "isActive" BOOLEAN NOT NULL DEFAULT true,
+  "locationType" "GearLocationClassification" NOT NULL DEFAULT 'GENERAL',
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "InventoryLocation_pkey" PRIMARY KEY ("id")
 );
 
 -- Create GearOps core tables
@@ -129,6 +150,15 @@ ON "GearCategory"("organizationId", "inventoryType");
 CREATE UNIQUE INDEX IF NOT EXISTS "GearCategory_organizationId_name_key"
 ON "GearCategory"("organizationId", "name");
 
+CREATE INDEX IF NOT EXISTS "InventoryLocation_organizationId_idx"
+ON "InventoryLocation"("organizationId");
+CREATE INDEX IF NOT EXISTS "InventoryLocation_organizationId_isActive_idx"
+ON "InventoryLocation"("organizationId", "isActive");
+CREATE INDEX IF NOT EXISTS "InventoryLocation_organizationId_parentLocationId_idx"
+ON "InventoryLocation"("organizationId", "parentLocationId");
+CREATE UNIQUE INDEX IF NOT EXISTS "InventoryLocation_organizationId_name_key"
+ON "InventoryLocation"("organizationId", "name");
+
 CREATE INDEX IF NOT EXISTS "GearItem_organizationId_gearCategoryId_idx"
 ON "GearItem"("organizationId", "gearCategoryId");
 CREATE INDEX IF NOT EXISTS "GearItem_organizationId_programId_idx"
@@ -179,6 +209,28 @@ END $$;
 DO $$
 BEGIN
   IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'InventoryLocation_organizationId_fkey'
+  ) THEN
+    ALTER TABLE "InventoryLocation"
+    ADD CONSTRAINT "InventoryLocation_organizationId_fkey"
+    FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'InventoryLocation_parentLocationId_fkey'
+  ) THEN
+    ALTER TABLE "InventoryLocation"
+    ADD CONSTRAINT "InventoryLocation_parentLocationId_fkey"
+    FOREIGN KEY ("parentLocationId") REFERENCES "InventoryLocation"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'GearItem_organizationId_fkey'
   ) THEN
     ALTER TABLE "GearItem"
@@ -206,6 +258,17 @@ BEGIN
     ALTER TABLE "GearItem"
     ADD CONSTRAINT "GearItem_gearCategoryId_fkey"
     FOREIGN KEY ("gearCategoryId") REFERENCES "GearCategory"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'GearItem_locationId_fkey'
+  ) THEN
+    ALTER TABLE "GearItem"
+    ADD CONSTRAINT "GearItem_locationId_fkey"
+    FOREIGN KEY ("locationId") REFERENCES "InventoryLocation"("id") ON DELETE SET NULL ON UPDATE CASCADE;
   END IF;
 END $$;
 
