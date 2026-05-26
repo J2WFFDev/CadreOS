@@ -655,24 +655,32 @@ export default async function ProgramDetailsPage({
       return left.assigneeName.localeCompare(right.assigneeName);
     })
     .slice(0, 5);
-  const defaultProgramOperationalSummary = [
-    0,
-    0,
-    0,
-    [],
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    [],
-    { _sum: { quantityDelta: 0 } },
-    { _sum: { quantityDelta: 0 } },
-  ] as const;
+  const defaultProgramOperationalSummary: [
+    number,
+    number,
+    number,
+    Array<{
+      id: string;
+      title: string;
+      startsAt: Date;
+      approvalStatus: ApprovalStatus;
+      status: BookingStatus;
+      facility: { id: string; name: string };
+      resource: { id: string; name: string };
+    }>,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    Array<{ id: string; name: string; quantityOnHand: number; quantityMin: number | null }>,
+    { _sum: { quantityDelta: number | null } },
+    { _sum: { quantityDelta: number | null } },
+  ] = [0, 0, 0, [], 0, 0, 0, 0, 0, 0, 0, 0, 0, [], { _sum: { quantityDelta: 0 } }, { _sum: { quantityDelta: 0 } }];
   const [
     programFieldOpsBookingCount,
     programFieldOpsPendingApprovals,
@@ -696,20 +704,20 @@ export default async function ProgramDetailsPage({
           return await Promise.all([
           db.resourceBooking.count({
             where: {
-              organizationId: scope.organizationId,
+              organizationId: scope.organizationId!,
               programId: program.id,
             },
           }),
           db.resourceBooking.count({
             where: {
-              organizationId: scope.organizationId,
+              organizationId: scope.organizationId!,
               programId: program.id,
               approvalStatus: ApprovalStatus.PENDING,
             },
           }),
           db.resourceBooking.count({
             where: {
-              organizationId: scope.organizationId,
+              organizationId: scope.organizationId!,
               programId: program.id,
               conflicts: {
                 some: {},
@@ -718,7 +726,7 @@ export default async function ProgramDetailsPage({
           }),
           db.resourceBooking.findMany({
             where: {
-              organizationId: scope.organizationId,
+              organizationId: scope.organizationId!,
               programId: program.id,
               startsAt: {
                 gte: now,
@@ -774,14 +782,14 @@ export default async function ProgramDetailsPage({
           }),
           db.gearAssignment.count({
             where: {
-              organizationId: scope.organizationId,
+              organizationId: scope.organizationId!,
               status: { in: [GearAssignmentStatus.PENDING, GearAssignmentStatus.ACTIVE, GearAssignmentStatus.OVERDUE] },
               gearItem: { is: programGearItemWhere },
             },
           }),
           db.gearCheckout.count({
             where: {
-              organizationId: scope.organizationId,
+              organizationId: scope.organizationId!,
               status: { in: [GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE] },
               gearItem: { is: programGearItemWhere },
             },
@@ -812,7 +820,7 @@ export default async function ProgramDetailsPage({
           }),
           db.consumableTransaction.aggregate({
             where: {
-              organizationId: scope.organizationId,
+              organizationId: scope.organizationId!,
               recordedAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
               gearItem: { is: programGearItemWhere },
               transactionType: {
@@ -829,7 +837,7 @@ export default async function ProgramDetailsPage({
           }),
           db.consumableTransaction.aggregate({
             where: {
-              organizationId: scope.organizationId,
+              organizationId: scope.organizationId!,
               recordedAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
               gearItem: { is: programGearItemWhere },
               transactionType: {
@@ -849,8 +857,8 @@ export default async function ProgramDetailsPage({
     : defaultProgramOperationalSummary;
   const programFieldOpsResourcesInUse = new Set(programFieldOpsUpcomingBookings.map((booking) => booking.resource.id)).size;
   const programFieldOpsReadinessConcerns = programFieldOpsPendingApprovals + programFieldOpsConflicts;
-  const programConsumableUsageUnits30d = Math.abs(programConsumableUsageAggregate30d._sum.quantityDelta ?? 0);
-  const programConsumableReplenishmentUnits30d = Math.max(programConsumableReplenishmentAggregate30d._sum.quantityDelta ?? 0, 0);
+  const programConsumableUsageUnits30d = Math.abs(programConsumableUsageAggregate30d._sum?.quantityDelta ?? 0);
+  const programConsumableReplenishmentUnits30d = Math.max(programConsumableReplenishmentAggregate30d._sum?.quantityDelta ?? 0, 0);
   const programConsumableNetDelta30d = programConsumableReplenishmentUnits30d - programConsumableUsageUnits30d;
   const programGearReadinessConcerns =
     programGearMaintenanceCount +
