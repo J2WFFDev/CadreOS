@@ -156,6 +156,11 @@ jobs:
       - name: Resolve failed non-applied migrations
         run: |
           failed_migration="20260526180000_arc20g_event_gear_planning"
+          # Validate name contains only safe characters before embedding in SQL.
+          if ! echo "${failed_migration}" | grep -Eq '^[A-Za-z0-9_]+$'; then
+            echo "Unexpected characters in migration name: ${failed_migration}" >&2
+            exit 1
+          fi
           failed_count=$(psql "$DATABASE_URL" -tAc \
             "SELECT COUNT(*) FROM _prisma_migrations WHERE migration_name = '${failed_migration}' AND finished_at IS NULL AND rolled_back_at IS NULL" \
             2>/dev/null | tr -d '[:space:]' || echo "0")
@@ -170,6 +175,12 @@ jobs:
         run: |
           while IFS= read -r migration; do
             if [ -z "$migration" ]; then
+              continue
+            fi
+
+            # Validate name contains only safe characters before embedding in SQL.
+            if ! echo "${migration}" | grep -Eq '^[A-Za-z0-9_]+$'; then
+              echo "Unexpected characters in migration name: ${migration} — skipping." >&2
               continue
             fi
 
