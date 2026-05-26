@@ -14,6 +14,7 @@
 - Quick notes from mobile
 - Tagged observations (skill, behavior, logistics, wellness)
 - Historical timeline per athlete/team
+- Athlete journal entries as first-class records (freeform and prompt-driven)
 
 ## 4) Communication and Routing
 - Inbox for triage
@@ -39,6 +40,9 @@
 - Goals and milestones
 - Development plans
 - Progress snapshots
+- Reflection journaling lifecycle (draft/final/archive)
+- Prompt library with assignment/scheduling and completion tracking
+- Guardian-aware athlete development feed visibility
 
 ## 9) Health, Safety, and Compliance
 - Incident and safety logging
