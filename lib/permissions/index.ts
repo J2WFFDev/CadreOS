@@ -34,11 +34,15 @@ type SupportedAction =
   | "booking.deny"
   | "gearCategory.create"
   | "gearCategory.update"
+  | "gearCategoryField.create"
+  | "gearCategoryField.delete"
   | "gearItem.create"
   | "gearItem.update"
   | "eventGearPlan.create"
   | "eventGearPlan.update"
   | "eventGearRequirement.create"
+  | "eventGearRequirementTemplate.create"
+  | "eventGearRequirementTemplate.update"
   | "eventGearAssignment.create"
   | "eventGearAssignment.update"
   | "gearAssignment.create"
@@ -49,6 +53,7 @@ type SupportedAction =
   | "gearMaintenance.update"
   | "gearConsumableTransaction.create"
   | "gearConsumableTransaction.update"
+  | "gearOpsSettings.update"
   | "entry.create"
   | "entry.update"
   | "entry.delete"
@@ -102,11 +107,15 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "booking.deny",
     "gearCategory.create",
     "gearCategory.update",
+    "gearCategoryField.create",
+    "gearCategoryField.delete",
     "gearItem.create",
     "gearItem.update",
     "eventGearPlan.create",
     "eventGearPlan.update",
     "eventGearRequirement.create",
+    "eventGearRequirementTemplate.create",
+    "eventGearRequirementTemplate.update",
     "eventGearAssignment.create",
     "eventGearAssignment.update",
     "gearAssignment.create",
@@ -117,6 +126,7 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "gearMaintenance.update",
     "gearConsumableTransaction.create",
     "gearConsumableTransaction.update",
+    "gearOpsSettings.update",
     "entry.create",
     "entry.update",
     "entry.delete",
@@ -150,11 +160,15 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "booking.deny",
     "gearCategory.create",
     "gearCategory.update",
+    "gearCategoryField.create",
+    "gearCategoryField.delete",
     "gearItem.create",
     "gearItem.update",
     "eventGearPlan.create",
     "eventGearPlan.update",
     "eventGearRequirement.create",
+    "eventGearRequirementTemplate.create",
+    "eventGearRequirementTemplate.update",
     "eventGearAssignment.create",
     "eventGearAssignment.update",
     "gearAssignment.create",

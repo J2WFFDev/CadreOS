@@ -386,6 +386,68 @@ enum InventoryAuditCheckpointStatus {
   BLOCKED
 }
 
+// Arc 20I: GearOps admin configuration enums
+
+enum GearCategoryBehaviorType {
+  DURABLE
+  CONSUMABLE
+  KIT
+  ASSIGNED_GEAR
+  SHARED_GEAR
+  EVENT_GEAR
+}
+
+enum GearIdentifierType {
+  QR_CODE
+  BARCODE
+  SERIAL_NUMBER
+  ASSET_TAG
+  MANUAL_LOOKUP
+}
+
+enum GearCustodyMode {
+  FREE_CHECKOUT
+  STAFF_ASSIGNMENT_ONLY
+  REQUIRES_APPROVAL
+  GUARDIAN_APPROVAL_REQUIRED
+  NO_CUSTODY
+}
+
+enum GearMaintenanceFrequency {
+  AS_NEEDED
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUAL
+  ANNUAL
+}
+
+enum GearReportGroup {
+  FIREARMS
+  COMMUNICATIONS
+  ELECTRONICS
+  MEDICAL
+  ATHLETIC_EQUIPMENT
+  APPAREL
+  TOOLS
+  CONSUMABLES
+  VEHICLES_LARGE_EQUIPMENT
+  GENERAL
+  OTHER
+}
+
+enum GearLocationClassification {
+  VAULT
+  CAGE
+  LOCKER
+  TRAILER
+  BAY
+  FIELD
+  ROOM
+  STORAGE_AREA
+  GENERAL
+  OTHER
+}
+
 enum GearConditionStatus {
   NEW
   GOOD
@@ -538,6 +600,9 @@ model Organization {
   inventoryAuditResults        InventoryAuditResult[]
   inventoryAuditDiscrepancies  InventoryAuditDiscrepancy[]
   inventoryAuditCheckpoints    InventoryAuditCheckpoint[]
+  gearCategoryFields           GearCategoryField[]
+  eventGearRequirementTemplates EventGearRequirementTemplate[]
+  gearOpsSettings              GearOpsOrganizationSettings?
   entries                      Entry[]
   entryLinks                   EntryLink[]
   entryActivities              EntryActivity[]
@@ -1303,20 +1368,39 @@ model BookingConflict {
 // GearOps models
 
 model GearCategory {
-  id             String            @id @default(cuid())
-  organizationId String
-  name           String
-  inventoryType  GearInventoryType
-  description    String?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id                          String                   @id @default(cuid())
+  organizationId              String
+  name                        String
+  inventoryType               GearInventoryType
+  description                 String?
+  templateSlug                String?
+  behaviorType                GearCategoryBehaviorType @default(DURABLE)
+  custodyMode                 GearCustodyMode          @default(FREE_CHECKOUT)
+  requiresReturnInspection    Boolean                  @default(false)
+  requiresMaintenanceTracking Boolean                  @default(false)
+  maintenanceFrequency        GearMaintenanceFrequency?
+  maintenanceIntervalDays     Int?
+  primaryIdentifierType       GearIdentifierType       @default(SERIAL_NUMBER)
+  supportsConsumableTracking  Boolean                  @default(false)
+  consumableLowStockDefault   Int?
+  supportsEventDeployment     Boolean                  @default(true)
+  reportGroup                 GearReportGroup          @default(GENERAL)
+  reportLabel                 String?
+  isKitContainer              Boolean                  @default(false)
+  guardianApprovalRequired    Boolean                  @default(false)
+  createdAt                   DateTime                 @default(now())
+  updatedAt                   DateTime                 @updatedAt
 
-  organization          Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  gearItems             GearItem[]
-  eventGearRequirements EventGearRequirement[]
+  organization                  Organization                  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  gearItems                     GearItem[]
+  eventGearRequirements         EventGearRequirement[]
+  categoryFields                GearCategoryField[]
+  eventGearRequirementTemplates EventGearRequirementTemplate[]
 
   @@unique([organizationId, name])
   @@index([organizationId, inventoryType])
+  @@index([organizationId, behaviorType])
+  @@index([organizationId, reportGroup])
 }
 
 model GearItem {
@@ -1563,6 +1647,74 @@ model EventGearAssignment {
   @@index([organizationId, gearItemId, assignedAt])
 }
 
+// Arc 20I: GearCategoryField — optional typed custom fields per category
+
+model GearCategoryField {
+  id             String   @id @default(cuid())
+  organizationId String
+  categoryId     String
+  fieldKey       String
+  fieldLabel     String
+  fieldType      String
+  fieldOptions   String?
+  required       Boolean  @default(false)
+  displayOrder   Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  category     GearCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, fieldKey])
+  @@index([organizationId, categoryId])
+}
+
+// Arc 20I: EventGearRequirementTemplate — reusable org-level gear requirement templates for events
+
+model EventGearRequirementTemplate {
+  id              String                   @id @default(cuid())
+  organizationId  String
+  name            String
+  description     String?
+  gearCategoryId  String?
+  label           String
+  requirementType EventGearRequirementType @default(REQUIRED)
+  quantityNeeded  Int                      @default(1)
+  notes           String?
+  isActive        Boolean                  @default(true)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  gearCategory GearCategory? @relation(fields: [gearCategoryId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([organizationId, gearCategoryId])
+  @@index([organizationId, isActive])
+}
+
+// Arc 20I: GearOpsOrganizationSettings — org-level GearOps configuration
+
+model GearOpsOrganizationSettings {
+  id                        String          @id @default(cuid())
+  organizationId            String          @unique
+  defaultCustodyMode        GearCustodyMode @default(FREE_CHECKOUT)
+  enableGuardianApproval    Boolean         @default(false)
+  enableConsumableTracking  Boolean         @default(true)
+  enableEventDeployment     Boolean         @default(true)
+  enableReadinessTracking   Boolean         @default(true)
+  enableMaintenanceTracking Boolean         @default(true)
+  defaultReportGroup        GearReportGroup @default(GENERAL)
+  adminNotes                String?
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+}
+
 // Arc 19E: WorkflowTemplate — reusable, organization-scoped operational workflow templates.
 // Each template carries a typed set of ordered step definitions (stepsJson).
 
@@ -1779,8 +1931,9 @@ model InventoryLocation {
   description      String?
   locationCode     String?
   parentLocationId String?
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
+  isActive         Boolean                    @default(true)
+  locationType     GearLocationClassification @default(GENERAL)
+  createdAt        DateTime                   @default(now())
   updatedAt        DateTime @updatedAt
 
   organization                          Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)

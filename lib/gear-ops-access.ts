@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
 import {
+  assertOrganizationAdminAccess,
   evaluateStaffOnlyContentAccess,
   logAuthorizationDecision,
   resolveActorRoleContext,
@@ -13,6 +14,11 @@ type GearOpsReadAccess = {
   categoryWhere: Prisma.GearCategoryWhereInput;
   visibilityWhere: Prisma.GearItemWhereInput;
   where: Prisma.GearItemWhereInput;
+};
+
+export type GearOpsAdminAccess = {
+  allowed: boolean;
+  denialMessage?: string;
 };
 
 export async function resolveGearOpsReadAccess(input: {
@@ -166,4 +172,25 @@ export async function resolveGearOpsReadAccess(input: {
       OR: visibilityRules,
     },
   };
+}
+
+export async function resolveGearOpsAdminAccess(input: {
+  organizationId: string;
+  actorPersonId: string | null;
+}): Promise<GearOpsAdminAccess> {
+  const actorRoleContext = await resolveActorRoleContext({
+    organizationId: input.organizationId,
+    actorPersonId: input.actorPersonId,
+  });
+
+  try {
+    assertOrganizationAdminAccess(actorRoleContext);
+
+    return { allowed: true };
+  } catch (error) {
+    return {
+      allowed: false,
+      denialMessage: error instanceof Error ? error.message : "Organization admin access is required for this action.",
+    };
+  }
 }
