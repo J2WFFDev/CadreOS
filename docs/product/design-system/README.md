@@ -34,6 +34,7 @@ The current admin visibility — raw IDs, audit logs, relationship tables, workf
 | [gearops-mobile-offline-foundation.md](./gearops-mobile-offline-foundation.md) | Implemented Arc 20K mobile/offline foundation boundaries and behavior |
 | [sync-and-conflict-model.md](./sync-and-conflict-model.md) | Preferred append-only sync and conflict resolution model |
 | [gearops-ui-pilot.md](./gearops-ui-pilot.md) | GearOps as the first future design system pilot |
+| [../gear-ops/README.md](../gear-ops/README.md) | GearOps operator and user documentation set (Arc 20O) |
 
 ---
 
