@@ -473,6 +473,48 @@ enum GearCheckoutStatus {
   LOST
 }
 
+enum GearReservationMode {
+  SOFT_HOLD
+  HARD_RESERVATION
+}
+
+enum GearReservationStatus {
+  DRAFT
+  ACTIVE
+  RELEASED
+  CANCELED
+  FULFILLED
+  EXPIRED
+  CONFLICT
+  PENDING_REVIEW
+}
+
+enum GearHoldType {
+  EVENT_HOLD
+  PERSON_HOLD
+  TEAM_PROGRAM_HOLD
+  MAINTENANCE_HOLD
+  INSPECTION_HOLD
+  STAGING_HOLD
+  ADMIN_HOLD
+  TEMPORARY_OPERATIONAL_HOLD
+}
+
+enum GearReservationPurpose {
+  EVENT
+  PERSON
+  TEAM
+  PROGRAM
+  MAINTENANCE
+  INSPECTION
+  REPAIR
+  STAGING
+  EVENT_PREP
+  ADMIN_REVIEW
+  OPERATIONAL
+  OTHER
+}
+
 enum GearMaintenanceType {
   INSPECTION
   REPAIR
@@ -585,6 +627,7 @@ model Organization {
   gearItems                    GearItem[]
   gearAssignments              GearAssignment[]
   gearCheckouts                GearCheckout[]
+  gearReservations             GearReservation[]
   gearMaintenanceLogs          GearMaintenanceLog[]
   consumableTransactions       ConsumableTransaction[]
   eventGearPlans               EventGearPlan[]
@@ -637,6 +680,7 @@ model Program {
   auditEvents      AuditEvent[]
   resourceBookings ResourceBooking[]
   gearItems        GearItem[]
+  gearReservations GearReservation[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -659,6 +703,7 @@ model Team {
   auditEvents      AuditEvent[]
   resourceBookings ResourceBooking[]
   gearAssignments  GearAssignment[]
+  gearReservations GearReservation[]
   entries          Entry[]
 
   @@unique([programId, name])
@@ -734,6 +779,10 @@ model Person {
   issuedGear                           GearCheckout[]                @relation("GearCheckoutIssuedBy")
   returnedGear                         GearCheckout[]                @relation("GearCheckoutReturnedBy")
   receivedGear                         GearCheckout[]                @relation("GearCheckoutReceivedBy")
+  requestedGearReservations            GearReservation[]             @relation("GearReservationRequestedBy")
+  reservedGearReservations             GearReservation[]             @relation("GearReservationReservedFor")
+  approvedGearReservations             GearReservation[]             @relation("GearReservationApprovedBy")
+  releasedGearReservations             GearReservation[]             @relation("GearReservationReleasedBy")
   gearMaintenanceLogs                  GearMaintenanceLog[]
   recordedConsumableTransactions       ConsumableTransaction[]
   createdEventGearPlans                EventGearPlan[]               @relation("EventGearPlanCreatedBy")
@@ -1135,6 +1184,7 @@ model Event {
   resourceBookings       ResourceBooking[]
   gearAssignments        GearAssignment[]
   gearCheckouts          GearCheckout[]
+  gearReservations       GearReservation[]
   consumableTransactions ConsumableTransaction[]
   gearPlan               EventGearPlan?
   awarenessEvents        AwarenessEvent[]
@@ -1430,6 +1480,7 @@ model GearItem {
   location                    InventoryLocation?          @relation(fields: [locationId], references: [id], onDelete: SetNull)
   assignments                 GearAssignment[]
   checkouts                   GearCheckout[]
+  reservations                GearReservation[]
   maintenanceLogs             GearMaintenanceLog[]
   consumableTransactions      ConsumableTransaction[]
   eventGearAssignments        EventGearAssignment[]
@@ -1509,6 +1560,52 @@ model GearCheckout {
   @@index([organizationId, issuedById, status])
   @@index([organizationId, eventId, status])
   @@index([organizationId, expectedReturnAt, status])
+}
+
+model GearReservation {
+  id                  String                 @id @default(cuid())
+  organizationId      String
+  gearItemId          String
+  programId           String?
+  reservedForPersonId String?
+  reservedForTeamId   String?
+  reservedForEventId  String?
+  requestedByPersonId String
+  approvedByPersonId  String?
+  releasedByPersonId  String?
+  mode                GearReservationMode    @default(HARD_RESERVATION)
+  holdType            GearHoldType?
+  purpose             GearReservationPurpose @default(OTHER)
+  status              GearReservationStatus  @default(ACTIVE)
+  approvalStatus      ApprovalStatus         @default(NOT_REQUIRED)
+  quantityRequested   Int                    @default(1)
+  windowStartAt       DateTime
+  windowEndAt         DateTime
+  notes               String?
+  releaseReason       String?
+  conflictSummary     String?
+  releasedAt          DateTime?
+  fulfilledAt         DateTime?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  gearItem      GearItem     @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  program       Program?     @relation(fields: [programId], references: [id], onDelete: SetNull)
+  reservedFor   Person?      @relation("GearReservationReservedFor", fields: [reservedForPersonId], references: [id], onDelete: SetNull)
+  reservedTeam  Team?        @relation(fields: [reservedForTeamId], references: [id], onDelete: SetNull)
+  reservedEvent Event?       @relation(fields: [reservedForEventId], references: [id], onDelete: SetNull)
+  requestedBy   Person       @relation("GearReservationRequestedBy", fields: [requestedByPersonId], references: [id], onDelete: Restrict)
+  approvedBy    Person?      @relation("GearReservationApprovedBy", fields: [approvedByPersonId], references: [id], onDelete: SetNull)
+  releasedBy    Person?      @relation("GearReservationReleasedBy", fields: [releasedByPersonId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, gearItemId, status])
+  @@index([organizationId, windowStartAt, status])
+  @@index([organizationId, windowEndAt, status])
+  @@index([organizationId, reservedForPersonId, status])
+  @@index([organizationId, reservedForTeamId, status])
+  @@index([organizationId, reservedForEventId, status])
+  @@index([organizationId, purpose, status])
 }
 
 model GearMaintenanceLog {

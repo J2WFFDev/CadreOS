@@ -63,6 +63,16 @@ test("online-required policies stay blocked offline", () => {
   assert.equal(initialStatusForGearOfflinePolicy(policy), "ONLINE_REQUIRED");
 });
 
+test("reservation policies stay online-required", () => {
+  const createPolicy = resolveGearOfflinePolicy("gear.reservation.create");
+  const updatePolicy = resolveGearOfflinePolicy("gear.reservation.update");
+
+  assert.equal(createPolicy.capability, "ONLINE_REQUIRED");
+  assert.equal(updatePolicy.capability, "ONLINE_REQUIRED");
+  assert.equal(createPolicy.queueable, false);
+  assert.equal(updatePolicy.queueable, false);
+});
+
 test("offline-safe maintenance actions start as pending sync", () => {
   const action = buildAction();
 

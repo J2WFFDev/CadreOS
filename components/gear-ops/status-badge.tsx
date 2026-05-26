@@ -103,6 +103,8 @@ export function GearAvailabilityBanner({
 }) {
   const toneMap: Record<GearAvailabilitySignal, LifecycleTone> = {
     AVAILABLE: "success",
+    RESERVED: "info",
+    HELD: "info",
     CHECKED_OUT: "info",
     ASSIGNED: "info",
     MAINTENANCE: "warning",

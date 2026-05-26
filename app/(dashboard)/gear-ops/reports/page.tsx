@@ -1,4 +1,9 @@
 import {
+  ApprovalStatus,
+  GearHoldType,
+  GearReservationMode,
+  GearReservationPurpose,
+  GearReservationStatus,
   GearAssignmentStatus,
   GearCheckoutStatus,
   GearItemLifecycleStatus,
@@ -32,6 +37,7 @@ import {
   type GearOpsReportFilter,
 } from "@/lib/gear-ops-dashboard";
 import { formatGearOpsDateTime, formatGearOpsEnum } from "@/lib/gear-ops";
+import { summarizeGearReservations } from "@/lib/gear-reservations";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -81,6 +87,21 @@ type ConsumableTransactionRow = {
   transactionType: "RECEIVED" | "USED" | "DISTRIBUTED" | "DISPOSED" | "ADJUSTED";
   quantityDelta: number;
   recordedAt: Date;
+};
+
+type ReservationRow = {
+  id: string;
+  mode: GearReservationMode;
+  status: GearReservationStatus;
+  holdType: string | null;
+  purpose: string;
+  windowStartAt: Date;
+  windowEndAt: Date;
+  conflictSummary: string | null;
+  gearItem: { id: string; name: string };
+  reservedFor: { id: string; firstName: string; lastName: string } | null;
+  reservedTeam: { id: string; name: string } | null;
+  reservedEvent: { id: string; title: string } | null;
 };
 
 type EventRequirementRow = {
@@ -227,10 +248,11 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
   let gearItems: GearItemRow[] | null = null;
   let transactions: ConsumableTransactionRow[] | null = null;
   let eventRequirements: EventRequirementRow[] | null = null;
+  let reservations: ReservationRow[] | null = null;
   let queryErrorMessage = "Unable to load GearOps reporting data right now. Please try again later.";
 
   try {
-    const [itemRows, transactionRows, requirementRows] = await Promise.all([
+    const [itemRows, transactionRows, requirementRows, reservationRows] = await Promise.all([
       db.gearItem.findMany({
         where: itemWhere,
         select: {
@@ -325,18 +347,40 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
           },
         },
       }),
+      db.gearReservation.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          gearItem: { AND: [itemWhere] },
+        },
+        select: {
+          id: true,
+          mode: true,
+          status: true,
+          holdType: true,
+          purpose: true,
+          windowStartAt: true,
+          windowEndAt: true,
+          conflictSummary: true,
+          gearItem: { select: { id: true, name: true } },
+          reservedFor: { select: { id: true, firstName: true, lastName: true } },
+          reservedTeam: { select: { id: true, name: true } },
+          reservedEvent: { select: { id: true, title: true } },
+        },
+        orderBy: [{ windowStartAt: "desc" }, { createdAt: "desc" }],
+      }),
     ]);
 
     gearItems = itemRows as GearItemRow[];
     transactions = transactionRows as ConsumableTransactionRow[];
     eventRequirements = requirementRows as EventRequirementRow[];
+    reservations = reservationRows as ReservationRow[];
   } catch (error) {
     if (isSchemaUnavailableError(error)) {
       queryErrorMessage = "Database schema is not available yet. Run database setup before loading GearOps reports.";
     }
   }
 
-  if (!gearItems || !transactions || !eventRequirements) {
+  if (!gearItems || !transactions || !eventRequirements || !reservations) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">GearOps reports</h2>
@@ -461,6 +505,26 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
     now,
   );
   const eventSummary = summarizeEventRequirements(eventRequirementSnapshots);
+  const reservationSummary = summarizeGearReservations(
+    reservations.map((reservation) => ({
+      id: reservation.id,
+      gearItemId: reservation.gearItem.id,
+      mode: reservation.mode,
+      status: reservation.status,
+      approvalStatus: ApprovalStatus.NOT_REQUIRED,
+      holdType: reservation.holdType as GearHoldType | null,
+      purpose: reservation.purpose as GearReservationPurpose,
+      quantityRequested: 1,
+      windowStartAt: reservation.windowStartAt,
+      windowEndAt: reservation.windowEndAt,
+      reservedForPersonId: reservation.reservedFor?.id ?? null,
+      reservedForTeamId: reservation.reservedTeam?.id ?? null,
+      reservedForEventId: reservation.reservedEvent?.id ?? null,
+      programId: null,
+      conflictSummary: reservation.conflictSummary,
+    })),
+    now,
+  );
   const exceptions = buildGearOpsExceptions({ items: filteredSnapshots, eventRequirements: eventRequirementSnapshots, now });
   const outOfService = filteredSnapshots.filter(
     (item) =>
@@ -585,6 +649,10 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
         <Metric label="Maintenance needed" value={maintenance.maintenanceNeededCount} />
         <Metric label="Overdue / unreturned" value={custody.overdueAssignments + custody.overdueCheckouts} />
         <Metric label="Low consumables" value={consumables.lowConsumableCount} />
+        <Metric label="Reserved now" value={reservationSummary.currentReservedCount} />
+        <Metric label="Held now" value={reservationSummary.currentHeldCount} />
+        <Metric label="Upcoming reservations" value={reservationSummary.upcomingCount} />
+        <Metric label="Reservation conflicts" value={reservationSummary.conflictCount} />
         <Metric label="Event gear gaps" value={eventSummary.reduce((total, event) => total + event.gapCount, 0)} />
         <Metric label="Event unreturned" value={eventSummary.reduce((total, event) => total + event.unreturnedCount, 0)} />
       </div>
@@ -608,6 +676,50 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Overdue assignments {custody.overdueAssignments} · Overdue checkouts {custody.overdueCheckouts}
           </p>
+        </div>
+      </div>
+
+      <div id="reservation-reporting" className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <h3 className="text-sm font-medium">Reservation and hold summary</h3>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            Reserved now {reservationSummary.currentReservedCount} · Held now {reservationSummary.currentHeldCount}
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Upcoming {reservationSummary.upcomingCount} · Expired {reservationSummary.expiredCount} · Conflicts {reservationSummary.conflictCount}
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Event holds {reservationSummary.eventHeldCount} · Maintenance holds {reservationSummary.maintenanceHeldCount} · Blocked {reservationSummary.blockedCount}
+          </p>
+        </div>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <h3 className="text-sm font-medium">Upcoming reservation list</h3>
+          {reservations.length === 0 ? (
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No reservation rows are visible for the selected filters.</p>
+          ) : (
+            <ul className="mt-2 space-y-1 text-sm">
+              {reservations.slice(0, MAX_LIST_ROWS).map((reservation) => (
+                <li key={reservation.id} className="rounded-md border p-2">
+                  <Link href={`/gear-ops/items/${reservation.gearItem.id}`} className="underline">
+                    {reservation.gearItem.name}
+                  </Link>
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    {formatGearOpsEnum(reservation.mode)} · {formatGearOpsEnum(reservation.status)} · {formatGearOpsDateTime(reservation.windowStartAt)} → {formatGearOpsDateTime(reservation.windowEndAt)}
+                  </p>
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    {reservation.reservedEvent
+                      ? `Event: ${reservation.reservedEvent.title}`
+                      : reservation.reservedTeam
+                        ? `Team: ${reservation.reservedTeam.name}`
+                        : reservation.reservedFor
+                          ? `Person: ${reservation.reservedFor.firstName} ${reservation.reservedFor.lastName}`
+                          : \"General operational context\"}
+                  </p>
+                  {reservation.conflictSummary ? <p className=\"text-amber-700 dark:text-amber-300\">{reservation.conflictSummary}</p> : null}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 

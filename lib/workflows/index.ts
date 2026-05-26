@@ -11,11 +11,15 @@ import {
   GearCheckoutStatus,
   GearConditionStatus,
   GearCustodyMode,
+  GearHoldType,
   GearIdentifierType,
   GearInventoryType,
   GearItemLifecycleStatus,
   GearMaintenanceFrequency,
   GearMaintenanceType,
+  GearReservationMode,
+  GearReservationPurpose,
+  GearReservationStatus,
   GearReportGroup,
   MemberLifecycleStatus,
   PrecheckStatus,
@@ -1097,6 +1101,143 @@ export const gearCheckoutWorkflowSchema = z
     returnNotes: value.returnNotes.length === 0 ? null : value.returnNotes,
   }));
 
+export const gearReservationWorkflowSchema = z
+  .object({
+    status: z.nativeEnum(GearReservationStatus, {
+      message: "Reservation status must use a valid status value.",
+    }),
+    mode: z.nativeEnum(GearReservationMode, {
+      message: "Reservation mode must use a valid mode value.",
+    }),
+    purpose: z.nativeEnum(GearReservationPurpose, {
+      message: "Reservation purpose must use a valid purpose value.",
+    }),
+    holdType: z.string().trim(),
+    reservedForPersonId: z.string().trim(),
+    reservedForTeamId: z.string().trim(),
+    reservedForEventId: z.string().trim(),
+    programId: z.string().trim(),
+    quantityRequested: z.string().trim(),
+    windowStartAt: z.string().trim(),
+    windowEndAt: z.string().trim(),
+    notes: z
+      .string()
+      .trim()
+      .max(MAX_GEAR_NOTES_LENGTH, `Notes must be ${MAX_GEAR_NOTES_LENGTH} characters or less.`),
+  })
+  .superRefine((value, context) => {
+    if (
+      ![
+        GearReservationStatus.DRAFT,
+        GearReservationStatus.ACTIVE,
+        GearReservationStatus.PENDING_REVIEW,
+      ].includes(value.status)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["status"],
+        message: "New reservations can only start as draft, active, or pending review.",
+      });
+    }
+
+    const contextCount = [value.reservedForPersonId, value.reservedForTeamId, value.reservedForEventId, value.programId].filter(
+      (entry) => entry.length > 0,
+    ).length;
+    if (contextCount === 0) {
+      const message = "Select at least one reservation context (person, team, event, or program).";
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["reservedForPersonId"], message });
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["reservedForTeamId"], message });
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["reservedForEventId"], message });
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["programId"], message });
+    }
+
+    if (value.holdType.length > 0) {
+      const valid = Object.values(GearHoldType) as string[];
+      if (!valid.includes(value.holdType)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["holdType"],
+          message: "Hold type must use an existing hold value.",
+        });
+      }
+    }
+
+    if (value.quantityRequested.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["quantityRequested"],
+        message: "Quantity requested is required.",
+      });
+    } else {
+      const quantityRequested = Number(value.quantityRequested);
+      if (!Number.isInteger(quantityRequested) || quantityRequested <= 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["quantityRequested"],
+          message: "Quantity requested must be a whole number greater than 0.",
+        });
+      }
+    }
+
+    if (value.windowStartAt.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["windowStartAt"],
+        message: "Reservation start date/time is required.",
+      });
+    } else if (!DATETIME_LOCAL_INPUT_PATTERN.test(value.windowStartAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["windowStartAt"],
+        message: "Reservation start must use YYYY-MM-DDTHH:mm format.",
+      });
+    }
+
+    if (value.windowEndAt.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["windowEndAt"],
+        message: "Reservation end date/time is required.",
+      });
+    } else if (!DATETIME_LOCAL_INPUT_PATTERN.test(value.windowEndAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["windowEndAt"],
+        message: "Reservation end must use YYYY-MM-DDTHH:mm format.",
+      });
+    }
+
+    if (
+      DATETIME_LOCAL_INPUT_PATTERN.test(value.windowStartAt) &&
+      DATETIME_LOCAL_INPUT_PATTERN.test(value.windowEndAt)
+    ) {
+      const startAt = dateTimeInputToUtcDate(value.windowStartAt);
+      const endAt = dateTimeInputToUtcDate(value.windowEndAt);
+
+      if (endAt <= startAt) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["windowEndAt"],
+          message: "Reservation end must be after the reservation start.",
+        });
+      }
+    }
+  })
+  .transform((value) => ({
+    status: value.status,
+    mode: value.mode,
+    purpose: value.purpose,
+    holdType: value.holdType.length === 0 ? null : (value.holdType as GearHoldType),
+    reservedForPersonId: value.reservedForPersonId.length === 0 ? null : value.reservedForPersonId,
+    reservedForTeamId: value.reservedForTeamId.length === 0 ? null : value.reservedForTeamId,
+    reservedForEventId: value.reservedForEventId.length === 0 ? null : value.reservedForEventId,
+    programId: value.programId.length === 0 ? null : value.programId,
+    quantityRequested: Number(value.quantityRequested),
+    windowStartAt: dateTimeInputToUtcDate(value.windowStartAt),
+    windowEndAt: dateTimeInputToUtcDate(value.windowEndAt),
+    notes: value.notes.length === 0 ? null : value.notes,
+  }));
+
 export const gearMaintenanceWorkflowSchema = z
   .object({
     maintenanceType: z.nativeEnum(GearMaintenanceType, {
@@ -1269,6 +1410,7 @@ export type GearOpsOrganizationSettingsWorkflowInput = z.output<typeof gearOpsOr
 export type GearItemWorkflowInput = z.output<typeof gearItemWorkflowSchema>;
 export type GearAssignmentWorkflowInput = z.output<typeof gearAssignmentWorkflowSchema>;
 export type GearCheckoutWorkflowInput = z.output<typeof gearCheckoutWorkflowSchema>;
+export type GearReservationWorkflowInput = z.output<typeof gearReservationWorkflowSchema>;
 export type GearMaintenanceWorkflowInput = z.output<typeof gearMaintenanceWorkflowSchema>;
 export type GearConsumableTransactionWorkflowInput = z.output<typeof gearConsumableTransactionWorkflowSchema>;
 
@@ -1362,6 +1504,8 @@ export async function requirePhase1CMutationPermission(input: {
     | "gearAssignment.update"
     | "gearCheckout.create"
     | "gearCheckout.update"
+    | "gearReservation.create"
+    | "gearReservation.update"
     | "gearMaintenance.create"
     | "gearMaintenance.update"
     | "gearConsumableTransaction.create"

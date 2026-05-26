@@ -1,6 +1,7 @@
 import {
   EventGearPlanStatus,
   EventGearRequirementType,
+  GearReservationStatus,
   GearAssignmentStatus,
   GearCheckoutStatus,
   GearConditionStatus,
@@ -317,6 +318,21 @@ export default async function EventGearPage({
           quantityMin: true,
           category: { select: { id: true, name: true } },
           location: { select: { id: true, name: true, locationCode: true } },
+          reservations: {
+            where: {
+              status: {
+                in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW, GearReservationStatus.CONFLICT],
+              },
+            },
+            select: {
+              mode: true,
+              status: true,
+              approvalStatus: true,
+              windowStartAt: true,
+              windowEndAt: true,
+              reservedForEventId: true,
+            },
+          },
         },
         orderBy: [{ name: "asc" }],
       }),
@@ -376,6 +392,7 @@ export default async function EventGearPage({
 
   const plan = event.gearPlan;
   const nowInputValue = formatDateTimeInputValue(new Date());
+  const eventWindowEnd = event.endsAt ?? new Date(event.startsAt.getTime() + 4 * 60 * 60 * 1000);
   const planSaved = readSearchParam(resolvedSearchParams, "planSaved") === "1";
   const planError = readSearchParam(resolvedSearchParams, "planError");
   const requirementSaved = readSearchParam(resolvedSearchParams, "requirementSaved") === "1";
@@ -389,6 +406,8 @@ export default async function EventGearPage({
   const assignedGearItemIds = new Set(
     plan?.requirements.flatMap((requirement) => requirement.assignments.map((assignment) => assignment.gearItem.id)) ?? [],
   );
+  const overlapsEventWindow = (startAt: Date, endAt: Date) =>
+    startAt.getTime() < eventWindowEnd.getTime() && event.startsAt.getTime() < endAt.getTime();
 
   const requirementViews =
     plan?.requirements.map((requirement) => {
@@ -402,6 +421,12 @@ export default async function EventGearPage({
             gearAssignment.assignedToEventId !== event.id &&
             (gearAssignment.assignedToEventId || gearAssignment.assignedToTeamId || gearAssignment.assignedToPersonId),
         );
+        const blockingReservation =
+          assignment.gearItem.reservations.find(
+            (reservation) =>
+              reservation.reservedForEventId !== event.id &&
+              overlapsEventWindow(reservation.windowStartAt, reservation.windowEndAt),
+          ) ?? null;
         const assignmentSnapshot = {
           stagedAt: assignment.stagedAt,
           recoveredAt: assignment.recoveredAt,
@@ -410,6 +435,8 @@ export default async function EventGearPage({
             : null,
           blockingCheckout: blockingCheckout ? { status: blockingCheckout.status, returnedAt: blockingCheckout.returnedAt } : null,
           blockingAssignment,
+          blockingReservationMode: blockingReservation?.mode ?? null,
+          reservationNeedsApproval: blockingReservation?.approvalStatus === "PENDING",
           gearItem: {
             lifecycleStatus: assignment.gearItem.lifecycleStatus,
             readinessState: assignment.gearItem.readinessState,
@@ -424,6 +451,7 @@ export default async function EventGearPage({
           activeEventCheckout,
           blockingCheckout,
           blockingAssignment,
+          blockingReservation,
           operationalStatus: deriveEventGearAssignmentStatus(assignmentSnapshot),
           availability: deriveEventGearAvailability(assignmentSnapshot),
         };
@@ -442,6 +470,8 @@ export default async function EventGearPage({
             ? { status: assignment.blockingCheckout.status, returnedAt: assignment.blockingCheckout.returnedAt }
             : null,
           blockingAssignment: assignment.blockingAssignment,
+          blockingReservationMode: assignment.blockingReservation?.mode ?? null,
+          reservationNeedsApproval: assignment.blockingReservation?.approvalStatus === "PENDING",
           gearItem: {
             lifecycleStatus: assignment.gearItem.lifecycleStatus,
             readinessState: assignment.gearItem.readinessState,
@@ -454,6 +484,15 @@ export default async function EventGearPage({
 
       const availableGearItems = visibleGearItems.filter((item) => {
         if (requirement.gearCategory?.id && item.category.id !== requirement.gearCategory.id) {
+          return false;
+        }
+        const blockingReservation = item.reservations.find(
+          (reservation) =>
+            reservation.reservedForEventId !== event.id &&
+            overlapsEventWindow(reservation.windowStartAt, reservation.windowEndAt) &&
+            (reservation.mode === "HARD_RESERVATION" || reservation.approvalStatus === "PENDING"),
+        );
+        if (blockingReservation) {
           return false;
         }
         return !assignedGearItemIds.has(item.id);
@@ -482,6 +521,8 @@ export default async function EventGearPage({
               ? { status: assignment.blockingCheckout.status, returnedAt: assignment.blockingCheckout.returnedAt }
               : null,
             blockingAssignment: assignment.blockingAssignment,
+            blockingReservationMode: assignment.blockingReservation?.mode ?? null,
+            reservationNeedsApproval: assignment.blockingReservation?.approvalStatus === "PENDING",
             gearItem: {
               lifecycleStatus: assignment.gearItem.lifecycleStatus,
               readinessState: assignment.gearItem.readinessState,
@@ -798,6 +839,13 @@ export default async function EventGearPage({
                         .map((item) => (
                           <option key={item.id} value={item.id}>
                             {item.name} · {item.category.name} · {formatEventGearEnum(item.lifecycleStatus)}
+                            {item.reservations.some(
+                              (reservation) =>
+                                reservation.reservedForEventId !== event.id &&
+                                overlapsEventWindow(reservation.windowStartAt, reservation.windowEndAt),
+                            )
+                              ? " · Hold / reserve context"
+                              : ""}
                           </option>
                         ))}
                     </select>
@@ -854,6 +902,11 @@ export default async function EventGearPage({
                           {assignment.blockingAssignment ? (
                             <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
                               Another active assignment already claims this item.
+                            </p>
+                          ) : null}
+                          {assignment.blockingReservation ? (
+                            <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                              Another reservation or hold overlaps this event window.
                             </p>
                           ) : null}
                           {assignment.notes ? <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">Plan note: {assignment.notes}</p> : null}

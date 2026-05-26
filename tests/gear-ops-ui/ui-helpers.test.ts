@@ -306,10 +306,34 @@ test("RETIRED lifecycle → MAINTENANCE signal", () => {
   );
 });
 
-test("RESERVED lifecycle with no explicit assignment → ASSIGNED signal", () => {
+test("RESERVED lifecycle with no explicit assignment → RESERVED signal", () => {
   assert.equal(
     deriveAvailabilitySignal({ lifecycleStatus: "RESERVED", hasOpenCheckout: false, hasActiveAssignment: false }),
-    "ASSIGNED",
+    "RESERVED",
+  );
+});
+
+test("ACTIVE with hard reservation visibility → RESERVED signal", () => {
+  assert.equal(
+    deriveAvailabilitySignal({
+      lifecycleStatus: "ACTIVE",
+      hasOpenCheckout: false,
+      hasActiveAssignment: false,
+      hasActiveReservation: true,
+    }),
+    "RESERVED",
+  );
+});
+
+test("ACTIVE with soft hold visibility → HELD signal", () => {
+  assert.equal(
+    deriveAvailabilitySignal({
+      lifecycleStatus: "ACTIVE",
+      hasOpenCheckout: false,
+      hasActiveAssignment: false,
+      hasActiveHold: true,
+    }),
+    "HELD",
   );
 });
 
@@ -444,6 +468,8 @@ test("getAssignmentLabel returns readable text for all assignment statuses", () 
 
 test("getAvailabilitySignalLabel returns readable text for all signals", () => {
   assert.equal(getAvailabilitySignalLabel("AVAILABLE"), "Available");
+  assert.equal(getAvailabilitySignalLabel("RESERVED"), "Reserved");
+  assert.equal(getAvailabilitySignalLabel("HELD"), "Held");
   assert.equal(getAvailabilitySignalLabel("CHECKED_OUT"), "Checked out");
   assert.equal(getAvailabilitySignalLabel("ASSIGNED"), "Assigned");
   assert.equal(getAvailabilitySignalLabel("MAINTENANCE"), "Out of service");
@@ -451,7 +477,7 @@ test("getAvailabilitySignalLabel returns readable text for all signals", () => {
 });
 
 test("getAvailabilitySignalChipClass returns distinct non-empty class strings for all signals", () => {
-  const signals: GearAvailabilitySignal[] = ["AVAILABLE", "CHECKED_OUT", "ASSIGNED", "MAINTENANCE", "UNAVAILABLE"];
+  const signals: GearAvailabilitySignal[] = ["AVAILABLE", "RESERVED", "HELD", "CHECKED_OUT", "ASSIGNED", "MAINTENANCE", "UNAVAILABLE"];
   const classes = signals.map(getAvailabilitySignalChipClass);
   const unique = new Set(classes);
   assert.equal(unique.size, signals.length, "Each signal should map to a distinct chip class");
