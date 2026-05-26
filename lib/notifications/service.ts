@@ -570,7 +570,7 @@ export async function emitEntryActivityAwareness(input: {
     });
   }
 
-  if (input.action === "entry.status_changed" || input.action === "entry.task_completed") {
+  if (input.action === "entry.status_changed" || input.action === "entry.task_completed" || input.action === "entry.completed") {
     if (entry.type === "READINESS_ITEM" && isActiveNotificationEntryStatus(entry.status)) {
       return persistAwarenessNotification({
         organizationId: input.organizationId,

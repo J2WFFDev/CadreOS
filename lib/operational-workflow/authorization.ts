@@ -28,6 +28,13 @@ const WORKFLOW_WRITE_ROLES = new Set<RoleType>([
   RoleType.COACH,
 ]);
 
+/** Roles that may read workflow templates and runs. */
+const WORKFLOW_READ_ROLES = new Set<RoleType>([
+  RoleType.ORGANIZATION_ADMIN,
+  RoleType.PROGRAM_DIRECTOR,
+  RoleType.COACH,
+]);
+
 /** Roles that may archive or delete workflow templates. */
 const WORKFLOW_MANAGE_ROLES = new Set<RoleType>([
   RoleType.ORGANIZATION_ADMIN,
@@ -43,7 +50,7 @@ const WORKFLOW_MANAGE_ROLES = new Set<RoleType>([
  * - MANAGE — may create, update, archive templates and start/cancel runs.
  * - WRITE  — may start workflow runs and advance them.
  * - READ   — may read templates and run status.
- * - NONE   — unauthenticated or no staff role.
+ * - NONE   — unauthenticated or no workflow role.
  */
 export async function resolveWorkflowAccess(context: WorkflowAccessContext): Promise<WorkflowAccessLevel> {
   if (!context.actorPersonId) return "NONE";
@@ -66,7 +73,10 @@ export async function resolveWorkflowAccess(context: WorkflowAccessContext): Pro
   const hasWrite = assignments.some((a) => WORKFLOW_WRITE_ROLES.has(a.roleType));
   if (hasWrite) return "WRITE";
 
-  return "READ";
+  const hasRead = assignments.some((a) => WORKFLOW_READ_ROLES.has(a.roleType));
+  if (hasRead) return "READ";
+
+  return "NONE";
 }
 
 /**

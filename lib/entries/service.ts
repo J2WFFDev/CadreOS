@@ -1,7 +1,7 @@
-import { EntryPriority, EntryStatus, EntryType, EntryVisibility, TaskStatus, type Prisma } from "@prisma/client";
+import { EntryPriority, EntryStatus, EntryType, EntryVisibility, TaskStatus } from "@prisma/client";
 
 import { db } from "@/lib/db";
-import { emitEntryActivityAwareness } from "@/lib/notifications";
+export { writeEntryActivity } from "@/lib/operational-entry/service";
 
 export function mapTaskStatusToEntryStatus(status: TaskStatus): EntryStatus {
   if (status === TaskStatus.DONE) return EntryStatus.DONE;
@@ -133,34 +133,4 @@ export async function upsertEntryFromNote(input: {
     },
     select: { id: true },
   });
-}
-
-export async function writeEntryActivity(input: {
-  organizationId: string;
-  entryId: string;
-  actorPersonId: string | null;
-  action: string;
-  metadata?: Prisma.JsonObject | null;
-}) {
-  await db.entryActivity.create({
-    data: {
-      organizationId: input.organizationId,
-      entryId: input.entryId,
-      actorPersonId: input.actorPersonId,
-      action: input.action,
-      metadataJson: input.metadata ? JSON.stringify(input.metadata) : null,
-    },
-  });
-
-  try {
-    await emitEntryActivityAwareness({
-      organizationId: input.organizationId,
-      entryId: input.entryId,
-      actorPersonId: input.actorPersonId,
-      action: input.action,
-      metadata: (input.metadata as Record<string, unknown> | null | undefined) ?? null,
-    });
-  } catch {
-    // Notification routing is non-authoritative and must not block entry activity writes.
-  }
 }

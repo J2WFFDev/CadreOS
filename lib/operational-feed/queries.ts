@@ -158,7 +158,10 @@ export async function queryRecentActivity(
   limit = 20,
 ): Promise<FeedActivityItem[]> {
   const activities = await db.entryActivity.findMany({
-    where: { organizationId: ctx.organizationId },
+    where: {
+      organizationId: ctx.organizationId,
+      entry: { deletedAt: null },
+    },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
