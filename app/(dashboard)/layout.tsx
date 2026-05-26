@@ -2,6 +2,8 @@ import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
 import { NavSidebar } from "@/components/nav-sidebar";
+import { QuickCaptureLauncher } from "@/components/dashboard/quick-capture-launcher";
+import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export default async function DashboardLayout({
@@ -11,6 +13,15 @@ export default async function DashboardLayout({
 }) {
   const scope = await getOrganizationScope();
   const shouldShowLinkingBanner = scope.auth.unresolvedPersonLink;
+  const assignees =
+    scope.databaseReady && scope.organizationId
+      ? await db.person.findMany({
+          where: { organizationId: scope.organizationId, lifecycleStatus: { not: "ARCHIVED" } },
+          orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+          select: { id: true, firstName: true, lastName: true },
+          take: 200,
+        })
+      : [];
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -18,31 +29,11 @@ export default async function DashboardLayout({
         <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
           CadreOS
         </Link>
-        <form action="/entries/quick-add" method="post" className="hidden items-center gap-2 md:flex">
-          <input type="hidden" name="returnTo" value="/dashboard" />
-          <select
-            name="entryType"
-            defaultValue="AUTO"
-            className="rounded-md border px-2 py-1 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300"
-            aria-label="Entry type"
-          >
-            <option value="AUTO">Auto</option>
-            <option value="TASK">Task</option>
-            <option value="NOTE">Note</option>
-            <option value="EVENT">Event</option>
-            <option value="DECISION">Decision</option>
-          </select>
-          <input
-            name="input"
-            placeholder="Quick add (⌘/Ctrl+K style capture)"
-            className="w-72 rounded-md border px-3 py-1.5 text-sm"
-            aria-label="Quick add"
-            accessKey="k"
-          />
-          <button type="submit" className="rounded-md border px-2 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
-            Add
-          </button>
-        </form>
+        <QuickCaptureLauncher
+          assignees={assignees.map((person) => ({ id: person.id, name: `${person.firstName} ${person.lastName}`.trim() }))}
+          defaultAssigneePersonId={scope.auth.personId}
+          disabled={!scope.databaseReady || !scope.organizationId}
+        />
         <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
           <Link
             href="/account"

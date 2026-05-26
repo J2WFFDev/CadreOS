@@ -140,8 +140,8 @@ export default async function FeedPage() {
         title="Feed"
         description="Operational feed — today, assigned, upcoming, and recent activity."
         actions={
-          <Link href="/entries/quick-add" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-            Quick add
+          <Link href="/feed?quickCapture=1" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+            Quick capture
           </Link>
         }
       />
