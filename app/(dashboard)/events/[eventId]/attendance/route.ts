@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { emitAttendanceAwareness } from "@/lib/notifications";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   attendanceWorkflowSchema,
@@ -241,6 +242,18 @@ export async function POST(
         markedAt,
       },
     });
+
+    try {
+      await emitAttendanceAwareness({
+        organizationId: scope.organizationId,
+        eventId: event.id,
+        actorPersonId: markedByPersonId,
+        personId: person.id,
+        attendanceStatus: parsed.data.status,
+      });
+    } catch {
+      // Notification routing is non-authoritative and must not block attendance updates.
+    }
 
     const continueCapture = values.continueCapture === "1";
 

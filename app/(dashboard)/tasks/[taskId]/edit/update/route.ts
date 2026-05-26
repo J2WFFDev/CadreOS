@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeFollowUpTaskEntryRuntimeRef } from "@/lib/entry-runtime";
-import { upsertEntryFromTask } from "@/lib/entries/service";
+import { upsertEntryFromTask, writeEntryActivity } from "@/lib/entries/service";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import {
   classifyFollowUpTaskOperationalVisibility,
@@ -142,6 +142,14 @@ export async function POST(
       taskId,
       noteId: parsed.data.sourceNoteId,
       eventId: parsed.data.sourceEventId,
+    });
+
+    const existingTask = await db.followUpTask.findFirst({
+      where: {
+        id: taskId,
+        organizationId: scope.organizationId,
+      },
+      select: { status: true },
     });
 
     const assignee = await db.person.findFirst({
@@ -338,7 +346,7 @@ export async function POST(
       });
 
       if (updatedTask) {
-        await upsertEntryFromTask({
+        const entry = await upsertEntryFromTask({
           organizationId: scope.organizationId,
           task: {
             id: updatedTask.id,
@@ -348,6 +356,17 @@ export async function POST(
             assigneePersonId: parsed.data.assigneePersonId,
             createdByPersonId: updatedTask.createdByPersonId,
             dueAt: parsed.data.dueAt,
+          },
+        });
+        await writeEntryActivity({
+          organizationId: scope.organizationId,
+          entryId: entry.id,
+          actorPersonId: scope.auth.personId,
+          action: existingTask?.status && existingTask.status !== parsed.data.status ? "entry.status_changed" : "entry.updated",
+          metadata: {
+            sourceTaskId: updatedTask.id,
+            changedStatus: parsed.data.status,
+            assignedToPersonId: parsed.data.assigneePersonId,
           },
         });
         await writeFollowUpTaskEntryRuntimeRef({

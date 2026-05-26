@@ -2,6 +2,7 @@ import { EventStatus, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { emitEventStatusAwareness } from "@/lib/notifications";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   eventWorkflowSchema,
@@ -139,6 +140,14 @@ export async function POST(
       teamId: parsed.data.teamId,
     });
 
+    const existingEvent = await db.event.findFirst({
+      where: {
+        id: eventId,
+        organizationId: scope.organizationId,
+      },
+      select: { status: true },
+    });
+
     const program = await db.program.findFirst({
       where: {
         id: parsed.data.programId,
@@ -209,6 +218,18 @@ export async function POST(
         }),
         303,
       );
+    }
+
+    try {
+      await emitEventStatusAwareness({
+        organizationId: scope.organizationId,
+        eventId,
+        actorPersonId: scope.auth.personId,
+        fromStatus: existingEvent?.status ?? null,
+        toStatus: parsed.data.status,
+      });
+    } catch {
+      // Notification routing is non-authoritative and must not block event updates.
     }
 
     return NextResponse.redirect(new URL(`/events/${eventId}`, request.url), 303);

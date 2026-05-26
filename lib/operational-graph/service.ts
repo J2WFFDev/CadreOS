@@ -1,6 +1,7 @@
 import type { OperationalRelationshipType } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { writeEntryActivity } from "@/lib/entries/service";
 import type {
   LinkOperationalRecordsInput,
   ListRelatedOperationalRecordsInput,
@@ -86,18 +87,16 @@ async function writeEntryGraphActivity(input: {
 
       if (!entry) return;
 
-      await db.entryActivity.create({
-        data: {
-          organizationId: input.organizationId,
-          entryId: entry.id,
-          actorPersonId: input.actorPersonId,
-          action: input.action,
-          metadataJson: JSON.stringify({
-            relationshipId: input.relationshipId,
-            relationshipType: input.relationshipType,
-            from: input.from,
-            to: input.to,
-          }),
+      await writeEntryActivity({
+        organizationId: input.organizationId,
+        entryId: entry.id,
+        actorPersonId: input.actorPersonId,
+        action: input.action,
+        metadata: {
+          relationshipId: input.relationshipId,
+          relationshipType: input.relationshipType,
+          from: input.from,
+          to: input.to,
         },
       });
     }),
