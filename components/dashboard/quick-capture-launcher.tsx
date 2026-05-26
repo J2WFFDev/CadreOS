@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import {
@@ -35,13 +35,17 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
   const [priority, setPriority] = useState<QuickCapturePriority>("MEDIUM");
 
   const context = useMemo(() => inferQuickCaptureContextFromPath(pathname), [pathname]);
+  const quickCaptureQuery = searchParams.get("quickCapture");
+  const isOpen = open || quickCaptureQuery === "1";
 
-  useEffect(() => {
-    const quickCaptureQuery = searchParams.get("quickCapture");
+  const closeLauncher = useCallback(() => {
+    setOpen(false);
     if (quickCaptureQuery === "1") {
-      setOpen(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("quickCapture");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
     }
-  }, [searchParams]);
+  }, [quickCaptureQuery]);
 
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
@@ -54,25 +58,29 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
 
         if (!inEditable) {
           event.preventDefault();
-          setOpen((value) => !value);
+          if (isOpen) {
+            closeLauncher();
+          } else {
+            setOpen(true);
+          }
         }
       }
 
       if (event.key === "Escape") {
-        setOpen(false);
+        closeLauncher();
       }
     };
 
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, []);
+  }, [closeLauncher, isOpen]);
 
   useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
+    document.body.style.overflow = isOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [open]);
+  }, [isOpen]);
 
   const returnTo = pathname || "/dashboard";
   const defaultAssignee = defaultAssigneePersonId ?? "";
@@ -97,12 +105,12 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
         Capture
       </button>
 
-      {open ? (
+      {isOpen ? (
         <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/40 p-0 md:items-center md:p-4">
           <div className="w-full max-w-2xl rounded-t-xl border bg-white p-4 shadow-2xl md:rounded-xl dark:bg-zinc-900">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-semibold">Quick Capture</h2>
-              <button type="button" onClick={() => setOpen(false)} className="rounded-md border px-2 py-1 text-xs">
+              <button type="button" onClick={closeLauncher} className="rounded-md border px-2 py-1 text-xs">
                 Close
               </button>
             </div>
