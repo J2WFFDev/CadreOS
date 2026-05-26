@@ -1,7 +1,7 @@
 import type { OperationalRelationshipType } from "@prisma/client";
 
 import { db } from "@/lib/db";
-import { writeEntryActivity } from "@/lib/entries/service";
+import { writeEntryActivity } from "@/lib/operational-entry";
 import type {
   LinkOperationalRecordsInput,
   ListRelatedOperationalRecordsInput,

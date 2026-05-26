@@ -15,7 +15,7 @@
 import { EntryStatus, EntryVisibility, OperationalRelationshipType } from "@prisma/client";
 
 import { db } from "@/lib/db";
-import { writeEntryActivity } from "@/lib/entries/service";
+import { writeEntryActivity } from "@/lib/operational-entry";
 import { computeStepDueDate, WORKFLOW_ACTIVITY_ACTIONS } from "./types";
 import type { FollowUpChainStep, StartFollowUpChainInput } from "./types";
 

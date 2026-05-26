@@ -3,8 +3,10 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeEntryActivity } from "@/lib/entries/service";
+import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { requirePermission } from "@/lib/permissions";
 
 export async function POST(request: Request, { params }: { params: Promise<{ entryId: string }> }) {
   const { entryId } = await params;
@@ -13,6 +15,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   const returnTo = resolveSafeReturnPath(String(formData.get("returnTo") ?? ""), "/entries");
 
   if (!scope.databaseReady || !scope.organizationId) {
+    return NextResponse.redirect(new URL(returnTo, request.url), 303);
+  }
+
+  try {
+    await requirePermission({
+      actorUserId: scope.auth.clerkUserId,
+      organizationId: scope.organizationId,
+      action: "entry.delete",
+    });
+  } catch {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
 
@@ -41,7 +53,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     organizationId: scope.organizationId,
     entryId: entry.id,
     actorPersonId: scope.auth.personId,
-    action: "entry.soft_deleted",
+    action: ENTRY_ACTIVITY_ACTIONS.DELETED,
   });
 
   return NextResponse.redirect(new URL(returnTo, request.url), 303);

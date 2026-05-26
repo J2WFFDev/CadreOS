@@ -3,8 +3,10 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { deriveNoteToTaskTitle, writeEntryActivity } from "@/lib/entries/service";
+import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { requirePermission } from "@/lib/permissions";
 
 export async function POST(request: Request, { params }: { params: Promise<{ entryId: string }> }) {
   const { entryId } = await params;
@@ -15,6 +17,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   const selectedText = String(formData.get("selectedText") ?? "").trim();
 
   if (!scope.databaseReady || !scope.organizationId || !scope.auth.personId) {
+    return NextResponse.redirect(new URL(returnTo, request.url), 303);
+  }
+
+  try {
+    await Promise.all([
+      requirePermission({
+        actorUserId: scope.auth.clerkUserId,
+        organizationId: scope.organizationId,
+        action: "entry.update",
+      }),
+      requirePermission({
+        actorUserId: scope.auth.clerkUserId,
+        organizationId: scope.organizationId,
+        action: "task.create",
+      }),
+    ]);
+  } catch {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
 
@@ -62,7 +81,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     organizationId: scope.organizationId,
     entryId: entry.id,
     actorPersonId: scope.auth.personId,
-    action: "entry.note_converted_to_task",
+    action: ENTRY_ACTIVITY_ACTIONS.NOTE_TO_TASK_CONVERTED,
     metadata: { sourceTaskId: createdTask.id, selectedTextLength: selectedText.length },
   });
 

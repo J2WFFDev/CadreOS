@@ -34,6 +34,14 @@ const ENTRY_WRITE_ROLES = new Set<RoleType>([
   RoleType.ASSISTANT_COACH,
 ]);
 
+/** Roles allowed to read entry runtime data. */
+const ENTRY_READ_ROLES = new Set<RoleType>([
+  RoleType.ORGANIZATION_ADMIN,
+  RoleType.PROGRAM_DIRECTOR,
+  RoleType.COACH,
+  RoleType.ASSISTANT_COACH,
+]);
+
 /** Roles that may delete or manage entry lifecycle (soft-delete, restore). */
 const ENTRY_MANAGE_ROLES = new Set<RoleType>([RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR]);
 
@@ -79,7 +87,12 @@ export async function resolveEntryAccess(context: EntryAccessContext): Promise<E
     return { level: "WRITE", reason: "Actor has a staff role that permits entry write operations." };
   }
 
-  return { level: "READ", reason: "Actor is authenticated but has no staff write role." };
+  const hasReadRole = assignments.some((a) => ENTRY_READ_ROLES.has(a.roleType));
+  if (hasReadRole) {
+    return { level: "READ", reason: "Actor has a staff role that permits entry read operations." };
+  }
+
+  return { level: "NONE", reason: "Actor has no staff role for entry access." };
 }
 
 /**

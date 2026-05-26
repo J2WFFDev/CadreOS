@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { writeEntryActivity } from "@/lib/entries/service";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { requirePermission } from "@/lib/permissions";
 
 export async function POST(request: Request) {
   const scope = await getOrganizationScope();
@@ -14,6 +15,16 @@ export async function POST(request: Request) {
   const returnTo = resolveSafeReturnPath(String(formData.get("returnTo") ?? ""), `/entries/${fromEntryId}`);
 
   if (!scope.databaseReady || !scope.organizationId || !scope.auth.personId || !fromEntryId || !toEntryId || fromEntryId === toEntryId) {
+    return NextResponse.redirect(new URL(returnTo, request.url), 303);
+  }
+
+  try {
+    await requirePermission({
+      actorUserId: scope.auth.clerkUserId,
+      organizationId: scope.organizationId,
+      action: "entry.update",
+    });
+  } catch {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
 

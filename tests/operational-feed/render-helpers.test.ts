@@ -75,8 +75,13 @@ test("labelForActivityAction returns human-readable labels for known actions", (
   assert.equal(labelForActivityAction("entry.graph_link_added"), "Graph link added");
   assert.equal(labelForActivityAction("entry.graph_link_removed"), "Graph link removed");
   assert.equal(labelForActivityAction("entry.completed"), "Completed");
+  assert.equal(labelForActivityAction("entry.task_completed"), "Completed");
+  assert.equal(labelForActivityAction("entry.deleted"), "Deleted");
+  assert.equal(labelForActivityAction("entry.soft_deleted"), "Deleted");
+  assert.equal(labelForActivityAction("entry.linked"), "Linked to entry");
   assert.equal(labelForActivityAction("entry.quick_add.task"), "Quick-added task");
   assert.equal(labelForActivityAction("entry.note_to_task_converted"), "Converted note to task");
+  assert.equal(labelForActivityAction("entry.note_converted_to_task"), "Converted note to task");
 });
 
 test("labelForActivityAction falls back to raw action string for unknown actions", () => {
