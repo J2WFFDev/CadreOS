@@ -1,0 +1,163 @@
+name: Manual DB Rebuild (DESTRUCTIVE - Disposable Dev Only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      REBUILD_DISPOSABLE_DEV_DB:
+        description: "DESTRUCTIVE: type REBUILD_DISPOSABLE_DEV_DB to destroy and rebuild the disposable dev public schema."
+        required: true
+        type: string
+      run_dev_seed:
+        description: "Optionally run the safe dev seed after migrations."
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild-disposable-dev-database:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL }}
+
+    steps:
+      - name: Confirm destructive rebuild intent
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "MIGRATE_DATABASE_URL must be configured for Manual DB Rebuild."
+            exit 1
+          fi
+          if [ "${{ inputs.REBUILD_DISPOSABLE_DEV_DB }}" != "REBUILD_DISPOSABLE_DEV_DB" ]; then
+            echo "Refusing destructive rebuild without exact confirmation token."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install
+        run: npm ci
+
+      - name: Generate Prisma client before rebuild
+        run: npx prisma generate
+
+      - name: Diagnostic rebuild DB identity (safe)
+        run: |
+          node - <<'NODE'
+          const raw = process.env.DATABASE_URL || "";
+          let provider = "unknown";
+          let host = "unparseable";
+          let databaseName = "unparseable";
+          try {
+            const parsed = new URL(raw);
+            provider = (parsed.protocol || "").replace(":", "") || "unknown";
+            host = parsed.hostname || "unparseable";
+            databaseName = decodeURIComponent((parsed.pathname || "").replace(/^\/+/, "")) || "unparseable";
+          } catch {}
+          console.log("Database provider:", provider);
+          console.log("Database host:", host);
+          console.log("Database name:", databaseName);
+          if (host.includes("-pooler")) {
+            console.error("Refusing destructive rebuild with pooled host. Configure MIGRATE_DATABASE_URL to Neon direct host.");
+            process.exit(1);
+          }
+          NODE
+
+      - name: Destructive reset of disposable dev public schema
+        run: |
+          cat <<'SQL' | npx prisma db execute --stdin --schema prisma/schema.prisma
+          DROP SCHEMA IF EXISTS public CASCADE;
+          CREATE SCHEMA public;
+          DO $$
+          BEGIN
+            EXECUTE format('GRANT ALL ON SCHEMA public TO %I', current_user);
+          END $$;
+          GRANT USAGE, CREATE ON SCHEMA public TO PUBLIC;
+          SQL
+
+      - name: Apply all Prisma migrations to rebuilt schema
+        run: npx prisma migrate deploy
+
+      - name: Generate Prisma client after rebuild
+        run: npx prisma generate
+
+      - name: Optionally run safe dev seed
+        if: ${{ inputs.run_dev_seed }}
+        run: |
+          if node -e 'const pkg = require("./package.json"); process.exit(pkg.scripts?.["prisma:seed"] === "prisma db seed" ? 0 : 1)'; then
+            npm run prisma:seed
+          else
+            echo "No safe dev seed command detected; skipping."
+          fi
+
+      - name: Confirm Prisma migration status is clean
+        run: npx prisma migrate status
+
+      - name: Verify rebuilt schema markers
+        run: |
+          node - <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const { PrismaClient } = require("@prisma/client");
+
+          const prisma = new PrismaClient();
+
+          async function main() {
+            const migrationsDir = path.join(process.cwd(), "prisma", "migrations");
+            const expectedMigrationCount = fs
+              .readdirSync(migrationsDir, { withFileTypes: true })
+              .filter((entry) => entry.isDirectory())
+              .length;
+
+            const appliedRows = await prisma.$queryRawUnsafe(
+              'SELECT COUNT(*)::int AS "appliedCount" FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL'
+            );
+            const appliedCount = appliedRows[0]?.appliedCount ?? 0;
+            if (appliedCount !== expectedMigrationCount) {
+              throw new Error(`Expected ${expectedMigrationCount} applied migrations after rebuild, found ${appliedCount}.`);
+            }
+
+            const lifecycleColumnRows = await prisma.$queryRawUnsafe(`
+              SELECT 1
+              FROM information_schema.columns
+              WHERE table_schema = 'public'
+                AND table_name = 'Person'
+                AND column_name = 'lifecycleStatus'
+              LIMIT 1
+            `);
+            if (lifecycleColumnRows.length === 0) {
+              throw new Error("Missing Person.lifecycleStatus after rebuild.");
+            }
+
+            for (const tableName of ["GearCategory", "GearItem", "GearAssignment", "GearCheckout"]) {
+              const tableRows = await prisma.$queryRawUnsafe(`
+                SELECT 1
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
+                  AND table_name = '${tableName}'
+                LIMIT 1
+              `);
+              if (tableRows.length === 0) {
+                throw new Error(`Missing ${tableName} after rebuild.`);
+              }
+            }
+          }
+
+          main()
+            .then(async () => {
+              await prisma.$disconnect();
+            })
+            .catch(async (error) => {
+              console.error(error);
+              await prisma.$disconnect();
+              process.exit(1);
+            });
+          NODE

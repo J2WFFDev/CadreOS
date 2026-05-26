@@ -6,11 +6,10 @@
 - All non-`main` branches are disabled for automatic Vercel deployments.
 - Copilot branches do not create Vercel previews because all non-`main` branches are disabled.
 
-## Production database migrations (Vercel)
-- Production schema changes must be applied with Prisma migrations, not `prisma db push`.
+## Database migration workflows
+- Schema changes must be applied with Prisma migrations, not `prisma db push`.
 - Local schema changes should be created with:
   - `npx prisma migrate dev`
-- Existing Neon production data must be preserved. Do not use `prisma migrate reset`, `prisma db push --force-reset`, `DROP TABLE`, or `TRUNCATE`.
 - Current committed migration order is:
   1. `20260525153000_entry_system`
   2. `20260526004640_arc19a_operational_entry_architecture`
@@ -19,7 +18,12 @@
   5. `20260526024000_arc19f_notifications_activity`
   6. `20260526143000_add_person_lifecycle_status`
   7. `20260526152000_add_gearops_core_tables`
-- Use **Manual DB Schema Inventory** first to safely inspect table names and migration markers (no row data/secrets output).
+- `MIGRATE_DATABASE_URL` should be the Neon direct connection string for the target database and must not use the `-pooler` host.
+- Vercel app runtime continues to use the runtime `DATABASE_URL` secret value unchanged.
+
+### Manual DB Baseline
+- Use **Manual DB Baseline** only for preserving an existing schema/data set that predates Prisma migration history.
+- Use **Manual DB Schema Inventory** first to safely inspect table names and migration markers (no row data or secrets output).
 - One-time baseline flow for an existing production database:
   1. Merge the code that contains the migration files.
   2. Run **Manual DB Schema Inventory** and review:
@@ -38,14 +42,14 @@
 - Decision guidance for non-empty databases with no Prisma migration history:
   - If no historical Arc-19 markers exist, do **not** baseline Arc-19 migrations. Migrate forward (and add compatibility migrations only if concrete conflicts occur).
   - If some historical markers exist contiguously, baseline only that verified contiguous subset.
-  - If database is empty-ish and has no production data value, perform reset/rebuild only with explicit approval.
-- Normal production runs after baseline:
-  - `npx prisma migrate deploy`
-- Recommended order for production release:
-  1. Ensure `DATABASE_URL` points to production.
-  2. If the database predates Prisma migration history, run the one-time **Manual DB Baseline** workflow first.
-  3. Run the **Manual DB Setup** workflow, which uses `npx prisma migrate status` and `npx prisma migrate deploy`.
-  4. Redeploy application build to Vercel after migration.
-- Vercel app runtime continues to use the production `DATABASE_URL` secret value.
-- **Manual DB Setup** Prisma migration commands may use `MIGRATE_DATABASE_URL` when configured, and otherwise fall back to `DATABASE_URL`.
-- `MIGRATE_DATABASE_URL` should be the Neon direct connection string for the same production database and should not use the `-pooler` host.
+
+### Manual DB Rebuild (DESTRUCTIVE)
+- **Manual DB Rebuild** is destructive and is only for disposable Neon dev databases.
+- It requires typing `REBUILD_DISPOSABLE_DEV_DB` exactly before it will run.
+- It uses `MIGRATE_DATABASE_URL`, refuses pooled Neon hosts, prints only safe diagnostics, drops and recreates the `public` schema, reapplies Prisma migrations, regenerates the Prisma client, verifies migration status, and can optionally run the safe dev seed.
+- Never use **Manual DB Rebuild** for production or any database whose existing data must be preserved.
+
+### Manual DB Setup
+- **Manual DB Setup** is the normal future migration path after baseline or rebuild is complete.
+- It uses `npx prisma migrate status` and `npx prisma migrate deploy` for normal forward migration runs.
+- Use it for routine follow-up migrations after the database has valid Prisma migration history.
