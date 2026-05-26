@@ -3,6 +3,8 @@ import Link from "next/link";
 const GEAR_OPS_LINKS = [
   { href: "/gear-ops", label: "Overview", key: "overview" },
   { href: "/gear-ops/categories", label: "Categories", key: "categories" },
+  { href: "/gear-ops/event-templates", label: "Event Templates", key: "event-templates" },
+  { href: "/gear-ops/admin", label: "Admin", key: "admin" },
   { href: "/gear-ops/items", label: "Items", key: "items" },
   { href: "/gear-ops/reports", label: "Reports", key: "reports" },
   { href: "/gear-ops/labels", label: "Labels", key: "labels" },

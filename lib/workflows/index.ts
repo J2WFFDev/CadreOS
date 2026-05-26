@@ -3,14 +3,20 @@ import {
   AttendanceStatus,
   BookingStatus,
   ConsumableTransactionType,
+  EventGearRequirementType,
   EventStatus,
   EventType,
   GearAssignmentStatus,
+  GearCategoryBehaviorType,
   GearCheckoutStatus,
   GearConditionStatus,
+  GearCustodyMode,
+  GearIdentifierType,
   GearInventoryType,
   GearItemLifecycleStatus,
+  GearMaintenanceFrequency,
   GearMaintenanceType,
+  GearReportGroup,
   MemberLifecycleStatus,
   PrecheckStatus,
   Prisma,
@@ -522,23 +528,211 @@ export const bookingRequestWorkflowSchema = z
     approvalStatus: ApprovalStatus.PENDING,
   }));
 
-export const gearCategoryWorkflowSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Category name is required.")
-    .max(MAX_NAME_LENGTH, `Category name must be ${MAX_NAME_LENGTH} characters or less.`),
-  inventoryType: z.nativeEnum(GearInventoryType, {
-    message: "Inventory type must be DURABLE or CONSUMABLE.",
+const booleanFromStringSchema = z.enum(["true", "false"]).transform((value) => value === "true");
+
+export const gearCategoryWorkflowSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "Category name is required.")
+      .max(MAX_NAME_LENGTH, `Category name must be ${MAX_NAME_LENGTH} characters or less.`),
+    inventoryType: z.nativeEnum(GearInventoryType, {
+      message: "Inventory type must be DURABLE or CONSUMABLE.",
+    }),
+    description: z
+      .string()
+      .trim()
+      .max(MAX_GEAR_DESCRIPTION_LENGTH, `Description must be ${MAX_GEAR_DESCRIPTION_LENGTH} characters or less.`),
+    behaviorType: z.nativeEnum(GearCategoryBehaviorType, {
+      message: "Behavior type must use an existing GearOps category behavior value.",
+    }),
+    custodyMode: z.nativeEnum(GearCustodyMode, {
+      message: "Custody mode must use an existing GearOps custody value.",
+    }),
+    primaryIdentifierType: z.nativeEnum(GearIdentifierType, {
+      message: "Primary identifier type must use an existing identifier value.",
+    }),
+    reportGroup: z.nativeEnum(GearReportGroup, {
+      message: "Report group must use an existing report group value.",
+    }),
+    reportLabel: z
+      .string()
+      .trim()
+      .max(MAX_NAME_LENGTH, `Report label must be ${MAX_NAME_LENGTH} characters or less.`),
+    requiresReturnInspection: booleanFromStringSchema,
+    requiresMaintenanceTracking: booleanFromStringSchema,
+    maintenanceFrequency: z.union([
+      z.nativeEnum(GearMaintenanceFrequency, {
+        message: "Maintenance frequency must use an existing maintenance frequency value.",
+      }),
+      z.literal(""),
+    ]),
+    maintenanceIntervalDays: z.string().trim(),
+    supportsConsumableTracking: booleanFromStringSchema,
+    consumableLowStockDefault: z.string().trim(),
+    supportsEventDeployment: booleanFromStringSchema,
+    isKitContainer: booleanFromStringSchema,
+    guardianApprovalRequired: booleanFromStringSchema,
+    templateSlug: z.string().trim().max(MAX_NAME_LENGTH, `Template slug must be ${MAX_NAME_LENGTH} characters or less.`),
+  })
+  .superRefine((value, context) => {
+    if (value.maintenanceIntervalDays.length > 0) {
+      const interval = Number(value.maintenanceIntervalDays);
+      if (!Number.isInteger(interval) || interval < 1 || interval > 3650) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["maintenanceIntervalDays"],
+          message: "Maintenance interval days must be a whole number between 1 and 3650.",
+        });
+      }
+    }
+
+    if (value.consumableLowStockDefault.length > 0) {
+      const lowStock = Number(value.consumableLowStockDefault);
+      if (!Number.isInteger(lowStock) || lowStock < 0 || lowStock > 999999) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["consumableLowStockDefault"],
+          message: "Low stock default must be a whole number between 0 and 999999.",
+        });
+      }
+    }
+  })
+  .transform((value) => ({
+    name: value.name,
+    inventoryType: value.inventoryType,
+    description: value.description.length === 0 ? null : value.description,
+    behaviorType: value.behaviorType,
+    custodyMode: value.custodyMode,
+    primaryIdentifierType: value.primaryIdentifierType,
+    reportGroup: value.reportGroup,
+    reportLabel: value.reportLabel.length === 0 ? null : value.reportLabel,
+    requiresReturnInspection: value.requiresReturnInspection,
+    requiresMaintenanceTracking: value.requiresMaintenanceTracking,
+    maintenanceFrequency: value.maintenanceFrequency === "" ? null : value.maintenanceFrequency,
+    maintenanceIntervalDays:
+      value.maintenanceIntervalDays.length === 0 ? null : Number(value.maintenanceIntervalDays),
+    supportsConsumableTracking: value.supportsConsumableTracking,
+    consumableLowStockDefault:
+      value.consumableLowStockDefault.length === 0 ? null : Number(value.consumableLowStockDefault),
+    supportsEventDeployment: value.supportsEventDeployment,
+    isKitContainer: value.isKitContainer,
+    guardianApprovalRequired: value.guardianApprovalRequired,
+    templateSlug: value.templateSlug.length === 0 ? null : value.templateSlug,
+  }));
+
+export const gearCategoryFieldWorkflowSchema = z
+  .object({
+    fieldKey: z
+      .string()
+      .trim()
+      .min(1, "Field key is required.")
+      .max(50, "Field key must be 50 characters or less.")
+      .regex(/^[A-Za-z0-9_-]+$/, "Field key can only use letters, numbers, underscores, and dashes."),
+    fieldLabel: z
+      .string()
+      .trim()
+      .min(1, "Field label is required.")
+      .max(80, "Field label must be 80 characters or less."),
+    fieldType: z.enum(["text", "number", "date", "boolean", "select"], {
+      message: "Field type must be text, number, date, boolean, or select.",
+    }),
+    fieldOptions: z.string().trim(),
+    required: booleanFromStringSchema,
+    displayOrder: z.string().trim(),
+  })
+  .superRefine((value, context) => {
+    const displayOrder = Number(value.displayOrder);
+    if (!Number.isInteger(displayOrder) || displayOrder < 0 || displayOrder > 99) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["displayOrder"],
+        message: "Display order must be a whole number between 0 and 99.",
+      });
+    }
+
+    if (value.fieldType === "select" && value.fieldOptions.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["fieldOptions"],
+        message: "Select fields require one or more comma-separated options.",
+      });
+    }
+  })
+  .transform((value) => ({
+    fieldKey: value.fieldKey,
+    fieldLabel: value.fieldLabel,
+    fieldType: value.fieldType,
+    fieldOptions: value.fieldOptions.length === 0 ? null : value.fieldOptions,
+    required: value.required,
+    displayOrder: Number(value.displayOrder),
+  }));
+
+export const eventGearRequirementTemplateWorkflowSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "Template name is required.")
+      .max(100, "Template name must be 100 characters or less."),
+    label: z
+      .string()
+      .trim()
+      .min(1, "Requirement label is required.")
+      .max(160, "Requirement label must be 160 characters or less."),
+    gearCategoryId: z.string().trim(),
+    requirementType: z.nativeEnum(EventGearRequirementType, {
+      message: "Requirement type must use an existing requirement type value.",
+    }),
+    quantityNeeded: z.string().trim(),
+    notes: z.string().trim().max(1000, "Notes must be 1000 characters or less."),
+    description: z.string().trim().max(1000, "Description must be 1000 characters or less."),
+    isActive: booleanFromStringSchema,
+  })
+  .superRefine((value, context) => {
+    const quantityNeeded = Number(value.quantityNeeded);
+    if (!Number.isInteger(quantityNeeded) || quantityNeeded < 1 || quantityNeeded > 999) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["quantityNeeded"],
+        message: "Quantity needed must be a whole number between 1 and 999.",
+      });
+    }
+  })
+  .transform((value) => ({
+    name: value.name,
+    label: value.label,
+    gearCategoryId: value.gearCategoryId.length === 0 ? null : value.gearCategoryId,
+    requirementType: value.requirementType,
+    quantityNeeded: Number(value.quantityNeeded),
+    notes: value.notes.length === 0 ? null : value.notes,
+    description: value.description.length === 0 ? null : value.description,
+    isActive: value.isActive,
+  }));
+
+export const gearOpsOrganizationSettingsWorkflowSchema = z.object({
+  defaultCustodyMode: z.nativeEnum(GearCustodyMode, {
+    message: "Default custody mode must use an existing custody mode value.",
   }),
-  description: z
-    .string()
-    .trim()
-    .max(MAX_GEAR_DESCRIPTION_LENGTH, `Description must be ${MAX_GEAR_DESCRIPTION_LENGTH} characters or less.`),
+  enableGuardianApproval: booleanFromStringSchema,
+  enableConsumableTracking: booleanFromStringSchema,
+  enableEventDeployment: booleanFromStringSchema,
+  enableReadinessTracking: booleanFromStringSchema,
+  enableMaintenanceTracking: booleanFromStringSchema,
+  defaultReportGroup: z.nativeEnum(GearReportGroup, {
+    message: "Default report group must use an existing report group value.",
+  }),
+  adminNotes: z.string().trim().max(2000, "Admin notes must be 2000 characters or less."),
 }).transform((value) => ({
-  name: value.name,
-  inventoryType: value.inventoryType,
-  description: value.description.length === 0 ? null : value.description,
+  defaultCustodyMode: value.defaultCustodyMode,
+  enableGuardianApproval: value.enableGuardianApproval,
+  enableConsumableTracking: value.enableConsumableTracking,
+  enableEventDeployment: value.enableEventDeployment,
+  enableReadinessTracking: value.enableReadinessTracking,
+  enableMaintenanceTracking: value.enableMaintenanceTracking,
+  defaultReportGroup: value.defaultReportGroup,
+  adminNotes: value.adminNotes.length === 0 ? null : value.adminNotes,
 }));
 
 export const gearItemWorkflowSchema = z
@@ -1069,6 +1263,9 @@ export type NoteWorkflowInput = z.output<typeof noteWorkflowSchema>;
 export type FollowUpTaskWorkflowInput = z.output<typeof followUpTaskWorkflowSchema>;
 export type BookingRequestWorkflowInput = z.output<typeof bookingRequestWorkflowSchema>;
 export type GearCategoryWorkflowInput = z.output<typeof gearCategoryWorkflowSchema>;
+export type GearCategoryFieldWorkflowInput = z.output<typeof gearCategoryFieldWorkflowSchema>;
+export type EventGearRequirementTemplateWorkflowInput = z.output<typeof eventGearRequirementTemplateWorkflowSchema>;
+export type GearOpsOrganizationSettingsWorkflowInput = z.output<typeof gearOpsOrganizationSettingsWorkflowSchema>;
 export type GearItemWorkflowInput = z.output<typeof gearItemWorkflowSchema>;
 export type GearAssignmentWorkflowInput = z.output<typeof gearAssignmentWorkflowSchema>;
 export type GearCheckoutWorkflowInput = z.output<typeof gearCheckoutWorkflowSchema>;
@@ -1150,11 +1347,15 @@ export async function requirePhase1CMutationPermission(input: {
     | "roleAssignment.delete"
     | "gearCategory.create"
     | "gearCategory.update"
+    | "gearCategoryField.create"
+    | "gearCategoryField.delete"
     | "gearItem.create"
     | "gearItem.update"
     | "eventGearPlan.create"
     | "eventGearPlan.update"
     | "eventGearRequirement.create"
+    | "eventGearRequirementTemplate.create"
+    | "eventGearRequirementTemplate.update"
     | "eventGearAssignment.create"
     | "eventGearAssignment.update"
     | "gearAssignment.create"
@@ -1164,7 +1365,8 @@ export async function requirePhase1CMutationPermission(input: {
     | "gearMaintenance.create"
     | "gearMaintenance.update"
     | "gearConsumableTransaction.create"
-    | "gearConsumableTransaction.update";
+    | "gearConsumableTransaction.update"
+    | "gearOpsSettings.update";
   programId?: string | null;
   teamId?: string | null;
   seasonId?: string | null;

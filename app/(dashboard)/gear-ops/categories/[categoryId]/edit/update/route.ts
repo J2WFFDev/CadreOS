@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { getGearCategoryTemplate } from "@/lib/gear-category-config";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   gearCategoryWorkflowSchema,
@@ -11,12 +12,33 @@ import {
   requirePhase1CMutationPermission,
 } from "@/lib/workflows";
 
+type GearCategoryFormValues = {
+  name: string;
+  inventoryType: string;
+  description: string;
+  behaviorType: string;
+  custodyMode: string;
+  primaryIdentifierType: string;
+  reportGroup: string;
+  reportLabel: string;
+  requiresReturnInspection: string;
+  requiresMaintenanceTracking: string;
+  maintenanceFrequency: string;
+  maintenanceIntervalDays: string;
+  supportsConsumableTracking: string;
+  consumableLowStockDefault: string;
+  supportsEventDeployment: string;
+  isKitContainer: string;
+  guardianApprovalRequired: string;
+  templateSlug: string;
+};
+
 function buildErrorRedirectUrl(
   requestUrl: string,
   categoryId: string,
   input: {
     values: { name: string; inventoryType: string; description: string };
-    fieldErrors?: Partial<Record<"name" | "inventoryType" | "description", string>>;
+    fieldErrors?: Partial<Record<string, string>>;
     error?: string;
   },
 ) {
@@ -26,15 +48,14 @@ function buildErrorRedirectUrl(
   url.searchParams.set("inventoryType", input.values.inventoryType);
   url.searchParams.set("description", input.values.description);
 
-  if (input.fieldErrors?.name) {
-    url.searchParams.set("nameError", input.fieldErrors.name);
+  if (input.fieldErrors) {
+    Object.entries(input.fieldErrors).forEach(([key, value]) => {
+      if (value) {
+        url.searchParams.set(`${key}Error`, value);
+      }
+    });
   }
-  if (input.fieldErrors?.inventoryType) {
-    url.searchParams.set("inventoryTypeError", input.fieldErrors.inventoryType);
-  }
-  if (input.fieldErrors?.description) {
-    url.searchParams.set("descriptionError", input.fieldErrors.description);
-  }
+
   if (input.error) {
     url.searchParams.set("error", input.error);
   }
@@ -50,16 +71,37 @@ export async function POST(
   const scope = await getOrganizationScope();
   const formData = await request.formData();
 
-  const values = {
+  const values: GearCategoryFormValues = {
     name: getStringField(formData, "name"),
     inventoryType: getStringField(formData, "inventoryType"),
     description: getStringField(formData, "description"),
+    behaviorType: getStringField(formData, "behaviorType"),
+    custodyMode: getStringField(formData, "custodyMode"),
+    primaryIdentifierType: getStringField(formData, "primaryIdentifierType"),
+    reportGroup: getStringField(formData, "reportGroup"),
+    reportLabel: getStringField(formData, "reportLabel"),
+    requiresReturnInspection: getStringField(formData, "requiresReturnInspection"),
+    requiresMaintenanceTracking: getStringField(formData, "requiresMaintenanceTracking"),
+    maintenanceFrequency: getStringField(formData, "maintenanceFrequency"),
+    maintenanceIntervalDays: getStringField(formData, "maintenanceIntervalDays"),
+    supportsConsumableTracking: getStringField(formData, "supportsConsumableTracking"),
+    consumableLowStockDefault: getStringField(formData, "consumableLowStockDefault"),
+    supportsEventDeployment: getStringField(formData, "supportsEventDeployment"),
+    isKitContainer: getStringField(formData, "isKitContainer"),
+    guardianApprovalRequired: getStringField(formData, "guardianApprovalRequired"),
+    templateSlug: getStringField(formData, "templateSlug"),
+  };
+
+  const basicValues = {
+    name: values.name,
+    inventoryType: values.inventoryType,
+    description: values.description,
   };
 
   if (!scope.databaseReady) {
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, categoryId, {
-        values,
+        values: basicValues,
         error: scope.errorMessage ?? "Unable to update gear category right now.",
       }),
       303,
@@ -69,7 +111,7 @@ export async function POST(
   if (!scope.organizationId) {
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, categoryId, {
-        values,
+        values: basicValues,
         error: "No organization context is available yet.",
       }),
       303,
@@ -80,16 +122,26 @@ export async function POST(
 
   if (!parsed.success) {
     const fieldErrors = parsed.error.flatten().fieldErrors;
+    const flatErrors = Object.fromEntries(
+      Object.entries(fieldErrors).map(([key, message]) => [key, message?.[0] ?? ""]),
+    );
 
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, categoryId, {
-        values,
-        fieldErrors: {
-          name: fieldErrors.name?.[0],
-          inventoryType: fieldErrors.inventoryType?.[0],
-          description: fieldErrors.description?.[0],
-        },
+        values: basicValues,
+        fieldErrors: flatErrors,
         error: "Please correct the highlighted fields.",
+      }),
+      303,
+    );
+  }
+
+  if (parsed.data.templateSlug && !getGearCategoryTemplate(parsed.data.templateSlug)) {
+    return NextResponse.redirect(
+      buildErrorRedirectUrl(request.url, categoryId, {
+        values: basicValues,
+        fieldErrors: { templateSlug: "Selected starter template is no longer available." },
+        error: "Please choose a valid starter template.",
       }),
       303,
     );
@@ -110,13 +162,28 @@ export async function POST(
         name: parsed.data.name,
         inventoryType: parsed.data.inventoryType,
         description: parsed.data.description,
+        templateSlug: parsed.data.templateSlug,
+        behaviorType: parsed.data.behaviorType,
+        custodyMode: parsed.data.custodyMode,
+        requiresReturnInspection: parsed.data.requiresReturnInspection,
+        requiresMaintenanceTracking: parsed.data.requiresMaintenanceTracking,
+        maintenanceFrequency: parsed.data.maintenanceFrequency,
+        maintenanceIntervalDays: parsed.data.maintenanceIntervalDays,
+        primaryIdentifierType: parsed.data.primaryIdentifierType,
+        supportsConsumableTracking: parsed.data.supportsConsumableTracking,
+        consumableLowStockDefault: parsed.data.consumableLowStockDefault,
+        supportsEventDeployment: parsed.data.supportsEventDeployment,
+        reportGroup: parsed.data.reportGroup,
+        reportLabel: parsed.data.reportLabel,
+        isKitContainer: parsed.data.isKitContainer,
+        guardianApprovalRequired: parsed.data.guardianApprovalRequired,
       },
     });
 
     if (updated.count === 0) {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, categoryId, {
-          values,
+          values: basicValues,
           error: "Gear category not found in the selected organization.",
         }),
         303,
@@ -128,7 +195,7 @@ export async function POST(
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, categoryId, {
-          values,
+          values: basicValues,
           fieldErrors: {
             name: "A category with this name already exists in this organization.",
           },
@@ -140,7 +207,7 @@ export async function POST(
 
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, categoryId, {
-        values,
+        values: basicValues,
         error: isPermissionDeniedError(error)
           ? error.message
           : isSchemaUnavailableError(error)

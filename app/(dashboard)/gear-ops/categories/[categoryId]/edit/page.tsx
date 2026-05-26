@@ -1,8 +1,20 @@
-import { GearInventoryType } from "@prisma/client";
+
+import {
+  GearCategoryBehaviorType,
+  GearCustodyMode,
+  GearIdentifierType,
+  GearInventoryType,
+  GearMaintenanceFrequency,
+  GearReportGroup,
+} from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { FormActions } from "@/components/dashboard/form-actions";
+import {
+  GearCategoryConfigFields,
+  type GearCategoryConfigFieldErrors,
+} from "@/components/gear-ops/category-config-fields";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
 import { formatGearOpsEnum } from "@/lib/gear-ops";
@@ -21,6 +33,43 @@ function readSearchParam(searchParams: SearchParams, key: string): string {
   }
 
   return value ?? "";
+}
+
+function readEnumSearchParam<T extends string>(
+  searchParams: SearchParams,
+  key: string,
+  enumValues: readonly T[],
+  fallback: T,
+): T {
+  const value = readSearchParam(searchParams, key);
+  return enumValues.includes(value as T) ? (value as T) : fallback;
+}
+
+function readOptionalEnumSearchParam<T extends string>(
+  searchParams: SearchParams,
+  key: string,
+  enumValues: readonly T[],
+  fallback: T | "",
+): T | "" {
+  const value = readSearchParam(searchParams, key);
+  if (!value) {
+    return fallback;
+  }
+
+  return enumValues.includes(value as T) ? (value as T) : fallback;
+}
+
+function readBooleanSearchParam(searchParams: SearchParams, key: string, fallback: boolean): boolean {
+  const value = readSearchParam(searchParams, key);
+  if (value === "true") {
+    return true;
+  }
+
+  if (value === "false") {
+    return false;
+  }
+
+  return fallback;
 }
 
 export default async function EditGearCategoryPage({
@@ -71,24 +120,33 @@ export default async function EditGearCategoryPage({
     );
   }
 
-  let category: { id: string; name: string; inventoryType: GearInventoryType; description: string | null } | null = null;
-
-  try {
-    category = await db.gearCategory.findFirst({
-      where: {
-        id: categoryId,
-        AND: [access.categoryWhere],
-      },
-      select: {
-        id: true,
-        name: true,
-        inventoryType: true,
-        description: true,
-      },
-    });
-  } catch {
-    category = null;
-  }
+  const category = await db.gearCategory.findFirst({
+    where: {
+      id: categoryId,
+      AND: [access.categoryWhere],
+    },
+    select: {
+      id: true,
+      name: true,
+      inventoryType: true,
+      description: true,
+      templateSlug: true,
+      behaviorType: true,
+      custodyMode: true,
+      requiresReturnInspection: true,
+      requiresMaintenanceTracking: true,
+      maintenanceFrequency: true,
+      maintenanceIntervalDays: true,
+      primaryIdentifierType: true,
+      supportsConsumableTracking: true,
+      consumableLowStockDefault: true,
+      supportsEventDeployment: true,
+      reportGroup: true,
+      reportLabel: true,
+      isKitContainer: true,
+      guardianApprovalRequired: true,
+    },
+  });
 
   if (!category) {
     return (
@@ -105,9 +163,97 @@ export default async function EditGearCategoryPage({
   }
 
   const name = readSearchParam(resolvedSearchParams, "name") || category.name;
-  const inventoryType = readSearchParam(resolvedSearchParams, "inventoryType") || category.inventoryType;
-  const description = readSearchParam(resolvedSearchParams, "description") ?? category.description ?? "";
+  const inventoryType = readEnumSearchParam(
+    resolvedSearchParams,
+    "inventoryType",
+    Object.values(GearInventoryType),
+    category.inventoryType,
+  );
+  const description = readSearchParam(resolvedSearchParams, "description") || category.description || "";
   const generalError = readSearchParam(resolvedSearchParams, "error");
+  const configErrors: GearCategoryConfigFieldErrors = {
+    behaviorType: readSearchParam(resolvedSearchParams, "behaviorTypeError"),
+    custodyMode: readSearchParam(resolvedSearchParams, "custodyModeError"),
+    primaryIdentifierType: readSearchParam(resolvedSearchParams, "primaryIdentifierTypeError"),
+    reportGroup: readSearchParam(resolvedSearchParams, "reportGroupError"),
+    reportLabel: readSearchParam(resolvedSearchParams, "reportLabelError"),
+    requiresReturnInspection: readSearchParam(resolvedSearchParams, "requiresReturnInspectionError"),
+    requiresMaintenanceTracking: readSearchParam(resolvedSearchParams, "requiresMaintenanceTrackingError"),
+    maintenanceFrequency: readSearchParam(resolvedSearchParams, "maintenanceFrequencyError"),
+    maintenanceIntervalDays: readSearchParam(resolvedSearchParams, "maintenanceIntervalDaysError"),
+    supportsConsumableTracking: readSearchParam(resolvedSearchParams, "supportsConsumableTrackingError"),
+    consumableLowStockDefault: readSearchParam(resolvedSearchParams, "consumableLowStockDefaultError"),
+    supportsEventDeployment: readSearchParam(resolvedSearchParams, "supportsEventDeploymentError"),
+    isKitContainer: readSearchParam(resolvedSearchParams, "isKitContainerError"),
+    guardianApprovalRequired: readSearchParam(resolvedSearchParams, "guardianApprovalRequiredError"),
+    templateSlug: readSearchParam(resolvedSearchParams, "templateSlugError"),
+  };
+  const configValues = {
+    behaviorType: readEnumSearchParam(
+      resolvedSearchParams,
+      "behaviorType",
+      Object.values(GearCategoryBehaviorType),
+      category.behaviorType,
+    ),
+    custodyMode: readEnumSearchParam(
+      resolvedSearchParams,
+      "custodyMode",
+      Object.values(GearCustodyMode),
+      category.custodyMode,
+    ),
+    primaryIdentifierType: readEnumSearchParam(
+      resolvedSearchParams,
+      "primaryIdentifierType",
+      Object.values(GearIdentifierType),
+      category.primaryIdentifierType,
+    ),
+    reportGroup: readEnumSearchParam(
+      resolvedSearchParams,
+      "reportGroup",
+      Object.values(GearReportGroup),
+      category.reportGroup,
+    ),
+    reportLabel: readSearchParam(resolvedSearchParams, "reportLabel") || category.reportLabel || "",
+    requiresReturnInspection: readBooleanSearchParam(
+      resolvedSearchParams,
+      "requiresReturnInspection",
+      category.requiresReturnInspection,
+    ),
+    requiresMaintenanceTracking: readBooleanSearchParam(
+      resolvedSearchParams,
+      "requiresMaintenanceTracking",
+      category.requiresMaintenanceTracking,
+    ),
+    maintenanceFrequency: readOptionalEnumSearchParam(
+      resolvedSearchParams,
+      "maintenanceFrequency",
+      Object.values(GearMaintenanceFrequency),
+      category.maintenanceFrequency ?? "",
+    ),
+    maintenanceIntervalDays:
+      readSearchParam(resolvedSearchParams, "maintenanceIntervalDays") || category.maintenanceIntervalDays?.toString() || "",
+    supportsConsumableTracking: readBooleanSearchParam(
+      resolvedSearchParams,
+      "supportsConsumableTracking",
+      category.supportsConsumableTracking,
+    ),
+    consumableLowStockDefault:
+      readSearchParam(resolvedSearchParams, "consumableLowStockDefault") ||
+      category.consumableLowStockDefault?.toString() ||
+      "",
+    supportsEventDeployment: readBooleanSearchParam(
+      resolvedSearchParams,
+      "supportsEventDeployment",
+      category.supportsEventDeployment,
+    ),
+    isKitContainer: readBooleanSearchParam(resolvedSearchParams, "isKitContainer", category.isKitContainer),
+    guardianApprovalRequired: readBooleanSearchParam(
+      resolvedSearchParams,
+      "guardianApprovalRequired",
+      category.guardianApprovalRequired,
+    ),
+    templateSlug: readSearchParam(resolvedSearchParams, "templateSlug") || category.templateSlug || "",
+  };
 
   return (
     <section className="space-y-4">
@@ -134,12 +280,7 @@ export default async function EditGearCategoryPage({
           <label htmlFor="name" className="text-sm font-medium">
             Category name
           </label>
-          <input
-            id="name"
-            name="name"
-            defaultValue={name}
-            className="w-full rounded-md border px-3 py-2 text-sm"
-          />
+          <input id="name" name="name" defaultValue={name} className="w-full rounded-md border px-3 py-2 text-sm" />
           {readSearchParam(resolvedSearchParams, "nameError") ? (
             <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "nameError")}</p>
           ) : null}
@@ -181,6 +322,8 @@ export default async function EditGearCategoryPage({
             <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "descriptionError")}</p>
           ) : null}
         </div>
+
+        <GearCategoryConfigFields values={configValues} errors={configErrors} />
 
         <FormActions submitLabel="Save category" cancelHref={`/gear-ops/categories/${category.id}`} />
       </form>
