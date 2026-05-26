@@ -712,7 +712,7 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
                       : reservation.reservedTeam
                         ? `Team: ${reservation.reservedTeam.name}`
                         : reservation.reservedFor
-                          ? `Person: ${reservation.reservedFor.firstName ?? ""} ${reservation.reservedFor.lastName ?? ""}`.trim()
+                          ? `Person: ${[reservation.reservedFor.firstName, reservation.reservedFor.lastName].filter(Boolean).join(" ")}`
                           : "General operational context"}
                   </p>
                   {reservation.conflictSummary ? <p className="text-amber-700 dark:text-amber-300">{reservation.conflictSummary}</p> : null}
