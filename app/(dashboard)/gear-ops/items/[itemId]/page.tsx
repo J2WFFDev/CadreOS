@@ -14,15 +14,20 @@ import Link from "next/link";
 import { BackLink } from "@/components/dashboard/back-link";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
+import {
+  GearAvailabilityBanner,
+  GearConditionBadge,
+  GearInventoryTypeBadge,
+  GearLifecycleBadge,
+  GearReadinessChip,
+} from "@/components/gear-ops/status-badge";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
 import {
   formatGearOpsDateTime,
   formatGearOpsEnum,
-  getGearConditionBadgeClass,
-  getGearLifecycleBadgeClass,
-  getReadinessBadgeClass,
 } from "@/lib/gear-ops";
+import { deriveAvailabilitySignal } from "@/lib/gear-ops-ui";
 import {
   labelForMovementType,
   labelForOwnershipType,
@@ -643,37 +648,38 @@ export default async function GearOpsItemDetailsPage({
               </Link>
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-              {formatGearOpsEnum(item.inventoryType)}
-            </span>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getGearLifecycleBadgeClass(item.lifecycleStatus)}`}>
-              {formatGearOpsEnum(item.lifecycleStatus)}
-            </span>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getGearConditionBadgeClass(item.conditionStatus)}`}>
-              Condition: {item.conditionStatus ? formatGearOpsEnum(item.conditionStatus) : "—"}
-            </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <GearAvailabilityBanner
+              signal={deriveAvailabilitySignal({
+                lifecycleStatus: item.lifecycleStatus,
+                hasOpenCheckout: currentCheckouts.length > 0,
+                hasActiveAssignment: currentAssignments.length > 0,
+              })}
+            />
+            <GearLifecycleBadge status={item.lifecycleStatus} />
+            <GearInventoryTypeBadge type={item.inventoryType} />
+            {item.conditionStatus ? <GearConditionBadge status={item.conditionStatus} /> : null}
             <Link
               href={`/gear-ops/items/${item.id}/edit`}
-              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
             >
               Edit
             </Link>
             <Link
               href={`/gear-ops/scan?scanContext=INVENTORY_LOOKUP&scanValue=${encodeURIComponent(item.id)}`}
-              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
             >
               Scan center
             </Link>
             <Link
               href={`/gear-ops/labels?subjectType=GEAR_ITEM&subjectId=${item.id}&template=${item.inventoryType === GearInventoryType.CONSUMABLE ? "CONSUMABLE" : "INVENTORY_ITEM"}`}
-              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
             >
               Print label
             </Link>
             <Link
               href={`/gear-ops/labels?subjectType=GEAR_ITEM&subjectId=${item.id}&template=CUSTODY_ASSIGNMENT`}
-              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
             >
               Custody label
             </Link>
@@ -716,7 +722,7 @@ export default async function GearOpsItemDetailsPage({
             <div className="mt-3">
               <Link
                 href={rapidActions.primaryAction.href}
-                className="inline-flex rounded-md bg-black px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                className="inline-flex rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
               >
                 {rapidActions.primaryAction.label}
               </Link>
@@ -794,9 +800,7 @@ export default async function GearOpsItemDetailsPage({
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Readiness</dt>
           <dd>
             {item.readinessState ? (
-              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getReadinessBadgeClass(item.readinessState)}`}>
-                {labelForReadinessState(item.readinessState)}
-              </span>
+              <GearReadinessChip state={item.readinessState} />
             ) : (
               <span className="text-zinc-600 dark:text-zinc-400">—</span>
             )}

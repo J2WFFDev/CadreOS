@@ -1,0 +1,366 @@
+import { strict as assert } from "node:assert";
+import test from "node:test";
+
+import {
+  buildDashboardConcernSummary,
+  deriveAvailabilitySignal,
+  deriveItemConcernLevel,
+  getAssignmentBadgeClass,
+  getAssignmentTone,
+  getCheckoutBadgeClass,
+  getCheckoutTone,
+  getConditionBadgeClass,
+  getConditionTone,
+  getInventoryTypeBadgeClass,
+  getInventoryTypeLabel,
+  getLifecycleBadgeClass,
+  getLifecycleTone,
+  getReadinessBadgeClass,
+  getReadinessTone,
+  toneToBoxClass,
+  toneToChipClass,
+  type GearAvailabilitySignal,
+  type GearConcernLevel,
+  type LifecycleTone,
+} from "../../lib/gear-ops-ui";
+
+// ---------------------------------------------------------------------------
+// Lifecycle tone + badge class
+// ---------------------------------------------------------------------------
+
+test("ACTIVE lifecycle maps to success tone", () => {
+  assert.equal(getLifecycleTone("ACTIVE"), "success");
+});
+
+test("MAINTENANCE lifecycle maps to warning tone", () => {
+  assert.equal(getLifecycleTone("MAINTENANCE"), "warning");
+  assert.equal(getLifecycleTone("QUARANTINED"), "warning");
+});
+
+test("RETIRED / LOST lifecycle maps to danger tone", () => {
+  assert.equal(getLifecycleTone("RETIRED"), "danger");
+  assert.equal(getLifecycleTone("LOST"), "danger");
+});
+
+test("ASSIGNED / CHECKED_OUT / RESERVED lifecycle maps to info tone", () => {
+  assert.equal(getLifecycleTone("ASSIGNED"), "info");
+  assert.equal(getLifecycleTone("CHECKED_OUT"), "info");
+  assert.equal(getLifecycleTone("RESERVED"), "info");
+});
+
+test("getLifecycleBadgeClass returns a non-empty Tailwind class string", () => {
+  const cls = getLifecycleBadgeClass("ACTIVE");
+  assert.ok(typeof cls === "string" && cls.length > 0);
+});
+
+// ---------------------------------------------------------------------------
+// Condition tone + badge class
+// ---------------------------------------------------------------------------
+
+test("GOOD condition maps to success tone", () => {
+  assert.equal(getConditionTone("GOOD"), "success");
+});
+
+test("WORN condition maps to danger tone (falls to default)", () => {
+  // WORN is not a recognized GearConditionStatus case → default → "danger"
+  assert.equal(getConditionTone("WORN" as Parameters<typeof getConditionTone>[0]), "danger");
+});
+
+test("DAMAGED condition maps to warning tone", () => {
+  assert.equal(getConditionTone("DAMAGED"), "warning");
+  assert.equal(getConditionTone("POOR"), "warning");
+});
+
+test("null condition maps to neutral tone", () => {
+  assert.equal(getConditionTone(null), "neutral");
+});
+
+test("getConditionBadgeClass returns a non-empty string for GOOD", () => {
+  const cls = getConditionBadgeClass("GOOD");
+  assert.ok(typeof cls === "string" && cls.length > 0);
+});
+
+// ---------------------------------------------------------------------------
+// Readiness tone + badge class
+// ---------------------------------------------------------------------------
+
+test("READY readiness maps to success tone", () => {
+  assert.equal(getReadinessTone("READY"), "success");
+});
+
+test("NEEDS_INSPECTION readiness maps to info tone", () => {
+  assert.equal(getReadinessTone("NEEDS_INSPECTION"), "info");
+});
+
+test("MAINTENANCE_REQUIRED / NOT_READY readiness maps to warning tone", () => {
+  assert.equal(getReadinessTone("MAINTENANCE_REQUIRED"), "warning");
+  assert.equal(getReadinessTone("NOT_READY"), "warning");
+});
+
+test("null readiness maps to neutral tone", () => {
+  assert.equal(getReadinessTone(null), "neutral");
+});
+
+test("getReadinessBadgeClass returns a non-empty string", () => {
+  const cls = getReadinessBadgeClass("READY");
+  assert.ok(typeof cls === "string" && cls.length > 0);
+});
+
+// ---------------------------------------------------------------------------
+// Checkout tone + badge class
+// ---------------------------------------------------------------------------
+
+test("OPEN checkout maps to info tone", () => {
+  assert.equal(getCheckoutTone("OPEN"), "info");
+});
+
+test("OVERDUE checkout maps to warning tone", () => {
+  assert.equal(getCheckoutTone("OVERDUE"), "warning");
+});
+
+test("RETURNED checkout maps to success tone", () => {
+  assert.equal(getCheckoutTone("RETURNED"), "success");
+});
+
+test("getCheckoutBadgeClass returns a non-empty string", () => {
+  const cls = getCheckoutBadgeClass("OPEN");
+  assert.ok(typeof cls === "string" && cls.length > 0);
+});
+
+// ---------------------------------------------------------------------------
+// Assignment tone + badge class
+// ---------------------------------------------------------------------------
+
+test("ACTIVE assignment maps to info tone", () => {
+  assert.equal(getAssignmentTone("ACTIVE"), "info");
+});
+
+test("OVERDUE assignment maps to warning tone", () => {
+  assert.equal(getAssignmentTone("OVERDUE"), "warning");
+});
+
+test("RETURNED assignment maps to success tone; CANCELLED maps to neutral", () => {
+  assert.equal(getAssignmentTone("RETURNED"), "success");
+  assert.equal(getAssignmentTone("CANCELLED"), "neutral");
+});
+
+test("getAssignmentBadgeClass returns a non-empty string", () => {
+  const cls = getAssignmentBadgeClass("ACTIVE");
+  assert.ok(typeof cls === "string" && cls.length > 0);
+});
+
+// ---------------------------------------------------------------------------
+// Inventory type label + badge class
+// ---------------------------------------------------------------------------
+
+test("DURABLE inventory type returns non-empty label and badge class", () => {
+  assert.ok(getInventoryTypeLabel("DURABLE").length > 0);
+  assert.ok(getInventoryTypeBadgeClass("DURABLE").length > 0);
+});
+
+test("CONSUMABLE inventory type returns non-empty label and badge class", () => {
+  assert.ok(getInventoryTypeLabel("CONSUMABLE").length > 0);
+  assert.ok(getInventoryTypeBadgeClass("CONSUMABLE").length > 0);
+});
+
+// ---------------------------------------------------------------------------
+// deriveItemConcernLevel
+// ---------------------------------------------------------------------------
+
+test("RETIRED lifecycle produces critical concern level", () => {
+  const level: GearConcernLevel = deriveItemConcernLevel({
+    lifecycleStatus: "RETIRED",
+    conditionStatus: null,
+    quantityOnHand: 5,
+    quantityMin: null,
+    readinessState: null,
+  });
+  assert.equal(level, "critical");
+});
+
+test("LOST lifecycle produces critical concern level", () => {
+  const level: GearConcernLevel = deriveItemConcernLevel({
+    lifecycleStatus: "LOST",
+    conditionStatus: null,
+    quantityOnHand: 1,
+    quantityMin: null,
+    readinessState: null,
+  });
+  assert.equal(level, "critical");
+});
+
+test("MAINTENANCE lifecycle produces warning concern level", () => {
+  const level: GearConcernLevel = deriveItemConcernLevel({
+    lifecycleStatus: "MAINTENANCE",
+    conditionStatus: null,
+    quantityOnHand: 5,
+    quantityMin: null,
+    readinessState: null,
+  });
+  assert.equal(level, "warning");
+});
+
+test("DAMAGED condition produces warning concern level", () => {
+  const level: GearConcernLevel = deriveItemConcernLevel({
+    lifecycleStatus: "ACTIVE",
+    conditionStatus: "DAMAGED",
+    quantityOnHand: 5,
+    quantityMin: null,
+    readinessState: null,
+  });
+  assert.equal(level, "warning");
+});
+
+test("low stock consumable produces warning concern level", () => {
+  const level: GearConcernLevel = deriveItemConcernLevel({
+    lifecycleStatus: "ACTIVE",
+    conditionStatus: "GOOD",
+    quantityOnHand: 2,
+    quantityMin: 5,
+    readinessState: null,
+  });
+  assert.equal(level, "warning");
+});
+
+test("NEEDS_INSPECTION readiness produces info concern level", () => {
+  const level: GearConcernLevel = deriveItemConcernLevel({
+    lifecycleStatus: "ACTIVE",
+    conditionStatus: "GOOD",
+    quantityOnHand: 1,
+    quantityMin: null,
+    readinessState: "NEEDS_INSPECTION",
+  });
+  assert.equal(level, "info");
+});
+
+test("fully healthy ACTIVE item with no concerns produces ok concern level", () => {
+  const level: GearConcernLevel = deriveItemConcernLevel({
+    lifecycleStatus: "ACTIVE",
+    conditionStatus: "GOOD",
+    quantityOnHand: 5,
+    quantityMin: null,
+    readinessState: "READY",
+  });
+  assert.equal(level, "ok");
+});
+
+// ---------------------------------------------------------------------------
+// deriveAvailabilitySignal
+// ---------------------------------------------------------------------------
+
+test("ACTIVE with no checkout/assignment → AVAILABLE", () => {
+  const signal: GearAvailabilitySignal = deriveAvailabilitySignal({
+    lifecycleStatus: "ACTIVE",
+    hasOpenCheckout: false,
+    hasActiveAssignment: false,
+  });
+  assert.equal(signal, "AVAILABLE");
+});
+
+test("ACTIVE with open checkout → CHECKED_OUT", () => {
+  const signal: GearAvailabilitySignal = deriveAvailabilitySignal({
+    lifecycleStatus: "ACTIVE",
+    hasOpenCheckout: true,
+    hasActiveAssignment: false,
+  });
+  assert.equal(signal, "CHECKED_OUT");
+});
+
+test("ACTIVE with active assignment → ASSIGNED", () => {
+  const signal: GearAvailabilitySignal = deriveAvailabilitySignal({
+    lifecycleStatus: "ACTIVE",
+    hasOpenCheckout: false,
+    hasActiveAssignment: true,
+  });
+  assert.equal(signal, "ASSIGNED");
+});
+
+test("MAINTENANCE lifecycle → MAINTENANCE signal regardless of checkout/assignment", () => {
+  const signal: GearAvailabilitySignal = deriveAvailabilitySignal({
+    lifecycleStatus: "MAINTENANCE",
+    hasOpenCheckout: true,
+    hasActiveAssignment: true,
+  });
+  assert.equal(signal, "MAINTENANCE");
+});
+
+test("QUARANTINED lifecycle → MAINTENANCE signal", () => {
+  assert.equal(
+    deriveAvailabilitySignal({ lifecycleStatus: "QUARANTINED", hasOpenCheckout: false, hasActiveAssignment: false }),
+    "MAINTENANCE",
+  );
+});
+
+test("RETIRED lifecycle → MAINTENANCE signal", () => {
+  assert.equal(
+    deriveAvailabilitySignal({ lifecycleStatus: "RETIRED", hasOpenCheckout: false, hasActiveAssignment: false }),
+    "MAINTENANCE",
+  );
+});
+
+test("RESERVED lifecycle with no explicit assignment → ASSIGNED signal", () => {
+  assert.equal(
+    deriveAvailabilitySignal({ lifecycleStatus: "RESERVED", hasOpenCheckout: false, hasActiveAssignment: false }),
+    "ASSIGNED",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// buildDashboardConcernSummary
+// ---------------------------------------------------------------------------
+
+test("no concerns produces success tone with ready label", () => {
+  const summary = buildDashboardConcernSummary({
+    maintenanceItems: 0,
+    conditionConcernItems: 0,
+    lowAvailabilityConsumables: 0,
+    readinessConcerns: 0,
+  });
+  assert.equal(summary.overallTone, "success");
+  assert.ok(typeof summary.overallLabel === "string" && summary.overallLabel.length > 0);
+});
+
+test("any maintenance items produce warning tone", () => {
+  const summary = buildDashboardConcernSummary({
+    maintenanceItems: 1,
+    conditionConcernItems: 0,
+    lowAvailabilityConsumables: 0,
+    readinessConcerns: 0,
+  });
+  assert.ok(summary.overallTone === "warning" || summary.overallTone === "danger");
+});
+
+test("multiple concern types accumulate into warning count", () => {
+  const summary = buildDashboardConcernSummary({
+    maintenanceItems: 2,
+    conditionConcernItems: 3,
+    lowAvailabilityConsumables: 1,
+    readinessConcerns: 4,
+  });
+  assert.equal(summary.warningCount, 2 + 3 + 1);
+  assert.equal(summary.readinessConcernCount, 4);
+  assert.ok(summary.overallTone !== "success");
+});
+
+// ---------------------------------------------------------------------------
+// toneToChipClass / toneToBoxClass
+// ---------------------------------------------------------------------------
+
+test("toneToChipClass returns different strings for different tones", () => {
+  const tones: LifecycleTone[] = ["success", "warning", "danger", "info", "neutral"];
+  const classes = tones.map(toneToChipClass);
+  const unique = new Set(classes);
+  assert.equal(unique.size, tones.length);
+});
+
+test("toneToBoxClass returns different strings for different tones", () => {
+  const tones: LifecycleTone[] = ["success", "warning", "danger", "info", "neutral"];
+  const classes = tones.map(toneToBoxClass);
+  const unique = new Set(classes);
+  assert.equal(unique.size, tones.length);
+});
+
+test("toneToChipClass and toneToBoxClass return non-empty strings", () => {
+  assert.ok(toneToChipClass("success").length > 0);
+  assert.ok(toneToBoxClass("danger").length > 0);
+});
