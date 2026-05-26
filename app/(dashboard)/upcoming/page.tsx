@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { EntryStatus, EntryType } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { db } from "@/lib/db";
+import { queryUpcomingEntries } from "@/lib/operational-feed";
+import { formatDueDate, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +15,8 @@ export default async function UpcomingPage() {
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Upcoming" description="Look ahead at scheduled tasks." />
-        <ErrorMessage message={scope.errorMessage ?? "Unable to load upcoming tasks right now."} />
+        <PageHeader title="Upcoming" description="Look ahead at scheduled operational items." />
+        <ErrorMessage message={scope.errorMessage ?? "Unable to load upcoming items right now."} />
       </section>
     );
   }
@@ -24,40 +24,28 @@ export default async function UpcomingPage() {
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Upcoming" description="Look ahead at scheduled tasks." />
+        <PageHeader title="Upcoming" description="Look ahead at scheduled operational items." />
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
   }
 
   const now = new Date();
-  const tomorrowStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-
-  const entries = await db.entry.findMany({
-    where: {
-      organizationId: scope.organizationId,
-      type: EntryType.TASK,
-      deletedAt: null,
-      status: { in: [EntryStatus.OPEN, EntryStatus.IN_PROGRESS] },
-      dueDate: { gte: tomorrowStart },
-    },
-    orderBy: [{ dueDate: "asc" }, { priority: "desc" }],
-    select: { id: true, title: true, dueDate: true, dueTime: true, priority: true, status: true },
-    take: 200,
-  });
+  const entries = await queryUpcomingEntries({ organizationId: scope.organizationId, actorPersonId: scope.auth.personId, now });
 
   return (
     <section className="space-y-4">
-      <PageHeader title="Upcoming" description="Future task commitments across your workspace." />
+      <PageHeader title="Upcoming" description="Future operational items due in the next 14 days." />
 
       {entries.length === 0 ? (
-        <EmptyState message="No upcoming tasks were found." actionHref="/tasks/new?returnTo=%2Fupcoming" actionLabel="Create task" />
+        <EmptyState message="No upcoming items in the next 14 days." actionHref="/tasks/new?returnTo=%2Fupcoming" actionLabel="Create task" />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b bg-zinc-50 dark:bg-zinc-800/60">
               <tr>
-                <th className="px-4 py-3 font-medium">Task</th>
+                <th className="px-4 py-3 font-medium">Title</th>
+                <th className="px-4 py-3 font-medium">Type</th>
                 <th className="px-4 py-3 font-medium">Due</th>
                 <th className="px-4 py-3 font-medium">Priority</th>
                 <th className="px-4 py-3 font-medium">Status</th>
@@ -71,11 +59,12 @@ export default async function UpcomingPage() {
                       {entry.title}
                     </Link>
                   </td>
+                  <td className="px-4 py-3 text-zinc-500">{labelForEntryType(entry.type)}</td>
                   <td className="px-4 py-3">
-                    {entry.dueDate?.toISOString().slice(0, 10) ?? "No due date"} {entry.dueTime ?? ""}
+                    {formatDueDate(entry.dueDate, entry.dueTime) ?? "No due date"}
                   </td>
-                  <td className="px-4 py-3">{entry.priority}</td>
-                  <td className="px-4 py-3">{entry.status}</td>
+                  <td className="px-4 py-3">{labelForEntryPriority(entry.priority)}</td>
+                  <td className="px-4 py-3">{labelForEntryStatus(entry.status)}</td>
                 </tr>
               ))}
             </tbody>
