@@ -203,3 +203,16 @@ test("summary counts distinguish pending, failed, review, and completed states",
   assert.equal(summary.reviewCount, 1);
   assert.equal(summary.completedCount, 1);
 });
+
+import { getGearOfflineCapabilityLabel } from "../../lib/gear-offline";
+
+// ---------------------------------------------------------------------------
+// getGearOfflineCapabilityLabel
+// ---------------------------------------------------------------------------
+
+test("getGearOfflineCapabilityLabel returns readable labels for all capabilities", () => {
+  assert.equal(getGearOfflineCapabilityLabel("OFFLINE_SAFE"), "Offline-safe");
+  assert.equal(getGearOfflineCapabilityLabel("OFFLINE_DRAFTABLE"), "Offline-draftable");
+  assert.equal(getGearOfflineCapabilityLabel("OFFLINE_LIMITED"), "Offline-limited");
+  assert.equal(getGearOfflineCapabilityLabel("ONLINE_REQUIRED"), "Online-required");
+});

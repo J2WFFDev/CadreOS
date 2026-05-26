@@ -320,3 +320,70 @@ test("exceptions include overdue, maintenance, low consumable, and event gap/unr
   assert.ok(exceptions.some((exception) => exception.kind === "EVENT_GEAR_GAP"));
   assert.ok(exceptions.some((exception) => exception.kind === "EVENT_GEAR_UNRETURNED"));
 });
+
+// ---------------------------------------------------------------------------
+// summarizeOperationalRisk
+// ---------------------------------------------------------------------------
+
+import { summarizeOperationalRisk } from "../../lib/gear-ops-dashboard";
+
+test("summarizeOperationalRisk returns five risk categories in order", () => {
+  const risks = summarizeOperationalRisk({
+    overdueCount: 2,
+    maintenanceConcernCount: 1,
+    lowConsumableCount: 0,
+    eventGapCount: 3,
+    eventUnreturnedCount: 1,
+  });
+
+  assert.equal(risks.length, 5);
+  assert.equal(risks[0].key, "overdue");
+  assert.equal(risks[1].key, "maintenance");
+  assert.equal(risks[2].key, "consumable");
+  assert.equal(risks[3].key, "event-gap");
+  assert.equal(risks[4].key, "event-unreturned");
+});
+
+test("summarizeOperationalRisk marks non-zero counts as high or medium severity", () => {
+  const risks = summarizeOperationalRisk({
+    overdueCount: 1,
+    maintenanceConcernCount: 2,
+    lowConsumableCount: 1,
+    eventGapCount: 0,
+    eventUnreturnedCount: 0,
+  });
+
+  const overdue = risks.find((r) => r.key === "overdue");
+  const maintenance = risks.find((r) => r.key === "maintenance");
+  const consumable = risks.find((r) => r.key === "consumable");
+  const eventGap = risks.find((r) => r.key === "event-gap");
+
+  assert.equal(overdue?.severity, "high");
+  assert.equal(maintenance?.severity, "high");
+  assert.equal(consumable?.severity, "medium");
+  assert.equal(eventGap?.severity, "low");
+});
+
+test("summarizeOperationalRisk marks zero-count categories as low severity", () => {
+  const risks = summarizeOperationalRisk({
+    overdueCount: 0,
+    maintenanceConcernCount: 0,
+    lowConsumableCount: 0,
+    eventGapCount: 0,
+    eventUnreturnedCount: 0,
+  });
+
+  risks.forEach((risk) => assert.equal(risk.severity, "low", `${risk.key} should be low severity`));
+});
+
+test("summarizeOperationalRisk each entry includes a non-empty href", () => {
+  const risks = summarizeOperationalRisk({
+    overdueCount: 0,
+    maintenanceConcernCount: 0,
+    lowConsumableCount: 0,
+    eventGapCount: 0,
+    eventUnreturnedCount: 0,
+  });
+
+  risks.forEach((risk) => assert.ok(risk.href.length > 0, `${risk.key} should have a non-empty href`));
+});
