@@ -11,15 +11,20 @@ import Link from "next/link";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
+import {
+  GearAvailabilityChip,
+  GearConditionBadge,
+  GearInventoryTypeBadge,
+  GearLifecycleBadge,
+} from "@/components/gear-ops/status-badge";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
 import {
   formatGearOpsDateTime,
   formatGearOpsEnum,
-  getGearConditionBadgeClass,
-  getGearLifecycleBadgeClass,
 } from "@/lib/gear-ops";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
+import { deriveAvailabilitySignal } from "@/lib/gear-ops-ui";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -231,52 +236,87 @@ export default async function GearOpsItemsPage({
 
   return (
     <section className="space-y-4">
-      <PageHeader title="GearOps items" description="Read-only inventory item catalog with assignment, custody, and maintenance context." />
+      <PageHeader title="GearOps items" description="Inventory item catalog with assignment, custody, and maintenance context." />
       <GearOpsSubnav current="items" />
 
-      <div className="flex justify-end">
-        <Link
-          href="/gear-ops/items/new"
-          className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black"
-        >
-          New item
-        </Link>
-        <Link href="/gear-ops/scan?scanContext=INVENTORY_LOOKUP" className="rounded-md border px-3 py-1.5 text-sm">
-          Scan lookup
-        </Link>
+      {/* Top action row */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={buildHref("/gear-ops/items", { lifecycleStatus: [GearItemLifecycleStatus.ACTIVE] })}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              lifecycleStatusFilter.includes(GearItemLifecycleStatus.ACTIVE)
+                ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
+                : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+            }`}
+          >
+            Active
+          </Link>
+          <Link
+            href={buildHref("/gear-ops/items", { lifecycleStatus: [GearItemLifecycleStatus.MAINTENANCE] })}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              lifecycleStatusFilter.includes(GearItemLifecycleStatus.MAINTENANCE)
+                ? "bg-amber-600 text-white"
+                : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+            }`}
+          >
+            Maintenance
+          </Link>
+          <Link
+            href={buildHref("/gear-ops/items", { inventoryType: [GearInventoryType.CONSUMABLE] })}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              inventoryTypeFilter.includes(GearInventoryType.CONSUMABLE)
+                ? "bg-sky-600 text-white"
+                : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+            }`}
+          >
+            Consumables
+          </Link>
+          {hasFilters ? (
+            <Link href="/gear-ops/items" className="rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-500 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400">
+              ✕ Clear
+            </Link>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2">
+          <Link href="/gear-ops/scan?scanContext=INVENTORY_LOOKUP" className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
+            Scan lookup
+          </Link>
+          <Link
+            href="/gear-ops/items/new"
+            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            New item
+          </Link>
+        </div>
       </div>
 
+      {/* Search */}
       <div className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
         <form action="/gear-ops/items" method="get" className="flex flex-col gap-2 sm:flex-row">
+          {inventoryTypeFilter.map((v) => (
+            <input key={v} type="hidden" name="inventoryType" value={v} />
+          ))}
+          {lifecycleStatusFilter.map((v) => (
+            <input key={v} type="hidden" name="lifecycleStatus" value={v} />
+          ))}
+          {conditionStatusFilter.map((v) => (
+            <input key={v} type="hidden" name="conditionStatus" value={v} />
+          ))}
           <input
             name="q"
             defaultValue={queryText}
             placeholder="Search by name, barcode/QR, serial, or SKU"
-            className="w-full rounded-md border px-3 py-2 text-sm"
+            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
           />
           <button
             type="submit"
-            className="rounded-md bg-black px-3 py-2 text-sm text-white dark:bg-white dark:text-black"
+            className="rounded-md bg-zinc-900 px-4 py-2 text-sm text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             Search
           </button>
         </form>
       </div>
-
-      {hasFilters ? (
-        <div className="rounded-lg border bg-white p-3 text-sm dark:bg-zinc-900">
-          <p className="text-zinc-600 dark:text-zinc-400">
-            Filters active:
-            {inventoryTypeFilter.map((value) => ` ${formatGearOpsEnum(value)}`).join(",")}
-            {lifecycleStatusFilter.map((value) => ` ${formatGearOpsEnum(value)}`).join(",")}
-            {conditionStatusFilter.map((value) => ` ${formatGearOpsEnum(value)}`).join(",")}
-            {" · "}
-            <Link href="/gear-ops/items" className="underline">
-              Clear filters
-            </Link>
-          </p>
-        </div>
-      ) : null}
 
       {items.length === 0 ? (
         <EmptyState
@@ -291,145 +331,126 @@ export default async function GearOpsItemsPage({
             const activeCheckout = item.checkouts[0] ?? null;
             const latestMaintenance = item.maintenanceLogs[0] ?? null;
             const latestTransaction = item.consumableTransactions[0] ?? null;
+            const availabilitySignal = deriveAvailabilitySignal({
+              lifecycleStatus: item.lifecycleStatus,
+              hasOpenCheckout: activeCheckout !== null,
+              hasActiveAssignment: activeAssignment !== null,
+            });
 
             return (
               <article key={item.id} className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+                {/* Item header: name + availability + type badges */}
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-1">
                     <h3 className="text-base font-medium">
-                      <Link href={`/gear-ops/items/${item.id}`} className="underline">
+                      <Link href={`/gear-ops/items/${item.id}`} className="underline hover:text-zinc-600 dark:hover:text-zinc-300">
                         {item.name}
                       </Link>
                     </h3>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                      Category:{" "}
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
                       <Link href={`/gear-ops/categories/${item.category.id}`} className="underline">
                         {item.category.name}
                       </Link>
+                      {item.program ? (
+                        <>
+                          {" · "}
+                          <Link href={`/programs/${item.program.id}`} className="underline">
+                            {item.program.name}
+                          </Link>
+                        </>
+                      ) : null}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-                      {formatGearOpsEnum(item.inventoryType)}
-                    </span>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getGearLifecycleBadgeClass(item.lifecycleStatus)}`}>
-                      {formatGearOpsEnum(item.lifecycleStatus)}
-                    </span>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getGearConditionBadgeClass(item.conditionStatus)}`}>
-                      Condition: {item.conditionStatus ? formatGearOpsEnum(item.conditionStatus) : "—"}
-                    </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <GearAvailabilityChip signal={availabilitySignal} />
+                    <GearLifecycleBadge status={item.lifecycleStatus} />
+                    <GearInventoryTypeBadge type={item.inventoryType} />
+                    {item.conditionStatus ? <GearConditionBadge status={item.conditionStatus} /> : null}
                   </div>
                 </div>
 
-                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                  <div>
-                    <dt className="font-medium text-zinc-900 dark:text-zinc-50">Program</dt>
-                    <dd className="text-zinc-600 dark:text-zinc-400">
-                      {item.program ? <Link href={`/programs/${item.program.id}`} className="underline">{item.program.name}</Link> : "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="font-medium text-zinc-900 dark:text-zinc-50">Current assignment</dt>
-                    <dd className="text-zinc-600 dark:text-zinc-400">
-                      {activeAssignment ? (
-                        <>
-                          {formatGearOpsEnum(activeAssignment.status)} ·{" "}
-                          {activeAssignment.assignedTo ? (
-                            <Link href={`/people/${activeAssignment.assignedTo.id}`} className="underline">
-                              {activeAssignment.assignedTo.firstName} {activeAssignment.assignedTo.lastName}
+                {/* Custody & stock row */}
+                <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                  {activeCheckout ? (
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Checked out by</dt>
+                      <dd className="mt-0.5 text-zinc-800 dark:text-zinc-200">
+                        <Link href={`/people/${activeCheckout.checkedOutBy.id}`} className="underline">
+                          {activeCheckout.checkedOutBy.firstName} {activeCheckout.checkedOutBy.lastName}
+                        </Link>
+                        {activeCheckout.event ? (
+                          <span className="text-zinc-500">
+                            {" · "}
+                            <Link href={`/events/${activeCheckout.event.id}`} className="underline">
+                              {activeCheckout.event.title}
                             </Link>
-                          ) : activeAssignment.assignedTeam ? (
-                            <Link href={`/teams/${activeAssignment.assignedTeam.id}`} className="underline">
-                              {activeAssignment.assignedTeam.name}
-                            </Link>
-                          ) : activeAssignment.assignedEvent ? (
-                            <Link href={`/events/${activeAssignment.assignedEvent.id}`} className="underline">
-                              {activeAssignment.assignedEvent.title}
-                            </Link>
-                          ) : (
-                            "Context pending"
-                          )}
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="font-medium text-zinc-900 dark:text-zinc-50">Current checkout</dt>
-                    <dd className="text-zinc-600 dark:text-zinc-400">
-                      {activeCheckout ? (
-                        <>
-                          {formatGearOpsEnum(activeCheckout.status)} ·{" "}
-                          <Link href={`/people/${activeCheckout.checkedOutBy.id}`} className="underline">
-                            {activeCheckout.checkedOutBy.firstName} {activeCheckout.checkedOutBy.lastName}
+                          </span>
+                        ) : null}
+                      </dd>
+                    </div>
+                  ) : activeAssignment ? (
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Assigned to</dt>
+                      <dd className="mt-0.5 text-zinc-800 dark:text-zinc-200">
+                        {activeAssignment.assignedTo ? (
+                          <Link href={`/people/${activeAssignment.assignedTo.id}`} className="underline">
+                            {activeAssignment.assignedTo.firstName} {activeAssignment.assignedTo.lastName}
                           </Link>
-                          {activeCheckout.event ? (
-                            <>
-                              {" "}
-                              ·{" "}
-                              <Link href={`/events/${activeCheckout.event.id}`} className="underline">
-                                {activeCheckout.event.title}
-                              </Link>
-                            </>
-                          ) : null}
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </dd>
-                  </div>
+                        ) : activeAssignment.assignedTeam ? (
+                          <Link href={`/teams/${activeAssignment.assignedTeam.id}`} className="underline">
+                            {activeAssignment.assignedTeam.name}
+                          </Link>
+                        ) : activeAssignment.assignedEvent ? (
+                          <Link href={`/events/${activeAssignment.assignedEvent.id}`} className="underline">
+                            {activeAssignment.assignedEvent.title}
+                          </Link>
+                        ) : (
+                          <span className="text-zinc-500">Context pending</span>
+                        )}
+                      </dd>
+                    </div>
+                  ) : null}
                   <div>
-                    <dt className="font-medium text-zinc-900 dark:text-zinc-50">Stock</dt>
-                    <dd className="text-zinc-600 dark:text-zinc-400">
-                      On hand: {item.quantityOnHand}
-                      {item.inventoryType === GearInventoryType.CONSUMABLE
-                        ? ` · Min: ${item.quantityMin ?? "—"}`
-                        : ""}
+                    <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Stock</dt>
+                    <dd className="mt-0.5 text-zinc-800 dark:text-zinc-200">
+                      {item.quantityOnHand} on hand
+                      {item.inventoryType === GearInventoryType.CONSUMABLE && item.quantityMin !== null ? (
+                        <span className={item.quantityOnHand <= item.quantityMin ? " text-amber-600 font-medium" : " text-zinc-500"}>
+                          {" · "}min {item.quantityMin}
+                        </span>
+                      ) : null}
                     </dd>
                   </div>
+                  {latestMaintenance ? (
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Last maintenance</dt>
+                      <dd className="mt-0.5 text-zinc-500 dark:text-zinc-400 text-xs">
+                        {formatGearOpsEnum(latestMaintenance.maintenanceType)} · {formatGearOpsDateTime(latestMaintenance.performedAt)}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {latestTransaction ? (
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Last transaction</dt>
+                      <dd className="mt-0.5 text-zinc-500 dark:text-zinc-400 text-xs">
+                        {formatGearOpsEnum(latestTransaction.transactionType)}{" "}
+                        ({latestTransaction.quantityDelta > 0 ? "+" : ""}{latestTransaction.quantityDelta}) · {formatGearOpsDateTime(latestTransaction.recordedAt)}
+                      </dd>
+                    </div>
+                  ) : null}
                 </dl>
 
-                <div className="mt-3 grid gap-3 text-xs text-zinc-500 dark:text-zinc-400 sm:grid-cols-2">
-                  <p>
-                    Recent maintenance:{" "}
-                    {latestMaintenance
-                      ? `${formatGearOpsEnum(latestMaintenance.maintenanceType)} · ${formatGearOpsDateTime(latestMaintenance.performedAt)}`
-                      : "—"}
-                  </p>
-                  <p>
-                    Recent consumable transaction:{" "}
-                    {latestTransaction
-                      ? `${formatGearOpsEnum(latestTransaction.transactionType)} (${latestTransaction.quantityDelta > 0 ? "+" : ""}${latestTransaction.quantityDelta}) · ${formatGearOpsDateTime(latestTransaction.recordedAt)}`
-                      : "—"}
-                  </p>
+                {/* Item detail link */}
+                <div className="mt-3 flex justify-end">
+                  <Link href={`/gear-ops/items/${item.id}`} className="text-xs text-zinc-500 underline hover:text-zinc-700 dark:hover:text-zinc-300">
+                    View details →
+                  </Link>
                 </div>
               </article>
             );
           })}
         </div>
       )}
-
-      <div className="flex flex-wrap gap-2">
-        <Link
-          href={buildHref("/gear-ops/items", { lifecycleStatus: [GearItemLifecycleStatus.ACTIVE] })}
-          className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-        >
-          Active
-        </Link>
-        <Link
-          href={buildHref("/gear-ops/items", { lifecycleStatus: [GearItemLifecycleStatus.MAINTENANCE] })}
-          className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-        >
-          Maintenance
-        </Link>
-        <Link
-          href={buildHref("/gear-ops/items", { inventoryType: [GearInventoryType.CONSUMABLE] })}
-          className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-        >
-          Consumables
-        </Link>
-      </div>
     </section>
   );
 }
