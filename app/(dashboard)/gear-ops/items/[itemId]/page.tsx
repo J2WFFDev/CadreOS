@@ -6,6 +6,8 @@ import {
   GearInventoryType,
   GearItemLifecycleStatus,
   type GearMaintenanceType,
+  type InventoryMovementType,
+  type InventoryReadinessState,
 } from "@prisma/client";
 import Link from "next/link";
 
@@ -19,7 +21,13 @@ import {
   formatGearOpsEnum,
   getGearConditionBadgeClass,
   getGearLifecycleBadgeClass,
+  getReadinessBadgeClass,
 } from "@/lib/gear-ops";
+import {
+  labelForMovementType,
+  labelForOwnershipType,
+  labelForReadinessState,
+} from "@/lib/inventory-ops";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -78,11 +86,15 @@ export default async function GearOpsItemDetailsPage({
         inventoryType: GearInventoryType;
         lifecycleStatus: GearItemLifecycleStatus;
         conditionStatus: GearConditionStatus | null;
+        readinessState: InventoryReadinessState | null;
+        ownershipType: import("@prisma/client").InventoryOwnershipType | null;
+        barcodeValue: string | null;
         sku: string | null;
         serialNumber: string | null;
         quantityOnHand: number;
         quantityMin: number | null;
         notes: string | null;
+        location: { id: string; name: string; locationCode: string | null } | null;
         category: { id: string; name: string; inventoryType: GearInventoryType };
         program: { id: string; name: string } | null;
         assignments: Array<{
@@ -146,6 +158,17 @@ export default async function GearOpsItemDetailsPage({
               }
             | null;
         }>;
+        inventoryMovements: Array<{
+          id: string;
+          movementType: InventoryMovementType;
+          fromLocation: { id: string; name: string; locationCode: string | null } | null;
+          toLocation: { id: string; name: string; locationCode: string | null } | null;
+          actor: { id: string; firstName: string; lastName: string };
+          custodyPerson: { id: string; firstName: string; lastName: string } | null;
+          relatedRecordType: string | null;
+          notes: string | null;
+          occurredAt: Date;
+        }>;
       }
     | null = null;
   let queryFailed = false;
@@ -163,11 +186,15 @@ export default async function GearOpsItemDetailsPage({
         inventoryType: true,
         lifecycleStatus: true,
         conditionStatus: true,
+        readinessState: true,
+        ownershipType: true,
+        barcodeValue: true,
         sku: true,
         serialNumber: true,
         quantityOnHand: true,
         quantityMin: true,
         notes: true,
+        location: { select: { id: true, name: true, locationCode: true } },
         category: { select: { id: true, name: true, inventoryType: true } },
         program: { select: { id: true, name: true } },
         assignments: {
@@ -232,6 +259,21 @@ export default async function GearOpsItemDetailsPage({
           },
           orderBy: [{ recordedAt: "desc" }, { createdAt: "desc" }],
           take: 12,
+        },
+        inventoryMovements: {
+          select: {
+            id: true,
+            movementType: true,
+            fromLocation: { select: { id: true, name: true, locationCode: true } },
+            toLocation: { select: { id: true, name: true, locationCode: true } },
+            actor: { select: { id: true, firstName: true, lastName: true } },
+            custodyPerson: { select: { id: true, firstName: true, lastName: true } },
+            relatedRecordType: true,
+            notes: true,
+            occurredAt: true,
+          },
+          orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
+          take: 20,
         },
       },
     });
@@ -587,6 +629,39 @@ export default async function GearOpsItemDetailsPage({
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Notes</dt>
           <dd className="text-zinc-600 dark:text-zinc-400">{item.notes ?? "—"}</dd>
         </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Location</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">
+            {item.location ? (
+              <Link href={`/gear-ops/locations/${item.location.id}`} className="underline">
+                {item.location.name}
+                {item.location.locationCode ? ` (${item.location.locationCode})` : ""}
+              </Link>
+            ) : "—"}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Readiness</dt>
+          <dd>
+            {item.readinessState ? (
+              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getReadinessBadgeClass(item.readinessState)}`}>
+                {labelForReadinessState(item.readinessState)}
+              </span>
+            ) : (
+              <span className="text-zinc-600 dark:text-zinc-400">—</span>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Ownership</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">
+            {item.ownershipType ? labelForOwnershipType(item.ownershipType) : "—"}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Barcode / QR</dt>
+          <dd className="font-mono text-zinc-600 dark:text-zinc-400">{item.barcodeValue ?? "—"}</dd>
+        </div>
       </dl>
 
       <dl className="grid gap-3 rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900 sm:grid-cols-2 lg:grid-cols-4">
@@ -772,6 +847,66 @@ export default async function GearOpsItemDetailsPage({
                 </div>
               )}
             </div>
+          </div>
+        )}
+      </div>
+      <div className="space-y-3">
+        <h3 className="text-lg font-medium">Inventory movement history</h3>
+        {item.inventoryMovements.length === 0 ? (
+          <EmptyState message="No inventory movement history is currently recorded for this item." />
+        ) : (
+          <div className="space-y-2">
+            {item.inventoryMovements.map((movement) => (
+              <article key={movement.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="font-medium">{labelForMovementType(movement.movementType)}</p>
+                  <time className="text-xs text-zinc-500">{formatGearOpsDateTime(movement.occurredAt)}</time>
+                </div>
+                <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+                  By{" "}
+                  <Link href={`/people/${movement.actor.id}`} className="underline">
+                    {movement.actor.firstName} {movement.actor.lastName}
+                  </Link>
+                  {movement.custodyPerson ? (
+                    <>
+                      {" · "}Custody:{" "}
+                      <Link href={`/people/${movement.custodyPerson.id}`} className="underline">
+                        {movement.custodyPerson.firstName} {movement.custodyPerson.lastName}
+                      </Link>
+                    </>
+                  ) : null}
+                </p>
+                {(movement.fromLocation || movement.toLocation) ? (
+                  <p className="mt-1 text-zinc-500 dark:text-zinc-400 text-xs">
+                    {movement.fromLocation ? (
+                      <>
+                        From:{" "}
+                        <Link href={`/gear-ops/locations/${movement.fromLocation.id}`} className="underline">
+                          {movement.fromLocation.name}
+                          {movement.fromLocation.locationCode ? ` (${movement.fromLocation.locationCode})` : ""}
+                        </Link>
+                      </>
+                    ) : null}
+                    {movement.fromLocation && movement.toLocation ? " → " : null}
+                    {movement.toLocation ? (
+                      <>
+                        To:{" "}
+                        <Link href={`/gear-ops/locations/${movement.toLocation.id}`} className="underline">
+                          {movement.toLocation.name}
+                          {movement.toLocation.locationCode ? ` (${movement.toLocation.locationCode})` : ""}
+                        </Link>
+                      </>
+                    ) : null}
+                  </p>
+                ) : null}
+                {movement.relatedRecordType ? (
+                  <p className="mt-1 text-zinc-500 text-xs">Context: {movement.relatedRecordType}</p>
+                ) : null}
+                {movement.notes ? (
+                  <p className="mt-1 text-zinc-600 dark:text-zinc-400">{movement.notes}</p>
+                ) : null}
+              </article>
+            ))}
           </div>
         )}
       </div>

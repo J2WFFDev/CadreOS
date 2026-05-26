@@ -61,6 +61,12 @@ async function nodeExists(organizationId: string, node: OperationalGraphNodeRef)
       return Boolean(
         await db.athleteGuardianRelationship.findFirst({ where: { id: node.nodeId, organizationId }, select: { id: true } }),
       );
+    case "INVENTORY_LOCATION":
+      return Boolean(await db.inventoryLocation.findFirst({ where: { id: node.nodeId, organizationId }, select: { id: true } }));
+    case "INVENTORY_MOVEMENT":
+      return Boolean(await db.inventoryMovement.findFirst({ where: { id: node.nodeId, organizationId }, select: { id: true } }));
+    case "INVENTORY_KIT":
+      return Boolean(await db.inventoryKit.findFirst({ where: { id: node.nodeId, organizationId }, select: { id: true } }));
     default:
       return false;
   }
@@ -349,6 +355,36 @@ async function resolveOperationalNodeView(organizationId: string, node: Operatio
       return { nodeType: node.nodeType, nodeId: node.nodeId, title: `Roster membership ${node.nodeId}`, subtitle: null, href: null };
     case "ATHLETE_GUARDIAN_RELATIONSHIP":
       return { nodeType: node.nodeType, nodeId: node.nodeId, title: `Guardian relationship ${node.nodeId}`, subtitle: null, href: null };
+    case "INVENTORY_LOCATION": {
+      const location = await db.inventoryLocation.findFirst({ where: { id: node.nodeId, organizationId }, select: { id: true, name: true, locationCode: true } });
+      return {
+        nodeType: node.nodeType,
+        nodeId: node.nodeId,
+        title: location?.name ?? `Location ${node.nodeId}`,
+        subtitle: location?.locationCode ?? "Inventory location",
+        href: location ? `/gear-ops/locations/${location.id}` : null,
+      };
+    }
+    case "INVENTORY_MOVEMENT": {
+      const movement = await db.inventoryMovement.findFirst({ where: { id: node.nodeId, organizationId }, select: { id: true, movementType: true, occurredAt: true } });
+      return {
+        nodeType: node.nodeType,
+        nodeId: node.nodeId,
+        title: movement ? `Movement: ${movement.movementType.replaceAll("_", " ")}` : `Movement ${node.nodeId}`,
+        subtitle: movement ? movement.occurredAt.toISOString().slice(0, 10) : null,
+        href: null,
+      };
+    }
+    case "INVENTORY_KIT": {
+      const kit = await db.inventoryKit.findFirst({ where: { id: node.nodeId, organizationId }, select: { id: true, name: true } });
+      return {
+        nodeType: node.nodeType,
+        nodeId: node.nodeId,
+        title: kit?.name ?? `Kit ${node.nodeId}`,
+        subtitle: "Inventory kit",
+        href: kit ? `/gear-ops/kits/${kit.id}` : null,
+      };
+    }
     default:
       return { nodeType: node.nodeType, nodeId: node.nodeId, title: node.nodeId, subtitle: null, href: null };
   }

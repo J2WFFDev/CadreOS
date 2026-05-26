@@ -114,6 +114,9 @@ enum EntryObjectLinkTargetType {
   GEAR_MAINTENANCE_LOG
   FOLLOW_UP_TASK
   OBSERVATION_NOTE
+  INVENTORY_LOCATION
+  INVENTORY_MOVEMENT
+  INVENTORY_KIT
 }
 
 enum OperationalGraphNodeType {
@@ -136,6 +139,9 @@ enum OperationalGraphNodeType {
   OBSERVATION_NOTE
   ROSTER_MEMBERSHIP
   ATHLETE_GUARDIAN_RELATIONSHIP
+  INVENTORY_LOCATION
+  INVENTORY_MOVEMENT
+  INVENTORY_KIT
 }
 
 enum OperationalRelationshipType {
@@ -274,8 +280,49 @@ enum GearItemLifecycleStatus {
   ASSIGNED
   CHECKED_OUT
   MAINTENANCE
+  QUARANTINED
+  RESERVED
   RETIRED
   LOST
+}
+
+// Arc 20A: Inventory operational enums
+
+enum InventoryOwnershipType {
+  ORGANIZATION_OWNED
+  PERSONALLY_OWNED
+  LOANED_IN
+  LOANED_OUT
+  DONATED
+}
+
+enum InventoryReadinessState {
+  READY
+  NEEDS_INSPECTION
+  MAINTENANCE_REQUIRED
+  NOT_READY
+  DECOMMISSIONED
+}
+
+enum InventoryMovementType {
+  MOVED_TO_LOCATION
+  CHECKED_OUT
+  CHECKED_IN
+  ASSIGNED
+  UNASSIGNED
+  SENT_FOR_MAINTENANCE
+  RETURNED_FROM_MAINTENANCE
+  RESERVED
+  RESERVATION_RELEASED
+  TRANSFERRED
+  LOST
+  FOUND
+  RETIRED
+  RECEIVED
+  LOANED_OUT
+  LOAN_RETURNED
+  QUARANTINED
+  QUARANTINE_RELEASED
 }
 
 enum GearConditionStatus {
@@ -402,6 +449,10 @@ model Organization {
   gearCheckouts               GearCheckout[]
   gearMaintenanceLogs         GearMaintenanceLog[]
   consumableTransactions      ConsumableTransaction[]
+  inventoryLocations          InventoryLocation[]
+  inventoryMovements          InventoryMovement[]
+  inventoryKits               InventoryKit[]
+  inventoryKitItems           InventoryKitItem[]
   entries                     Entry[]
   entryLinks                  EntryLink[]
   entryActivities             EntryActivity[]
@@ -553,6 +604,9 @@ model Person {
   notificationReadStates     NotificationReadState[]
   notificationPreferences    NotificationPreference[]
   notificationDigests        NotificationDigest[]
+  actorInventoryMovements    InventoryMovement[]          @relation("InventoryMovementActor")
+  custodyInventoryMovements  InventoryMovement[]          @relation("InventoryMovementCustody")
+  ownedInventoryKits         InventoryKit[]               @relation("InventoryKitOwner")
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
@@ -1166,7 +1220,7 @@ model GearCategory {
 }
 
 model GearItem {
-  id                  String                 @id @default(cuid())
+  id                  String                   @id @default(cuid())
   organizationId      String
   programId           String?
   gearCategoryId      String
@@ -1174,25 +1228,34 @@ model GearItem {
   inventoryType       GearInventoryType
   sku                 String?
   serialNumber        String?
-  quantityOnHand      Int                    @default(0)
+  quantityOnHand      Int                      @default(0)
   quantityMin         Int?
-  lifecycleStatus     GearItemLifecycleStatus @default(ACTIVE)
+  lifecycleStatus     GearItemLifecycleStatus  @default(ACTIVE)
   conditionStatus     GearConditionStatus?
+  ownershipType       InventoryOwnershipType?
+  readinessState      InventoryReadinessState?
+  locationId          String?
+  barcodeValue        String?
   notes               String?
-  createdAt           DateTime               @default(now())
-  updatedAt           DateTime               @updatedAt
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
 
   organization           Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   program                Program?                @relation(fields: [programId], references: [id], onDelete: SetNull)
   category               GearCategory            @relation(fields: [gearCategoryId], references: [id], onDelete: Restrict)
+  location               InventoryLocation?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
   assignments            GearAssignment[]
   checkouts              GearCheckout[]
   maintenanceLogs        GearMaintenanceLog[]
   consumableTransactions ConsumableTransaction[]
+  inventoryMovements     InventoryMovement[]
+  kitItems               InventoryKitItem[]
 
   @@index([organizationId, gearCategoryId])
   @@index([organizationId, programId])
   @@index([organizationId, inventoryType, lifecycleStatus])
+  @@index([organizationId, locationId])
+  @@index([organizationId, readinessState])
   @@unique([organizationId, serialNumber])
 }
 
@@ -1509,4 +1572,103 @@ model NotificationDigest {
   @@index([organizationId, personId, status, windowStartsAt])
   @@index([organizationId, status, windowEndsAt])
   @@unique([organizationId, personId, deliveryTiming, windowStartsAt, windowEndsAt])
+}
+
+// Arc 20A: Inventory Operations Architecture
+
+// InventoryLocation — physical or logical storage location (vault, cage, shelf, team bag, etc.)
+model InventoryLocation {
+  id               String   @id @default(cuid())
+  organizationId   String
+  name             String
+  description      String?
+  locationCode     String?
+  parentLocationId String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  parentLocation  InventoryLocation?  @relation("LocationHierarchy", fields: [parentLocationId], references: [id], onDelete: SetNull)
+  childLocations  InventoryLocation[] @relation("LocationHierarchy")
+  gearItems       GearItem[]
+  movementsFrom   InventoryMovement[] @relation("MovementFromLocation")
+  movementsTo     InventoryMovement[] @relation("MovementToLocation")
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([organizationId, isActive])
+  @@index([organizationId, parentLocationId])
+}
+
+// InventoryMovement — immutable movement event record providing full item history and custody traceability
+model InventoryMovement {
+  id                String                @id @default(cuid())
+  organizationId    String
+  gearItemId        String
+  movementType      InventoryMovementType
+  fromLocationId    String?
+  toLocationId      String?
+  actorPersonId     String
+  custodyPersonId   String?
+  relatedRecordType String?
+  relatedRecordId   String?
+  notes             String?
+  occurredAt        DateTime              @default(now())
+  createdAt         DateTime              @default(now())
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  gearItem      GearItem           @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  fromLocation  InventoryLocation? @relation("MovementFromLocation", fields: [fromLocationId], references: [id], onDelete: SetNull)
+  toLocation    InventoryLocation? @relation("MovementToLocation", fields: [toLocationId], references: [id], onDelete: SetNull)
+  actor         Person             @relation("InventoryMovementActor", fields: [actorPersonId], references: [id], onDelete: Restrict)
+  custodyPerson Person?            @relation("InventoryMovementCustody", fields: [custodyPersonId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, gearItemId, occurredAt])
+  @@index([organizationId, movementType, occurredAt])
+  @@index([organizationId, actorPersonId, occurredAt])
+  @@index([organizationId, custodyPersonId, occurredAt])
+  @@index([organizationId, fromLocationId, occurredAt])
+  @@index([organizationId, toLocationId, occurredAt])
+}
+
+// InventoryKit — operational kit or loadout grouping multiple gear items for coordinated use
+model InventoryKit {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  ownerPersonId  String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  owner        Person?            @relation("InventoryKitOwner", fields: [ownerPersonId], references: [id], onDelete: SetNull)
+  items        InventoryKitItem[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([organizationId, isActive])
+  @@index([organizationId, ownerPersonId])
+}
+
+// InventoryKitItem — join table linking GearItems to InventoryKits with quantity and metadata
+model InventoryKitItem {
+  id             String   @id @default(cuid())
+  organizationId String
+  kitId          String
+  gearItemId     String
+  quantity       Int      @default(1)
+  notes          String?
+  addedAt        DateTime @default(now())
+  removedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  kit          InventoryKit @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  gearItem     GearItem     @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+
+  @@unique([kitId, gearItemId])
+  @@index([organizationId, kitId])
+  @@index([organizationId, gearItemId])
 }

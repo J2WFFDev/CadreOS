@@ -20,6 +20,9 @@ const NODE_TYPE_LABELS: Record<OperationalGraphNodeType, string> = {
   OBSERVATION_NOTE: "Note",
   ROSTER_MEMBERSHIP: "Roster membership",
   ATHLETE_GUARDIAN_RELATIONSHIP: "Guardian relationship",
+  INVENTORY_LOCATION: "Inventory location",
+  INVENTORY_MOVEMENT: "Inventory movement",
+  INVENTORY_KIT: "Inventory kit",
 };
 
 const RELATIONSHIP_LABELS: Record<OperationalRelationshipType, string> = {
