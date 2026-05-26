@@ -1,0 +1,77 @@
+name: Manual DB Baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_production_baseline:
+        description: "Type BASELINE_PRODUCTION_DB to confirm the one-time production baseline run."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  baseline-database:
+    runs-on: ubuntu-latest
+    env:
+      # Must match Vercel Production DATABASE_URL value.
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      BASELINE_BOUNDARY_MIGRATION: 20260526024000_arc19f_notifications_activity
+      BASELINE_MIGRATIONS: |
+        20260525153000_entry_system
+        20260526004640_arc19a_operational_entry_architecture
+        20260526014000_arc19d_operational_graph
+        20260526020000_arc19e_workflow_orchestration
+        20260526024000_arc19f_notifications_activity
+
+    steps:
+      - name: Confirm one-time baseline intent
+        run: |
+          if [ "${{ inputs.confirm_production_baseline }}" != "BASELINE_PRODUCTION_DB" ]; then
+            echo "Refusing to run without explicit baseline confirmation."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Diagnostic DB identity (safe)
+        run: |
+          node -e "const raw = process.env.DATABASE_URL || ''; let provider = 'unknown'; let host = 'unparseable'; try { const parsed = new URL(raw); provider = (parsed.protocol || '').replace(':', '') || 'unknown'; host = parsed.hostname || 'unparseable'; } catch {} console.log('Database provider:', provider); console.log('Database host:', host);"
+
+      - name: Prisma migration status before baseline (diagnostic)
+        run: npx prisma migrate status || true
+
+      - name: Mark historical migrations as applied
+        run: |
+          echo "Baseline boundary migration: ${BASELINE_BOUNDARY_MIGRATION}"
+          while IFS= read -r migration; do
+            if [ -z "$migration" ]; then
+              continue
+            fi
+
+            echo "Marking historical migration as applied: $migration"
+            npx prisma migrate resolve --applied "$migration"
+          done <<< "$BASELINE_MIGRATIONS"
+
+      - name: Prisma migration status after baseline (diagnostic)
+        run: npx prisma migrate status || true
+
+      - name: Apply pending Prisma migrations
+        run: npx prisma migrate deploy
+
+      - name: Prisma migration status after deploy (diagnostic)
+        run: npx prisma migrate status || true
