@@ -36,7 +36,7 @@ jobs:
       - name: Prisma migration status (diagnostic)
         run: npx prisma migrate status || true
 
-      - name: Apply Prisma migrations
+      - name: Apply pending Prisma migrations (post-baseline)
         run: npx prisma migrate deploy
 
       - name: Run idempotent seed
