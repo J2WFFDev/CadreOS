@@ -317,6 +317,9 @@ export default async function GearOpsDashboardPage() {
       <GearOpsSubnav current="overview" />
 
       <div className="flex flex-wrap justify-end gap-2">
+        <Link href="/gear-ops/reports" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+          Reports
+        </Link>
         <Link href="/gear-ops/labels" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
           Labels
         </Link>
