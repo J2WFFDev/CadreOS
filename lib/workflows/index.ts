@@ -1398,14 +1398,20 @@ type SeasonLike = {
   endDate: Date | null;
 };
 
-export function selectSeededOrCurrentSeason(seasons: Array<SeasonLike>): SeasonLike | null {
-  if (seasons.length === 0) {
+function isSeasonLike(season: SeasonLike | null | undefined): season is SeasonLike {
+  return Boolean(season?.id && season?.name);
+}
+
+export function selectSeededOrCurrentSeason(seasons: Array<SeasonLike | null | undefined>): SeasonLike | null {
+  const safeSeasons = seasons.filter(isSeasonLike);
+
+  if (safeSeasons.length === 0) {
     return null;
   }
 
   const now = new Date();
 
-  const currentSeason = seasons.find((season) => {
+  const currentSeason = safeSeasons.find((season) => {
     if (!season.startDate) {
       return false;
     }
@@ -1425,11 +1431,11 @@ export function selectSeededOrCurrentSeason(seasons: Array<SeasonLike>): SeasonL
     return currentSeason;
   }
 
-  const demoSeason = seasons.find((season) => season.name.toLowerCase().includes("demo"));
+  const demoSeason = safeSeasons.find((season) => season.name.toLowerCase().includes("demo"));
 
   if (demoSeason) {
     return demoSeason;
   }
 
-  return seasons[0] ?? null;
+  return safeSeasons[0] ?? null;
 }

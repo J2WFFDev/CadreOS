@@ -205,6 +205,7 @@ export default async function ProgramDetailsPage({
     }));
 
   const selectedSeason = selectSeededOrCurrentSeason(program.seasons);
+  const hasNoSeasonConfigured = program.seasons.length === 0;
   const selectedSeasonRoster = selectedSeason
     ? await db.rosterMembership.findMany({
         where: {
@@ -861,6 +862,15 @@ export default async function ProgramDetailsPage({
         </div>
       ) : null}
 
+      {hasNoSeasonConfigured ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
+          <p className="text-sm text-amber-900 dark:text-amber-200">No season has been created yet.</p>
+          <Link href={`/programs/${program.id}/seasons/new`} className="mt-2 inline-block text-sm underline">
+            Create the first season
+          </Link>
+        </div>
+      ) : null}
+
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-2 text-lg font-medium">Roster lifecycle readiness</h3>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -1394,7 +1404,7 @@ export default async function ProgramDetailsPage({
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Seasons</h3>
         {program.seasons.length === 0 ? (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">No seasons are configured for this program yet.</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">No season has been created yet.</p>
         ) : (
           <ul className="space-y-2 text-sm">
             {program.seasons.map((season) => (

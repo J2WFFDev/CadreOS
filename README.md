@@ -54,3 +54,24 @@
 - **Manual DB Setup** is the normal future migration path after baseline or rebuild is complete.
 - It uses `npx prisma migrate status` and `npx prisma migrate deploy` for normal forward migration runs.
 - Use it for routine follow-up migrations after the database has a complete valid Prisma migration history with no missing earlier migrations.
+
+## Season setup expectations
+- Seasons are created per program from the app at `Programs → [Program] → New season`.
+- Program and team detail pages now support a no-season state and show: `No season has been created yet.`
+- The existing manual setup and seed flow remains valid:
+  - Safe dev seed: `npm run prisma:seed`
+  - Manual DB workflows: Baseline / Rebuild / Setup
+
+### Manual Neon SQL season insert
+- Table: `"Season"`
+- Required fields:
+  - `"id"` (TEXT primary key, Prisma uses `cuid()`)
+  - `"organizationId"` (TEXT, FK to `"Organization"."id"`)
+  - `"programId"` (TEXT, FK to `"Program"."id"`)
+  - `"name"` (TEXT, unique per program via `"Season_programId_name_key"`)
+  - `"updatedAt"` (TIMESTAMP(3) NOT NULL)
+- Optional fields:
+  - `"startDate"` (TIMESTAMP(3))
+  - `"endDate"` (TIMESTAMP(3))
+- Auto-default field:
+  - `"createdAt"` (TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP)
