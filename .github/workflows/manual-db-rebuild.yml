@@ -137,7 +137,18 @@ jobs:
               throw new Error("Missing Person.lifecycleStatus after rebuild.");
             }
 
-            for (const tableName of ["GearCategory", "GearItem", "GearAssignment", "GearCheckout"]) {
+            for (const tableName of [
+              "GearCategory",
+              "InventoryLocation",
+              "GearItem",
+              "GearAssignment",
+              "GearCheckout",
+              "GearMaintenanceLog",
+              "ConsumableTransaction",
+              "EventGearPlan",
+              "EventGearRequirement",
+              "EventGearAssignment",
+            ]) {
               const tableRows = await prisma.$queryRawUnsafe(`
                 SELECT 1
                 FROM information_schema.tables

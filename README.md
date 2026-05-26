@@ -19,8 +19,9 @@
   6. `20260526024000_arc19f_notifications_activity`
   7. `20260526143000_add_person_lifecycle_status`
   8. `20260526152000_add_gearops_core_tables`
-- `MIGRATE_DATABASE_URL` should be the Neon direct connection string for the target database and must not use the `-pooler` host.
-- Vercel app runtime continues to use the runtime `DATABASE_URL` secret value unchanged.
+  9. `20260526223000_fix_missing_gearops_consumable_tables`
+- `MIGRATE_DATABASE_URL` should be the Neon direct connection string for baseline/rebuild workflows and must not use the `-pooler` host.
+- **Manual DB Setup** uses the runtime `DATABASE_URL` value (same secret used by Vercel app runtime).
 
 ### Manual DB Baseline
 - Use **Manual DB Baseline** only for preserving an existing schema/data set that predates Prisma migration history.
@@ -39,6 +40,7 @@
   4. Confirm `npx prisma migrate deploy` applies:
      - `20260526143000_add_person_lifecycle_status`
      - `20260526152000_add_gearops_core_tables`
+     - `20260526223000_fix_missing_gearops_consumable_tables`
   5. Redeploy the application build to Vercel after the database migration succeeds.
 - Decision guidance for non-empty databases with no Prisma migration history:
   - If no historical core or Arc-19 markers exist, do **not** baseline historical migrations. Migrate forward (and add compatibility migrations only if concrete conflicts occur).
@@ -52,8 +54,16 @@
 
 ### Manual DB Setup
 - **Manual DB Setup** is the normal future migration path after baseline or rebuild is complete.
-- It uses `npx prisma migrate status` and `npx prisma migrate deploy` for normal forward migration runs.
+- It uses the same production `DATABASE_URL` secret value that Vercel runtime uses.
+- It runs `npx prisma migrate status` and `npx prisma migrate deploy` for normal forward migration runs.
+- It now verifies required GearOps tables after migration deploy.
 - Use it for routine follow-up migrations after the database has a complete valid Prisma migration history with no missing earlier migrations.
+
+#### Post-merge / post-deploy database runbook
+1. Merge the PR that includes the Prisma migration files into `main`.
+2. In GitHub Actions, run workflow **Manual DB Setup** (`.github/workflows/manual-db-setup.yml`) against `main`.
+3. Confirm the workflow passes, including **Verify required GearOps tables exist**.
+4. Trigger/confirm Vercel deployment of the latest `main` commit after the DB workflow succeeds.
 
 ## Season setup expectations
 - Seasons are created per program from the app at `Programs → [Program] → New season`.

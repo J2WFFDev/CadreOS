@@ -10,7 +10,7 @@ jobs:
   setup-database:
     runs-on: ubuntu-latest
     env:
-      # Keep the app/runtime connection unchanged.
+      # Use the same runtime connection Vercel uses in production.
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     steps:
@@ -33,19 +33,13 @@ jobs:
         run: npx prisma generate
 
       - name: Diagnostic migration DB identity (safe)
-        env:
-          DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
-          node -e "const raw = process.env.DATABASE_URL || ''; let provider = 'unknown'; let host = 'unparseable'; try { const parsed = new URL(raw); provider = (parsed.protocol || '').replace(':', '') || 'unknown'; host = parsed.hostname || 'unparseable'; } catch {} console.log('Database provider:', provider); console.log('Database host:', host); if (host.includes('-pooler.')) { console.error('Refusing migrate deploy with pooled host. Configure MIGRATE_DATABASE_URL to direct Neon host.'); process.exit(1); }"
+          node -e "const raw = process.env.DATABASE_URL || ''; let provider = 'unknown'; let host = 'unparseable'; try { const parsed = new URL(raw); provider = (parsed.protocol || '').replace(':', '') || 'unknown'; host = parsed.hostname || 'unparseable'; } catch {} console.log('Database provider:', provider); console.log('Database host:', host); console.log('Using runtime DATABASE_URL for setup/migrate path.');"
 
       - name: Prisma migration status (diagnostic)
-        env:
-          DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
         run: npx prisma migrate status || true
 
       - name: Resolve failed arc20g migration if stuck
-        env:
-          DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
           failed_migration="20260526180000_arc20g_event_gear_planning"
           if ! echo "${failed_migration}" | grep -Eq '^[A-Za-z0-9_]+$'; then
@@ -64,8 +58,6 @@ jobs:
           fi
 
       - name: Apply pending Prisma migrations (post-baseline)
-        env:
-          DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
           max_attempts=3
           attempt=1
@@ -84,9 +76,54 @@ jobs:
           done
 
       - name: Prisma migration status after deploy (diagnostic)
-        env:
-          DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
         run: npx prisma migrate status || true
+
+      - name: Verify required GearOps tables exist
+        run: |
+          node - <<'NODE'
+          const { PrismaClient } = require("@prisma/client");
+
+          const prisma = new PrismaClient();
+          const requiredTables = [
+            "GearCategory",
+            "InventoryLocation",
+            "GearItem",
+            "GearAssignment",
+            "GearCheckout",
+            "GearMaintenanceLog",
+            "ConsumableTransaction",
+            "EventGearPlan",
+            "EventGearRequirement",
+            "EventGearAssignment",
+          ];
+
+          async function main() {
+            const rows = await prisma.$queryRawUnsafe(`
+              SELECT table_name
+              FROM information_schema.tables
+              WHERE table_schema = 'public'
+                AND table_name = ANY($1::text[])
+            `, requiredTables);
+            const existing = new Set(rows.map((row) => row.table_name));
+            const missing = requiredTables.filter((tableName) => !existing.has(tableName));
+
+            if (missing.length > 0) {
+              throw new Error(`Missing required GearOps tables after setup: ${missing.join(", ")}`);
+            }
+
+            console.log("Verified required GearOps tables:", requiredTables.join(", "));
+          }
+
+          main()
+            .then(async () => {
+              await prisma.$disconnect();
+            })
+            .catch(async (error) => {
+              console.error(error);
+              await prisma.$disconnect();
+              process.exit(1);
+            });
+          NODE
 
       - name: Run idempotent seed
         run: npm run prisma:seed

@@ -602,6 +602,24 @@ export default async function TeamDetailsPage({
       { programId: team.program.id },
     ],
   };
+  const defaultTeamOperationalSummary = [
+    0,
+    0,
+    0,
+    [],
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [],
+    { _sum: { quantityDelta: 0 } },
+    { _sum: { quantityDelta: 0 } },
+  ] as const;
   const [
     teamFieldOpsBookingCount,
     teamFieldOpsPendingApprovals,
@@ -619,8 +637,9 @@ export default async function TeamDetailsPage({
     teamGearLowAvailabilityConsumables,
     teamConsumableUsageAggregate30d,
     teamConsumableReplenishmentAggregate30d,
-  ] =
-    await Promise.all([
+  ] = await (async () => {
+    try {
+      return await Promise.all([
       db.resourceBooking.count({
         where: {
           organizationId: scope.organizationId,
@@ -774,7 +793,12 @@ export default async function TeamDetailsPage({
           quantityDelta: true,
         },
       }),
-    ]);
+      ]);
+    } catch (error) {
+      console.error("Team GearOps operational summary failed; rendering with fallback values.", error);
+      return defaultTeamOperationalSummary;
+    }
+  })();
   const teamFieldOpsResourcesInUse = new Set(teamFieldOpsUpcomingBookings.map((booking) => booking.resource.id)).size;
   const teamFieldOpsReadinessConcerns = teamFieldOpsPendingApprovals + teamFieldOpsConflicts;
   const teamConsumableUsageUnits30d = Math.abs(teamConsumableUsageAggregate30d._sum?.quantityDelta ?? 0);

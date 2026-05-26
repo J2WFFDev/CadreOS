@@ -655,6 +655,24 @@ export default async function ProgramDetailsPage({
       return left.assigneeName.localeCompare(right.assigneeName);
     })
     .slice(0, 5);
+  const defaultProgramOperationalSummary = [
+    0,
+    0,
+    0,
+    [],
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [],
+    { _sum: { quantityDelta: 0 } },
+    { _sum: { quantityDelta: 0 } },
+  ] as const;
   const [
     programFieldOpsBookingCount,
     programFieldOpsPendingApprovals,
@@ -672,9 +690,10 @@ export default async function ProgramDetailsPage({
     programGearLowAvailabilityConsumables,
     programConsumableUsageAggregate30d,
     programConsumableReplenishmentAggregate30d,
-  ] =
-    canViewAttendanceReporting
-      ? await Promise.all([
+  ] = canViewAttendanceReporting
+    ? await (async () => {
+        try {
+          return await Promise.all([
           db.resourceBooking.count({
             where: {
               organizationId: scope.organizationId,
@@ -821,8 +840,13 @@ export default async function ProgramDetailsPage({
               quantityDelta: true,
             },
           }),
-        ])
-      : [0, 0, 0, [], 0, 0, 0, 0, 0, 0, 0, 0, 0, [], { _sum: { quantityDelta: 0 } }, { _sum: { quantityDelta: 0 } }];
+          ]);
+        } catch (error) {
+          console.error("Program GearOps operational summary failed; rendering with fallback values.", error);
+          return defaultProgramOperationalSummary;
+        }
+      })()
+    : defaultProgramOperationalSummary;
   const programFieldOpsResourcesInUse = new Set(programFieldOpsUpcomingBookings.map((booking) => booking.resource.id)).size;
   const programFieldOpsReadinessConcerns = programFieldOpsPendingApprovals + programFieldOpsConflicts;
   const programConsumableUsageUnits30d = Math.abs(programConsumableUsageAggregate30d._sum.quantityDelta ?? 0);

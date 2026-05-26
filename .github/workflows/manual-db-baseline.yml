@@ -40,6 +40,7 @@ jobs:
       PROTECTED_MIGRATIONS: |
         20260526143000_add_person_lifecycle_status
         20260526152000_add_gearops_core_tables
+        20260526223000_fix_missing_gearops_consumable_tables
 
     steps:
       - name: Confirm one-time baseline intent
