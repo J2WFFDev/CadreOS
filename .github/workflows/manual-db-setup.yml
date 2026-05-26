@@ -10,7 +10,7 @@ jobs:
   setup-database:
     runs-on: ubuntu-latest
     env:
-      # Must match Vercel Production DATABASE_URL value.
+      # Keep the app/runtime connection unchanged.
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     steps:
@@ -29,15 +29,36 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Diagnostic DB identity (safe)
+      - name: Diagnostic migration DB identity (safe)
+        env:
+          DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
           node -e "const raw = process.env.DATABASE_URL || ''; let provider = 'unknown'; let host = 'unparseable'; try { const parsed = new URL(raw); provider = (parsed.protocol || '').replace(':', '') || 'unknown'; host = parsed.hostname || 'unparseable'; } catch {} console.log('Database provider:', provider); console.log('Database host:', host);"
 
       - name: Prisma migration status (diagnostic)
+        env:
+          DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
         run: npx prisma migrate status || true
 
       - name: Apply pending Prisma migrations (post-baseline)
-        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL || secrets.DATABASE_URL }}
+        run: |
+          max_attempts=3
+          attempt=1
+          until [ "$attempt" -gt "$max_attempts" ]; do
+            echo "Prisma migrate deploy attempt $attempt/$max_attempts"
+            if npx prisma migrate deploy; then
+              exit 0
+            fi
+            if [ "$attempt" -eq "$max_attempts" ]; then
+              echo "Prisma migrate deploy failed after $max_attempts attempts."
+              exit 1
+            fi
+            echo "Retrying Prisma migrate deploy in 10 seconds..."
+            sleep 10
+            attempt=$((attempt + 1))
+          done
 
       - name: Run idempotent seed
         run: npm run prisma:seed
