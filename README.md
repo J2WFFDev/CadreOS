@@ -11,13 +11,14 @@
 - Local schema changes should be created with:
   - `npx prisma migrate dev`
 - Current committed migration order is:
-  1. `20260525153000_entry_system`
-  2. `20260526004640_arc19a_operational_entry_architecture`
-  3. `20260526014000_arc19d_operational_graph`
-  4. `20260526020000_arc19e_workflow_orchestration`
-  5. `20260526024000_arc19f_notifications_activity`
-  6. `20260526143000_add_person_lifecycle_status`
-  7. `20260526152000_add_gearops_core_tables`
+  1. `20260525000000_initial_cadreos_core`
+  2. `20260525153000_entry_system`
+  3. `20260526004640_arc19a_operational_entry_architecture`
+  4. `20260526014000_arc19d_operational_graph`
+  5. `20260526020000_arc19e_workflow_orchestration`
+  6. `20260526024000_arc19f_notifications_activity`
+  7. `20260526143000_add_person_lifecycle_status`
+  8. `20260526152000_add_gearops_core_tables`
 - `MIGRATE_DATABASE_URL` should be the Neon direct connection string for the target database and must not use the `-pooler` host.
 - Vercel app runtime continues to use the runtime `DATABASE_URL` secret value unchanged.
 
@@ -40,16 +41,16 @@
      - `20260526152000_add_gearops_core_tables`
   5. Redeploy the application build to Vercel after the database migration succeeds.
 - Decision guidance for non-empty databases with no Prisma migration history:
-  - If no historical Arc-19 markers exist, do **not** baseline Arc-19 migrations. Migrate forward (and add compatibility migrations only if concrete conflicts occur).
+  - If no historical core or Arc-19 markers exist, do **not** baseline historical migrations. Migrate forward (and add compatibility migrations only if concrete conflicts occur).
   - If some historical markers exist contiguously, baseline only that verified contiguous subset.
 
 ### Manual DB Rebuild (DESTRUCTIVE)
 - **Manual DB Rebuild** is destructive and is only for disposable Neon dev databases.
 - It requires typing `REBUILD_DISPOSABLE_DEV_DB` exactly before it will run.
-- It uses `MIGRATE_DATABASE_URL`, refuses pooled Neon hosts, prints only safe diagnostics, drops and recreates the `public` schema, reapplies Prisma migrations, regenerates the Prisma client, verifies migration status, and can optionally run the safe dev seed.
+- It uses `MIGRATE_DATABASE_URL`, refuses pooled Neon hosts, prints only safe diagnostics, drops and recreates the `public` schema, reapplies the full committed Prisma migration chain from `20260525000000_initial_cadreos_core` forward, regenerates the Prisma client, verifies migration status, and can optionally run the safe dev seed.
 - Never use **Manual DB Rebuild** for production or any database whose existing data must be preserved.
 
 ### Manual DB Setup
 - **Manual DB Setup** is the normal future migration path after baseline or rebuild is complete.
 - It uses `npx prisma migrate status` and `npx prisma migrate deploy` for normal forward migration runs.
-- Use it for routine follow-up migrations after the database has valid Prisma migration history.
+- Use it for routine follow-up migrations after the database has a complete valid Prisma migration history with no missing earlier migrations.
