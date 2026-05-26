@@ -82,8 +82,8 @@ function statusClass(status: GearPendingActionRecord["status"]) {
 }
 
 export function GearOfflineProvider({ organizationId, children }: { organizationId: string | null; children: ReactNode }) {
-  const [online, setOnline] = useState(true);
-  const [actions, setActions] = useState<GearPendingActionRecord[]>([]);
+  const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
+  const [actions, setActions] = useState<GearPendingActionRecord[]>(() => (organizationId ? readGearPendingActions(organizationId) : []));
   const [panelOpen, setPanelOpen] = useState(false);
   const retryingRef = useRef(false);
 
@@ -96,8 +96,7 @@ export function GearOfflineProvider({ organizationId, children }: { organization
   }, [organizationId]);
 
   useEffect(() => {
-    setOnline(typeof navigator === "undefined" ? true : navigator.onLine);
-    refresh();
+    const frame = window.requestAnimationFrame(() => refresh());
 
     const handleOnline = () => {
       setOnline(true);
@@ -118,6 +117,7 @@ export function GearOfflineProvider({ organizationId, children }: { organization
     window.addEventListener(GEAR_OFFLINE_EVENT, handleQueueChange as EventListener);
 
     return () => {
+      window.cancelAnimationFrame(frame);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("storage", handleStorage);

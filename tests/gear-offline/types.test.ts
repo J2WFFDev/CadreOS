@@ -21,7 +21,8 @@ import {
 } from "../../lib/gear-offline";
 
 function buildAction(overrides: Partial<ReturnType<typeof createGearPendingAction>> = {}) {
-  return createGearPendingAction({
+  return {
+    ...createGearPendingAction({
     id: "action-1",
     organizationId: "org-1",
     actionType: "gear.maintenance.create",
@@ -31,8 +32,9 @@ function buildAction(overrides: Partial<ReturnType<typeof createGearPendingActio
     subjectId: "item-1",
     subjectLabel: "Duty Radio",
     createdAt: "2026-05-26T20:00:00.000Z",
+    }),
     ...overrides,
-  });
+  };
 }
 
 test("connectivity banner reports offline state with held actions", () => {
@@ -122,12 +124,31 @@ test("discard removes pending actions cleanly", () => {
 
 test("organization and subject filters keep pending actions scoped correctly", () => {
   const orgOneItem = buildAction();
-  const orgTwoItem = buildAction({ id: "action-2", organizationId: "org-2" });
-  const eventAction = buildAction({ id: "action-3", subjectType: "EVENT", subjectId: "event-1" });
+  const orgTwoItem = buildAction({
+    id: "action-2",
+    organizationId: "org-2",
+    context: {
+      subjectType: "GEAR_ITEM",
+      subjectId: "item-2",
+      subjectLabel: "Spare Helmet",
+      scanContext: null,
+      returnHref: null,
+    },
+  });
+  const eventAction = buildAction({
+    id: "action-3",
+    context: {
+      subjectType: "EVENT",
+      subjectId: "event-1",
+      subjectLabel: "Regional Match",
+      scanContext: null,
+      returnHref: null,
+    },
+  });
   const all = [orgOneItem, orgTwoItem, eventAction];
 
   assert.equal(filterGearPendingActionsByOrganization(all, "org-1").length, 2);
-  assert.equal(filterGearPendingActionsBySubject(all, "GEAR_ITEM", "item-1").length, 2);
+  assert.equal(filterGearPendingActionsBySubject(all, "GEAR_ITEM", "item-1").length, 1);
   assert.equal(filterGearPendingActionsBySubject(all, "EVENT", "event-1").length, 1);
 });
 
