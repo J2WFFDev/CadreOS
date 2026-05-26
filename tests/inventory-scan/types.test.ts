@@ -66,3 +66,67 @@ test("labelForScanContext returns readable labels", () => {
   assert.equal(labelForScanContext("INVENTORY_LOOKUP"), "Inventory lookup");
   assert.equal(labelForScanContext("CAGE_VAULT"), "Cage/vault");
 });
+
+import {
+  isOpenCheckoutStatus,
+  labelForIdentifierType,
+  labelForScanEventResult,
+  normalizeInventoryCodeValue,
+} from "../../lib/inventory-scan/types";
+
+// ---------------------------------------------------------------------------
+// normalizeInventoryCodeValue
+// ---------------------------------------------------------------------------
+
+test("normalizeInventoryCodeValue trims leading and trailing whitespace", () => {
+  assert.equal(normalizeInventoryCodeValue("  ABC-123  "), "ABC-123");
+});
+
+test("normalizeInventoryCodeValue collapses internal whitespace to single space", () => {
+  assert.equal(normalizeInventoryCodeValue("ABC  123"), "ABC 123");
+});
+
+test("normalizeInventoryCodeValue returns empty string for whitespace-only input", () => {
+  assert.equal(normalizeInventoryCodeValue("   "), "");
+});
+
+// ---------------------------------------------------------------------------
+// labelForIdentifierType
+// ---------------------------------------------------------------------------
+
+test("labelForIdentifierType returns readable labels for all identifier types", () => {
+  assert.equal(labelForIdentifierType("GEAR_ITEM_ID"), "Gear item ID");
+  assert.equal(labelForIdentifierType("BARCODE_VALUE"), "Barcode/QR value");
+  assert.equal(labelForIdentifierType("SERIAL_NUMBER"), "Serial number");
+  assert.equal(labelForIdentifierType("SKU"), "SKU");
+  assert.equal(labelForIdentifierType("LOCATION_CODE"), "Location code");
+  assert.equal(labelForIdentifierType("UNKNOWN"), "Unknown");
+});
+
+// ---------------------------------------------------------------------------
+// labelForScanEventResult
+// ---------------------------------------------------------------------------
+
+test("labelForScanEventResult returns readable labels for all scan results", () => {
+  assert.equal(labelForScanEventResult("MATCHED_GEAR_ITEM"), "Matched gear item");
+  assert.equal(labelForScanEventResult("MATCHED_LOCATION"), "Matched location");
+  assert.equal(labelForScanEventResult("NOT_FOUND"), "No match found");
+  assert.equal(labelForScanEventResult("INVALID"), "Invalid scan value");
+});
+
+// ---------------------------------------------------------------------------
+// isOpenCheckoutStatus
+// ---------------------------------------------------------------------------
+
+test("isOpenCheckoutStatus returns true for OPEN", () => {
+  assert.equal(isOpenCheckoutStatus("OPEN"), true);
+});
+
+test("isOpenCheckoutStatus returns true for OVERDUE", () => {
+  assert.equal(isOpenCheckoutStatus("OVERDUE"), true);
+});
+
+test("isOpenCheckoutStatus returns false for RETURNED and LOST", () => {
+  assert.equal(isOpenCheckoutStatus("RETURNED"), false);
+  assert.equal(isOpenCheckoutStatus("LOST"), false);
+});

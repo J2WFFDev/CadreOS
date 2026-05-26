@@ -7,6 +7,7 @@ import {
   formatGearCategoryBehavior,
   formatGearCustodyMode,
   formatGearIdentifierType,
+  formatGearLocationClassification,
   formatGearReportGroup,
   GEAR_CATEGORY_STARTER_TEMPLATES,
   getGearCategoryTemplate,
@@ -75,4 +76,52 @@ test("report group badge classes return non-empty values", () => {
   for (const group of ["GENERAL", "FIREARMS", "MEDICAL", "CONSUMABLES"] as const) {
     assert.ok(getReportGroupBadgeClass(group).length > 0);
   }
+});
+
+// ---------------------------------------------------------------------------
+// formatGearLocationClassification
+// ---------------------------------------------------------------------------
+
+test("formatGearLocationClassification returns readable title-cased labels", () => {
+  assert.equal(formatGearLocationClassification("VAULT"), "Vault");
+  assert.equal(formatGearLocationClassification("CAGE"), "Cage");
+  assert.equal(formatGearLocationClassification("LOCKER"), "Locker");
+  assert.equal(formatGearLocationClassification("STORAGE_AREA"), "Storage Area");
+  assert.equal(formatGearLocationClassification("FIELD"), "Field");
+  assert.equal(formatGearLocationClassification("ROOM"), "Room");
+  assert.equal(formatGearLocationClassification("BAY"), "Bay");
+  assert.equal(formatGearLocationClassification("TRAILER"), "Trailer");
+  assert.equal(formatGearLocationClassification("GENERAL"), "General");
+  assert.equal(formatGearLocationClassification("OTHER"), "Other");
+});
+
+// ---------------------------------------------------------------------------
+// applyGearCategoryTemplate — unknown slug
+// ---------------------------------------------------------------------------
+
+test("applyGearCategoryTemplate returns empty object for unknown slug", () => {
+  const result = applyGearCategoryTemplate("nonexistent-slug-xyz");
+  assert.deepEqual(result, {});
+});
+
+// ---------------------------------------------------------------------------
+// All 12 starter templates have displayName and description
+// ---------------------------------------------------------------------------
+
+test("all starter templates define a non-empty displayName", () => {
+  GEAR_CATEGORY_STARTER_TEMPLATES.forEach((tmpl) => {
+    assert.ok(tmpl.displayName && tmpl.displayName.length > 0, `Template "${tmpl.slug}" missing displayName`);
+  });
+});
+
+test("all starter templates define a non-empty description", () => {
+  GEAR_CATEGORY_STARTER_TEMPLATES.forEach((tmpl) => {
+    assert.ok(tmpl.description && tmpl.description.length > 0, `Template "${tmpl.slug}" missing description`);
+  });
+});
+
+test("all starter templates have unique slugs", () => {
+  const slugs = GEAR_CATEGORY_STARTER_TEMPLATES.map((t) => t.slug);
+  const unique = new Set(slugs);
+  assert.equal(unique.size, slugs.length, "Duplicate template slugs found");
 });

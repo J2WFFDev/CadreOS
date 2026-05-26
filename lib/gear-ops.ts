@@ -15,6 +15,11 @@ export function formatGearOpsDateTime(value: Date | null) {
   return `${value.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
+/**
+ * @deprecated Use `getConditionBadgeClass` from `lib/gear-ops-ui` instead.
+ * This function returns direct Tailwind classes without tone indirection.
+ * New UI code should rely on the tone-based API in gear-ops-ui.ts.
+ */
 export function getGearConditionBadgeClass(status: GearConditionStatus | null) {
   if (!status) {
     return "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200";
@@ -35,6 +40,11 @@ export function getGearConditionBadgeClass(status: GearConditionStatus | null) {
   return "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200";
 }
 
+/**
+ * @deprecated Use `getLifecycleBadgeClass` from `lib/gear-ops-ui` instead.
+ * This function returns direct Tailwind classes without tone indirection.
+ * New UI code should rely on the tone-based API in gear-ops-ui.ts.
+ */
 export function getGearLifecycleBadgeClass(status: GearItemLifecycleStatus) {
   if (status === "ACTIVE") {
     return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200";
@@ -55,6 +65,11 @@ export function getGearLifecycleBadgeClass(status: GearItemLifecycleStatus) {
   return "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200";
 }
 
+/**
+ * @deprecated Use `getReadinessBadgeClass` from `lib/gear-ops-ui` instead.
+ * That function accepts the same `InventoryReadinessState | null` input and
+ * routes through the tone-based chip API for consistent visual styling.
+ */
 export function getReadinessBadgeClass(state: InventoryReadinessState | null) {
   if (!state) {
     return "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200";

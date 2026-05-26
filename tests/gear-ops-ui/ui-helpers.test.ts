@@ -6,16 +6,24 @@ import {
   deriveAvailabilitySignal,
   deriveItemConcernLevel,
   getAssignmentBadgeClass,
+  getAssignmentLabel,
   getAssignmentTone,
+  getAvailabilitySignalChipClass,
+  getAvailabilitySignalLabel,
   getCheckoutBadgeClass,
+  getCheckoutLabel,
   getCheckoutTone,
+  getConcernLevelChipClass,
   getConditionBadgeClass,
+  getConditionLabel,
   getConditionTone,
   getInventoryTypeBadgeClass,
   getInventoryTypeLabel,
   getLifecycleBadgeClass,
+  getLifecycleLabel,
   getLifecycleTone,
   getReadinessBadgeClass,
+  getReadinessLabel,
   getReadinessTone,
   toneToBoxClass,
   toneToChipClass,
@@ -363,4 +371,106 @@ test("toneToBoxClass returns different strings for different tones", () => {
 test("toneToChipClass and toneToBoxClass return non-empty strings", () => {
   assert.ok(toneToChipClass("success").length > 0);
   assert.ok(toneToBoxClass("danger").length > 0);
+});
+
+// ---------------------------------------------------------------------------
+// Lifecycle label
+// ---------------------------------------------------------------------------
+
+test("getLifecycleLabel returns readable text for all lifecycle statuses", () => {
+  assert.equal(getLifecycleLabel("ACTIVE"), "Active");
+  assert.equal(getLifecycleLabel("RESERVED"), "Reserved");
+  assert.equal(getLifecycleLabel("ASSIGNED"), "Assigned");
+  assert.equal(getLifecycleLabel("CHECKED_OUT"), "Checked out");
+  assert.equal(getLifecycleLabel("MAINTENANCE"), "Maintenance");
+  assert.equal(getLifecycleLabel("QUARANTINED"), "Quarantined");
+  assert.equal(getLifecycleLabel("RETIRED"), "Retired");
+  assert.equal(getLifecycleLabel("LOST"), "Lost");
+});
+
+// ---------------------------------------------------------------------------
+// Condition label
+// ---------------------------------------------------------------------------
+
+test("getConditionLabel returns readable text for all condition statuses", () => {
+  assert.equal(getConditionLabel("NEW"), "New");
+  assert.equal(getConditionLabel("GOOD"), "Good");
+  assert.equal(getConditionLabel("FAIR"), "Fair");
+  assert.equal(getConditionLabel("POOR"), "Poor");
+  assert.equal(getConditionLabel("DAMAGED"), "Damaged");
+  assert.equal(getConditionLabel(null), "Unknown condition");
+});
+
+// ---------------------------------------------------------------------------
+// Readiness label
+// ---------------------------------------------------------------------------
+
+test("getReadinessLabel returns readable text for all readiness states", () => {
+  assert.equal(getReadinessLabel("READY"), "Ready");
+  assert.equal(getReadinessLabel("NEEDS_INSPECTION"), "Needs inspection");
+  assert.equal(getReadinessLabel("MAINTENANCE_REQUIRED"), "Maintenance needed");
+  assert.equal(getReadinessLabel("NOT_READY"), "Not ready");
+  assert.equal(getReadinessLabel("DECOMMISSIONED"), "Decommissioned");
+  assert.equal(getReadinessLabel(null), "Readiness unknown");
+});
+
+// ---------------------------------------------------------------------------
+// Checkout label
+// ---------------------------------------------------------------------------
+
+test("getCheckoutLabel returns readable text for all checkout statuses", () => {
+  assert.equal(getCheckoutLabel("OPEN"), "Open");
+  assert.equal(getCheckoutLabel("OVERDUE"), "Overdue");
+  assert.equal(getCheckoutLabel("RETURNED"), "Returned");
+  assert.equal(getCheckoutLabel("LOST"), "Lost");
+});
+
+// ---------------------------------------------------------------------------
+// Assignment label
+// ---------------------------------------------------------------------------
+
+test("getAssignmentLabel returns readable text for all assignment statuses", () => {
+  assert.equal(getAssignmentLabel("PENDING"), "Pending");
+  assert.equal(getAssignmentLabel("ACTIVE"), "Active");
+  assert.equal(getAssignmentLabel("OVERDUE"), "Overdue");
+  assert.equal(getAssignmentLabel("RETURNED"), "Returned");
+  assert.equal(getAssignmentLabel("TRANSFERRED"), "Transferred");
+  assert.equal(getAssignmentLabel("CANCELLED"), "Cancelled");
+});
+
+// ---------------------------------------------------------------------------
+// Availability signal label + chip class
+// ---------------------------------------------------------------------------
+
+test("getAvailabilitySignalLabel returns readable text for all signals", () => {
+  assert.equal(getAvailabilitySignalLabel("AVAILABLE"), "Available");
+  assert.equal(getAvailabilitySignalLabel("CHECKED_OUT"), "Checked out");
+  assert.equal(getAvailabilitySignalLabel("ASSIGNED"), "Assigned");
+  assert.equal(getAvailabilitySignalLabel("MAINTENANCE"), "Out of service");
+  assert.equal(getAvailabilitySignalLabel("UNAVAILABLE"), "Unavailable");
+});
+
+test("getAvailabilitySignalChipClass returns distinct non-empty class strings for all signals", () => {
+  const signals: GearAvailabilitySignal[] = ["AVAILABLE", "CHECKED_OUT", "ASSIGNED", "MAINTENANCE", "UNAVAILABLE"];
+  const classes = signals.map(getAvailabilitySignalChipClass);
+  const unique = new Set(classes);
+  assert.equal(unique.size, signals.length, "Each signal should map to a distinct chip class");
+  classes.forEach((cls) => assert.ok(cls.length > 0, "Chip class must be non-empty"));
+});
+
+// ---------------------------------------------------------------------------
+// getConcernLevelChipClass
+// ---------------------------------------------------------------------------
+
+test("getConcernLevelChipClass returns distinct non-empty class strings for all concern levels", () => {
+  const levels: GearConcernLevel[] = ["critical", "warning", "info", "ok"];
+  const classes = levels.map(getConcernLevelChipClass);
+  const unique = new Set(classes);
+  assert.equal(unique.size, levels.length, "Each concern level should map to a distinct chip class");
+  classes.forEach((cls) => assert.ok(cls.length > 0, "Chip class must be non-empty"));
+});
+
+test("getConcernLevelChipClass critical maps to rose, ok maps to emerald", () => {
+  assert.ok(getConcernLevelChipClass("critical").includes("rose"));
+  assert.ok(getConcernLevelChipClass("ok").includes("emerald"));
 });
