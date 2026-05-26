@@ -43,6 +43,18 @@ Resolve blocking state before checkout/assignment.
 - confirm item is not maintenance/out-of-service
 - confirm role has required staff access
 
+## Category does not appear
+
+- verify organization context and role scope
+- confirm category exists in **GearOps → Categories**
+- if scoped access is narrow, confirm category has visible in-scope items
+
+## Template defaults are wrong
+
+- verify which starter template was used
+- edit category configuration after creation
+- document local override decisions in admin notes
+
 ## Event gear is missing
 
 - review event **Missing / unreturned view**
@@ -54,6 +66,24 @@ Resolve blocking state before checkout/assignment.
 - clear filters and re-check scope
 - validate item lifecycle/readiness values on drill-down pages
 - verify whether pending local actions are unconfirmed (not in confirmed history)
+
+## Event template does not assign as expected
+
+- confirm template is active and category linkage is correct
+- remember templates are reusable requirement definitions, not automatic event assignment
+- add requirements and assignments from the event gear page
+
+## Guardian approval blocks or warns unexpectedly
+
+- verify category `guardianApprovalRequired` value
+- verify guardian relationships for athlete-linked assignment context
+- confirm organization-level expectations with current RC guardian boundary limits
+
+## Consumable count looks wrong
+
+- review consumable transaction history for adjustments/distribution/disposal
+- verify quantity threshold configuration
+- verify pending/offline actions have reached server-confirmed completion
 
 ## Permission/access issue
 

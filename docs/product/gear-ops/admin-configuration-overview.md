@@ -1,10 +1,9 @@
 # GearOps Admin Configuration Guide (Overview)
 
-Use this guide for organization administrators configuring GearOps behavior.
+Use this overview to orient administrators before applying category, template, location, or organization-level GearOps changes.
 
-## When to Use This
-
-Use this when setting up categories, templates, defaults, and organization-level controls.
+For full operational detail, use the deep guide:
+- [GearOps Administrator Configuration Deep Guide (Arc 20P)](./admin-configuration-deep-guide.md)
 
 ## Admin Work Areas
 
@@ -12,68 +11,35 @@ Use this when setting up categories, templates, defaults, and organization-level
 - **GearOps → Event Templates**
 - **GearOps → Admin (Settings)**
 - **GearOps → Locations**
+- **GearOps → Kits**
+- **GearOps → Reports**
 
-## Categories and Templates
+## Role Boundary Summary
 
-Categories define operational behavior (durable/consumable, custody, readiness, maintenance, identifiers, reporting).
+- **Administrators:** configuration and governance (categories, templates, settings, naming conventions, reporting grouping).
+- **Operators/staff:** day-to-day execution (scan, checkout/check-in, assignment, maintenance logging, consumable transactions, event gear workflows).
 
-Starter templates include:
-- firearm
-- magazine-set
-- ammunition
-- radio
-- tablet-electronic
-- first-aid-kit
-- tool
-- uniform-apparel
-- sports-equipment
-- kit-bundle
-- trailer-large-equipment
-- generic-asset
+## Configuration Surfaces (at a glance)
 
-## Category Rule Areas
+- **Organization defaults:** baseline custody/report grouping and GearOps capability toggles.
+- **Category config:** behavior, custody, identifier, maintenance/readiness flags, consumable defaults, event support, guardian boundary flag.
+- **Template config:** category starter profiles and event requirement template rows.
+- **Location/kit config:** storage hierarchy, location code strategy, grouped loadout structure.
 
-Configure per-category:
-- durable vs consumable behavior
-- custody mode
-- identifier strategy (serial/asset tag/barcode/manual)
-- readiness + maintenance tracking requirements
-- return inspection requirement
-- consumable low-stock defaults
-- event deployment support
-- report group/report label
-- guardian approval requirement boundary
+## High-Impact Changes (control carefully)
 
-## Organization Settings
+- custody mode changes
+- identifier strategy changes
+- guardian boundary changes
+- consumable tracking threshold changes
+- report grouping and report labels
 
-In GearOps admin settings:
-- default custody mode
-- default report group
-- enable guardian approval
-- enable consumable tracking
-- enable event deployment
-- enable readiness tracking
-- enable maintenance tracking
-- admin notes
+Always verify these in a pilot workflow after changing configuration.
 
-## Event Requirement Templates
+## Recommended Next Reading
 
-Use event templates for repeatable requirement rows (name/label/type/quantity/category).
-
-## Location Configuration
-
-Define clear location naming and codes for vault, cage, room, trailer, field, and storage areas so staging/recovery and audits stay consistent.
-
-## Guardian Approval Boundaries
-
-Guardian approval is category-driven and bounded. It is not a universal requirement for all categories.
-
-## Dashboard Interpretation
-
-Admins should monitor:
-- readiness concerns
-- open/overdue custody
-- low-stock consumables
-- event requirement gaps/unreturned event gear
-
-Use reports drill-down links to resolve root causes.
+1. [Admin Configuration Deep Guide](./admin-configuration-deep-guide.md)
+2. [Readiness and Maintenance Guide](./readiness-maintenance-guide.md)
+3. [Reporting and Dashboard Guide](./reporting-dashboard-guide.md)
+4. [Mobile and Offline Behavior Guide](./mobile-offline-guide.md)
+5. [Known Limitations and Deferred Scope](./known-limitations-and-deferred-scope.md)
