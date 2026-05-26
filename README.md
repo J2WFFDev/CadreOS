@@ -36,4 +36,6 @@
   2. If the database predates Prisma migration history, run the one-time **Manual DB Baseline** workflow first.
   3. Run the **Manual DB Setup** workflow, which uses `npx prisma migrate status` and `npx prisma migrate deploy`.
   4. Redeploy application build to Vercel after migration.
-- The manual DB baseline/setup workflows must use the same `DATABASE_URL` secret value used by Vercel production.
+- Vercel app runtime continues to use the production `DATABASE_URL` secret value.
+- **Manual DB Setup** Prisma migration commands may use `MIGRATE_DATABASE_URL` when configured, and otherwise fall back to `DATABASE_URL`.
+- `MIGRATE_DATABASE_URL` should be the Neon direct connection string for the same production database and should not use the `-pooler` host.
