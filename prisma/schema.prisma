@@ -319,6 +319,22 @@ enum ConsumableTransactionType {
   ADJUSTED
 }
 
+// Arc 19E: Workflow orchestration enums
+
+enum WorkflowTemplateType {
+  FOLLOW_UP_CHAIN
+  CHECKLIST
+  READINESS_SEQUENCE
+  ONBOARDING
+  RECURRING_PROCEDURE
+}
+
+enum WorkflowRunStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
 model Organization {
   id        String    @id @default(cuid())
   name      String
@@ -361,6 +377,9 @@ model Organization {
   entryComments               EntryComment[]
   entryReminders              EntryReminder[]
   operationalRelationships    OperationalRelationship[]
+  workflowTemplates           WorkflowTemplate[]
+  workflowRuns                WorkflowRun[]
+  workflowStepEntries         WorkflowStepEntry[]
 }
 
 model Program {
@@ -489,6 +508,8 @@ model Person {
   entryComments              EntryComment[]               @relation("EntryCommentAuthor")
   entryReminders             EntryReminder[]              @relation("EntryReminderPerson")
   createdOperationalRelationships OperationalRelationship[] @relation("OperationalRelationshipCreatedBy")
+  createdWorkflowTemplates   WorkflowTemplate[]           @relation("WorkflowTemplateCreatedBy")
+  startedWorkflowRuns        WorkflowRun[]                @relation("WorkflowRunStartedBy")
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
@@ -657,6 +678,8 @@ model Entry {
   reminders     EntryReminder[]
   sourceTask    FollowUpTask?      @relation("TaskEntry", fields: [sourceTaskId], references: [id], onDelete: SetNull)
   sourceNote    ObservationNote?   @relation("NoteEntry", fields: [sourceNoteId], references: [id], onDelete: SetNull)
+  anchoredWorkflowRuns WorkflowRun[]
+  workflowStepEntry    WorkflowStepEntry?
 
   @@index([organizationId, type, createdAt])
   @@index([organizationId, status, dueDate])
@@ -1234,4 +1257,76 @@ model ConsumableTransaction {
   @@index([organizationId, transactionType, recordedAt])
   @@index([organizationId, recordedByPersonId, recordedAt])
   @@index([organizationId, eventId, recordedAt])
+}
+
+// Arc 19E: WorkflowTemplate — reusable, organization-scoped operational workflow templates.
+// Each template carries a typed set of ordered step definitions (stepsJson).
+
+model WorkflowTemplate {
+  id                String               @id @default(cuid())
+  organizationId    String
+  name              String
+  description       String?
+  templateType      WorkflowTemplateType
+  stepsJson         String
+  createdByPersonId String
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  archivedAt        DateTime?
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy    Person         @relation("WorkflowTemplateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  runs         WorkflowRun[]
+
+  @@index([organizationId])
+  @@index([organizationId, templateType])
+  @@index([organizationId, archivedAt])
+}
+
+// Arc 19E: WorkflowRun — a single execution of a WorkflowTemplate.
+// Optionally anchored to an Entry that triggered the workflow.
+
+model WorkflowRun {
+  id                 String            @id @default(cuid())
+  organizationId     String
+  workflowTemplateId String
+  anchorEntryId      String?
+  status             WorkflowRunStatus @default(ACTIVE)
+  currentStepIndex   Int               @default(0)
+  startedByPersonId  String
+  assignedToPersonId String?
+  startedAt          DateTime          @default(now())
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+  metadataJson       String?
+
+  organization      Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  workflowTemplate  WorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Restrict)
+  anchorEntry       Entry?           @relation(fields: [anchorEntryId], references: [id], onDelete: SetNull)
+  startedBy         Person           @relation("WorkflowRunStartedBy", fields: [startedByPersonId], references: [id], onDelete: Restrict)
+  stepEntries       WorkflowStepEntry[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, workflowTemplateId])
+  @@index([organizationId, anchorEntryId])
+  @@index([organizationId, startedByPersonId])
+}
+
+// Arc 19E: WorkflowStepEntry — ties a WorkflowRun step to the Entry created for that step.
+
+model WorkflowStepEntry {
+  id             String    @id @default(cuid())
+  organizationId String
+  workflowRunId  String
+  stepIndex      Int
+  entryId        String    @unique
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  workflowRun  WorkflowRun  @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+  entry        Entry        @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, workflowRunId])
+  @@index([organizationId, entryId])
 }
