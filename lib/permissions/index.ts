@@ -46,7 +46,10 @@ type SupportedAction =
   | "gearConsumableTransaction.update"
   | "entry.create"
   | "entry.update"
-  | "entry.delete";
+  | "entry.delete"
+  | "workflow.create"
+  | "workflow.update"
+  | "workflow.delete";
 
 type PermissionReason =
   | "UNAUTHENTICATED"
@@ -107,6 +110,9 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "entry.create",
     "entry.update",
     "entry.delete",
+    "workflow.create",
+    "workflow.update",
+    "workflow.delete",
   ]),
   [RoleType.PROGRAM_DIRECTOR]: new Set<SupportedAction>([
     "season.create",
@@ -147,6 +153,9 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "entry.create",
     "entry.update",
     "entry.delete",
+    "workflow.create",
+    "workflow.update",
+    "workflow.delete",
   ]),
   [RoleType.COACH]: new Set<SupportedAction>([
     "person.activate",
@@ -175,6 +184,8 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "gearConsumableTransaction.update",
     "entry.create",
     "entry.update",
+    "workflow.create",
+    "workflow.update",
   ]),
   [RoleType.ASSISTANT_COACH]: new Set<SupportedAction>([
     "attendance.upsert",
@@ -259,6 +270,9 @@ const SUPPORTED_ACTIONS = new Set<SupportedAction>([
   "entry.create",
   "entry.update",
   "entry.delete",
+  "workflow.create",
+  "workflow.update",
+  "workflow.delete",
 ]);
 
 export type PermissionCheckInput = {

@@ -72,6 +72,11 @@ const ACTIVITY_ACTION_LABELS: Record<string, string> = {
   "entry.quick_add.note": "Quick-added note",
   "entry.quick_add.generic": "Quick-added entry",
   "entry.note_to_task_converted": "Converted note to task",
+  "workflow.run_started": "Workflow run started",
+  "workflow.step_completed": "Step completed",
+  "workflow.run_completed": "Workflow completed",
+  "workflow.run_cancelled": "Workflow cancelled",
+  "workflow.chain_created": "Follow-up chain created",
 };
 
 export function labelForActivityAction(action: string): string {
