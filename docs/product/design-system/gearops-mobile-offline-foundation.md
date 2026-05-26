@@ -116,7 +116,7 @@ Item detail and event gear pages now surface local pending activity in a dedicat
 
 ## Future Path
 
-Arc 20L should focus on:
+Arc 20O should focus on:
 
 1. richer client validation before queueing offline actions
 2. broader pending coverage for check-in, custody transfer, and readiness workflows

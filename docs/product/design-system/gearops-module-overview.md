@@ -1,6 +1,6 @@
 # GearOps Module Overview
 
-GearOps is the CadreOS module for managing organizational gear: inventory, custody, maintenance, event deployment, and reporting. It was built across Arcs 20A–20K and hardened in Arc 20L.
+GearOps is the CadreOS module for managing organizational gear: inventory, custody, maintenance, event deployment, and reporting. It was built across Arcs 20A–20M and release-candidate stabilized in Arc 20N.
 
 ---
 
@@ -327,11 +327,18 @@ Run all tests with `npm test`.
 
 ---
 
-## Arc 20M recommendations
+## Arc 20N stabilization outcomes
+
+- Route, integration, and UI stabilization completed across inventory, custody, event, reporting, and offline-aware workflows.
+- Cross-module integration contracts remain reference-first (no duplicate source-of-truth models introduced).
+- Guardian boundary fallback behavior remains explicit and operator-visible.
+- Pending/offline action language stays separated from confirmed activity history.
+
+## Arc 20O recommendations
 
 - Build out end-to-end route tests for the major GearOps API routes (checkout, check-in, assignment, maintenance).
 - Add integration tests for organization scoping enforcement in GearOps routes.
-- Implement guardian approval UI flow.
-- Add UI test coverage for empty/loading/error states.
-- Address firearm-category isolation to ensure no leakage into generic categories.
-- Evaluate readiness for a beta operator rollout and identify remaining UX gaps.
+- Expand integration tests for event deployment/recovery edge cases and custody transfer.
+- Add UI test coverage for empty/loading/error states in operator and admin views.
+- Complete guardian approval confirmation UX and audit-record capture.
+- Conduct staged operator rollout with known-limitations tracking.
