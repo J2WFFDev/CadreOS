@@ -1,3 +1,82 @@
+-- Recovery guard: ensure GearOps base enums exist.
+-- add_gearops_core_tables may have been resolved as --applied (baseline-only) without its SQL running,
+-- leaving these enums absent. The DO $$ EXCEPTION pattern is idempotent — safe if they already exist.
+DO $$ BEGIN
+  CREATE TYPE "GearInventoryType" AS ENUM ('DURABLE', 'CONSUMABLE');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE "GearItemLifecycleStatus" AS ENUM ('ACTIVE', 'ASSIGNED', 'CHECKED_OUT', 'MAINTENANCE', 'QUARANTINED', 'RESERVED', 'RETIRED', 'LOST');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE "GearConditionStatus" AS ENUM ('NEW', 'GOOD', 'FAIR', 'POOR', 'DAMAGED', 'RETIRED');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE "InventoryOwnershipType" AS ENUM ('ORGANIZATION_OWNED', 'PERSONALLY_OWNED', 'LOANED_IN', 'LOANED_OUT', 'DONATED');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE "InventoryReadinessState" AS ENUM ('READY', 'NEEDS_INSPECTION', 'MAINTENANCE_REQUIRED', 'NOT_READY', 'DECOMMISSIONED');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE "GearLocationClassification" AS ENUM ('VAULT', 'CAGE', 'LOCKER', 'TRAILER', 'BAY', 'FIELD', 'ROOM', 'STORAGE_AREA', 'GENERAL', 'OTHER');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Recovery guard: ensure GearCategory exists (FK target for EventGearRequirement).
+-- Matches the column set created by add_gearops_core_tables.
+CREATE TABLE IF NOT EXISTS "GearCategory" (
+  "id" TEXT NOT NULL,
+  "organizationId" TEXT NOT NULL,
+  "name" TEXT NOT NULL,
+  "inventoryType" "GearInventoryType" NOT NULL,
+  "description" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "GearCategory_pkey" PRIMARY KEY ("id")
+);
+
+-- Recovery guard: ensure InventoryLocation exists (FK target for EventGearPlan and EventGearAssignment).
+CREATE TABLE IF NOT EXISTS "InventoryLocation" (
+  "id" TEXT NOT NULL,
+  "organizationId" TEXT NOT NULL,
+  "name" TEXT NOT NULL,
+  "description" TEXT,
+  "locationCode" TEXT,
+  "parentLocationId" TEXT,
+  "isActive" BOOLEAN NOT NULL DEFAULT true,
+  "locationType" "GearLocationClassification" NOT NULL DEFAULT 'GENERAL',
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "InventoryLocation_pkey" PRIMARY KEY ("id")
+);
+
+-- Recovery guard: ensure GearItem exists (FK target for EventGearAssignment).
+CREATE TABLE IF NOT EXISTS "GearItem" (
+  "id" TEXT NOT NULL,
+  "organizationId" TEXT NOT NULL,
+  "programId" TEXT,
+  "gearCategoryId" TEXT NOT NULL,
+  "name" TEXT NOT NULL,
+  "inventoryType" "GearInventoryType" NOT NULL,
+  "sku" TEXT,
+  "serialNumber" TEXT,
+  "quantityOnHand" INTEGER NOT NULL DEFAULT 0,
+  "quantityMin" INTEGER,
+  "lifecycleStatus" "GearItemLifecycleStatus" NOT NULL DEFAULT 'ACTIVE',
+  "conditionStatus" "GearConditionStatus",
+  "ownershipType" "InventoryOwnershipType",
+  "readinessState" "InventoryReadinessState",
+  "locationId" TEXT,
+  "barcodeValue" TEXT,
+  "notes" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "GearItem_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateEnum
 CREATE TYPE "EventGearPlanStatus" AS ENUM ('DRAFT', 'READY_TO_STAGE', 'STAGED', 'DEPLOYED', 'RECOVERING', 'COMPLETED');
 
