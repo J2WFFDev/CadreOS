@@ -7,6 +7,7 @@ const GEAR_OPS_LINKS = [
   { href: "/gear-ops/scan", label: "Scan", key: "scan" },
   { href: "/gear-ops/locations", label: "Locations", key: "locations" },
   { href: "/gear-ops/kits", label: "Kits", key: "kits" },
+  { href: "/gear-ops/audits", label: "Audits", key: "audits" },
 ] as const;
 
 export function GearOpsSubnav({

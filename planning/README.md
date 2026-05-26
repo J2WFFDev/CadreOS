@@ -47,6 +47,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Arc 19G Unified Entry Closeout](./PHASE_19G_UNIFIED_ENTRY_CLOSEOUT.md)
 - [Arc 20A Inventory Operations Architecture](./PHASE_20A_INVENTORY_OPERATIONS_ARCHITECTURE.md)
 - [Arc 20B Barcode & QR Support](./PHASE_20B_BARCODE_QR_SUPPORT.md)
+- [Arc 20C Inventory Audit Workflow](./PHASE_20C_INVENTORY_AUDIT_WORKFLOW.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)
 - [Phase 16C GearOps Catalog Read-Only Views](./PHASE_16C_GEAROPS_CATALOG_READ_ONLY_VIEWS.md)

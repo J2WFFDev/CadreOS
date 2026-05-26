@@ -1,3 +1,5 @@
+import { db } from "@/lib/db";
+
 export type AuditWriteInput = {
   organizationId: string;
   actorPersonId?: string | null;
@@ -10,6 +12,16 @@ export type AuditWriteInput = {
 };
 
 export async function writeAuditEvent(input: AuditWriteInput): Promise<void> {
-  void input;
-  return;
+  await db.auditEvent.create({
+    data: {
+      organizationId: input.organizationId,
+      actorPersonId: input.actorPersonId ?? null,
+      action: input.action,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      beforeJson: input.beforeJson ?? null,
+      afterJson: input.afterJson ?? null,
+      metadataJson: input.metadataJson ?? null,
+    },
+  });
 }

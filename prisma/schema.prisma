@@ -325,6 +325,67 @@ enum InventoryMovementType {
   QUARANTINE_RELEASED
 }
 
+// Arc 20C: Inventory audit workflow enums
+
+enum InventoryAuditType {
+  SCHEDULED
+  AD_HOC
+  VAULT_CAGE
+  EVENT_VERIFICATION
+  CHECKOUT_RECONCILIATION
+  CONSUMABLE_VERIFICATION
+  READINESS_INSPECTION
+}
+
+enum InventoryAuditScope {
+  ORGANIZATION
+  LOCATION
+  KIT
+  EVENT
+  PERSON
+  CONSUMABLE
+  READINESS
+}
+
+enum InventoryAuditSessionStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum InventoryVerificationStatus {
+  PENDING
+  VERIFIED_MATCH
+  VERIFIED_DISCREPANCY
+  NOT_FOUND
+  SKIPPED
+}
+
+enum InventoryDiscrepancyType {
+  MISSING_INVENTORY
+  WRONG_LOCATION
+  DAMAGED_CONDITION
+  ASSIGNMENT_MISMATCH
+  QUANTITY_MISMATCH
+  READINESS_FAILURE
+  UNAUTHORIZED_CUSTODY_STATE
+  OTHER
+}
+
+enum InventoryDiscrepancyStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+enum InventoryAuditCheckpointStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETE
+  BLOCKED
+}
+
 enum GearConditionStatus {
   NEW
   GOOD
@@ -454,6 +515,11 @@ model Organization {
   inventoryKits               InventoryKit[]
   inventoryKitItems           InventoryKitItem[]
   inventoryScanEvents         InventoryScanEvent[]
+  inventoryAudits             InventoryAudit[]
+  inventoryAuditSessions      InventoryAuditSession[]
+  inventoryAuditResults       InventoryAuditResult[]
+  inventoryAuditDiscrepancies InventoryAuditDiscrepancy[]
+  inventoryAuditCheckpoints   InventoryAuditCheckpoint[]
   entries                     Entry[]
   entryLinks                  EntryLink[]
   entryActivities             EntryActivity[]
@@ -609,6 +675,13 @@ model Person {
   custodyInventoryMovements  InventoryMovement[]          @relation("InventoryMovementCustody")
   ownedInventoryKits         InventoryKit[]               @relation("InventoryKitOwner")
   inventoryScanEvents        InventoryScanEvent[]         @relation("InventoryScanEventActor")
+  createdInventoryAudits     InventoryAudit[]             @relation("InventoryAuditCreatedBy")
+  startedInventoryAuditSessions InventoryAuditSession[]   @relation("InventoryAuditSessionStartedBy")
+  completedInventoryAuditSessions InventoryAuditSession[] @relation("InventoryAuditSessionCompletedBy")
+  verifiedInventoryAuditResults InventoryAuditResult[]    @relation("InventoryAuditResultVerifiedBy")
+  resolvedInventoryAuditDiscrepancies InventoryAuditDiscrepancy[] @relation("InventoryAuditDiscrepancyResolvedBy")
+  expectedCustodyInventoryAuditResults InventoryAuditResult[] @relation("InventoryAuditExpectedCustody")
+  observedCustodyInventoryAuditResults InventoryAuditResult[] @relation("InventoryAuditObservedCustody")
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
@@ -1253,6 +1326,8 @@ model GearItem {
   inventoryMovements     InventoryMovement[]
   kitItems               InventoryKitItem[]
   scanEvents             InventoryScanEvent[]
+  inventoryAuditResults       InventoryAuditResult[]
+  inventoryAuditDiscrepancies InventoryAuditDiscrepancy[]
 
   @@index([organizationId, gearCategoryId])
   @@index([organizationId, programId])
@@ -1598,6 +1673,9 @@ model InventoryLocation {
   movementsFrom   InventoryMovement[] @relation("MovementFromLocation")
   movementsTo     InventoryMovement[] @relation("MovementToLocation")
   scanEvents      InventoryScanEvent[]
+  inventoryAuditExpectedLocationResults InventoryAuditResult[] @relation("InventoryAuditExpectedLocation")
+  inventoryAuditObservedLocationResults InventoryAuditResult[] @relation("InventoryAuditObservedLocation")
+  inventoryAuditDiscrepancies           InventoryAuditDiscrepancy[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -1698,10 +1776,162 @@ model InventoryScanEvent {
   actor        Person?            @relation("InventoryScanEventActor", fields: [actorPersonId], references: [id], onDelete: SetNull)
   gearItem     GearItem?          @relation(fields: [gearItemId], references: [id], onDelete: SetNull)
   location     InventoryLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  auditResults InventoryAuditResult[]
 
   @@index([organizationId, createdAt])
   @@index([organizationId, scanContext, createdAt])
   @@index([organizationId, result, createdAt])
   @@index([organizationId, gearItemId, createdAt])
   @@index([organizationId, locationId, createdAt])
+}
+
+// Arc 20C: Inventory audit and reconciliation workflow models
+
+model InventoryAudit {
+  id                String              @id @default(cuid())
+  organizationId    String
+  name              String
+  description       String?
+  auditType         InventoryAuditType
+  scope             InventoryAuditScope
+  scopeReferenceId  String?
+  cadenceDays       Int?
+  nextScheduledAt   DateTime?
+  lastExecutedAt    DateTime?
+  createdByPersonId String
+  archivedAt        DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy    Person                 @relation("InventoryAuditCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  sessions     InventoryAuditSession[]
+
+  @@index([organizationId, auditType])
+  @@index([organizationId, scope])
+  @@index([organizationId, archivedAt])
+  @@index([organizationId, nextScheduledAt])
+  @@unique([organizationId, name])
+}
+
+model InventoryAuditSession {
+  id                  String                     @id @default(cuid())
+  organizationId      String
+  inventoryAuditId    String?
+  title               String
+  status              InventoryAuditSessionStatus @default(DRAFT)
+  scopeSnapshotJson   String?
+  plannedAt           DateTime?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  startedByPersonId   String?
+  completedByPersonId String?
+  notes               String?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  audit        InventoryAudit?            @relation(fields: [inventoryAuditId], references: [id], onDelete: SetNull)
+  startedBy    Person?                    @relation("InventoryAuditSessionStartedBy", fields: [startedByPersonId], references: [id], onDelete: SetNull)
+  completedBy  Person?                    @relation("InventoryAuditSessionCompletedBy", fields: [completedByPersonId], references: [id], onDelete: SetNull)
+  checkpoints  InventoryAuditCheckpoint[]
+  results      InventoryAuditResult[]
+  discrepancies InventoryAuditDiscrepancy[]
+
+  @@index([organizationId, status, startedAt])
+  @@index([organizationId, inventoryAuditId, status])
+  @@index([organizationId, plannedAt])
+}
+
+model InventoryAuditCheckpoint {
+  id                    String                       @id @default(cuid())
+  organizationId        String
+  auditSessionId        String
+  label                 String
+  orderIndex            Int                          @default(0)
+  status                InventoryAuditCheckpointStatus @default(PENDING)
+  expectedItemCount     Int?
+  verifiedItemCount     Int                          @default(0)
+  discrepancyCount      Int                          @default(0)
+  notes                 String?
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  auditSession InventoryAuditSession @relation(fields: [auditSessionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, auditSessionId, orderIndex])
+  @@index([organizationId, status])
+}
+
+model InventoryAuditResult {
+  id                      String                    @id @default(cuid())
+  organizationId          String
+  auditSessionId          String
+  gearItemId              String?
+  scanEventId             String?
+  verificationStatus      InventoryVerificationStatus @default(PENDING)
+  expectedLocationId      String?
+  observedLocationId      String?
+  expectedCustodyPersonId String?
+  observedCustodyPersonId String?
+  expectedQuantity        Int?
+  observedQuantity        Int?
+  expectedReadinessState  InventoryReadinessState?
+  observedReadinessState  InventoryReadinessState?
+  observedConditionStatus GearConditionStatus?
+  scannedCode             String?
+  notes                   String?
+  verifiedAt              DateTime                  @default(now())
+  verifiedByPersonId      String?
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  organization         Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  auditSession         InventoryAuditSession   @relation(fields: [auditSessionId], references: [id], onDelete: Cascade)
+  gearItem             GearItem?               @relation(fields: [gearItemId], references: [id], onDelete: SetNull)
+  scanEvent            InventoryScanEvent?     @relation(fields: [scanEventId], references: [id], onDelete: SetNull)
+  expectedLocation     InventoryLocation?      @relation("InventoryAuditExpectedLocation", fields: [expectedLocationId], references: [id], onDelete: SetNull)
+  observedLocation     InventoryLocation?      @relation("InventoryAuditObservedLocation", fields: [observedLocationId], references: [id], onDelete: SetNull)
+  expectedCustodyPerson Person?                @relation("InventoryAuditExpectedCustody", fields: [expectedCustodyPersonId], references: [id], onDelete: SetNull)
+  observedCustodyPerson Person?                @relation("InventoryAuditObservedCustody", fields: [observedCustodyPersonId], references: [id], onDelete: SetNull)
+  verifiedBy           Person?                 @relation("InventoryAuditResultVerifiedBy", fields: [verifiedByPersonId], references: [id], onDelete: SetNull)
+  discrepancies        InventoryAuditDiscrepancy[]
+
+  @@index([organizationId, auditSessionId, verificationStatus])
+  @@index([organizationId, gearItemId, verifiedAt])
+  @@index([organizationId, verifiedAt])
+  @@index([organizationId, expectedLocationId])
+  @@index([organizationId, observedLocationId])
+}
+
+model InventoryAuditDiscrepancy {
+  id                 String                   @id @default(cuid())
+  organizationId     String
+  auditSessionId     String
+  auditResultId      String?
+  gearItemId         String?
+  locationId         String?
+  discrepancyType    InventoryDiscrepancyType
+  status             InventoryDiscrepancyStatus @default(OPEN)
+  summary            String
+  details            String?
+  detectedAt         DateTime                 @default(now())
+  resolvedAt         DateTime?
+  resolvedByPersonId String?
+  resolutionNotes    String?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  auditSession InventoryAuditSession @relation(fields: [auditSessionId], references: [id], onDelete: Cascade)
+  auditResult  InventoryAuditResult? @relation(fields: [auditResultId], references: [id], onDelete: SetNull)
+  gearItem     GearItem?             @relation(fields: [gearItemId], references: [id], onDelete: SetNull)
+  location     InventoryLocation?    @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  resolvedBy   Person?               @relation("InventoryAuditDiscrepancyResolvedBy", fields: [resolvedByPersonId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, auditSessionId, status])
+  @@index([organizationId, discrepancyType, status])
+  @@index([organizationId, gearItemId, status])
+  @@index([organizationId, locationId, status])
 }
