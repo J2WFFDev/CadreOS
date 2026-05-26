@@ -43,7 +43,10 @@ type SupportedAction =
   | "gearMaintenance.create"
   | "gearMaintenance.update"
   | "gearConsumableTransaction.create"
-  | "gearConsumableTransaction.update";
+  | "gearConsumableTransaction.update"
+  | "entry.create"
+  | "entry.update"
+  | "entry.delete";
 
 type PermissionReason =
   | "UNAUTHENTICATED"
@@ -101,6 +104,9 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "gearMaintenance.update",
     "gearConsumableTransaction.create",
     "gearConsumableTransaction.update",
+    "entry.create",
+    "entry.update",
+    "entry.delete",
   ]),
   [RoleType.PROGRAM_DIRECTOR]: new Set<SupportedAction>([
     "season.create",
@@ -138,6 +144,9 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "gearMaintenance.update",
     "gearConsumableTransaction.create",
     "gearConsumableTransaction.update",
+    "entry.create",
+    "entry.update",
+    "entry.delete",
   ]),
   [RoleType.COACH]: new Set<SupportedAction>([
     "person.activate",
@@ -164,6 +173,8 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "gearMaintenance.update",
     "gearConsumableTransaction.create",
     "gearConsumableTransaction.update",
+    "entry.create",
+    "entry.update",
   ]),
   [RoleType.ASSISTANT_COACH]: new Set<SupportedAction>([
     "attendance.upsert",
@@ -171,6 +182,8 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "note.update",
     "task.create",
     "task.update",
+    "entry.create",
+    "entry.update",
   ]),
   [RoleType.PARENT_GUARDIAN]: new Set<SupportedAction>(),
   [RoleType.ATHLETE]: new Set<SupportedAction>(),
@@ -197,6 +210,8 @@ const SCOPED_ACTIONS = new Set<SupportedAction>([
   "booking.create",
   "booking.approve",
   "booking.deny",
+  "entry.create",
+  "entry.update",
 ]);
 
 const SUPPORTED_ACTIONS = new Set<SupportedAction>([
@@ -241,6 +256,9 @@ const SUPPORTED_ACTIONS = new Set<SupportedAction>([
   "gearMaintenance.update",
   "gearConsumableTransaction.create",
   "gearConsumableTransaction.update",
+  "entry.create",
+  "entry.update",
+  "entry.delete",
 ]);
 
 export type PermissionCheckInput = {
