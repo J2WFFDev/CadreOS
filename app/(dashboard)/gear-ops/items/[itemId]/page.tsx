@@ -1,5 +1,7 @@
 import {
   ConsumableTransactionType,
+  GearReservationMode,
+  GearReservationStatus,
   GearAssignmentStatus,
   GearCheckoutStatus,
   GearConditionStatus,
@@ -29,6 +31,11 @@ import {
   formatGearOpsEnum,
 } from "@/lib/gear-ops";
 import { deriveAvailabilitySignal } from "@/lib/gear-ops-ui";
+import {
+  deriveGearReservationEffectiveStatus,
+  formatGearReservationEnum,
+  summarizeGearReservations,
+} from "@/lib/gear-reservations";
 import {
   labelForMovementType,
   labelForOwnershipType,
@@ -154,6 +161,27 @@ export default async function GearOpsItemDetailsPage({
               }
             | null;
         }>;
+        reservations: Array<{
+          id: string;
+          mode: GearReservationMode;
+          status: GearReservationStatus;
+          approvalStatus: import("@prisma/client").ApprovalStatus;
+          holdType: import("@prisma/client").GearHoldType | null;
+          purpose: import("@prisma/client").GearReservationPurpose;
+          quantityRequested: number;
+          windowStartAt: Date;
+          windowEndAt: Date;
+          notes: string | null;
+          releaseReason: string | null;
+          conflictSummary: string | null;
+          releasedAt: Date | null;
+          fulfilledAt: Date | null;
+          requestedBy: { id: string; firstName: string; lastName: string };
+          reservedFor: { id: string; firstName: string; lastName: string } | null;
+          reservedTeam: { id: string; name: string } | null;
+          reservedEvent: { id: string; title: string } | null;
+          program: { id: string; name: string } | null;
+        }>;
         maintenanceLogs: Array<{
           id: string;
           maintenanceType: GearMaintenanceType;
@@ -264,6 +292,31 @@ export default async function GearOpsItemDetailsPage({
           orderBy: [{ checkedOutAt: "desc" }, { createdAt: "desc" }],
           take: 8,
         },
+        reservations: {
+          select: {
+            id: true,
+            mode: true,
+            status: true,
+            approvalStatus: true,
+            holdType: true,
+            purpose: true,
+            quantityRequested: true,
+            windowStartAt: true,
+            windowEndAt: true,
+            notes: true,
+            releaseReason: true,
+            conflictSummary: true,
+            releasedAt: true,
+            fulfilledAt: true,
+            requestedBy: { select: { id: true, firstName: true, lastName: true } },
+            reservedFor: { select: { id: true, firstName: true, lastName: true } },
+            reservedTeam: { select: { id: true, name: true } },
+            reservedEvent: { select: { id: true, title: true } },
+            program: { select: { id: true, name: true } },
+          },
+          orderBy: [{ windowStartAt: "desc" }, { createdAt: "desc" }],
+          take: 12,
+        },
         maintenanceLogs: {
           select: {
             id: true,
@@ -360,6 +413,23 @@ export default async function GearOpsItemDetailsPage({
   const currentCheckoutStatuses = new Set<GearCheckoutStatus>([GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE]);
   const currentCheckouts = gearItem.checkouts.filter((checkout) => currentCheckoutStatuses.has(checkout.status));
   const checkoutHistory = gearItem.checkouts.filter((checkout) => !currentCheckoutStatuses.has(checkout.status));
+  const currentReservations = gearItem.reservations.filter((reservation) =>
+    ![
+      GearReservationStatus.RELEASED,
+      GearReservationStatus.CANCELED,
+      GearReservationStatus.FULFILLED,
+      GearReservationStatus.EXPIRED,
+    ].includes(deriveGearReservationEffectiveStatus(reservation)),
+  );
+  const reservationHistory = gearItem.reservations.filter((reservation) =>
+    [
+      GearReservationStatus.RELEASED,
+      GearReservationStatus.CANCELED,
+      GearReservationStatus.FULFILLED,
+      GearReservationStatus.EXPIRED,
+    ].includes(deriveGearReservationEffectiveStatus(reservation)),
+  );
+  const reservationSummary = summarizeGearReservations(gearItem.reservations);
   const recentMaintenanceLogs = gearItem.maintenanceLogs.slice(0, 3);
   const maintenanceHistory = gearItem.maintenanceLogs.slice(3);
   const recentConsumableTransactions = gearItem.consumableTransactions.slice(0, 3);
@@ -379,6 +449,9 @@ export default async function GearOpsItemDetailsPage({
   const scanContextRaw = readSearchParam("scanContext");
   const scanContext = SCAN_CONTEXTS.includes(scanContextRaw as ScanContext) ? (scanContextRaw as ScanContext) : null;
   const scanValue = readSearchParam("scanValue");
+  const reservationSaved = readSearchParam("reservationSaved") === "1";
+  const reservationStatusUpdated = readSearchParam("reservationStatusUpdated");
+  const reservationError = readSearchParam("reservationError");
   const rapidNowInputValue = formatDateTimeInputValue(new Date());
   const primaryCheckout = currentCheckouts[0] ?? null;
   const primaryAssignment = currentAssignments[0] ?? null;
@@ -543,6 +616,150 @@ export default async function GearOpsItemDetailsPage({
     );
   }
 
+  function getReservationStatusChipClass(status: GearReservationStatus) {
+    if (status === GearReservationStatus.ACTIVE) {
+    return "bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200";
+    }
+    if (status === GearReservationStatus.PENDING_REVIEW) {
+    return "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200";
+    }
+    if (status === GearReservationStatus.CONFLICT) {
+    return "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200";
+    }
+    if (status === GearReservationStatus.FULFILLED || status === GearReservationStatus.RELEASED) {
+    return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200";
+    }
+    return "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200";
+  }
+
+  function renderReservationCard(reservation: (typeof gearItem.reservations)[number]) {
+    const effectiveStatus = deriveGearReservationEffectiveStatus(reservation);
+    const checkoutHref = `/gear-ops/items/${gearItem.id}/checkout?status=OPEN&checkedOutAt=${encodeURIComponent(
+    rapidNowInputValue,
+    )}${reservation.reservedFor ? `&checkedOutById=${encodeURIComponent(reservation.reservedFor.id)}` : ""}${
+    reservation.reservedEvent ? `&eventId=${encodeURIComponent(reservation.reservedEvent.id)}` : ""
+    }${reservation.notes ? `&purposeNotes=${encodeURIComponent(reservation.notes)}` : ""}`;
+    const assignHref = `/gear-ops/items/${gearItem.id}/assign?status=ACTIVE${
+    reservation.reservedFor ? `&assignedToPersonId=${encodeURIComponent(reservation.reservedFor.id)}` : ""
+    }${reservation.reservedTeam ? `&assignedToTeamId=${encodeURIComponent(reservation.reservedTeam.id)}` : ""}${
+    reservation.reservedEvent ? `&assignedToEventId=${encodeURIComponent(reservation.reservedEvent.id)}` : ""
+    }&expectedReturnAt=${encodeURIComponent(formatDateTimeInputValue(reservation.windowEndAt))}${
+    reservation.notes ? `&notes=${encodeURIComponent(reservation.notes)}` : ""
+    }`;
+
+    return (
+    <article key={reservation.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getReservationStatusChipClass(effectiveStatus)}`}>
+            {formatGearReservationEnum(effectiveStatus)}
+          </span>
+          <span className="inline-flex rounded-full bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+            {formatGearReservationEnum(reservation.mode)}
+          </span>
+          {reservation.holdType ? (
+            <span className="inline-flex rounded-full bg-sky-100 px-2 py-1 text-xs font-medium text-sky-800 dark:bg-sky-950/40 dark:text-sky-200">
+              {formatGearReservationEnum(reservation.holdType)}
+            </span>
+          ) : null}
+        </div>
+        <Link
+          href={`/gear-ops/items/${gearItem.id}/reserve?mode=${reservation.mode}&purpose=${reservation.purpose}&holdType=${reservation.holdType ?? ""}&reservedForPersonId=${reservation.reservedFor?.id ?? ""}&reservedForTeamId=${reservation.reservedTeam?.id ?? ""}&reservedForEventId=${reservation.reservedEvent?.id ?? ""}&programId=${reservation.program?.id ?? ""}&windowStartAt=${encodeURIComponent(formatDateTimeInputValue(reservation.windowStartAt))}&windowEndAt=${encodeURIComponent(formatDateTimeInputValue(reservation.windowEndAt))}&notes=${encodeURIComponent(reservation.notes ?? "")}`}
+          className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+        >
+          Duplicate
+        </Link>
+      </div>
+      <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+        Purpose: {formatGearReservationEnum(reservation.purpose)} · Window: {formatGearOpsDateTime(reservation.windowStartAt)} →{" "}
+        {formatGearOpsDateTime(reservation.windowEndAt)}
+      </p>
+      <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+        Requested by{" "}
+        <Link href={`/people/${reservation.requestedBy.id}`} className="underline">
+          {reservation.requestedBy.firstName} {reservation.requestedBy.lastName}
+        </Link>
+        {" · "}Person:{" "}
+        {reservation.reservedFor ? (
+          <Link href={`/people/${reservation.reservedFor.id}`} className="underline">
+            {reservation.reservedFor.firstName} {reservation.reservedFor.lastName}
+          </Link>
+        ) : (
+          "—"
+        )}
+        {" · "}Team:{" "}
+        {reservation.reservedTeam ? <Link href={`/teams/${reservation.reservedTeam.id}`} className="underline">{reservation.reservedTeam.name}</Link> : "—"}
+        {" · "}Event:{" "}
+        {reservation.reservedEvent ? <Link href={`/events/${reservation.reservedEvent.id}`} className="underline">{reservation.reservedEvent.title}</Link> : "—"}
+        {" · "}Program:{" "}
+        {reservation.program ? <Link href={`/programs/${reservation.program.id}`} className="underline">{reservation.program.name}</Link> : "—"}
+      </p>
+      <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+        Quantity: {reservation.quantityRequested} · Approval: {formatGearOpsEnum(reservation.approvalStatus)}
+        {reservation.fulfilledAt ? ` · Fulfilled ${formatGearOpsDateTime(reservation.fulfilledAt)}` : ""}
+        {reservation.releasedAt ? ` · Released ${formatGearOpsDateTime(reservation.releasedAt)}` : ""}
+      </p>
+      {reservation.conflictSummary ? (
+        <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+          {reservation.conflictSummary}
+        </p>
+      ) : null}
+      {reservation.notes ? <p className="mt-2 text-zinc-600 dark:text-zinc-400">{reservation.notes}</p> : null}
+      {reservation.releaseReason ? <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Release note: {reservation.releaseReason}</p> : null}
+      {[
+        GearReservationStatus.ACTIVE,
+        GearReservationStatus.PENDING_REVIEW,
+        GearReservationStatus.CONFLICT,
+        GearReservationStatus.DRAFT,
+      ].includes(effectiveStatus) ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {reservation.reservedEvent ? (
+            <Link href={`/events/${reservation.reservedEvent.id}/gear`} className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Event gear view
+            </Link>
+          ) : null}
+          <Link href={checkoutHref} className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Convert to checkout
+          </Link>
+          <Link href={assignHref} className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Convert to assignment
+          </Link>
+          {effectiveStatus !== GearReservationStatus.ACTIVE ? (
+            <form action={`/gear-ops/items/${gearItem.id}/reservations/${reservation.id}/status`} method="post">
+              <input type="hidden" name="status" value="ACTIVE" />
+              <input type="hidden" name="reason" value="Activated after reservation review." />
+              <button type="submit" className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                {effectiveStatus === GearReservationStatus.PENDING_REVIEW ? "Approve & activate" : "Activate"}
+              </button>
+            </form>
+          ) : null}
+          <form action={`/gear-ops/items/${gearItem.id}/reservations/${reservation.id}/status`} method="post">
+            <input type="hidden" name="status" value="RELEASED" />
+            <input type="hidden" name="reason" value="Released from item detail." />
+            <button type="submit" className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Release
+            </button>
+          </form>
+          <form action={`/gear-ops/items/${gearItem.id}/reservations/${reservation.id}/status`} method="post">
+            <input type="hidden" name="status" value="CANCELED" />
+            <input type="hidden" name="reason" value="Canceled from item detail." />
+            <button type="submit" className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Cancel
+            </button>
+          </form>
+          <form action={`/gear-ops/items/${gearItem.id}/reservations/${reservation.id}/status`} method="post">
+            <input type="hidden" name="status" value="FULFILLED" />
+            <input type="hidden" name="reason" value="Fulfilled from item detail." />
+            <button type="submit" className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Mark fulfilled
+            </button>
+          </form>
+        </div>
+      ) : null}
+    </article>
+    );
+  }
+
   function renderMaintenanceCard(entry: (typeof gearItem.maintenanceLogs)[number]) {
     return (
       <article key={entry.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
@@ -654,11 +871,19 @@ export default async function GearOpsItemDetailsPage({
                 lifecycleStatus: item.lifecycleStatus,
                 hasOpenCheckout: currentCheckouts.length > 0,
                 hasActiveAssignment: currentAssignments.length > 0,
+                hasActiveReservation: reservationSummary.currentReservedCount > 0,
+                hasActiveHold: reservationSummary.currentHeldCount > 0,
               })}
             />
             <GearLifecycleBadge status={item.lifecycleStatus} />
             <GearInventoryTypeBadge type={item.inventoryType} />
             {item.conditionStatus ? <GearConditionBadge status={item.conditionStatus} /> : null}
+            <Link
+              href={`/gear-ops/items/${item.id}/reserve`}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            >
+              Reserve / hold
+            </Link>
             <Link
               href={`/gear-ops/items/${item.id}/edit`}
               className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
@@ -695,6 +920,17 @@ export default async function GearOpsItemDetailsPage({
           </p>
         </div>
       ) : null}
+      {reservationSaved ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+          Reservation or hold saved successfully.
+        </div>
+      ) : null}
+      {reservationStatusUpdated ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+          Reservation updated: {formatGearReservationEnum(reservationStatusUpdated)}.
+        </div>
+      ) : null}
+      {reservationError ? <ErrorMessage message={reservationError} /> : null}
 
       <div id="rapid-ops" className="space-y-3 rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -843,6 +1079,12 @@ export default async function GearOpsItemDetailsPage({
           <dd className="text-zinc-600 dark:text-zinc-400">{recentMaintenanceLogs.length}</dd>
         </div>
         <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Current reservations / holds</dt>
+          <dd className={reservationSummary.blockedCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+            {reservationSummary.currentReservedCount} reserved · {reservationSummary.currentHeldCount} held
+          </dd>
+        </div>
+        <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Low-availability status</dt>
           <dd className={lowAvailabilityConcern ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
             {lowAvailabilityConcern ? "At or below min threshold" : "No low-availability signal"}
@@ -854,7 +1096,51 @@ export default async function GearOpsItemDetailsPage({
             {readinessConcernCount}
           </dd>
         </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Upcoming / conflicts</dt>
+          <dd className={reservationSummary.conflictCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}>
+            {reservationSummary.upcomingCount} upcoming · {reservationSummary.conflictCount} conflict
+          </dd>
+        </div>
       </dl>
+
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-lg font-medium">Reservations and holds</h3>
+          <Link
+            href={`/gear-ops/items/${item.id}/reserve`}
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            New reservation / hold
+          </Link>
+        </div>
+        {item.reservations.length === 0 ? (
+          <EmptyState message="No reservation or hold history is currently visible for this item." />
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Current future availability controls
+              </h4>
+              {currentReservations.length === 0 ? (
+                <EmptyState message="No active reservations or holds are currently visible for this item." />
+              ) : (
+                <div className="space-y-3">{currentReservations.map((reservation) => renderReservationCard(reservation))}</div>
+              )}
+            </div>
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Reservation history
+              </h4>
+              {reservationHistory.length === 0 ? (
+                <EmptyState message="No completed reservation history is currently visible for this item." />
+              ) : (
+                <div className="space-y-3">{reservationHistory.map((reservation) => renderReservationCard(reservation))}</div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">

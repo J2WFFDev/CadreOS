@@ -49,6 +49,8 @@ type SupportedAction =
   | "gearAssignment.update"
   | "gearCheckout.create"
   | "gearCheckout.update"
+  | "gearReservation.create"
+  | "gearReservation.update"
   | "gearMaintenance.create"
   | "gearMaintenance.update"
   | "gearConsumableTransaction.create"
@@ -122,6 +124,8 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "gearAssignment.update",
     "gearCheckout.create",
     "gearCheckout.update",
+    "gearReservation.create",
+    "gearReservation.update",
     "gearMaintenance.create",
     "gearMaintenance.update",
     "gearConsumableTransaction.create",
@@ -175,6 +179,8 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "gearAssignment.update",
     "gearCheckout.create",
     "gearCheckout.update",
+    "gearReservation.create",
+    "gearReservation.update",
     "gearMaintenance.create",
     "gearMaintenance.update",
     "gearConsumableTransaction.create",
@@ -212,6 +218,8 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "gearAssignment.update",
     "gearCheckout.create",
     "gearCheckout.update",
+    "gearReservation.create",
+    "gearReservation.update",
     "gearMaintenance.create",
     "gearMaintenance.update",
     "gearConsumableTransaction.create",
@@ -302,6 +310,8 @@ const SUPPORTED_ACTIONS = new Set<SupportedAction>([
   "gearAssignment.update",
   "gearCheckout.create",
   "gearCheckout.update",
+  "gearReservation.create",
+  "gearReservation.update",
   "gearMaintenance.create",
   "gearMaintenance.update",
   "gearConsumableTransaction.create",

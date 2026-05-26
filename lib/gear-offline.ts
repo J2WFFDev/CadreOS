@@ -24,6 +24,8 @@ export type GearOfflineBoundary = "LOCAL_ONLY" | "SERVER_CONFIRMATION" | "REVIEW
 export type GearPendingActionSubjectType = "GEAR_ITEM" | "EVENT" | "SCAN_WORKFLOW" | "GEAR_OPS";
 
 export type GearOfflineActionType =
+  | "gear.reservation.create"
+  | "gear.reservation.update"
   | "gear.checkout.create"
   | "gear.assignment.create"
   | "gear.maintenance.create"
@@ -85,6 +87,28 @@ export type GearRetryResult = {
 };
 
 const POLICY_MAP: Record<GearOfflineActionType, GearOfflinePolicy> = {
+  "gear.reservation.create": {
+    actionType: "gear.reservation.create",
+    label: "Gear reservation / hold",
+    capability: "ONLINE_REQUIRED",
+    boundary: "SERVER_CONFIRMATION",
+    retryMode: "BLOCKED",
+    queueable: false,
+    optimisticLabel: "Online required",
+    offlineDescription: "Reservation and hold availability checks stay online-only so conflicts and custody state remain current.",
+    onlineRequiredReason: "Creating a reservation or hold requires a live connection.",
+  },
+  "gear.reservation.update": {
+    actionType: "gear.reservation.update",
+    label: "Gear reservation / hold update",
+    capability: "ONLINE_REQUIRED",
+    boundary: "SERVER_CONFIRMATION",
+    retryMode: "BLOCKED",
+    queueable: false,
+    optimisticLabel: "Online required",
+    offlineDescription: "Reservation releases, cancellations, and approval changes stay online-only to keep availability trustworthy.",
+    onlineRequiredReason: "Updating a reservation or hold requires a live connection.",
+  },
   "gear.checkout.create": {
     actionType: "gear.checkout.create",
     label: "Gear check-out",

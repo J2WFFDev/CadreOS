@@ -41,6 +41,8 @@ export type EventGearAssignmentSnapshot = {
   activeEventCheckout?: EventGearCheckoutSnapshot | null;
   blockingCheckout?: EventGearCheckoutSnapshot | null;
   blockingAssignment?: boolean;
+  blockingReservationMode?: "SOFT_HOLD" | "HARD_RESERVATION" | null;
+  reservationNeedsApproval?: boolean;
 };
 
 export type EventGearRequirementSnapshot = {
@@ -119,7 +121,12 @@ export function getEventGearAvailabilityBadgeClass(status: EventGearAvailability
 }
 
 export function deriveEventGearAvailability(input: EventGearAssignmentSnapshot): EventGearAvailabilityState {
-  if ((input.blockingCheckout && input.blockingCheckout.returnedAt === null) || input.blockingAssignment) {
+  if (
+    (input.blockingCheckout && input.blockingCheckout.returnedAt === null) ||
+    input.blockingAssignment ||
+    input.reservationNeedsApproval ||
+    input.blockingReservationMode === "HARD_RESERVATION"
+  ) {
     return "UNAVAILABLE";
   }
 
@@ -151,6 +158,7 @@ export function deriveEventGearAvailability(input: EventGearAssignmentSnapshot):
   }
 
   if (
+    input.blockingReservationMode === "SOFT_HOLD" ||
     input.gearItem.readinessState === "NEEDS_INSPECTION" ||
     input.gearItem.conditionStatus === "FAIR" ||
     (input.gearItem.quantityMin !== null && input.gearItem.quantityOnHand <= input.gearItem.quantityMin)

@@ -1,5 +1,7 @@
 import {
   ConsumableTransactionType,
+  GearReservationMode,
+  GearReservationStatus,
   GearAssignmentStatus,
   GearCheckoutStatus,
   GearConditionStatus,
@@ -78,6 +80,10 @@ export default async function GearOpsDashboardPage() {
         conditionConcernItems: number;
         activeAssignmentRecords: number;
         openCheckoutRecords: number;
+        activeReservations: number;
+        activeHolds: number;
+        upcomingReservations: number;
+        conflictingReservations: number;
         lowAvailabilityConsumables: number;
         consumableUsageUnits30d: number;
         consumableReplenishmentUnits30d: number;
@@ -107,6 +113,10 @@ export default async function GearOpsDashboardPage() {
       conditionConcernItems,
       activeAssignmentRecords,
       openCheckoutRecords,
+      activeReservations,
+      activeHolds,
+      upcomingReservations,
+      conflictingReservations,
       lowAvailabilityConsumablesCount,
       lowAvailabilityItems,
       openCheckoutItems,
@@ -148,6 +158,41 @@ export default async function GearOpsDashboardPage() {
           status: {
             in: [GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE],
           },
+          gearItem: { AND: [access.where] },
+        },
+      }),
+      db.gearReservation.count({
+        where: {
+          organizationId: scope.organizationId,
+          status: { in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW] },
+          mode: GearReservationMode.HARD_RESERVATION,
+          windowStartAt: { lte: now },
+          windowEndAt: { gte: now },
+          gearItem: { AND: [access.where] },
+        },
+      }),
+      db.gearReservation.count({
+        where: {
+          organizationId: scope.organizationId,
+          status: { in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW] },
+          mode: GearReservationMode.SOFT_HOLD,
+          windowStartAt: { lte: now },
+          windowEndAt: { gte: now },
+          gearItem: { AND: [access.where] },
+        },
+      }),
+      db.gearReservation.count({
+        where: {
+          organizationId: scope.organizationId,
+          status: { in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW] },
+          windowStartAt: { gt: now },
+          gearItem: { AND: [access.where] },
+        },
+      }),
+      db.gearReservation.count({
+        where: {
+          organizationId: scope.organizationId,
+          status: GearReservationStatus.CONFLICT,
           gearItem: { AND: [access.where] },
         },
       }),
@@ -240,6 +285,10 @@ export default async function GearOpsDashboardPage() {
       conditionConcernItems,
       activeAssignmentRecords,
       openCheckoutRecords,
+      activeReservations,
+      activeHolds,
+      upcomingReservations,
+      conflictingReservations,
       lowAvailabilityConsumables: lowAvailabilityConsumablesCount,
       consumableUsageUnits30d,
       consumableReplenishmentUnits30d,
@@ -314,6 +363,10 @@ export default async function GearOpsDashboardPage() {
             href="/gear-ops/items?lifecycleStatus=ASSIGNED&lifecycleStatus=CHECKED_OUT"
             tone="info"
           />
+          <GearDashboardCard label="Reserved now" value={summary.activeReservations} href="/gear-ops/reports#reservation-reporting" tone="info" />
+          <GearDashboardCard label="Held now" value={summary.activeHolds} href="/gear-ops/reports#reservation-reporting" />
+          <GearDashboardCard label="Upcoming reservations" value={summary.upcomingReservations} href="/gear-ops/reports#reservation-reporting" />
+          <GearDashboardCard label="Reservation conflicts" value={summary.conflictingReservations} href="/gear-ops/reports#reservation-reporting" tone="warning" />
           <GearDashboardCard
             label="In maintenance"
             value={summary.maintenanceItems}

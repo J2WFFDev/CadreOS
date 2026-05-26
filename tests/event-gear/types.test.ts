@@ -65,6 +65,44 @@ test("deriveEventGearAvailability separates out-of-service and maintenance-neede
   );
 });
 
+test("deriveEventGearAvailability treats overlapping reservations as unavailable or limited use", () => {
+  assert.equal(
+    deriveEventGearAvailability({
+      stagedAt: null,
+      recoveredAt: null,
+      activeEventCheckout: null,
+      blockingCheckout: null,
+      blockingReservationMode: "HARD_RESERVATION",
+      gearItem: {
+        lifecycleStatus: "ACTIVE",
+        readinessState: "READY",
+        conditionStatus: "GOOD",
+        quantityOnHand: 1,
+        quantityMin: null,
+      },
+    }),
+    "UNAVAILABLE",
+  );
+
+  assert.equal(
+    deriveEventGearAvailability({
+      stagedAt: null,
+      recoveredAt: null,
+      activeEventCheckout: null,
+      blockingCheckout: null,
+      blockingReservationMode: "SOFT_HOLD",
+      gearItem: {
+        lifecycleStatus: "ACTIVE",
+        readinessState: "READY",
+        conditionStatus: "GOOD",
+        quantityOnHand: 1,
+        quantityMin: null,
+      },
+    }),
+    "LIMITED_USE",
+  );
+});
+
 test("deriveEventGearAssignmentStatus follows staging, deployment, return, and recovery flow", () => {
   assert.equal(
     deriveEventGearAssignmentStatus({

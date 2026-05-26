@@ -326,6 +326,8 @@ export function getConcernLevelChipClass(level: GearConcernLevel): string {
 
 export type GearAvailabilitySignal =
   | "AVAILABLE"
+  | "RESERVED"
+  | "HELD"
   | "CHECKED_OUT"
   | "ASSIGNED"
   | "MAINTENANCE"
@@ -335,10 +337,14 @@ export function deriveAvailabilitySignal({
   lifecycleStatus,
   hasOpenCheckout,
   hasActiveAssignment,
+  hasActiveReservation = false,
+  hasActiveHold = false,
 }: {
   lifecycleStatus: GearItemLifecycleStatus;
   hasOpenCheckout: boolean;
   hasActiveAssignment: boolean;
+  hasActiveReservation?: boolean;
+  hasActiveHold?: boolean;
 }): GearAvailabilitySignal {
   if (
     lifecycleStatus === "MAINTENANCE" ||
@@ -351,7 +357,8 @@ export function deriveAvailabilitySignal({
 
   if (hasOpenCheckout) return "CHECKED_OUT";
   if (hasActiveAssignment) return "ASSIGNED";
-  if (lifecycleStatus === "RESERVED") return "ASSIGNED";
+  if (hasActiveReservation || lifecycleStatus === "RESERVED") return "RESERVED";
+  if (hasActiveHold) return "HELD";
   if (lifecycleStatus === "ACTIVE") return "AVAILABLE";
 
   return "UNAVAILABLE";
@@ -361,6 +368,10 @@ export function getAvailabilitySignalLabel(signal: GearAvailabilitySignal): stri
   switch (signal) {
     case "AVAILABLE":
       return "Available";
+    case "RESERVED":
+      return "Reserved";
+    case "HELD":
+      return "Held";
     case "CHECKED_OUT":
       return "Checked out";
     case "ASSIGNED":
@@ -376,6 +387,10 @@ export function getAvailabilitySignalChipClass(signal: GearAvailabilitySignal): 
   switch (signal) {
     case "AVAILABLE":
       return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200";
+    case "RESERVED":
+      return "bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200";
+    case "HELD":
+      return "bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-200";
     case "CHECKED_OUT":
       return "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200";
     case "ASSIGNED":

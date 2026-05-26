@@ -1,6 +1,8 @@
+import { GearReservationStatus, InventoryMovementType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { findReservationToFulfill } from "@/lib/gear-reservations";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   gearCheckoutWorkflowSchema,
@@ -228,23 +230,82 @@ export async function POST(
       }
     }
 
-    await db.gearCheckout.create({
-      data: {
-        organizationId: scope.organizationId,
-        gearItemId: itemId,
-        status: parsed.data.status,
-        checkedOutById: parsed.data.checkedOutById,
-        issuedById: parsed.data.issuedById,
+    await db.$transaction(async (tx) => {
+      await tx.gearCheckout.create({
+        data: {
+          organizationId: scope.organizationId,
+          gearItemId: itemId,
+          status: parsed.data.status,
+          checkedOutById: parsed.data.checkedOutById,
+          issuedById: parsed.data.issuedById,
+          eventId: parsed.data.eventId,
+          checkedOutAt: parsed.data.checkedOutAt,
+          expectedReturnAt: parsed.data.expectedReturnAt,
+          returnedAt: parsed.data.returnedAt,
+          returnedById: parsed.data.returnedById,
+          receivedById: parsed.data.receivedById,
+          conditionOnReturn: parsed.data.conditionOnReturn,
+          purposeNotes: parsed.data.purposeNotes,
+          returnNotes: parsed.data.returnNotes,
+        },
+      });
+
+      const reservations = await tx.gearReservation.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          gearItemId: itemId,
+          status: {
+            in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW, GearReservationStatus.CONFLICT],
+          },
+        },
+        select: {
+          id: true,
+          gearItemId: true,
+          mode: true,
+          status: true,
+          approvalStatus: true,
+          holdType: true,
+          purpose: true,
+          quantityRequested: true,
+          windowStartAt: true,
+          windowEndAt: true,
+          reservedForPersonId: true,
+          reservedForTeamId: true,
+          reservedForEventId: true,
+          programId: true,
+          conflictSummary: true,
+        },
+      });
+
+      const reservationToFulfill = findReservationToFulfill({
+        reservations,
+        personId: parsed.data.checkedOutById,
         eventId: parsed.data.eventId,
-        checkedOutAt: parsed.data.checkedOutAt,
-        expectedReturnAt: parsed.data.expectedReturnAt,
-        returnedAt: parsed.data.returnedAt,
-        returnedById: parsed.data.returnedById,
-        receivedById: parsed.data.receivedById,
-        conditionOnReturn: parsed.data.conditionOnReturn,
-        purposeNotes: parsed.data.purposeNotes,
-        returnNotes: parsed.data.returnNotes,
-      },
+      });
+
+      if (reservationToFulfill) {
+        await tx.gearReservation.update({
+          where: { id: reservationToFulfill.id },
+          data: {
+            status: GearReservationStatus.FULFILLED,
+            fulfilledAt: new Date(),
+            releasedByPersonId: parsed.data.issuedById,
+          },
+        });
+
+        await tx.inventoryMovement.create({
+          data: {
+            organizationId: scope.organizationId,
+            gearItemId: itemId,
+            movementType: InventoryMovementType.RESERVATION_RELEASED,
+            actorPersonId: parsed.data.issuedById,
+            relatedRecordType: "GEAR_RESERVATION",
+            relatedRecordId: reservationToFulfill.id,
+            notes: "Reservation fulfilled by gear checkout.",
+            occurredAt: new Date(),
+          },
+        });
+      }
     });
 
     return NextResponse.redirect(new URL(`/gear-ops/items/${itemId}`, request.url), 303);
