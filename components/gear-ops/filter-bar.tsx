@@ -45,7 +45,7 @@ export function GearFilterBar({
           <Link
             key={chip.key}
             href={chip.href}
-            aria-pressed={chip.isActive}
+            aria-current={chip.isActive ? "page" : undefined}
             className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition ${
               chip.isActive
                 ? "border-zinc-800 bg-zinc-800 text-white dark:border-zinc-200 dark:bg-zinc-200 dark:text-zinc-900"

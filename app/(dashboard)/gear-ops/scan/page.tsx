@@ -95,7 +95,10 @@ export default async function GearOpsScanPage({
         {/* Scan form */}
         <form action="/gear-ops/scan/resolve" method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
           {/* Active mode card */}
-          <div className="flex items-start gap-3 rounded-lg border-l-4 border-zinc-800 bg-zinc-50 p-3 dark:border-zinc-200 dark:bg-zinc-950/40">
+          <div
+            aria-label={`Active scan mode: ${currentPreset.title}`}
+            className="flex items-start gap-3 rounded-lg border-l-4 border-zinc-800 bg-zinc-50 p-3 dark:border-zinc-200 dark:bg-zinc-950/40"
+          >
             <div className="flex-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Active mode</p>
               <h3 className="mt-0.5 text-base font-semibold text-zinc-900 dark:text-zinc-50">{currentPreset.title}</h3>

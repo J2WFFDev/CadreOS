@@ -16,6 +16,13 @@ export type GearQuickAction = {
   primary?: boolean;
 };
 
+/** Returns the card class string for a quick action based on whether it is primary. */
+function quickActionCardClass(primary: boolean): string {
+  return primary
+    ? "rounded-lg border-2 border-zinc-800 bg-zinc-50 p-4 transition hover:bg-zinc-100 dark:border-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+    : "rounded-lg border bg-white p-4 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800";
+}
+
 export function GearQuickActionCard({
   title,
   description,
@@ -27,9 +34,7 @@ export function GearQuickActionCard({
   href: string;
   primary?: boolean;
 }) {
-  const style = primary
-    ? "rounded-lg border-2 border-zinc-800 bg-zinc-50 p-4 transition hover:bg-zinc-100 dark:border-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800"
-    : "rounded-lg border bg-white p-4 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800";
+  const style = quickActionCardClass(primary);
 
   return (
     <Link href={href} className={`block ${style} focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500`}>
@@ -49,9 +54,7 @@ export function GearQuickActionGrid({
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {actions.map((action) => {
-        const style = action.primary
-          ? "rounded-lg border-2 border-zinc-800 bg-zinc-50 p-4 transition hover:bg-zinc-100 dark:border-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800"
-          : "rounded-lg border bg-white p-4 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800";
+        const style = quickActionCardClass(action.primary ?? false);
         return (
           <Link
             key={action.key}
