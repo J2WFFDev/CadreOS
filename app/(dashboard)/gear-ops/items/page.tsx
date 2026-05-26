@@ -107,11 +107,22 @@ export default async function GearOpsItemsPage({
     readSearchParams(resolvedSearchParams, "conditionStatus"),
     Object.values(GearConditionStatus),
   );
+  const queryText = readSearchParams(resolvedSearchParams, "q")[0]?.trim() ?? "";
 
   const hasFilters = inventoryTypeFilter.length > 0 || lifecycleStatusFilter.length > 0 || conditionStatusFilter.length > 0;
 
   const itemWhere: Prisma.GearItemWhereInput = {
     ...access.where,
+    ...(queryText.length > 0
+      ? {
+          OR: [
+            { name: { contains: queryText, mode: "insensitive" } },
+            { barcodeValue: { equals: queryText, mode: "insensitive" } },
+            { serialNumber: { equals: queryText, mode: "insensitive" } },
+            { sku: { equals: queryText, mode: "insensitive" } },
+          ],
+        }
+      : {}),
     ...(inventoryTypeFilter.length > 0 ? { inventoryType: { in: inventoryTypeFilter } } : {}),
     ...(lifecycleStatusFilter.length > 0 ? { lifecycleStatus: { in: lifecycleStatusFilter } } : {}),
     ...(conditionStatusFilter.length > 0 ? { conditionStatus: { in: conditionStatusFilter } } : {}),
@@ -230,6 +241,26 @@ export default async function GearOpsItemsPage({
         >
           New item
         </Link>
+        <Link href="/gear-ops/scan?scanContext=INVENTORY_LOOKUP" className="rounded-md border px-3 py-1.5 text-sm">
+          Scan lookup
+        </Link>
+      </div>
+
+      <div className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
+        <form action="/gear-ops/items" method="get" className="flex flex-col gap-2 sm:flex-row">
+          <input
+            name="q"
+            defaultValue={queryText}
+            placeholder="Search by name, barcode/QR, serial, or SKU"
+            className="w-full rounded-md border px-3 py-2 text-sm"
+          />
+          <button
+            type="submit"
+            className="rounded-md bg-black px-3 py-2 text-sm text-white dark:bg-white dark:text-black"
+          >
+            Search
+          </button>
+        </form>
       </div>
 
       {hasFilters ? (

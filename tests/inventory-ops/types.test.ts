@@ -160,6 +160,7 @@ test("INVENTORY_ACTIVITY_ACTIONS contains all expected action strings", () => {
   assert.equal(INVENTORY_ACTIVITY_ACTIONS.KIT_ITEM_ADDED, "inventory.kit.item_added");
   assert.equal(INVENTORY_ACTIVITY_ACTIONS.KIT_ITEM_REMOVED, "inventory.kit.item_removed");
   assert.equal(INVENTORY_ACTIVITY_ACTIONS.READINESS_STATE_CHANGED, "inventory.readiness_state.changed");
+  assert.equal(INVENTORY_ACTIVITY_ACTIONS.SCAN_EVENT_RECORDED, "inventory.scan_event.recorded");
 });
 
 // ── State machine consistency ────────────────────────────────────────────────

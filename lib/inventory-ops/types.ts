@@ -205,6 +205,7 @@ export const INVENTORY_ACTIVITY_ACTIONS = {
   KIT_ITEM_REMOVED: "inventory.kit.item_removed",
   READINESS_STATE_CHANGED: "inventory.readiness_state.changed",
   OWNERSHIP_TYPE_SET: "inventory.ownership_type.set",
+  SCAN_EVENT_RECORDED: "inventory.scan_event.recorded",
 } as const;
 
 export type InventoryActivityAction =

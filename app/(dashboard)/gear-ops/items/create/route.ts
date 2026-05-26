@@ -18,6 +18,7 @@ type GearItemFormValues = {
   programId: string;
   sku: string;
   serialNumber: string;
+  barcodeValue: string;
   quantityOnHand: string;
   quantityMin: string;
   lifecycleStatus: string;
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
     programId: getStringField(formData, "programId"),
     sku: getStringField(formData, "sku"),
     serialNumber: getStringField(formData, "serialNumber"),
+    barcodeValue: getStringField(formData, "barcodeValue"),
     quantityOnHand: getStringField(formData, "quantityOnHand"),
     quantityMin: getStringField(formData, "quantityMin"),
     lifecycleStatus: getStringField(formData, "lifecycleStatus"),
@@ -109,6 +111,7 @@ export async function POST(request: Request) {
           inventoryType: fieldErrors.inventoryType?.[0],
           sku: fieldErrors.sku?.[0],
           serialNumber: fieldErrors.serialNumber?.[0],
+          barcodeValue: fieldErrors.barcodeValue?.[0],
           quantityOnHand: fieldErrors.quantityOnHand?.[0],
           quantityMin: fieldErrors.quantityMin?.[0],
           lifecycleStatus: fieldErrors.lifecycleStatus?.[0],
@@ -182,6 +185,7 @@ export async function POST(request: Request) {
         programId: parsed.data.programId,
         sku: parsed.data.sku,
         serialNumber: parsed.data.serialNumber,
+        barcodeValue: parsed.data.barcodeValue,
         quantityOnHand: parsed.data.quantityOnHand,
         quantityMin: parsed.data.quantityMin,
         lifecycleStatus: parsed.data.lifecycleStatus,

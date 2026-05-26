@@ -4,6 +4,7 @@ const GEAR_OPS_LINKS = [
   { href: "/gear-ops", label: "Overview", key: "overview" },
   { href: "/gear-ops/categories", label: "Categories", key: "categories" },
   { href: "/gear-ops/items", label: "Items", key: "items" },
+  { href: "/gear-ops/scan", label: "Scan", key: "scan" },
   { href: "/gear-ops/locations", label: "Locations", key: "locations" },
   { href: "/gear-ops/kits", label: "Kits", key: "kits" },
 ] as const;

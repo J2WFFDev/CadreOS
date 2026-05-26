@@ -122,6 +122,7 @@ export default async function NewGearItemPage({
   const programId = readSearchParam(resolvedSearchParams, "programId");
   const sku = readSearchParam(resolvedSearchParams, "sku");
   const serialNumber = readSearchParam(resolvedSearchParams, "serialNumber");
+  const barcodeValue = readSearchParam(resolvedSearchParams, "barcodeValue");
   const quantityOnHand = readSearchParam(resolvedSearchParams, "quantityOnHand");
   const quantityMin = readSearchParam(resolvedSearchParams, "quantityMin");
   const lifecycleStatus = readSearchParam(resolvedSearchParams, "lifecycleStatus");
@@ -296,6 +297,23 @@ export default async function NewGearItemPage({
             />
             {readSearchParam(resolvedSearchParams, "serialNumberError") ? (
               <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "serialNumberError")}</p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label htmlFor="barcodeValue" className="text-sm font-medium">
+              Barcode / QR value (optional)
+            </label>
+            <input
+              id="barcodeValue"
+              name="barcodeValue"
+              defaultValue={barcodeValue}
+              className="w-full rounded-md border px-3 py-2 text-sm font-mono"
+            />
+            {readSearchParam(resolvedSearchParams, "barcodeValueError") ? (
+              <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "barcodeValueError")}</p>
             ) : null}
           </div>
         </div>
