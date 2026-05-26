@@ -453,6 +453,7 @@ model Organization {
   inventoryMovements          InventoryMovement[]
   inventoryKits               InventoryKit[]
   inventoryKitItems           InventoryKitItem[]
+  inventoryScanEvents         InventoryScanEvent[]
   entries                     Entry[]
   entryLinks                  EntryLink[]
   entryActivities             EntryActivity[]
@@ -607,6 +608,7 @@ model Person {
   actorInventoryMovements    InventoryMovement[]          @relation("InventoryMovementActor")
   custodyInventoryMovements  InventoryMovement[]          @relation("InventoryMovementCustody")
   ownedInventoryKits         InventoryKit[]               @relation("InventoryKitOwner")
+  inventoryScanEvents        InventoryScanEvent[]         @relation("InventoryScanEventActor")
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
@@ -1250,6 +1252,7 @@ model GearItem {
   consumableTransactions ConsumableTransaction[]
   inventoryMovements     InventoryMovement[]
   kitItems               InventoryKitItem[]
+  scanEvents             InventoryScanEvent[]
 
   @@index([organizationId, gearCategoryId])
   @@index([organizationId, programId])
@@ -1594,6 +1597,7 @@ model InventoryLocation {
   gearItems       GearItem[]
   movementsFrom   InventoryMovement[] @relation("MovementFromLocation")
   movementsTo     InventoryMovement[] @relation("MovementToLocation")
+  scanEvents      InventoryScanEvent[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -1671,4 +1675,33 @@ model InventoryKitItem {
   @@unique([kitId, gearItemId])
   @@index([organizationId, kitId])
   @@index([organizationId, gearItemId])
+}
+
+// Arc 20B: InventoryScanEvent — immutable scan activity records for barcode/QR operational workflows
+model InventoryScanEvent {
+  id                      String   @id @default(cuid())
+  organizationId          String
+  actorPersonId           String?
+  gearItemId              String?
+  locationId              String?
+  scanContext             String
+  rawValue                String
+  normalizedValue         String
+  inventoryIdentifierType String
+  matchType               String
+  result                  String
+  workflowTarget          String?
+  metadataJson            String?
+  createdAt               DateTime @default(now())
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  actor        Person?            @relation("InventoryScanEventActor", fields: [actorPersonId], references: [id], onDelete: SetNull)
+  gearItem     GearItem?          @relation(fields: [gearItemId], references: [id], onDelete: SetNull)
+  location     InventoryLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, scanContext, createdAt])
+  @@index([organizationId, result, createdAt])
+  @@index([organizationId, gearItemId, createdAt])
+  @@index([organizationId, locationId, createdAt])
 }

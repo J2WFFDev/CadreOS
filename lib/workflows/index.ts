@@ -23,6 +23,7 @@ import {
 import { z } from "zod";
 
 import { requireAuthContext } from "@/lib/auth";
+import { validateInventoryCodeValue } from "@/lib/inventory-scan";
 import { PermissionDeniedError, requirePermission } from "@/lib/permissions";
 
 const MAX_NAME_LENGTH = 100;
@@ -41,6 +42,7 @@ const MAX_GEAR_DESCRIPTION_LENGTH = 1000;
 const MAX_GEAR_NOTES_LENGTH = 4000;
 const MAX_SKU_LENGTH = 100;
 const MAX_SERIAL_NUMBER_LENGTH = 100;
+const MAX_BARCODE_VALUE_LENGTH = 160;
 const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DATETIME_LOCAL_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
 
@@ -559,6 +561,10 @@ export const gearItemWorkflowSchema = z
       .string()
       .trim()
       .max(MAX_SERIAL_NUMBER_LENGTH, `Serial number must be ${MAX_SERIAL_NUMBER_LENGTH} characters or less.`),
+    barcodeValue: z
+      .string()
+      .trim()
+      .max(MAX_BARCODE_VALUE_LENGTH, `Barcode/QR value must be ${MAX_BARCODE_VALUE_LENGTH} characters or less.`),
     quantityOnHand: z.string().trim(),
     quantityMin: z.string().trim(),
     lifecycleStatus: z.nativeEnum(GearItemLifecycleStatus, {
@@ -601,6 +607,17 @@ export const gearItemWorkflowSchema = z
         });
       }
     }
+
+    if (value.barcodeValue.length > 0) {
+      const barcodeValidation = validateInventoryCodeValue(value.barcodeValue);
+      if (!barcodeValidation.valid) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["barcodeValue"],
+          message: barcodeValidation.message ?? "Barcode/QR value is invalid.",
+        });
+      }
+    }
   })
   .transform((value) => ({
     name: value.name,
@@ -609,6 +626,7 @@ export const gearItemWorkflowSchema = z
     programId: value.programId.length === 0 ? null : value.programId,
     sku: value.sku.length === 0 ? null : value.sku,
     serialNumber: value.serialNumber.length === 0 ? null : value.serialNumber,
+    barcodeValue: value.barcodeValue.length === 0 ? null : value.barcodeValue,
     quantityOnHand: value.quantityOnHand.length === 0 ? 0 : Number(value.quantityOnHand),
     quantityMin: value.quantityMin.length === 0 ? null : Number(value.quantityMin),
     lifecycleStatus: value.lifecycleStatus,

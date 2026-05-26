@@ -80,6 +80,7 @@ export default async function EditGearItemPage({
     conditionStatus: GearConditionStatus | null;
     sku: string | null;
     serialNumber: string | null;
+    barcodeValue: string | null;
     quantityOnHand: number;
     quantityMin: number | null;
     notes: string | null;
@@ -106,6 +107,7 @@ export default async function EditGearItemPage({
           conditionStatus: true,
           sku: true,
           serialNumber: true,
+          barcodeValue: true,
           quantityOnHand: true,
           quantityMin: true,
           notes: true,
@@ -160,6 +162,7 @@ export default async function EditGearItemPage({
   const programId = readSearchParam(resolvedSearchParams, "programId") ?? item.programId ?? "";
   const sku = readSearchParam(resolvedSearchParams, "sku") ?? item.sku ?? "";
   const serialNumber = readSearchParam(resolvedSearchParams, "serialNumber") ?? item.serialNumber ?? "";
+  const barcodeValue = readSearchParam(resolvedSearchParams, "barcodeValue") ?? item.barcodeValue ?? "";
   const quantityOnHand =
     readSearchParam(resolvedSearchParams, "quantityOnHand") || String(item.quantityOnHand);
   const quantityMin =
@@ -345,6 +348,23 @@ export default async function EditGearItemPage({
             />
             {readSearchParam(resolvedSearchParams, "serialNumberError") ? (
               <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "serialNumberError")}</p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label htmlFor="barcodeValue" className="text-sm font-medium">
+              Barcode / QR value (optional)
+            </label>
+            <input
+              id="barcodeValue"
+              name="barcodeValue"
+              defaultValue={barcodeValue}
+              className="w-full rounded-md border px-3 py-2 text-sm font-mono"
+            />
+            {readSearchParam(resolvedSearchParams, "barcodeValueError") ? (
+              <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "barcodeValueError")}</p>
             ) : null}
           </div>
         </div>

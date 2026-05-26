@@ -28,6 +28,14 @@ import {
   labelForOwnershipType,
   labelForReadinessState,
 } from "@/lib/inventory-ops";
+import {
+  labelForScanContext,
+  labelForScanEventResult,
+  SCAN_CONTEXTS,
+  SCAN_EVENT_RESULTS,
+  type ScanContext,
+  type ScanEventResult,
+} from "@/lib/inventory-scan";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -36,11 +44,20 @@ export const dynamic = "force-dynamic";
 
 export default async function GearOpsItemDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ itemId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { itemId } = await params;
+  const resolvedSearchParams = await searchParams;
   const scope = await getOrganizationScope();
+
+  const readSearchParam = (key: string) => {
+    const value = resolvedSearchParams[key];
+    if (Array.isArray(value)) return value[0] ?? "";
+    return value ?? "";
+  };
 
   if (!scope.databaseReady) {
     return (
@@ -169,6 +186,15 @@ export default async function GearOpsItemDetailsPage({
           notes: string | null;
           occurredAt: Date;
         }>;
+        scanEvents: Array<{
+          id: string;
+          scanContext: string;
+          result: string;
+          inventoryIdentifierType: string;
+          rawValue: string;
+          createdAt: Date;
+          actor: { id: string; firstName: string; lastName: string } | null;
+        }>;
       }
     | null = null;
   let queryFailed = false;
@@ -275,6 +301,19 @@ export default async function GearOpsItemDetailsPage({
           orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
           take: 20,
         },
+        scanEvents: {
+          select: {
+            id: true,
+            scanContext: true,
+            result: true,
+            inventoryIdentifierType: true,
+            rawValue: true,
+            createdAt: true,
+            actor: { select: { id: true, firstName: true, lastName: true } },
+          },
+          orderBy: [{ createdAt: "desc" }],
+          take: 10,
+        },
       },
     });
   } catch (error) {
@@ -330,6 +369,10 @@ export default async function GearOpsItemDetailsPage({
       : 0) +
     (currentCheckouts.length > 0 ? 1 : 0) +
     (lowAvailabilityConcern ? 1 : 0);
+  const scanned = readSearchParam("scanned") === "1";
+  const scanContextRaw = readSearchParam("scanContext");
+  const scanContext = SCAN_CONTEXTS.includes(scanContextRaw as ScanContext) ? (scanContextRaw as ScanContext) : null;
+  const scanValue = readSearchParam("scanValue");
 
   function renderAssignmentCard(assignment: (typeof gearItem.assignments)[number]) {
     const assignmentProgram = assignment.assignedEvent?.program ?? assignment.assignedTeam?.program ?? gearItem.program;
@@ -601,9 +644,24 @@ export default async function GearOpsItemDetailsPage({
             >
               Edit
             </Link>
+            <Link
+              href={`/gear-ops/scan?scanContext=INVENTORY_LOOKUP&scanValue=${encodeURIComponent(item.id)}`}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Scan center
+            </Link>
           </div>
         </div>
       </div>
+
+      {scanned ? (
+        <div className="rounded-lg border bg-white p-3 text-sm text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+          <p>
+            Scan resolved for {scanContext ? labelForScanContext(scanContext) : "inventory lookup"}
+            {scanValue ? ` · ${scanValue}` : ""}.
+          </p>
+        </div>
+      ) : null}
 
       <dl className="grid gap-3 rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900 sm:grid-cols-2 lg:grid-cols-4">
         <div>
@@ -717,6 +775,46 @@ export default async function GearOpsItemDetailsPage({
                 <EmptyState message="No active assignment records are currently visible for this item." />
               ) : (
                 <div className="space-y-3">{currentAssignments.map((assignment) => renderAssignmentCard(assignment))}</div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-lg font-medium">Recent scan activity</h3>
+              {item.scanEvents.length === 0 ? (
+                <EmptyState message="No scan activity is currently recorded for this item." />
+              ) : (
+                <div className="space-y-2">
+                  {item.scanEvents.map((event) => {
+                    const eventContext = SCAN_CONTEXTS.includes(event.scanContext as ScanContext)
+                      ? (event.scanContext as ScanContext)
+                      : null;
+                    const eventResult = SCAN_EVENT_RESULTS.includes(event.result as ScanEventResult)
+                      ? (event.result as ScanEventResult)
+                      : null;
+
+                    return (
+                      <article key={event.id} className="rounded-lg border bg-white p-3 text-sm dark:bg-zinc-900">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <p className="font-medium">{eventResult ? labelForScanEventResult(eventResult) : event.result}</p>
+                          <time className="text-xs text-zinc-500">{formatGearOpsDateTime(event.createdAt)}</time>
+                        </div>
+                        <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+                          Context: {eventContext ? labelForScanContext(eventContext) : event.scanContext}
+                          {" · "}Identifier: {event.inventoryIdentifierType}
+                          {" · "}Value: <span className="font-mono">{event.rawValue}</span>
+                        </p>
+                        {event.actor ? (
+                          <p className="mt-1 text-xs text-zinc-500">
+                            Actor:{" "}
+                            <Link href={`/people/${event.actor.id}`} className="underline">
+                              {event.actor.firstName} {event.actor.lastName}
+                            </Link>
+                          </p>
+                        ) : null}
+                      </article>
+                    );
+                  })}
+                </div>
               )}
             </div>
 
