@@ -50,6 +50,9 @@ export async function createOperationalEntry(input: CreateOperationalEntryInput)
       endDate: input.endDate ?? null,
       timezone: input.timezone ?? null,
       parentEntryId: input.parentEntryId ?? null,
+      taskRecurrenceRule: input.taskRecurrenceRule ?? null,
+      sourceTaskId: input.sourceTaskId ?? null,
+      sourceNoteId: input.sourceNoteId ?? null,
     },
     select: { id: true, organizationId: true, type: true, status: true },
   });

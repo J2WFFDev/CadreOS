@@ -58,6 +58,9 @@ export type CreateOperationalEntryInput = {
   endDate?: Date | null;
   timezone?: string | null;
   parentEntryId?: string | null;
+  taskRecurrenceRule?: string | null;
+  sourceTaskId?: string | null;
+  sourceNoteId?: string | null;
 };
 
 /** Input for updating an existing OperationalEntry. */
