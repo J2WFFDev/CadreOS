@@ -262,7 +262,7 @@ export default async function GearOpsItemsPage({
       where: itemWhere,
       select: itemSelect,
       orderBy: [{ name: "asc" }, { createdAt: "asc" }],
-    })) as GearOpsItemsListRecord[];
+    })) as unknown as GearOpsItemsListRecord[];
   } catch (error) {
     const diagnostic = logDatabaseDiagnostic({
       module: "GearOps",

@@ -4,8 +4,9 @@ import test from "node:test";
 import { logDatabaseDiagnostic } from "../../lib/db/diagnostics";
 
 test("logDatabaseDiagnostic redacts connection strings from development client message", () => {
+  const mutableEnv = process.env as Record<string, string | undefined>;
   const previous = process.env.NODE_ENV;
-  process.env.NODE_ENV = "development";
+  mutableEnv.NODE_ENV = "development";
 
   const result = logDatabaseDiagnostic({
     module: "GearOps",
@@ -23,12 +24,13 @@ test("logDatabaseDiagnostic redacts connection strings from development client m
   assert.equal(result.ok, false);
   assert.ok(result.message.includes("[REDACTED_CONNECTION_STRING]"));
 
-  process.env.NODE_ENV = previous;
+  mutableEnv.NODE_ENV = previous;
 });
 
 test("logDatabaseDiagnostic keeps production client message safe and short", () => {
+  const mutableEnv = process.env as Record<string, string | undefined>;
   const previous = process.env.NODE_ENV;
-  process.env.NODE_ENV = "production";
+  mutableEnv.NODE_ENV = "production";
 
   const result = logDatabaseDiagnostic({
     module: "GearOps",
@@ -43,5 +45,5 @@ test("logDatabaseDiagnostic keeps production client message safe and short", () 
   assert.equal(result.message, "GearOps items could not be loaded.");
   assert.equal(result.hint, "Check server logs for diagnostic code GEAROPS_ITEMS_LOAD_FAILED.");
 
-  process.env.NODE_ENV = previous;
+  mutableEnv.NODE_ENV = previous;
 });
