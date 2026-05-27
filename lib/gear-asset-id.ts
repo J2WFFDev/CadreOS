@@ -3,7 +3,7 @@
  *
  * Asset IDs use the format: GO-{CATCODE}-{NNNN}
  * - GO: GearOps prefix
- * - CATCODE: up to 6-char uppercase alpha derived from the category name
+ * - CATCODE: up to 6-char uppercase alphanumeric code derived from the category name
  * - NNNN: zero-padded 4-digit org-wide sequential counter
  *
  * Examples: GO-RIFLE-0007, GO-MAG-0041, GO-KIT-0021, GO-LOC-0005
@@ -18,20 +18,21 @@
 import { db } from "@/lib/db";
 
 /**
- * Derive a short uppercase alpha code (up to 6 chars) from a category name.
- * Non-alphabetic characters are stripped; the result is truncated to 6 chars.
+ * Derive a short uppercase alphanumeric code (up to 6 chars) from a category name.
+ * Non-alphanumeric characters are stripped; the result is truncated to 6 chars.
  * Falls back to "ITEM" if the derived code would be empty.
  *
  * @example
  * deriveCategoryCode("Rifle") => "RIFLE"
  * deriveCategoryCode("Night Vision") => "NIGHTV"
+ * deriveCategoryCode("3M Tape") => "3MTAPE"
  * deriveCategoryCode("Body Armor") => "BODYA"
- * deriveCategoryCode("123 !!") => "ITEM"
+ * deriveCategoryCode("!!! ---") => "ITEM"
  */
 export function deriveCategoryCode(categoryName: string): string {
   const code = categoryName
     .toUpperCase()
-    .replace(/[^A-Z]/g, "")
+    .replace(/[^A-Z0-9]/g, "")
     .slice(0, 6);
   return code || "ITEM";
 }
@@ -80,8 +81,8 @@ export async function generateAssetId(
     }
   }
 
-  // Fallback: use a timestamp-based suffix to guarantee uniqueness.
-  const fallbackSuffix = Date.now().toString(36).toUpperCase().slice(-4);
+  // Fallback: use a random 4-digit number to guarantee uniqueness.
+  const fallbackSuffix = String(Math.floor(9000 * Math.random()) + 1000);
   return `GO-${categoryCode}-${fallbackSuffix}`;
 }
 
@@ -89,16 +90,17 @@ export async function generateAssetId(
  * Validate the format of a caller-supplied Asset ID override.
  * Returns an error message string if invalid, or null if valid.
  *
- * Allowed format: GO-{1-8 uppercase alpha/digit chars}-{1-8 alphanumeric chars}
- * This is intentionally permissive so admins can supply legacy IDs.
+ * Allowed format: GO-{1-6 uppercase alphanumeric chars}-{1-8 alphanumeric chars}
+ * The category code segment is capped at 6 chars (matching deriveCategoryCode).
+ * The suffix segment allows up to 8 chars to accommodate manual/legacy IDs.
  */
 export function validateAssetIdFormat(value: string): string | null {
   if (!value.trim()) {
     return null; // Empty is allowed (auto-generate will be used instead)
   }
 
-  if (!/^GO-[A-Z0-9]{1,8}-[A-Z0-9]{1,8}$/.test(value.trim())) {
-    return 'Asset ID must match the format GO-{CODE}-{NUMBER}, e.g. GO-RIFLE-0007.';
+  if (!/^GO-[A-Z0-9]{1,6}-[A-Z0-9]{1,8}$/.test(value.trim())) {
+    return 'Asset ID must match the format GO-{CODE}-{NUMBER}, e.g. GO-RIFLE-0007. CODE is up to 6 alphanumeric characters.';
   }
 
   return null;

@@ -184,12 +184,14 @@ export async function getInventoryLabelPreview(input: {
     );
 
     const fallbackRef = buildDisplayReference(item.inventoryType === GearInventoryType.CONSUMABLE ? "CON" : "INV", item.id);
-    const scanReadyValue = item.assetId?.trim()
-      ? `ASSETID:${item.assetId.trim()}`
-      : item.barcodeValue?.trim()
-        ? `BC:${item.barcodeValue.trim()}`
+    const trimmedAssetId = item.assetId?.trim() || null;
+    const trimmedBarcodeValue = item.barcodeValue?.trim() || null;
+    const scanReadyValue = trimmedAssetId
+      ? `ASSETID:${trimmedAssetId}`
+      : trimmedBarcodeValue
+        ? `BC:${trimmedBarcodeValue}`
         : `ITEM:${item.id}`;
-    const primaryDisplayId = item.assetId?.trim() || item.barcodeValue?.trim() || item.serialNumber?.trim() || item.sku?.trim() || fallbackRef;
+    const primaryDisplayId = trimmedAssetId || trimmedBarcodeValue || item.serialNumber?.trim() || item.sku?.trim() || fallbackRef;
     const printableIdentifier =
       input.templateKey === "TEMPORARY_OPERATIONAL"
         ? buildFutureIdentifier({
@@ -202,12 +204,11 @@ export async function getInventoryLabelPreview(input: {
             label: "Printable identifier",
             displayValue: primaryDisplayId,
             scanValue: scanReadyValue,
-            description:
-              item.assetId?.trim()
-                ? "Encodes the Asset ID for scan workflows."
-                : item.barcodeValue?.trim() || item.serialNumber?.trim() || item.sku?.trim()
-                  ? "Encodes the existing inventory lookup identifier for scan workflows."
-                  : "Encodes the canonical ITEM-prefixed inventory identifier for scan workflows.",
+            description: trimmedAssetId
+              ? "Encodes the Asset ID for scan workflows."
+              : trimmedBarcodeValue || item.serialNumber?.trim() || item.sku?.trim()
+                ? "Encodes the existing inventory lookup identifier for scan workflows."
+                : "Encodes the canonical ITEM-prefixed inventory identifier for scan workflows.",
           });
 
     const assignment = item.assignments[0] ?? null;

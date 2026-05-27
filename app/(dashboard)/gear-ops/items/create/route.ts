@@ -209,8 +209,9 @@ export async function POST(request: Request) {
     }
 
     // Resolve Asset ID: use admin-supplied override or auto-generate from category name.
-    const resolvedAssetId = values.assetId.trim()
-      ? values.assetId.trim().toUpperCase()
+    const suppliedAssetId = values.assetId.trim().toUpperCase();
+    const resolvedAssetId = suppliedAssetId
+      ? suppliedAssetId
       : await generateAssetId(organizationId, category.name);
 
     const created = await db.gearItem.create({

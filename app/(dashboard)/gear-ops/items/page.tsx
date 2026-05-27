@@ -122,7 +122,6 @@ export default async function GearOpsItemsPage({
       ? {
           OR: [
             { name: { contains: queryText, mode: "insensitive" } },
-            { assetId: { equals: queryText, mode: "insensitive" } },
             { assetId: { contains: queryText, mode: "insensitive" } },
             { barcodeValue: { equals: queryText, mode: "insensitive" } },
             { serialNumber: { equals: queryText, mode: "insensitive" } },
