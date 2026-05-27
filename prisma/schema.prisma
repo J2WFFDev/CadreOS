@@ -645,6 +645,59 @@ enum GearKitInspectionStatus {
   INCOMPLETE
 }
 
+// Arc 20Y: GearInspectionIntervalType — supported recurring inspection interval types
+enum GearInspectionIntervalType {
+  EVERY_USE
+  BEFORE_EVENT
+  AFTER_EVENT
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUALLY
+  EVERY_N_DAYS
+  AFTER_N_USES
+  AFTER_N_DEPLOYMENTS
+  MANUAL_DATE
+}
+
+// Arc 20Y: GearInspectionDueStatus — computed due/overdue state for a gear item's inspection
+enum GearInspectionDueStatus {
+  NOT_SCHEDULED
+  CURRENT
+  DUE_SOON
+  DUE
+  OVERDUE
+}
+
+// Arc 20Y: GearMaintenanceDueStatus — computed due/overdue state for a gear item's maintenance
+enum GearMaintenanceDueStatus {
+  NOT_SCHEDULED
+  CURRENT
+  DUE_SOON
+  DUE
+  OVERDUE
+}
+
+// Arc 20Y: GearItemInspectionResult — outcome recorded on a per-item inspection record
+enum GearItemInspectionResult {
+  PASSED
+  PASSED_WITH_NOTES
+  FAILED
+  MAINTENANCE_NEEDED
+  OUT_OF_SERVICE
+  LIMITED_USE
+}
+
+// Arc 20Y: GearInspectionContext — operational context in which an inspection was performed
+enum GearInspectionContext {
+  ROUTINE
+  PRE_EVENT
+  POST_EVENT
+  PERIODIC
+  RETURN_INSPECTION
+  CONDITION_CHECK
+}
+
 enum GearKitCustodyEventType {
   CHECKED_OUT
   CHECKED_IN
@@ -693,6 +746,7 @@ model Organization {
   gearCheckouts                GearCheckout[]
   gearReservations             GearReservation[]
   gearMaintenanceLogs          GearMaintenanceLog[]
+  gearInspectionRecords        GearInspectionRecord[]
   consumableTransactions       ConsumableTransaction[]
   eventGearPlans               EventGearPlan[]
   eventGearRequirements        EventGearRequirement[]
@@ -851,6 +905,7 @@ model Person {
   approvedGearReservations             GearReservation[]             @relation("GearReservationApprovedBy")
   releasedGearReservations             GearReservation[]             @relation("GearReservationReleasedBy")
   gearMaintenanceLogs                  GearMaintenanceLog[]
+  gearInspectionRecords                GearInspectionRecord[]         @relation("GearInspectionRecordInspectedBy")
   recordedConsumableTransactions       ConsumableTransaction[]
   createdEventGearPlans                EventGearPlan[]               @relation("EventGearPlanCreatedBy")
   preparedEventGearPlans               EventGearPlan[]               @relation("EventGearPlanPreparedBy")
@@ -1260,6 +1315,7 @@ model Event {
   gearPlan               EventGearPlan?
   assignedKits           InventoryKit[]          @relation("InventoryKitAssignedToEvent")
   gearKitCustodyEvents   GearKitCustodyEvent[]   @relation("GearKitCustodyEventEvent")
+  gearInspectionRecords  GearInspectionRecord[]  @relation("GearInspectionRecordEvent")
   awarenessEvents        AwarenessEvent[]
 
   @@index([organizationId, startsAt])
@@ -1499,10 +1555,20 @@ model GearCategory {
   templateSlug                String?
   behaviorType                GearCategoryBehaviorType @default(DURABLE)
   custodyMode                 GearCustodyMode          @default(FREE_CHECKOUT)
-  requiresReturnInspection    Boolean                  @default(false)
-  requiresMaintenanceTracking Boolean                  @default(false)
+  requiresReturnInspection    Boolean                   @default(false)
+  requiresMaintenanceTracking Boolean                   @default(false)
   maintenanceFrequency        GearMaintenanceFrequency?
   maintenanceIntervalDays     Int?
+  maintenanceIntervalUses     Int?
+  maintenanceIntervalDeployments Int?
+  maintenanceDueSoonDays      Int                       @default(14)
+  inspectionIntervalType      GearInspectionIntervalType?
+  inspectionIntervalDays      Int?
+  inspectionIntervalUses      Int?
+  inspectionIntervalDeployments Int?
+  requiresPreEventInspection  Boolean                   @default(false)
+  requiresPostEventInspection Boolean                   @default(false)
+  inspectionDueSoonDays       Int                       @default(14)
   primaryIdentifierType       GearIdentifierType       @default(SERIAL_NUMBER)
   supportsConsumableTracking  Boolean                  @default(false)
   consumableLowStockDefault   Int?
@@ -1527,25 +1593,36 @@ model GearCategory {
 }
 
 model GearItem {
-  id              String                   @id @default(cuid())
-  organizationId  String
-  programId       String?
-  gearCategoryId  String
-  name            String
-  inventoryType   GearInventoryType
-  sku             String?
-  serialNumber    String?
-  quantityOnHand  Int                      @default(0)
-  quantityMin     Int?
-  lifecycleStatus GearItemLifecycleStatus  @default(ACTIVE)
-  conditionStatus GearConditionStatus?
-  ownershipType   InventoryOwnershipType?
-  readinessState  InventoryReadinessState?
-  locationId      String?
-  barcodeValue    String?
-  notes           String?
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
+  id                     String                    @id @default(cuid())
+  organizationId         String
+  programId              String?
+  gearCategoryId         String
+  name                   String
+  inventoryType          GearInventoryType
+  sku                    String?
+  serialNumber           String?
+  quantityOnHand         Int                       @default(0)
+  quantityMin            Int?
+  lifecycleStatus        GearItemLifecycleStatus   @default(ACTIVE)
+  conditionStatus        GearConditionStatus?
+  ownershipType          InventoryOwnershipType?
+  readinessState         InventoryReadinessState?
+  locationId             String?
+  barcodeValue           String?
+  notes                  String?
+  // Arc 20Y: inspection tracking fields
+  lastInspectedAt        DateTime?
+  lastInspectionResult   GearItemInspectionResult?
+  nextInspectionDueAt    DateTime?
+  inspectionDueStatus    GearInspectionDueStatus   @default(NOT_SCHEDULED)
+  // Arc 20Y: maintenance scheduling fields
+  nextMaintenanceDueAt   DateTime?
+  maintenanceDueStatus   GearMaintenanceDueStatus  @default(NOT_SCHEDULED)
+  // Arc 20Y: usage counters for interval-based schedules
+  totalUseCount          Int                       @default(0)
+  totalDeploymentCount   Int                       @default(0)
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
 
   organization                Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   program                     Program?                    @relation(fields: [programId], references: [id], onDelete: SetNull)
@@ -1555,6 +1632,7 @@ model GearItem {
   checkouts                   GearCheckout[]
   reservations                GearReservation[]
   maintenanceLogs             GearMaintenanceLog[]
+  inspectionRecords           GearInspectionRecord[]
   consumableTransactions      ConsumableTransaction[]
   eventGearAssignments        EventGearAssignment[]
   inventoryMovements          InventoryMovement[]
@@ -1569,6 +1647,10 @@ model GearItem {
   @@index([organizationId, inventoryType, lifecycleStatus])
   @@index([organizationId, locationId])
   @@index([organizationId, readinessState])
+  @@index([organizationId, inspectionDueStatus])
+  @@index([organizationId, maintenanceDueStatus])
+  @@index([organizationId, nextInspectionDueAt])
+  @@index([organizationId, nextMaintenanceDueAt])
 }
 
 model GearAssignment {
@@ -1691,6 +1773,9 @@ model GearMaintenanceLog {
   conditionBefore     GearConditionStatus?
   conditionAfter      GearConditionStatus?
   notes               String
+  // Arc 20Y: scheduling fields set when maintenance is recorded
+  nextMaintenanceDueAt DateTime?
+  isPostEventRecovery  Boolean             @default(false)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
@@ -1701,6 +1786,35 @@ model GearMaintenanceLog {
   @@index([organizationId, gearItemId, performedAt])
   @@index([organizationId, performedByPersonId, performedAt])
   @@index([organizationId, maintenanceType, performedAt])
+}
+
+// Arc 20Y: GearInspectionRecord — records a formal inspection result for a single gear item
+model GearInspectionRecord {
+  id                    String                    @id @default(cuid())
+  organizationId        String
+  gearItemId            String
+  inspectedByPersonId   String
+  result                GearItemInspectionResult
+  context               GearInspectionContext     @default(ROUTINE)
+  notes                 String?
+  checklistJson         String?
+  failedItemsJson       String?
+  relatedEventId        String?
+  performedAt           DateTime                  @default(now())
+  nextInspectionDueAt   DateTime?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  gearItem     GearItem     @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  inspectedBy  Person       @relation("GearInspectionRecordInspectedBy", fields: [inspectedByPersonId], references: [id], onDelete: Restrict)
+  relatedEvent Event?       @relation("GearInspectionRecordEvent", fields: [relatedEventId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, gearItemId, performedAt])
+  @@index([organizationId, result, performedAt])
+  @@index([organizationId, inspectedByPersonId, performedAt])
+  @@index([organizationId, context, performedAt])
+  @@index([organizationId, relatedEventId, performedAt])
 }
 
 model ConsumableTransaction {

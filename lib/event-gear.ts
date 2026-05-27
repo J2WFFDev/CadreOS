@@ -3,7 +3,9 @@ import type {
   EventGearRequirementType,
   GearCheckoutStatus,
   GearConditionStatus,
+  GearInspectionDueStatus,
   GearItemLifecycleStatus,
+  GearMaintenanceDueStatus,
   InventoryReadinessState,
 } from "@/lib/prisma-client";
 
@@ -22,11 +24,15 @@ export type EventGearAssignmentOperationalStatus =
   | "RECOVERED";
 
 export type EventGearItemSnapshot = {
+  id: string;
   lifecycleStatus: GearItemLifecycleStatus;
   readinessState: InventoryReadinessState | null;
   conditionStatus: GearConditionStatus | null;
   quantityOnHand: number;
   quantityMin: number | null;
+  // Arc 20Y: inspection/maintenance due status
+  inspectionDueStatus?: GearInspectionDueStatus | null;
+  maintenanceDueStatus?: GearMaintenanceDueStatus | null;
 };
 
 export type EventGearCheckoutSnapshot = {
@@ -286,4 +292,110 @@ export function summarizeEventGearPlan(input: {
     summary.maintenanceNeededCount;
 
   return summary;
+}
+
+// ── Arc 20Y: Pre/post-event inspection gap helpers ───────────────────────────
+
+export type EventGearReadinessGap = {
+  requirementType: EventGearRequirementType;
+  gearItemId: string;
+  reason: "INSPECTION_DUE" | "INSPECTION_OVERDUE" | "MAINTENANCE_DUE" | "MAINTENANCE_OVERDUE";
+};
+
+/**
+ * Build a list of pre-event readiness gaps caused by inspection or
+ * maintenance due/overdue status on assigned gear items.
+ *
+ * Used to surface inspection issues before an event is deployed.
+ * Only surfaces items assigned to REQUIRED requirements.
+ */
+export function buildPreEventReadinessGaps(
+  requirements: EventGearRequirementSnapshot[],
+): EventGearReadinessGap[] {
+  const gaps: EventGearReadinessGap[] = [];
+
+  for (const requirement of requirements) {
+    for (const assignment of requirement.assignments) {
+      const inspStatus = assignment.gearItem.inspectionDueStatus;
+      const maintStatus = assignment.gearItem.maintenanceDueStatus;
+
+      if (inspStatus === "OVERDUE") {
+        gaps.push({
+          requirementType: requirement.requirementType,
+          gearItemId: assignment.gearItem.id,
+          reason: "INSPECTION_OVERDUE",
+        });
+      } else if (inspStatus === "DUE") {
+        gaps.push({
+          requirementType: requirement.requirementType,
+          gearItemId: assignment.gearItem.id,
+          reason: "INSPECTION_DUE",
+        });
+      }
+
+      if (maintStatus === "OVERDUE") {
+        gaps.push({
+          requirementType: requirement.requirementType,
+          gearItemId: assignment.gearItem.id,
+          reason: "MAINTENANCE_OVERDUE",
+        });
+      } else if (maintStatus === "DUE") {
+        gaps.push({
+          requirementType: requirement.requirementType,
+          gearItemId: assignment.gearItem.id,
+          reason: "MAINTENANCE_DUE",
+        });
+      }
+    }
+  }
+
+  return gaps;
+}
+
+export type EventGearPostEventFlag = {
+  requirementType: EventGearRequirementType;
+  reason: "INSPECTION_OVERDUE" | "MAINTENANCE_DUE" | "MAINTENANCE_OVERDUE" | "CONDITION_CONCERN";
+};
+
+/**
+ * Build a list of post-event recovery flags for gear that may need
+ * inspection or maintenance after event use.
+ *
+ * Surfaces items in RETURNED or RECOVERED status with concerning
+ * inspection/maintenance or condition states.
+ */
+export function buildPostEventRecoveryFlags(
+  requirements: EventGearRequirementSnapshot[],
+): EventGearPostEventFlag[] {
+  const flags: EventGearPostEventFlag[] = [];
+
+  for (const requirement of requirements) {
+    for (const assignment of requirement.assignments) {
+      const opStatus = deriveEventGearAssignmentStatus(assignment);
+
+      if (opStatus !== "RETURNED" && opStatus !== "RECOVERED") {
+        continue;
+      }
+
+      const inspStatus = assignment.gearItem.inspectionDueStatus;
+      const maintStatus = assignment.gearItem.maintenanceDueStatus;
+      const condition = assignment.gearItem.conditionStatus;
+
+      if (inspStatus === "OVERDUE") {
+        flags.push({ requirementType: requirement.requirementType, reason: "INSPECTION_OVERDUE" });
+      }
+
+      if (maintStatus === "OVERDUE") {
+        flags.push({ requirementType: requirement.requirementType, reason: "MAINTENANCE_OVERDUE" });
+      } else if (maintStatus === "DUE") {
+        flags.push({ requirementType: requirement.requirementType, reason: "MAINTENANCE_DUE" });
+      }
+
+      if (condition === "POOR" || condition === "DAMAGED") {
+        flags.push({ requirementType: requirement.requirementType, reason: "CONDITION_CONCERN" });
+      }
+    }
+  }
+
+  return flags;
 }

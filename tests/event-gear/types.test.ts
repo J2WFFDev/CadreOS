@@ -18,6 +18,7 @@ test("deriveEventGearAvailability flags blocking custody as unavailable", () => 
     activeEventCheckout: null,
     blockingCheckout: { status: "OPEN", returnedAt: null },
     gearItem: {
+          id: "item-1",
       lifecycleStatus: "ACTIVE",
       readinessState: "READY",
       conditionStatus: "GOOD",
@@ -37,6 +38,7 @@ test("deriveEventGearAvailability separates out-of-service and maintenance-neede
       activeEventCheckout: null,
       blockingCheckout: null,
       gearItem: {
+          id: "item-1",
         lifecycleStatus: "QUARANTINED",
         readinessState: "READY",
         conditionStatus: "GOOD",
@@ -54,6 +56,7 @@ test("deriveEventGearAvailability separates out-of-service and maintenance-neede
       activeEventCheckout: null,
       blockingCheckout: null,
       gearItem: {
+          id: "item-1",
         lifecycleStatus: "ACTIVE",
         readinessState: "MAINTENANCE_REQUIRED",
         conditionStatus: "GOOD",
@@ -74,6 +77,7 @@ test("deriveEventGearAvailability treats overlapping reservations as unavailable
       blockingCheckout: null,
       blockingReservationMode: "HARD_RESERVATION",
       gearItem: {
+          id: "item-1",
         lifecycleStatus: "ACTIVE",
         readinessState: "READY",
         conditionStatus: "GOOD",
@@ -92,6 +96,7 @@ test("deriveEventGearAvailability treats overlapping reservations as unavailable
       blockingCheckout: null,
       blockingReservationMode: "SOFT_HOLD",
       gearItem: {
+          id: "item-1",
         lifecycleStatus: "ACTIVE",
         readinessState: "READY",
         conditionStatus: "GOOD",
@@ -111,6 +116,7 @@ test("deriveEventGearAssignmentStatus follows staging, deployment, return, and r
       activeEventCheckout: null,
       blockingCheckout: null,
       gearItem: {
+          id: "item-1",
         lifecycleStatus: "ACTIVE",
         readinessState: "READY",
         conditionStatus: "GOOD",
@@ -128,6 +134,7 @@ test("deriveEventGearAssignmentStatus follows staging, deployment, return, and r
       activeEventCheckout: null,
       blockingCheckout: null,
       gearItem: {
+          id: "item-1",
         lifecycleStatus: "ACTIVE",
         readinessState: "READY",
         conditionStatus: "GOOD",
@@ -145,6 +152,7 @@ test("deriveEventGearAssignmentStatus follows staging, deployment, return, and r
       activeEventCheckout: { status: "OPEN", returnedAt: null },
       blockingCheckout: null,
       gearItem: {
+          id: "item-1",
         lifecycleStatus: "ACTIVE",
         readinessState: "READY",
         conditionStatus: "GOOD",
@@ -162,6 +170,7 @@ test("deriveEventGearAssignmentStatus follows staging, deployment, return, and r
       activeEventCheckout: { status: "RETURNED", returnedAt: new Date("2026-05-27T01:00:00Z") },
       blockingCheckout: null,
       gearItem: {
+          id: "item-1",
         lifecycleStatus: "ACTIVE",
         readinessState: "READY",
         conditionStatus: "GOOD",
@@ -179,6 +188,7 @@ test("deriveEventGearAssignmentStatus follows staging, deployment, return, and r
       activeEventCheckout: { status: "RETURNED", returnedAt: new Date("2026-05-27T01:00:00Z") },
       blockingCheckout: null,
       gearItem: {
+          id: "item-1",
         lifecycleStatus: "ACTIVE",
         readinessState: "READY",
         conditionStatus: "GOOD",
@@ -201,6 +211,7 @@ test("summaries surface missing, limited-use, and readiness concerns", () => {
         activeEventCheckout: null,
         blockingCheckout: null,
         gearItem: {
+          id: "item-1",
           lifecycleStatus: "ACTIVE",
           readinessState: "READY",
           conditionStatus: "GOOD",
@@ -227,6 +238,7 @@ test("summaries surface missing, limited-use, and readiness concerns", () => {
             activeEventCheckout: null,
             blockingCheckout: null,
             gearItem: {
+          id: "item-1",
               lifecycleStatus: "ACTIVE",
               readinessState: "READY",
               conditionStatus: "GOOD",
@@ -246,6 +258,7 @@ test("summaries surface missing, limited-use, and readiness concerns", () => {
             activeEventCheckout: null,
             blockingCheckout: null,
             gearItem: {
+          id: "item-1",
               lifecycleStatus: "ACTIVE",
               readinessState: "NEEDS_INSPECTION",
               conditionStatus: "FAIR",
@@ -335,6 +348,7 @@ test("deriveEventGearAvailability returns UNAVAILABLE when there is a blocking a
     stagedAt: null,
     recoveredAt: null,
     gearItem: {
+          id: "item-1",
       lifecycleStatus: "ACTIVE",
       readinessState: "READY",
       conditionStatus: "GOOD",

@@ -13,7 +13,9 @@ import {
   GearCustodyMode,
   GearHoldType,
   GearIdentifierType,
+  GearInspectionContext,
   GearInventoryType,
+  GearItemInspectionResult,
   GearItemLifecycleStatus,
   GearMaintenanceFrequency,
   GearMaintenanceType,
@@ -1307,6 +1309,63 @@ export const gearMaintenanceWorkflowSchema = z
     notes: value.notes,
   }));
 
+export const gearInspectionWorkflowSchema = z
+  .object({
+    result: z.nativeEnum(GearItemInspectionResult, {
+      message: "Inspection result must use a valid value.",
+    }),
+    context: z.nativeEnum(GearInspectionContext, {
+      message: "Inspection context must use a valid value.",
+    }),
+    inspectedByPersonId: z.string().trim(),
+    performedAt: z.string().trim(),
+    notes: z
+      .string()
+      .trim()
+      .max(MAX_GEAR_NOTES_LENGTH, `Notes must be ${MAX_GEAR_NOTES_LENGTH} characters or less.`),
+    nextInspectionDueAt: z.string().trim(),
+  })
+  .superRefine((value, context) => {
+    if (value.inspectedByPersonId.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["inspectedByPersonId"],
+        message: "Select who performed this inspection.",
+      });
+    }
+
+    if (value.performedAt.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["performedAt"],
+        message: "Inspection date/time is required.",
+      });
+    } else if (!DATETIME_LOCAL_INPUT_PATTERN.test(value.performedAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["performedAt"],
+        message: "Inspection date/time must use YYYY-MM-DDTHH:mm format.",
+      });
+    }
+
+    if (value.nextInspectionDueAt.length > 0 && !DATE_INPUT_PATTERN.test(value.nextInspectionDueAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["nextInspectionDueAt"],
+        message: "Next inspection due date must use YYYY-MM-DD format.",
+      });
+    }
+  })
+  .transform((value) => ({
+    result: value.result,
+    context: value.context,
+    inspectedByPersonId: value.inspectedByPersonId,
+    performedAt: dateTimeInputToUtcDate(value.performedAt),
+    notes: value.notes.length === 0 ? null : value.notes,
+    nextInspectionDueAt:
+      value.nextInspectionDueAt.length === 0 ? null : new Date(`${value.nextInspectionDueAt}T00:00:00.000Z`),
+  }));
+
 export const gearConsumableTransactionWorkflowSchema = z
   .object({
     transactionType: z.nativeEnum(ConsumableTransactionType, {
@@ -1412,6 +1471,7 @@ export type GearAssignmentWorkflowInput = z.output<typeof gearAssignmentWorkflow
 export type GearCheckoutWorkflowInput = z.output<typeof gearCheckoutWorkflowSchema>;
 export type GearReservationWorkflowInput = z.output<typeof gearReservationWorkflowSchema>;
 export type GearMaintenanceWorkflowInput = z.output<typeof gearMaintenanceWorkflowSchema>;
+export type GearInspectionWorkflowInput = z.output<typeof gearInspectionWorkflowSchema>;
 export type GearConsumableTransactionWorkflowInput = z.output<typeof gearConsumableTransactionWorkflowSchema>;
 
 export function getStringField(formData: FormData, field: string): string {
@@ -1508,6 +1568,7 @@ export async function requirePhase1CMutationPermission(input: {
     | "gearReservation.update"
     | "gearMaintenance.create"
     | "gearMaintenance.update"
+    | "gearInspection.create"
     | "gearConsumableTransaction.create"
     | "gearConsumableTransaction.update"
     | "gearOpsSettings.update";

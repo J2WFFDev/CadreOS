@@ -58,6 +58,11 @@ type GearItemRow = {
   readinessState: GearOpsItemSnapshot["readinessState"];
   quantityOnHand: number;
   quantityMin: number | null;
+  // Arc 20Y
+  inspectionDueStatus: GearOpsItemSnapshot["inspectionDueStatus"];
+  maintenanceDueStatus: GearOpsItemSnapshot["maintenanceDueStatus"];
+  nextInspectionDueAt: Date | null;
+  nextMaintenanceDueAt: Date | null;
   category: { id: string; name: string };
   location: { id: string; name: string } | null;
   assignments: Array<{
@@ -118,6 +123,7 @@ type EventRequirementItemState = Pick<
   GearOpsItemSnapshot,
   "lifecycleStatus" | "readinessState" | "conditionStatus" | "quantityOnHand" | "quantityMin"
 > & {
+  id: string;
   checkouts: Array<{ status: GearCheckoutStatus; returnedAt: Date | null; eventId: string | null }>;
   assignments: Array<{ assignedToEventId: string | null }>;
 };
@@ -265,6 +271,11 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
           readinessState: true,
           quantityOnHand: true,
           quantityMin: true,
+          // Arc 20Y
+          inspectionDueStatus: true,
+          maintenanceDueStatus: true,
+          nextInspectionDueAt: true,
+          nextMaintenanceDueAt: true,
           category: { select: { id: true, name: true } },
           location: { select: { id: true, name: true } },
           assignments: {
@@ -326,6 +337,7 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
               recoveredAt: true,
               gearItem: {
                 select: {
+                  id: true,
                   lifecycleStatus: true,
                   readinessState: true,
                   conditionStatus: true,
@@ -403,6 +415,11 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
     locationName: item.location?.name ?? null,
     quantityOnHand: item.quantityOnHand,
     quantityMin: item.quantityMin,
+    // Arc 20Y
+    inspectionDueStatus: item.inspectionDueStatus ?? null,
+    maintenanceDueStatus: item.maintenanceDueStatus ?? null,
+    nextInspectionDueAt: item.nextInspectionDueAt ?? null,
+    nextMaintenanceDueAt: item.nextMaintenanceDueAt ?? null,
     assignments: item.assignments.map((assignment) => ({
       id: assignment.id,
       gearItemId: item.id,
@@ -453,6 +470,7 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
         blockingCheckout,
         blockingAssignment,
         gearItem: {
+          id: assignment.gearItem.id,
           lifecycleStatus: assignment.gearItem.lifecycleStatus,
           readinessState: assignment.gearItem.readinessState,
           conditionStatus: assignment.gearItem.conditionStatus,
