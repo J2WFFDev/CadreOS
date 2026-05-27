@@ -244,7 +244,7 @@ async function resolveEntryObjectLinkTarget(input: {
       });
       if (!movement) return null;
       return {
-        title: `Movement: ${movement.movementType.replaceAll("_", " ")}`,
+        title: `Movement: ${movement.movementType.replace(/_/g, " ")}`,
         subtitle: movement.occurredAt.toISOString().slice(0, 10),
         href: null,
       };

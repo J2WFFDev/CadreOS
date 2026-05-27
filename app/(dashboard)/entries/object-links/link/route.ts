@@ -5,12 +5,12 @@ import {
   entryObjectTargetExists,
   isEntryObjectLinkTargetType,
 } from "@/lib/entries/object-links";
+import { db } from "@/lib/db";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { mapEntryObjectLinkTargetToGraphNodeType, linkOperationalRecords } from "@/lib/operational-graph";
 import { linkEntryToObject } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { requirePermission } from "@/lib/permissions";
-import { db } from "@/lib/db";
 
 export async function POST(request: Request) {
   const scope = await getOrganizationScope();
