@@ -7,7 +7,7 @@
  * exported for testing. Async DB functions are the runtime API.
  */
 
-import { EntryStatus } from "@prisma/client";
+import { EntryStatus, InboxItemStatus } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { ACTIVE_FEED_STATUSES, ACTIVE_OPERATIONAL_TYPES, DEFAULT_UPCOMING_DAYS } from "./types";
@@ -128,6 +128,40 @@ export async function queryAssignedEntries(ctx: FeedQueryContext): Promise<FeedE
 }
 
 /**
+ * Queries open inbox-routed entries created through quick capture when they do
+ * not yet have richer operational context.
+ */
+export async function queryInboxEntries(ctx: FeedQueryContext): Promise<FeedEntryItem[]> {
+  const inboxItems = await db.inboxRoutingItem.findMany({
+    where: {
+      organizationId: ctx.organizationId,
+      status: InboxItemStatus.OPEN,
+      subjectRefType: "ENTRY",
+    },
+    orderBy: [{ priority: "desc" }, { createdAt: "asc" }],
+    select: { subjectRefId: true },
+    take: 100,
+  });
+
+  const entryIds = Array.from(new Set(inboxItems.map((item) => item.subjectRefId)));
+  if (entryIds.length === 0) return [];
+
+  const entries = await db.entry.findMany({
+    where: {
+      organizationId: ctx.organizationId,
+      id: { in: entryIds },
+      deletedAt: null,
+      status: { in: [...ACTIVE_FEED_STATUSES] },
+    },
+    orderBy: [{ updatedAt: "desc" }],
+    select: FEED_ENTRY_SELECT,
+  });
+
+  const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
+  return entryIds.map((entryId) => entriesById.get(entryId)).filter((entry): entry is FeedEntryItem => Boolean(entry));
+}
+
+/**
  * Queries entries with due dates in the upcoming window (tomorrow through N days).
  * Covers TASK, FOLLOW_UP, and READINESS_ITEM entry types.
  */
@@ -189,12 +223,13 @@ export async function queryRecentActivity(
  * Runs all four queries in parallel for efficiency.
  */
 export async function aggregateOperationalFeed(ctx: FeedQueryContext): Promise<OperationalFeedResult> {
-  const [today, assigned, upcoming, recentActivity] = await Promise.all([
+  const [inbox, today, assigned, upcoming, recentActivity] = await Promise.all([
+    queryInboxEntries(ctx),
     queryTodayEntries(ctx),
     queryAssignedEntries(ctx),
     queryUpcomingEntries(ctx),
     queryRecentActivity(ctx),
   ]);
 
-  return { today, assigned, upcoming, recentActivity };
+  return { inbox, today, assigned, upcoming, recentActivity };
 }

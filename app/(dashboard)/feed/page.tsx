@@ -140,11 +140,28 @@ export default async function FeedPage() {
         title="Feed"
         description="Operational feed — today, assigned, upcoming, and recent activity."
         actions={
-          <Link href="/feed?quickCapture=1" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-            Quick capture
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/entries/inbox" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Inbox
+            </Link>
+            <Link href="/feed?quickCapture=1" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+              Quick capture
+            </Link>
+          </div>
         }
       />
+
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Inbox
+        </h2>
+        <FeedTable
+          entries={feed.inbox}
+          now={now}
+          showType
+          emptyMessage="No unprocessed inbox captures."
+        />
+      </div>
 
       {actorPersonId && (
         <div className="space-y-2">

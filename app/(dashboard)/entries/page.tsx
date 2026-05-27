@@ -55,7 +55,20 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
 
   return (
     <section className="space-y-4">
-      <PageHeader title="All Entries" description="Unified notes, tasks, events, and decisions." />
+      <PageHeader
+        title="All Entries"
+        description="Unified notes, tasks, events, and decisions."
+        actions={
+          <div className="flex items-center gap-2">
+            <Link href="/entries/inbox" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Inbox
+            </Link>
+            <Link href="/entries?quickCapture=1" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+              Quick capture
+            </Link>
+          </div>
+        }
+      />
 
       <form className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <label htmlFor="type" className="text-sm font-medium">

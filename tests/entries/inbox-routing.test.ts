@@ -1,0 +1,43 @@
+import { strict as assert } from "node:assert";
+import test from "node:test";
+
+import { EntryPriority, EntryType } from "@prisma/client";
+
+import { mapEntryPriorityToInboxPriority, shouldRouteEntryToInbox } from "../../lib/entries/inbox";
+
+test("shouldRouteEntryToInbox returns true for low-context no-due captures", () => {
+  const shouldRoute = shouldRouteEntryToInbox({
+    entryType: EntryType.NOTE,
+    dueDate: null,
+    contextTargetId: null,
+  });
+
+  assert.equal(shouldRoute, true);
+});
+
+test("shouldRouteEntryToInbox returns false when due date or context exists", () => {
+  assert.equal(
+    shouldRouteEntryToInbox({
+      entryType: EntryType.TASK,
+      dueDate: new Date("2026-05-27T00:00:00.000Z"),
+      contextTargetId: null,
+    }),
+    false,
+  );
+
+  assert.equal(
+    shouldRouteEntryToInbox({
+      entryType: EntryType.NOTE,
+      dueDate: null,
+      contextTargetId: "team_123",
+    }),
+    false,
+  );
+});
+
+test("mapEntryPriorityToInboxPriority maps enum priority to queue severity", () => {
+  assert.equal(mapEntryPriorityToInboxPriority(EntryPriority.LOW), 10);
+  assert.equal(mapEntryPriorityToInboxPriority(EntryPriority.MEDIUM), 20);
+  assert.equal(mapEntryPriorityToInboxPriority(EntryPriority.HIGH), 30);
+  assert.equal(mapEntryPriorityToInboxPriority(EntryPriority.URGENT), 40);
+});

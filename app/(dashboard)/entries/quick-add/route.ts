@@ -4,12 +4,14 @@ import {
   EntryStatus,
   EntryType,
   EntryVisibility,
+  InboxItemStatus,
   NoteVisibility,
   TaskStatus,
 } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { mapEntryPriorityToInboxPriority, shouldRouteEntryToInbox } from "@/lib/entries/inbox";
 import { parseQuickAddEntryInput } from "@/lib/entries/parser";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { linkOperationalRecords, mapEntryObjectLinkTargetToGraphNodeType } from "@/lib/operational-graph";
@@ -26,6 +28,43 @@ import {
 import { resolveActorPersonId } from "@/lib/user-account";
 
 type ContextTarget = { targetType: EntryObjectLinkTargetType; targetId: string };
+
+function buildQuickCaptureRedirectUrl(input: {
+  requestUrl: string;
+  returnTo: string;
+  values: {
+    title: string;
+    details: string;
+    captureType: string;
+    priority: string;
+    dueShortcut: string;
+    assigneePersonId: string;
+    contextTargetType: string;
+    contextTargetId: string;
+  };
+  error?: string;
+  openQuickCapture?: boolean;
+}) {
+  const url = new URL(input.returnTo, input.requestUrl);
+  if (input.openQuickCapture) {
+    url.searchParams.set("quickCapture", "1");
+  }
+
+  url.searchParams.set("title", input.values.title);
+  url.searchParams.set("details", input.values.details);
+  url.searchParams.set("captureType", input.values.captureType);
+  url.searchParams.set("priority", input.values.priority);
+  url.searchParams.set("dueShortcut", input.values.dueShortcut);
+  url.searchParams.set("assigneePersonId", input.values.assigneePersonId);
+  url.searchParams.set("contextTargetType", input.values.contextTargetType);
+  url.searchParams.set("contextTargetId", input.values.contextTargetId);
+
+  if (input.error) {
+    url.searchParams.set("quickCaptureError", input.error);
+  }
+
+  return url;
+}
 
 function defaultContextRelationshipType(targetType: EntryObjectLinkTargetType) {
   if (targetType === EntryObjectLinkTargetType.EVENT) return "OBSERVED_DURING" as const;
@@ -88,9 +127,41 @@ export async function POST(request: Request) {
   const rawContextTargetType = String(formData.get("contextTargetType") ?? "").trim().toUpperCase();
   const rawContextTargetId = String(formData.get("contextTargetId") ?? "").trim();
   const returnTo = resolveSafeReturnPath(String(formData.get("returnTo") ?? ""), "/dashboard");
+  const redirectValues = {
+    title: rawTitle,
+    details: rawDetails,
+    captureType,
+    priority: rawPriority,
+    dueShortcut: rawDueShortcut,
+    assigneePersonId: rawAssigneePersonId,
+    contextTargetType: rawContextTargetType,
+    contextTargetId: rawContextTargetId,
+  };
 
-  if (!scope.databaseReady || !scope.organizationId || !effectiveInput) {
-    return NextResponse.redirect(new URL(returnTo, request.url), 303);
+  if (!scope.databaseReady || !scope.organizationId) {
+    return NextResponse.redirect(
+      buildQuickCaptureRedirectUrl({
+        requestUrl: request.url,
+        returnTo,
+        values: redirectValues,
+        error: scope.errorMessage ?? "Unable to capture right now.",
+        openQuickCapture: true,
+      }),
+      303,
+    );
+  }
+
+  if (!effectiveInput) {
+    return NextResponse.redirect(
+      buildQuickCaptureRedirectUrl({
+        requestUrl: request.url,
+        returnTo,
+        values: redirectValues,
+        error: "Enter a title or details to capture this entry.",
+        openQuickCapture: true,
+      }),
+      303,
+    );
   }
   const organizationId = scope.organizationId;
 
@@ -101,7 +172,16 @@ export async function POST(request: Request) {
   });
 
   if (!actorPersonId) {
-    return NextResponse.redirect(new URL(returnTo, request.url), 303);
+    return NextResponse.redirect(
+      buildQuickCaptureRedirectUrl({
+        requestUrl: request.url,
+        returnTo,
+        values: redirectValues,
+        error: "No linked organization person is available for entry attribution.",
+        openQuickCapture: true,
+      }),
+      303,
+    );
   }
 
   const parsed = parseQuickAddEntryInput(effectiveInput);
@@ -112,7 +192,16 @@ export async function POST(request: Request) {
   });
   const entryType = EntryType[resolvedType];
   if (!entryType) {
-    return NextResponse.redirect(new URL(returnTo, request.url), 303);
+    return NextResponse.redirect(
+      buildQuickCaptureRedirectUrl({
+        requestUrl: request.url,
+        returnTo,
+        values: redirectValues,
+        error: "Select a valid capture type.",
+        openQuickCapture: true,
+      }),
+      303,
+    );
   }
 
   const quickCapturePreset = getQuickCapturePreset(captureType);
@@ -143,7 +232,16 @@ export async function POST(request: Request) {
       eventId: scopedEventId,
     });
   } catch {
-    return NextResponse.redirect(new URL(returnTo, request.url), 303);
+    return NextResponse.redirect(
+      buildQuickCaptureRedirectUrl({
+        requestUrl: request.url,
+        returnTo,
+        values: redirectValues,
+        error: "You do not have permission to create this entry.",
+        openQuickCapture: true,
+      }),
+      303,
+    );
   }
 
   const resolvedAssigneePersonId = rawAssigneePersonId
@@ -155,11 +253,18 @@ export async function POST(request: Request) {
       )?.id ?? null
     : null;
   const assignedToPersonId = resolvedAssigneePersonId ?? actorPersonId;
+  const inboxPriority = mapEntryPriorityToInboxPriority(EntryPriority[priority]);
+  const shouldCreateInboxRoutingItem = shouldRouteEntryToInbox({
+    entryType,
+    dueDate,
+    contextTargetId: contextTarget?.targetId ?? null,
+  });
   const quickAddAction =
     entryType === EntryType.TASK ? "entry.quick_add.task" : entryType === EntryType.NOTE ? "entry.quick_add.note" : "entry.quick_add.generic";
 
-  if (entryType === EntryType.TASK) {
-    const createdTask = await db.followUpTask.create({
+  try {
+    if (entryType === EntryType.TASK) {
+      const createdTask = await db.followUpTask.create({
       data: {
         organizationId: organizationId,
         title,
@@ -216,11 +321,26 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.redirect(new URL(`/entries/${createdEntry.id}`, request.url), 303);
-  }
+    if (shouldCreateInboxRoutingItem) {
+      await db.inboxRoutingItem.create({
+        data: {
+          organizationId: organizationId,
+          category: "ENTRY_CAPTURE",
+          subjectRefType: "ENTRY",
+          subjectRefId: createdEntry.id,
+          priority: inboxPriority,
+          status: InboxItemStatus.OPEN,
+          ownerPersonId: assignedToPersonId,
+          createdByPersonId: actorPersonId,
+        },
+      });
+    }
 
-  if (entryType === EntryType.NOTE) {
-    const createdNote = await db.observationNote.create({
+      return NextResponse.redirect(new URL(`/entries/${createdEntry.id}`, request.url), 303);
+    }
+
+    if (entryType === EntryType.NOTE) {
+      const createdNote = await db.observationNote.create({
       data: {
         organizationId: organizationId,
         authorPersonId: actorPersonId,
@@ -270,50 +390,92 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.redirect(new URL(`/entries/${createdEntry.id}`, request.url), 303);
-  }
+    if (shouldCreateInboxRoutingItem) {
+      await db.inboxRoutingItem.create({
+        data: {
+          organizationId: organizationId,
+          category: "ENTRY_CAPTURE",
+          subjectRefType: "ENTRY",
+          subjectRefId: createdEntry.id,
+          priority: inboxPriority,
+          status: InboxItemStatus.OPEN,
+          ownerPersonId: assignedToPersonId,
+          createdByPersonId: actorPersonId,
+        },
+      });
+    }
 
-  const createdEntry = await createOperationalEntry({
-    organizationId: organizationId,
-    type: entryType,
-    title,
-    content,
-    tags,
-    createdByPersonId: actorPersonId,
-    assignedToPersonId,
-    visibility: EntryVisibility.STAFF_ONLY,
-    status: EntryStatus.OPEN,
-    priority: EntryPriority[priority],
-    dueDate,
-    dueTime,
-    timezone: "UTC",
-  });
+      return NextResponse.redirect(new URL(`/entries/${createdEntry.id}`, request.url), 303);
+    }
 
-  await writeEntryActivity({
-    organizationId: organizationId,
-    entryId: createdEntry.id,
-    actorPersonId,
-    action: quickAddAction,
-    metadata: { inferredType: parsed.inferredType, captureType, entryType, assignedToPersonId },
-  });
+    const createdEntry = await createOperationalEntry({
+      organizationId: organizationId,
+      type: entryType,
+      title,
+      content,
+      tags,
+      createdByPersonId: actorPersonId,
+      assignedToPersonId,
+      visibility: EntryVisibility.STAFF_ONLY,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority[priority],
+      dueDate,
+      dueTime,
+      timezone: "UTC",
+    });
 
-  if (contextTarget) {
-    await linkEntryToObject({
+    await writeEntryActivity({
       organizationId: organizationId,
       entryId: createdEntry.id,
-      targetType: contextTarget.targetType,
-      targetId: contextTarget.targetId,
-      createdByPersonId: actorPersonId,
+      actorPersonId,
+      action: quickAddAction,
+      metadata: { inferredType: parsed.inferredType, captureType, entryType, assignedToPersonId },
     });
 
-    await linkOperationalRecords({
-      organizationId: organizationId,
-      from: { nodeType: "ENTRY", nodeId: createdEntry.id },
-      to: { nodeType: mapEntryObjectLinkTargetToGraphNodeType(contextTarget.targetType), nodeId: contextTarget.targetId },
-      relationshipType: defaultContextRelationshipType(contextTarget.targetType),
-      createdByPersonId: actorPersonId,
-    });
+    if (contextTarget) {
+      await linkEntryToObject({
+        organizationId: organizationId,
+        entryId: createdEntry.id,
+        targetType: contextTarget.targetType,
+        targetId: contextTarget.targetId,
+        createdByPersonId: actorPersonId,
+      });
+
+      await linkOperationalRecords({
+        organizationId: organizationId,
+        from: { nodeType: "ENTRY", nodeId: createdEntry.id },
+        to: { nodeType: mapEntryObjectLinkTargetToGraphNodeType(contextTarget.targetType), nodeId: contextTarget.targetId },
+        relationshipType: defaultContextRelationshipType(contextTarget.targetType),
+        createdByPersonId: actorPersonId,
+      });
+    }
+
+    if (shouldCreateInboxRoutingItem) {
+      await db.inboxRoutingItem.create({
+        data: {
+          organizationId: organizationId,
+          category: "ENTRY_CAPTURE",
+          subjectRefType: "ENTRY",
+          subjectRefId: createdEntry.id,
+          priority: inboxPriority,
+          status: InboxItemStatus.OPEN,
+          ownerPersonId: assignedToPersonId,
+          createdByPersonId: actorPersonId,
+        },
+      });
+    }
+
+    return NextResponse.redirect(new URL(`/entries/${createdEntry.id}`, request.url), 303);
+  } catch {
+    return NextResponse.redirect(
+      buildQuickCaptureRedirectUrl({
+        requestUrl: request.url,
+        returnTo,
+        values: redirectValues,
+        error: "Quick capture failed before save completed. Your input is preserved.",
+        openQuickCapture: true,
+      }),
+      303,
+    );
   }
-
-  return NextResponse.redirect(new URL(`/entries/${createdEntry.id}`, request.url), 303);
 }
