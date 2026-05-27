@@ -1,4 +1,4 @@
-# Phase 21A Athlete Journaling Capability Roadmap (Planning)
+# Arc 21A Athlete Journaling Capability Roadmap (Planning)
 
 ## 1) Purpose
 
