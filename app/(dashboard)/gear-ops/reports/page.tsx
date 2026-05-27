@@ -123,6 +123,7 @@ type EventRequirementItemState = Pick<
   GearOpsItemSnapshot,
   "lifecycleStatus" | "readinessState" | "conditionStatus" | "quantityOnHand" | "quantityMin"
 > & {
+  id: string;
   checkouts: Array<{ status: GearCheckoutStatus; returnedAt: Date | null; eventId: string | null }>;
   assignments: Array<{ assignedToEventId: string | null }>;
 };
@@ -336,6 +337,7 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
               recoveredAt: true,
               gearItem: {
                 select: {
+                  id: true,
                   lifecycleStatus: true,
                   readinessState: true,
                   conditionStatus: true,
@@ -468,6 +470,7 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
         blockingCheckout,
         blockingAssignment,
         gearItem: {
+          id: assignment.gearItem.id,
           lifecycleStatus: assignment.gearItem.lifecycleStatus,
           readinessState: assignment.gearItem.readinessState,
           conditionStatus: assignment.gearItem.conditionStatus,

@@ -24,6 +24,7 @@ export type EventGearAssignmentOperationalStatus =
   | "RECOVERED";
 
 export type EventGearItemSnapshot = {
+  id: string;
   lifecycleStatus: GearItemLifecycleStatus;
   readinessState: InventoryReadinessState | null;
   conditionStatus: GearConditionStatus | null;
@@ -321,13 +322,13 @@ export function buildPreEventReadinessGaps(
       if (inspStatus === "OVERDUE") {
         gaps.push({
           requirementType: requirement.requirementType,
-          gearItemId: "",
+          gearItemId: assignment.gearItem.id,
           reason: "INSPECTION_OVERDUE",
         });
       } else if (inspStatus === "DUE") {
         gaps.push({
           requirementType: requirement.requirementType,
-          gearItemId: "",
+          gearItemId: assignment.gearItem.id,
           reason: "INSPECTION_DUE",
         });
       }
@@ -335,13 +336,13 @@ export function buildPreEventReadinessGaps(
       if (maintStatus === "OVERDUE") {
         gaps.push({
           requirementType: requirement.requirementType,
-          gearItemId: "",
+          gearItemId: assignment.gearItem.id,
           reason: "MAINTENANCE_OVERDUE",
         });
       } else if (maintStatus === "DUE") {
         gaps.push({
           requirementType: requirement.requirementType,
-          gearItemId: "",
+          gearItemId: assignment.gearItem.id,
           reason: "MAINTENANCE_DUE",
         });
       }

@@ -457,6 +457,7 @@ export default async function EventGearPage({
           blockingReservationMode: blockingReservation?.mode ?? null,
           reservationNeedsApproval: blockingReservation?.approvalStatus === "PENDING",
           gearItem: {
+            id: assignment.gearItem.id,
             lifecycleStatus: assignment.gearItem.lifecycleStatus,
             readinessState: assignment.gearItem.readinessState,
             conditionStatus: assignment.gearItem.conditionStatus,
@@ -492,6 +493,7 @@ export default async function EventGearPage({
           blockingReservationMode: assignment.blockingReservation?.mode ?? null,
           reservationNeedsApproval: assignment.blockingReservation?.approvalStatus === "PENDING",
           gearItem: {
+            id: assignment.gearItem.id,
             lifecycleStatus: assignment.gearItem.lifecycleStatus,
             readinessState: assignment.gearItem.readinessState,
             conditionStatus: assignment.gearItem.conditionStatus,
@@ -543,6 +545,7 @@ export default async function EventGearPage({
             blockingReservationMode: assignment.blockingReservation?.mode ?? null,
             reservationNeedsApproval: assignment.blockingReservation?.approvalStatus === "PENDING",
             gearItem: {
+              id: assignment.gearItem.id,
               lifecycleStatus: assignment.gearItem.lifecycleStatus,
               readinessState: assignment.gearItem.readinessState,
               conditionStatus: assignment.gearItem.conditionStatus,
