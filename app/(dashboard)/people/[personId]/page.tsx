@@ -178,7 +178,7 @@ export default async function PersonDetailsPage({
         lastName: string;
         email: string | null;
         phone: string | null;
-        lifecycleStatus: string;
+        lifecycleStatus: MemberLifecycleStatus;
         roles: Array<{
           id: string;
           roleType: string;

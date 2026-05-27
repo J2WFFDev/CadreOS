@@ -170,7 +170,7 @@ export default async function TeamDetailsPage({
             firstName: string;
             lastName: string;
             email: string | null;
-            lifecycleStatus: string;
+            lifecycleStatus: MemberLifecycleStatus;
             athleteLinks: Array<{
               id: string;
               guardian: {
