@@ -29,6 +29,19 @@ export type CadreUserContext = {
  */
 export type CadreModule = "Roster" | "Entry" | "Journal" | "GearOps" | "FieldOps" | "ResourceOps";
 
+/**
+ * Module access rules (current MVP policy).
+ * Extracted as a constant to avoid repeated allocation on each canAccessModule() call.
+ */
+const MODULE_ALLOWED_ROLES: Record<CadreModule, RoleType[]> = {
+  Roster: [RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR, RoleType.COACH, RoleType.ASSISTANT_COACH],
+  Entry: [RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR, RoleType.COACH, RoleType.ASSISTANT_COACH],
+  Journal: [RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR, RoleType.COACH, RoleType.ASSISTANT_COACH],
+  GearOps: [RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR, RoleType.COACH],
+  FieldOps: [RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR, RoleType.COACH],
+  ResourceOps: [RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR],
+};
+
 const LOCAL_UNCONFIGURED_AUTH_CONTEXT: AuthContext = {
   userId: null,
   clerkUserId: null,
@@ -166,13 +179,7 @@ export async function requireMembership(organizationId: string): Promise<CadreUs
  * Returns true if the actor holds any staff role assignment that grants access to
  * the requested module within the given organization.
  *
- * Module access rules (current MVP policy):
- * - Roster:      ORGANIZATION_ADMIN, PROGRAM_DIRECTOR, COACH, ASSISTANT_COACH
- * - Entry:       ORGANIZATION_ADMIN, PROGRAM_DIRECTOR, COACH, ASSISTANT_COACH
- * - Journal:     ORGANIZATION_ADMIN, PROGRAM_DIRECTOR, COACH, ASSISTANT_COACH
- * - GearOps:     ORGANIZATION_ADMIN, PROGRAM_DIRECTOR, COACH
- * - FieldOps:    ORGANIZATION_ADMIN, PROGRAM_DIRECTOR, COACH
- * - ResourceOps: ORGANIZATION_ADMIN, PROGRAM_DIRECTOR
+ * Module access rules are defined in MODULE_ALLOWED_ROLES.
  *
  * Returns false when actorPersonId is null (unlinked account).
  */
@@ -183,16 +190,7 @@ export async function canAccessModule(input: {
 }): Promise<boolean> {
   if (!input.actorPersonId) return false;
 
-  const moduleRoles: Record<CadreModule, RoleType[]> = {
-    Roster: [RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR, RoleType.COACH, RoleType.ASSISTANT_COACH],
-    Entry: [RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR, RoleType.COACH, RoleType.ASSISTANT_COACH],
-    Journal: [RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR, RoleType.COACH, RoleType.ASSISTANT_COACH],
-    GearOps: [RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR, RoleType.COACH],
-    FieldOps: [RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR, RoleType.COACH],
-    ResourceOps: [RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR],
-  };
-
-  const allowedRoles = moduleRoles[input.module];
+  const allowedRoles = MODULE_ALLOWED_ROLES[input.module];
 
   const assignment = await db.roleAssignment.findFirst({
     where: {

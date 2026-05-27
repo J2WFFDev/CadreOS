@@ -135,6 +135,5 @@ module-specific `canAccessModule()` checks for the role.
 
 - [ ] Implement `seedTestPersonas()` in `prisma/seed.ts`
 - [ ] Assign Clerk test user IDs to each persona (requires Clerk dev environment setup)
-- [ ] Implement `[role-debug]` console logging in `getCurrentCadreUser()`
 - [ ] Add a dev-only `/api/debug/role-context` endpoint gated by `ENABLE_ROLE_DEBUG`
 - [ ] Guard all persona seed paths behind `NODE_ENV !== 'production'`
