@@ -1,5 +1,7 @@
 # Arc 19G — Unified Entry Closeout
 
+> Roadmap correction: this document is a historical implementation reference. New Entry Completion work is tracked under Arc 22G.
+
 ## Purpose
 
 Arc 19G closes the Arc 19 Unified Operational Entry runtime with stabilization, consistency alignment, authorization hardening, and deferred-scope handoff notes for Arc 20.

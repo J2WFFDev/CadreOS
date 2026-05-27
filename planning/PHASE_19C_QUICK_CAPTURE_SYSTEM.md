@@ -1,5 +1,7 @@
 # Arc 19C — Quick Capture System
 
+> Roadmap correction: this document is a historical implementation reference. New Entry Completion work is tracked under Arc 22B.
+
 ## Summary
 Arc 19C introduces a global rapid-capture workflow built on Arc 19A/B OperationalEntry architecture:
 - global quick-capture launcher available from dashboard header and mobile floating action

@@ -1,5 +1,7 @@
 # Arc 19F — Notifications & Activity Integration
 
+> Roadmap correction: this document is a historical implementation reference. New Entry Completion work is tracked under Arc 22E.
+
 ## Status
 
 **Complete** — Lightweight operational awareness routing, notification center foundations, read state, relevance aggregation, preference scaffolding, and deferred digest placeholders.

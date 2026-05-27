@@ -1,5 +1,7 @@
 # Arc 19E — Operational Workflow Orchestration
 
+> Roadmap correction: this document is a historical implementation reference. New Entry Completion work is tracked under Arc 22D.
+
 ## Status
 
 **Complete** — Lightweight workflow primitives, follow-up chain support, operational queue, organization-scoped authorization, and tests.

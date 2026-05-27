@@ -1,5 +1,7 @@
 # Arc 19D — Cross-Linking & Operational Graph
 
+> Roadmap correction: this document is a historical implementation reference. New Entry Completion work is tracked under Arc 22C.
+
 ## Summary
 Arc 19D establishes foundational operational graph support so CadreOS records can link across modules through one reusable relationship system.
 
