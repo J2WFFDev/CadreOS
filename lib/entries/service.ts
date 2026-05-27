@@ -54,6 +54,35 @@ export function deriveNoteToTaskTitle(input: { selectedText: string; title: stri
   return "Converted note task";
 }
 
+export function deriveEntryFollowUpDraft(input: {
+  entryTitle: string;
+  entryContent: string | null;
+  providedTitle?: string | null;
+  providedDescription?: string | null;
+}) {
+  const trimmedProvidedTitle = input.providedTitle?.trim() ?? "";
+  const trimmedProvidedDescription = input.providedDescription?.trim() ?? "";
+  const trimmedEntryTitle = input.entryTitle.trim();
+  const trimmedEntryContent = input.entryContent?.trim() ?? "";
+
+  return {
+    title:
+      trimmedProvidedTitle.length > 0
+        ? trimmedProvidedTitle.slice(0, 160)
+        : trimmedEntryTitle.length > 0
+          ? `Follow up: ${trimmedEntryTitle}`.slice(0, 160)
+          : "Entry follow-up task",
+    description:
+      trimmedProvidedDescription.length > 0
+        ? trimmedProvidedDescription
+        : trimmedEntryContent.length > 0
+          ? trimmedEntryContent
+          : trimmedEntryTitle.length > 0
+            ? `Follow-up action for entry: ${trimmedEntryTitle}`
+            : null,
+  };
+}
+
 export async function upsertEntryFromTask(input: {
   organizationId: string;
   task: {

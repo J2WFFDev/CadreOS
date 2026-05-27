@@ -120,7 +120,11 @@ export default async function TaskDetailPage({
           | null;
         sourceEvent: { id: string; title: string; teamId: string | null; programId: string } | null;
         sourceInboxItem: { id: string; category: string; status: string } | null;
-        entry: { id: string } | null;
+        entry: {
+          id: string;
+          parentEntryId: string | null;
+          parentEntry: { id: string; title: string; deletedAt: Date | null } | null;
+        } | null;
       }
     | null = null;
   let queryErrorMessage = "Unable to load task details right now. Please try again later.";
@@ -178,7 +182,13 @@ export default async function TaskDetailPage({
         },
         sourceEvent: { select: { id: true, title: true, teamId: true, programId: true } },
         sourceInboxItem: { select: { id: true, category: true, status: true } },
-        entry: { select: { id: true } },
+         entry: {
+           select: {
+             id: true,
+             parentEntryId: true,
+             parentEntry: { select: { id: true, title: true, deletedAt: true } },
+           },
+         },
       },
     });
   } catch (error) {
@@ -323,6 +333,8 @@ export default async function TaskDetailPage({
   const returnTo = resolveSafeReturnPath(returnToValue, "/tasks");
   const editTaskHref = appendReturnToParam(`/tasks/${task.id}/edit`, `/tasks/${task.id}?returnTo=${encodeURIComponent(returnTo)}`);
   const entryDetailHref = task.entry ? `/entries/${task.entry.id}` : null;
+  const sourceEntryHref =
+    task.entry?.parentEntry && !task.entry.parentEntry.deletedAt ? `/entries/${task.entry.parentEntry.id}` : null;
   let entryRuntimeSummary: Awaited<ReturnType<typeof getFollowUpTaskEntryRuntimeSummary>> | null = null;
   let entryRuntimeSummaryUnavailable = false;
 
@@ -473,6 +485,18 @@ export default async function TaskDetailPage({
                 <span>
                   {task.sourceInboxItem.category} · {formatEnumLabel(task.sourceInboxItem.status)} (<code>{task.sourceInboxItem.id}</code>)
                 </span>
+              ) : (
+                "—"
+              )}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="font-medium">Source entry</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              {sourceEntryHref ? (
+                <Link href={sourceEntryHref} className="underline">
+                  {task.entry?.parentEntry?.title ?? "Open source entry"}
+                </Link>
               ) : (
                 "—"
               )}

@@ -53,6 +53,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Arc 22B Entry Quick Capture and Inbox Validation Checklist](./ARC_22B_ENTRY_VALIDATION_CHECKLIST.md)
 - [Arc 22C Entry Detail, Linking, and Operational Graph Hardening](./ARC_22C_ENTRY_DETAIL_LINKING_OPERATIONAL_GRAPH.md)
 - [Arc 22C Entry Detail and Linking Validation Checklist](./ARC_22C_ENTRY_VALIDATION_CHECKLIST.md)
+- [Arc 22D Workflow Orchestration, Follow-Ups, and Entry-to-Task Conversion](./ARC_22D_WORKFLOW_ORCHESTRATION_FOLLOW_UPS_AND_ENTRY_TO_TASK_CONVERSION.md)
+- [Arc 22D Entry Workflow Orchestration Validation Checklist](./ARC_22D_ENTRY_WORKFLOW_VALIDATION_CHECKLIST.md)
 - [Arc 19A Unified Operational Entry Architecture (historical foundation)](./PHASE_19A_UNIFIED_OPERATIONAL_ENTRY_ARCHITECTURE.md)
 - [Arc 19B Unified Feed & Today View (historical foundation)](./PHASE_19B_UNIFIED_FEED_TODAY_VIEW.md)
 - [Arc 19C Quick Capture System (historical; remapped to Arc 22B)](./PHASE_19C_QUICK_CAPTURE_SYSTEM.md)
