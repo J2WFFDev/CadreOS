@@ -15,7 +15,7 @@ function makeSnapshot(
     kitItemId: "kitem-1",
     gearItemId: "gear-1",
     gearItemName: "Test Item",
-    componentRole: "STANDARD",
+    componentRole: "REQUIRED",
     isRequired: true,
     quantityExpected: 1,
     quantityActual: 1,
@@ -224,4 +224,3 @@ test("computeKitCompleteness: component summary present flag reflects lifecycle"
   assert.equal(activeSummary?.present, true);
   assert.equal(lostSummary?.present, false);
 });
-

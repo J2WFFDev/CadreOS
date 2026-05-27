@@ -18,7 +18,7 @@ function makeSnapshot(
     kitItemId: "kitem-1",
     gearItemId: "gear-1",
     gearItemName: "Test Item",
-    componentRole: "STANDARD",
+    componentRole: "REQUIRED",
     isRequired: true,
     quantityExpected: 1,
     quantityActual: 1,
@@ -41,7 +41,7 @@ function readinessFor(
   const completeness = computeKitCompleteness(snapshots);
   return computeKitReadiness({
     completeness,
-    custodyStatus: extra.custodyStatus ?? "IN_STORAGE",
+    custodyStatus: extra.custodyStatus ?? "AVAILABLE",
     lastInspectionStatus: extra.lastInspectionStatus ?? null,
     hasConflict: extra.hasConflict,
   });
