@@ -4,7 +4,7 @@
 
 Capture athlete journaling as a first-class CadreOS capability in the Entry ecosystem, with privacy-aware visibility, task-based prompt assignment, feed integration, and auditable version history.
 
-This document is planning-only and does not introduce runtime changes in this phase.
+This document is planning-only and does not introduce runtime changes in this arc.
 
 ## 2) Scope and Product Intent
 
@@ -175,25 +175,25 @@ Planned interoperability:
 
 ## 11) Implementation Backlog (Planning)
 
-### Phase 1: Foundation
+### Track 1: Foundation
 - Add `JOURNAL` entry type contract and planning acceptance criteria.
 - Define freeform journal create/edit/finalize/archive behavior.
 - Add baseline guardian visibility rules for journal entries.
 - Add created/updated/finalized/archived timestamps and actor metadata.
 
-### Phase 2: Prompts + task integration
+### Track 2: Prompts + task integration
 - Implement prompt library CRUD and active/inactive management.
 - Support athlete self-selected prompt flow.
 - Support assigned and scheduled prompts integrated with tasks.
 - Add completion tracking for prompt-based journaling.
 
-### Phase 3: trust + advanced visibility
+### Track 3: trust + advanced visibility
 - Implement version history and snapshot retrieval.
 - Add configurable visibility policy evaluation path.
 - Add feed filtering and role-safe feed item rendering.
 - Add completion and status summary reporting views.
 
-### Phase 4: growth workflows
+### Track 4: growth workflows
 - Add reflection templates.
 - Add optional coach review workflows with policy controls.
 - Add athlete growth trend surfaces.
@@ -201,4 +201,4 @@ Planned interoperability:
 
 ## 12) Delivery Notes
 
-This roadmap update is documentation-only and should be executed in implementation phases aligned with active Entry/Task/Feed arcs.
+This roadmap update is documentation-only and should be executed in implementation tracks aligned with active Entry/Task/Feed arcs.
