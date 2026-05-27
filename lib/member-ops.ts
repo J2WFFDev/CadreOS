@@ -56,4 +56,18 @@ export const MEMBEROPS_NAMING_RULES = {
   membership: "Membership = person's relationship to a team and season represented by RosterMembership.",
   role: "Role = what a person can do or see in a scoped context, represented by RoleAssignment or rosterRole.",
   roster: "Roster = filtered operational view of memberships, not a separate person model.",
+  athlete:
+    "Athlete = context-specific member function for persons with guardian-linked or roster-role context. Not a separate identity model.",
+  guardian:
+    "Guardian = context-specific role/relationship function for persons linked to athletes via AthleteGuardianRelationship. Not a separate user type.",
+  household:
+    "Household = informal grouping concept. Use AthleteGuardianRelationship (pairwise) as the data model. No separate household entity exists in Release 1.",
 } as const;
+
+export function isGuardianRoleType(roleType: RoleType | string): boolean {
+  return roleType === RoleType.PARENT_GUARDIAN;
+}
+
+export function isAthleteRoleType(roleType: RoleType | string): boolean {
+  return roleType === RoleType.ATHLETE;
+}

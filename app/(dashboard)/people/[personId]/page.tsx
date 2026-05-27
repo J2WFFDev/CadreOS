@@ -938,7 +938,7 @@ export default async function PersonDetailsPage({
           notes are deferred and not yet modeled in this phase.
         </p>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-          Guardian/parent portal visibility, messaging, notifications, and communications remain deferred.
+          Guardian portal visibility, messaging, notifications, and communications remain deferred.
         </p>
         {canEditGuardianLinkageWhereSupported ? (
           <Link
@@ -1004,7 +1004,7 @@ export default async function PersonDetailsPage({
                       {link.guardian._count.userAccounts === 0
                         ? "Guardian account link missing"
                         : link.guardian.roles.length === 0
-                          ? "Inactive guardian account signal (linked account, parent/guardian role assignment missing)"
+                          ? "Inactive guardian account signal (linked account, guardian role assignment missing)"
                           : "Guardian account linked and active"}{" "}
                       ·{" "}
                       {link.guardian._count.userAccounts > 0 && link.guardian.roles.length > 0
