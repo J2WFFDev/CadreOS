@@ -9,10 +9,12 @@ import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { FormActions } from "@/components/dashboard/form-actions";
 import { GearOfflineForm } from "@/components/gear-ops/offline-form";
+import { GearOpsSchemaWarning } from "@/components/gear-ops/schema-warning";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
 import { formatGearOpsEnum } from "@/lib/gear-ops";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
+import { getGearOpsSchemaStatus } from "@/lib/gear-ops-schema-status";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { formatDateTimeInputValue, isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -72,6 +74,24 @@ export default async function ReserveGearItemPage({
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">{access.denialMessage}</p>
         </div>
+      </section>
+    );
+  }
+
+  const schemaStatus = await getGearOpsSchemaStatus("reservation-creation");
+  if (!schemaStatus.schemaReady) {
+    return (
+      <section className="space-y-4">
+        <div className="space-y-3">
+          <GearOpsSubnav current="items" />
+        </div>
+        <h2 className="text-2xl font-semibold tracking-tight">Reserve / hold gear item</h2>
+        <GearOpsSchemaWarning
+          actionMessage="Run database setup before creating gear reservations."
+          status={schemaStatus}
+          organizationId={scope.organizationId}
+          actorPersonId={scope.auth.personId}
+        />
       </section>
     );
   }
@@ -195,6 +215,7 @@ export default async function ReserveGearItemPage({
                 <option key={value} value={value}>{formatGearOpsEnum(value)}</option>
               ))}
             </select>
+            {readSearchParam(resolvedSearchParams, "modeError") ? <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "modeError")}</p> : null}
           </div>
           <div className="space-y-1">
             <label htmlFor="quantityRequested" className="text-sm font-medium">Quantity</label>
@@ -211,6 +232,7 @@ export default async function ReserveGearItemPage({
                 <option key={value} value={value}>{formatGearOpsEnum(value)}</option>
               ))}
             </select>
+            {readSearchParam(resolvedSearchParams, "purposeError") ? <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "purposeError")}</p> : null}
           </div>
           <div className="space-y-1">
             <label htmlFor="holdType" className="text-sm font-medium">Hold type (optional)</label>
@@ -220,6 +242,7 @@ export default async function ReserveGearItemPage({
                 <option key={value} value={value}>{formatGearOpsEnum(value)}</option>
               ))}
             </select>
+            {readSearchParam(resolvedSearchParams, "holdTypeError") ? <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "holdTypeError")}</p> : null}
           </div>
         </div>
 
@@ -236,7 +259,7 @@ export default async function ReserveGearItemPage({
           </div>
         </div>
 
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Pick any relevant context references below. Event and program links improve dashboard, reporting, and fulfillment visibility.</p>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">At least one context reference is required below — each field is individually optional, but at least one must be selected. Event and program links improve dashboard, reporting, and fulfillment visibility.</p>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1">
@@ -247,6 +270,7 @@ export default async function ReserveGearItemPage({
                 <option key={person.id} value={person.id}>{person.lastName}, {person.firstName}</option>
               ))}
             </select>
+            {readSearchParam(resolvedSearchParams, "reservedForPersonIdError") ? <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "reservedForPersonIdError")}</p> : null}
           </div>
           <div className="space-y-1">
             <label htmlFor="reservedForTeamId" className="text-sm font-medium">Team context (optional)</label>
@@ -256,6 +280,7 @@ export default async function ReserveGearItemPage({
                 <option key={team.id} value={team.id}>{team.name}</option>
               ))}
             </select>
+            {readSearchParam(resolvedSearchParams, "reservedForTeamIdError") ? <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "reservedForTeamIdError")}</p> : null}
           </div>
           <div className="space-y-1">
             <label htmlFor="reservedForEventId" className="text-sm font-medium">Event context (optional)</label>
@@ -265,6 +290,7 @@ export default async function ReserveGearItemPage({
                 <option key={event.id} value={event.id}>{event.title}</option>
               ))}
             </select>
+            {readSearchParam(resolvedSearchParams, "reservedForEventIdError") ? <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "reservedForEventIdError")}</p> : null}
           </div>
           <div className="space-y-1">
             <label htmlFor="programId" className="text-sm font-medium">Program context (optional)</label>
@@ -274,6 +300,7 @@ export default async function ReserveGearItemPage({
                 <option key={program.id} value={program.id}>{program.name}</option>
               ))}
             </select>
+            {readSearchParam(resolvedSearchParams, "programIdError") ? <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "programIdError")}</p> : null}
           </div>
         </div>
 
