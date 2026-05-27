@@ -502,13 +502,12 @@ export default async function PeoplePage({
         return false;
       }
     }
-    if (selectedSeasonId && assignmentFilter === "current_season_assigned" && !person.hasCurrentSeasonAssignment) {
-      return false;
-    }
-    if (assignmentFilter === "unassigned" && person.hasAnyAssignment) {
-      return false;
-    }
-    if (assignmentFilter === "current_season_assigned" && !selectedSeasonId && !person.hasAnyAssignment) {
+    const assignmentMatches =
+      assignmentFilter === "all" ||
+      (assignmentFilter === "unassigned" && !person.hasAnyAssignment) ||
+      (assignmentFilter === "current_season_assigned" &&
+        (selectedSeasonId ? person.hasCurrentSeasonAssignment : person.hasAnyAssignment));
+    if (!assignmentMatches) {
       return false;
     }
     if (roleFilter) {
@@ -559,6 +558,9 @@ export default async function PeoplePage({
     ? filteredPeople.filter((person) => person.readiness.missingGuardian).length
     : 0;
   const membersNeedingAttention = filteredPeople.filter((person) => person.readiness.needsAttention).length;
+  const lifecycleStatusSummary = Object.values(MemberLifecycleStatus)
+    .map((status) => `${MEMBER_LIFECYCLE_STATUS_LABELS[status]} ${lifecycleCounts[status] ?? 0}`)
+    .join(" · ");
 
   return (
     <section className="space-y-4">
@@ -583,9 +585,7 @@ export default async function PeoplePage({
               {organizationSeasons.find((season) => season.id === selectedSeasonId)?.name ?? "All seasons"}.
             </p>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              Status mix in current scope: Active {lifecycleCounts.ACTIVE ?? 0} · Pending {lifecycleCounts.PROSPECT ?? 0} ·
-              Inactive {lifecycleCounts.INACTIVE ?? 0} · Archived {lifecycleCounts.ARCHIVED ?? 0} · Graduated{" "}
-              {lifecycleCounts.ALUMNI ?? 0}.
+              Status mix in current scope: {lifecycleStatusSummary}.
             </p>
             {!lifecycleFilter ? (
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">

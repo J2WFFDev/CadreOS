@@ -36,9 +36,7 @@ export function deriveMemberRosterReadiness(
   const missingSeasonAssignment = !input.hasSeasonAssignment;
   const incompleteProfile = !input.hasProfileEmail || input.roleTypes.length === 0;
   const inactiveOrArchived = !isDefaultVisibleMemberLifecycleStatus(input.lifecycleStatus);
-  const shouldEvaluateOperationalGaps =
-    input.lifecycleStatus === MemberLifecycleStatus.ACTIVE ||
-    input.lifecycleStatus === MemberLifecycleStatus.PROSPECT;
+  const shouldEvaluateOperationalGaps = isDefaultVisibleMemberLifecycleStatus(input.lifecycleStatus);
 
   const needsAttention =
     (shouldEvaluateOperationalGaps &&
