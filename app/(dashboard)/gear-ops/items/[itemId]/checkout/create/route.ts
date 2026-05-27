@@ -2,6 +2,7 @@ import { GearReservationStatus, InventoryMovementType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { buildGearCheckoutReturnNotes } from "@/lib/gear-checkout-usage";
 import { findReservationToFulfill } from "@/lib/gear-reservations";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
@@ -23,6 +24,7 @@ type GearCheckoutFormValues = {
   returnedById: string;
   receivedById: string;
   conditionOnReturn: string;
+  usageLog: string;
   purposeNotes: string;
   returnNotes: string;
 };
@@ -85,6 +87,7 @@ export async function POST(
     returnedById: getStringField(formData, "returnedById"),
     receivedById: getStringField(formData, "receivedById"),
     conditionOnReturn: getStringField(formData, "conditionOnReturn"),
+    usageLog: getStringField(formData, "usageLog"),
     purposeNotes: getStringField(formData, "purposeNotes"),
     returnNotes: getStringField(formData, "returnNotes"),
   };
@@ -126,12 +129,13 @@ export async function POST(
           checkedOutAt: fieldErrors.checkedOutAt?.[0],
           expectedReturnAt: fieldErrors.expectedReturnAt?.[0],
           returnedAt: fieldErrors.returnedAt?.[0],
-          returnedById: fieldErrors.returnedById?.[0],
-          receivedById: fieldErrors.receivedById?.[0],
-          conditionOnReturn: fieldErrors.conditionOnReturn?.[0],
-          purposeNotes: fieldErrors.purposeNotes?.[0],
-          returnNotes: fieldErrors.returnNotes?.[0],
-        },
+            returnedById: fieldErrors.returnedById?.[0],
+            receivedById: fieldErrors.receivedById?.[0],
+            conditionOnReturn: fieldErrors.conditionOnReturn?.[0],
+            usageLog: fieldErrors.usageLog?.[0],
+            purposeNotes: fieldErrors.purposeNotes?.[0],
+            returnNotes: fieldErrors.returnNotes?.[0],
+          },
         error: "Please correct the highlighted fields.",
       }),
       303,
@@ -247,7 +251,10 @@ export async function POST(
           receivedById: parsed.data.receivedById,
           conditionOnReturn: parsed.data.conditionOnReturn,
           purposeNotes: parsed.data.purposeNotes,
-          returnNotes: parsed.data.returnNotes,
+          returnNotes: buildGearCheckoutReturnNotes({
+            usageLog: parsed.data.usageLog,
+            returnNotes: parsed.data.returnNotes,
+          }),
         },
       });
 
