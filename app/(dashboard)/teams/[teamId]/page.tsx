@@ -844,7 +844,7 @@ export default async function TeamDetailsPage({
           href="#add-roster-member"
           className="inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
         >
-          Add roster member
+          Add roster assignment
         </Link>
       </div>
 
@@ -873,9 +873,9 @@ export default async function TeamDetailsPage({
       ) : null}
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <h3 className="mb-3 text-lg font-medium">Roster members</h3>
+        <h3 className="mb-3 text-lg font-medium">Roster assignments</h3>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-          Season: {selectedSeasonForView?.name ?? "No season available"}
+          Roster season view (active-season default): {selectedSeasonForView?.name ?? "No season available"}
         </p>
         {team.program.seasons.length > 1 ? (
           <div className="mb-3 flex flex-wrap gap-2 text-sm">
@@ -982,7 +982,7 @@ export default async function TeamDetailsPage({
                   <th className="px-3 py-2 font-medium">Member</th>
                   <th className="px-3 py-2 font-medium">Roster role</th>
                   <th className="px-3 py-2 font-medium">Role assignment status</th>
-                  <th className="px-3 py-2 font-medium">Member status</th>
+                  <th className="px-3 py-2 font-medium">Participation status</th>
                   <th className="px-3 py-2 font-medium">Guardian / relationship status</th>
                   <th className="px-3 py-2 font-medium">Actions</th>
                 </tr>
@@ -1502,7 +1502,7 @@ export default async function TeamDetailsPage({
       />
 
       <div id="add-roster-member" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <h3 className="mb-3 text-lg font-medium">Add roster member</h3>
+        <h3 className="mb-3 text-lg font-medium">Add roster assignment</h3>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
           Target season: {selectedSeasonForView?.name ?? "No season available"}
         </p>
@@ -1586,7 +1586,7 @@ export default async function TeamDetailsPage({
             </div>
 
             <button type="submit" className="rounded-md bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black">
-              Add membership
+              Add assignment
             </button>
           </form>
         )}
