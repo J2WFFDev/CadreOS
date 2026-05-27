@@ -377,6 +377,10 @@ function getStatusShell(scope: GearOpsSchemaScope, checkedAt: string): Omit<Gear
   };
 }
 
+export const GEAR_OPS_ALL_SCOPES: GearOpsSchemaScope[] = Object.keys(
+  GEAR_OPS_SCHEMA_REQUIREMENTS,
+) as GearOpsSchemaScope[];
+
 export function isGearOpsSchemaScope(value: string | null | undefined): value is GearOpsSchemaScope {
   return Boolean(value && value in GEAR_OPS_SCHEMA_REQUIREMENTS);
 }

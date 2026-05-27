@@ -2,23 +2,12 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { resolveGearOpsAdminAccess } from "@/lib/gear-ops-access";
 import {
+  GEAR_OPS_ALL_SCOPES,
   getGearOpsSchemaStatus,
-  type GearOpsSchemaScope,
 } from "@/lib/gear-ops-schema-status";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
-
-const ALL_SCOPES: GearOpsSchemaScope[] = [
-  "core",
-  "category-creation",
-  "item-creation",
-  "kits",
-  "reports",
-  "event-templates",
-  "audits",
-  "admin",
-];
 
 export default async function GearOpsAdminSchemaDiagnosticsPage() {
   const scope = await getOrganizationScope();
@@ -63,7 +52,7 @@ export default async function GearOpsAdminSchemaDiagnosticsPage() {
     );
   }
 
-  const results = await Promise.all(ALL_SCOPES.map((s) => getGearOpsSchemaStatus(s)));
+  const results = await Promise.all(GEAR_OPS_ALL_SCOPES.map((s) => getGearOpsSchemaStatus(s)));
 
   return (
     <section className="space-y-4">

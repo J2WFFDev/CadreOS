@@ -2,21 +2,10 @@ import { NextResponse } from "next/server";
 
 import { resolveGearOpsAdminAccess } from "@/lib/gear-ops-access";
 import {
+  GEAR_OPS_ALL_SCOPES,
   getGearOpsSchemaStatus,
-  type GearOpsSchemaScope,
 } from "@/lib/gear-ops-schema-status";
 import { getOrganizationScope } from "@/lib/organization-context";
-
-const ALL_SCOPES: GearOpsSchemaScope[] = [
-  "core",
-  "category-creation",
-  "item-creation",
-  "kits",
-  "reports",
-  "event-templates",
-  "audits",
-  "admin",
-];
 
 export async function GET() {
   const scope = await getOrganizationScope();
@@ -44,7 +33,7 @@ export async function GET() {
     );
   }
 
-  const results = await Promise.all(ALL_SCOPES.map((s) => getGearOpsSchemaStatus(s)));
+  const results = await Promise.all(GEAR_OPS_ALL_SCOPES.map((s) => getGearOpsSchemaStatus(s)));
 
   return NextResponse.json({ diagnostics: results });
 }
