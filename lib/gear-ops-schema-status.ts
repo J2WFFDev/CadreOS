@@ -7,68 +7,414 @@ type GearOpsSchemaRequirement = {
   columns: string[];
 };
 
-export type GearOpsSchemaScope = "core" | "category-creation";
+export type GearOpsSchemaScope =
+  | "core"
+  | "category-creation"
+  | "item-creation"
+  | "kits"
+  | "reports"
+  | "event-templates"
+  | "audits"
+  | "admin";
 
 export type GearOpsSchemaStatus = {
   connected: boolean;
   schemaReady: boolean;
   missingTables: string[];
   missingColumns: string[];
+  checkedTables: string[];
   checkedAt: string;
+  databaseProvider: string | null;
+  pendingActions: string[];
+  setupRequired: boolean;
+  scope: GearOpsSchemaScope;
 };
+
+type GearOpsSchemaEvaluationInput = {
+  scope: GearOpsSchemaScope;
+  availableTables: Iterable<string>;
+  availableColumnsByTable: Map<string, Set<string>>;
+};
+
+const GEAR_CATEGORY_CONFIGURATION_COLUMNS = [
+  "organizationId",
+  "name",
+  "inventoryType",
+  "templateSlug",
+  "behaviorType",
+  "custodyMode",
+  "requiresReturnInspection",
+  "requiresMaintenanceTracking",
+  "maintenanceFrequency",
+  "maintenanceIntervalDays",
+  "primaryIdentifierType",
+  "supportsConsumableTracking",
+  "consumableLowStockDefault",
+  "supportsEventDeployment",
+  "reportGroup",
+  "reportLabel",
+  "isKitContainer",
+  "guardianApprovalRequired",
+];
+
+const GEAR_CATEGORY_BASIC_COLUMNS = ["organizationId", "name", "inventoryType"];
+const INVENTORY_LOCATION_COLUMNS = ["organizationId", "name", "isActive", "locationType", "parentLocationId"];
+const GEAR_ITEM_CREATE_COLUMNS = [
+  "organizationId",
+  "programId",
+  "gearCategoryId",
+  "name",
+  "inventoryType",
+  "sku",
+  "serialNumber",
+  "quantityOnHand",
+  "quantityMin",
+  "lifecycleStatus",
+  "conditionStatus",
+  "locationId",
+  "barcodeValue",
+  "notes",
+];
+const GEAR_ITEM_REPORTING_COLUMNS = [
+  "organizationId",
+  "gearCategoryId",
+  "name",
+  "inventoryType",
+  "lifecycleStatus",
+  "conditionStatus",
+  "ownershipType",
+  "readinessState",
+  "locationId",
+  "quantityOnHand",
+  "quantityMin",
+  "inspectionDueStatus",
+  "maintenanceDueStatus",
+  "nextInspectionDueAt",
+  "nextMaintenanceDueAt",
+];
+const GEAR_ASSIGNMENT_COLUMNS = [
+  "organizationId",
+  "gearItemId",
+  "status",
+  "assignedToPersonId",
+  "assignedToEventId",
+  "expectedReturnAt",
+  "returnedAt",
+];
+const GEAR_CHECKOUT_COLUMNS = [
+  "organizationId",
+  "gearItemId",
+  "status",
+  "checkedOutById",
+  "issuedById",
+  "eventId",
+  "checkedOutAt",
+  "expectedReturnAt",
+  "returnedAt",
+];
+const GEAR_RESERVATION_COLUMNS = [
+  "organizationId",
+  "gearItemId",
+  "status",
+  "mode",
+  "holdType",
+  "purpose",
+  "windowStartAt",
+  "windowEndAt",
+  "conflictSummary",
+  "reservedForPersonId",
+  "reservedForTeamId",
+  "reservedForEventId",
+];
+const GEAR_MAINTENANCE_LOG_COLUMNS = [
+  "organizationId",
+  "gearItemId",
+  "maintenanceType",
+  "performedAt",
+  "nextMaintenanceDueAt",
+  "isPostEventRecovery",
+];
+const CONSUMABLE_TRANSACTION_COLUMNS = [
+  "organizationId",
+  "gearItemId",
+  "transactionType",
+  "quantityDelta",
+  "recordedAt",
+];
+const EVENT_GEAR_PLAN_COLUMNS = ["organizationId", "eventId", "status", "stagingLocationId", "recoveryLocationId"];
+const EVENT_GEAR_REQUIREMENT_COLUMNS = [
+  "organizationId",
+  "planId",
+  "gearCategoryId",
+  "label",
+  "requirementType",
+  "quantityNeeded",
+];
+const EVENT_GEAR_ASSIGNMENT_COLUMNS = [
+  "organizationId",
+  "planId",
+  "requirementId",
+  "gearItemId",
+  "assignedByPersonId",
+  "stagedAt",
+  "recoveredAt",
+  "stagedFromLocationId",
+  "stagedToLocationId",
+  "recoveredToLocationId",
+  "conditionOnRecovery",
+  "maintenanceFlag",
+];
+const EVENT_GEAR_TEMPLATE_COLUMNS = [
+  "organizationId",
+  "name",
+  "gearCategoryId",
+  "label",
+  "requirementType",
+  "quantityNeeded",
+  "isActive",
+];
+const GEAR_OPS_SETTINGS_COLUMNS = [
+  "organizationId",
+  "defaultCustodyMode",
+  "enableGuardianApproval",
+  "enableConsumableTracking",
+  "enableEventDeployment",
+  "enableReadinessTracking",
+  "enableMaintenanceTracking",
+  "defaultReportGroup",
+];
+const INVENTORY_KIT_COLUMNS = [
+  "organizationId",
+  "name",
+  "kitType",
+  "ownerPersonId",
+  "assignedToPersonId",
+  "assignedToTeamId",
+  "assignedToEventId",
+  "labelCode",
+  "readinessLabel",
+  "custodyStatus",
+  "lastInspectedAt",
+  "lastInspectionStatus",
+  "isActive",
+];
+const INVENTORY_KIT_ITEM_COLUMNS = [
+  "organizationId",
+  "kitId",
+  "gearItemId",
+  "componentRole",
+  "isRequired",
+  "quantity",
+  "quantityExpected",
+  "sortOrder",
+  "removedAt",
+];
+const GEAR_KIT_INSPECTION_COLUMNS = ["organizationId", "kitId", "inspectedByPersonId", "status"];
+const GEAR_KIT_CUSTODY_EVENT_COLUMNS = [
+  "organizationId",
+  "kitId",
+  "eventType",
+  "actorPersonId",
+  "custodyPersonId",
+  "relatedEventId",
+  "isPartial",
+  "occurredAt",
+];
+const INVENTORY_AUDIT_COLUMNS = [
+  "organizationId",
+  "name",
+  "auditType",
+  "scope",
+  "scopeReferenceId",
+  "nextScheduledAt",
+  "lastExecutedAt",
+  "createdByPersonId",
+  "archivedAt",
+];
+const INVENTORY_AUDIT_SESSION_COLUMNS = [
+  "organizationId",
+  "inventoryAuditId",
+  "title",
+  "status",
+  "plannedAt",
+  "startedAt",
+  "completedAt",
+  "startedByPersonId",
+  "completedByPersonId",
+];
+const INVENTORY_AUDIT_CHECKPOINT_COLUMNS = ["organizationId", "auditSessionId", "label", "orderIndex", "status"];
+const INVENTORY_AUDIT_RESULT_COLUMNS = [
+  "organizationId",
+  "auditSessionId",
+  "gearItemId",
+  "verificationStatus",
+  "expectedLocationId",
+  "observedLocationId",
+  "expectedCustodyPersonId",
+  "observedCustodyPersonId",
+  "expectedQuantity",
+  "observedQuantity",
+  "expectedReadinessState",
+  "observedReadinessState",
+  "observedConditionStatus",
+  "verifiedAt",
+  "verifiedByPersonId",
+];
+const INVENTORY_AUDIT_DISCREPANCY_COLUMNS = [
+  "organizationId",
+  "auditSessionId",
+  "auditResultId",
+  "gearItemId",
+  "locationId",
+  "discrepancyType",
+  "status",
+  "summary",
+  "detectedAt",
+  "resolvedAt",
+  "resolvedByPersonId",
+];
 
 const CATEGORY_CREATION_REQUIREMENTS: GearOpsSchemaRequirement[] = [
   {
     table: "GearCategory",
-    columns: [
-      "organizationId",
-      "name",
-      "inventoryType",
-      "templateSlug",
-      "behaviorType",
-      "custodyMode",
-      "requiresReturnInspection",
-      "requiresMaintenanceTracking",
-      "maintenanceFrequency",
-      "maintenanceIntervalDays",
-      "primaryIdentifierType",
-      "supportsConsumableTracking",
-      "consumableLowStockDefault",
-      "supportsEventDeployment",
-      "reportGroup",
-      "reportLabel",
-      "isKitContainer",
-      "guardianApprovalRequired",
-    ],
+    columns: GEAR_CATEGORY_CONFIGURATION_COLUMNS,
   },
 ];
 
-const CORE_REQUIREMENTS: GearOpsSchemaRequirement[] = [
-  ...CATEGORY_CREATION_REQUIREMENTS,
-  {
-    table: "GearItem",
-    columns: ["organizationId", "gearCategoryId", "name", "inventoryType", "lifecycleStatus", "locationId"],
-  },
-  {
-    table: "InventoryLocation",
-    columns: ["organizationId", "name", "isActive", "locationType", "parentLocationId"],
-  },
-  {
-    table: "GearAssignment",
-    columns: ["organizationId", "gearItemId", "status", "assignedByPersonId"],
-  },
-  {
-    table: "GearCheckout",
-    columns: ["organizationId", "gearItemId", "status", "checkedOutById", "issuedById"],
-  },
-  {
-    table: "GearReservation",
-    columns: ["organizationId", "gearItemId", "status", "mode", "windowStartAt", "windowEndAt"],
-  },
-];
+const CORE_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
+  CATEGORY_CREATION_REQUIREMENTS,
+  [
+    { table: "GearItem", columns: GEAR_ITEM_REPORTING_COLUMNS },
+    { table: "InventoryLocation", columns: INVENTORY_LOCATION_COLUMNS },
+    { table: "GearAssignment", columns: GEAR_ASSIGNMENT_COLUMNS },
+    { table: "GearCheckout", columns: GEAR_CHECKOUT_COLUMNS },
+    { table: "GearReservation", columns: GEAR_RESERVATION_COLUMNS },
+    { table: "GearMaintenanceLog", columns: GEAR_MAINTENANCE_LOG_COLUMNS },
+    { table: "ConsumableTransaction", columns: CONSUMABLE_TRANSACTION_COLUMNS },
+    { table: "EventGearPlan", columns: EVENT_GEAR_PLAN_COLUMNS },
+    { table: "EventGearRequirement", columns: EVENT_GEAR_REQUIREMENT_COLUMNS },
+    { table: "EventGearAssignment", columns: EVENT_GEAR_ASSIGNMENT_COLUMNS },
+  ],
+);
 
-function requirementsForScope(scope: GearOpsSchemaScope): GearOpsSchemaRequirement[] {
-  return scope === "category-creation" ? CATEGORY_CREATION_REQUIREMENTS : CORE_REQUIREMENTS;
+const ITEM_CREATION_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
+  [{ table: "GearCategory", columns: GEAR_CATEGORY_BASIC_COLUMNS }],
+  [{ table: "GearItem", columns: GEAR_ITEM_CREATE_COLUMNS }],
+);
+
+const EVENT_TEMPLATE_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
+  [{ table: "GearCategory", columns: GEAR_CATEGORY_BASIC_COLUMNS }],
+  [{ table: "EventGearRequirementTemplate", columns: EVENT_GEAR_TEMPLATE_COLUMNS }],
+);
+
+const ADMIN_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
+  CATEGORY_CREATION_REQUIREMENTS,
+  EVENT_TEMPLATE_REQUIREMENTS,
+  [{ table: "GearOpsOrganizationSettings", columns: GEAR_OPS_SETTINGS_COLUMNS }],
+);
+
+const KIT_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
+  [{ table: "InventoryKit", columns: INVENTORY_KIT_COLUMNS }],
+  [{ table: "InventoryKitItem", columns: INVENTORY_KIT_ITEM_COLUMNS }],
+  [{ table: "GearKitInspection", columns: GEAR_KIT_INSPECTION_COLUMNS }],
+  [{ table: "GearKitCustodyEvent", columns: GEAR_KIT_CUSTODY_EVENT_COLUMNS }],
+  [{ table: "GearItem", columns: ["organizationId", "name", "inventoryType", "lifecycleStatus"] }],
+);
+
+const REPORT_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
+  CORE_REQUIREMENTS,
+  [{ table: "GearItem", columns: GEAR_ITEM_REPORTING_COLUMNS }],
+);
+
+const AUDIT_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
+  [{ table: "InventoryAudit", columns: INVENTORY_AUDIT_COLUMNS }],
+  [{ table: "InventoryAuditSession", columns: INVENTORY_AUDIT_SESSION_COLUMNS }],
+  [{ table: "InventoryAuditCheckpoint", columns: INVENTORY_AUDIT_CHECKPOINT_COLUMNS }],
+  [{ table: "InventoryAuditResult", columns: INVENTORY_AUDIT_RESULT_COLUMNS }],
+  [{ table: "InventoryAuditDiscrepancy", columns: INVENTORY_AUDIT_DISCREPANCY_COLUMNS }],
+  [{ table: "InventoryLocation", columns: INVENTORY_LOCATION_COLUMNS }],
+  [{ table: "GearItem", columns: ["organizationId", "name", "locationId", "readinessState"] }],
+);
+
+const GEAR_OPS_SCHEMA_REQUIREMENTS: Record<GearOpsSchemaScope, GearOpsSchemaRequirement[]> = {
+  core: CORE_REQUIREMENTS,
+  "category-creation": CATEGORY_CREATION_REQUIREMENTS,
+  "item-creation": ITEM_CREATION_REQUIREMENTS,
+  kits: KIT_REQUIREMENTS,
+  reports: REPORT_REQUIREMENTS,
+  "event-templates": EVENT_TEMPLATE_REQUIREMENTS,
+  audits: AUDIT_REQUIREMENTS,
+  admin: ADMIN_REQUIREMENTS,
+};
+
+function mergeRequirements(...groups: GearOpsSchemaRequirement[][]): GearOpsSchemaRequirement[] {
+  const merged = new Map<string, Set<string>>();
+
+  for (const group of groups) {
+    for (const requirement of group) {
+      const columns = merged.get(requirement.table) ?? new Set<string>();
+      for (const column of requirement.columns) {
+        columns.add(column);
+      }
+      merged.set(requirement.table, columns);
+    }
+  }
+
+  return [...merged.entries()]
+    .map(([table, columns]) => ({ table, columns: [...columns].sort() }))
+    .sort((left, right) => left.table.localeCompare(right.table));
+}
+
+function getDatabaseProvider(): string | null {
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    return null;
+  }
+
+  try {
+    return new URL(databaseUrl).protocol.replace(":", "") || null;
+  } catch {
+    return null;
+  }
+}
+
+function buildGearOpsPendingActions(input: { missingTables: string[]; missingColumns: string[] }): string[] {
+  const actions: string[] = [];
+
+  if (input.missingTables.length > 0) {
+    actions.push(`Create missing tables: ${input.missingTables.join(", ")}`);
+  }
+
+  if (input.missingColumns.length > 0) {
+    actions.push(`Add missing columns: ${input.missingColumns.join(", ")}`);
+  }
+
+  return actions;
+}
+
+function getStatusShell(scope: GearOpsSchemaScope, checkedAt: string): Omit<GearOpsSchemaStatus, "connected" | "schemaReady"> {
+  return {
+    missingTables: [],
+    missingColumns: [],
+    checkedTables: getGearOpsSchemaRequirements(scope).map((requirement) => requirement.table),
+    checkedAt,
+    databaseProvider: getDatabaseProvider(),
+    pendingActions: [],
+    setupRequired: false,
+    scope,
+  };
+}
+
+export function isGearOpsSchemaScope(value: string | null | undefined): value is GearOpsSchemaScope {
+  return Boolean(value && value in GEAR_OPS_SCHEMA_REQUIREMENTS);
+}
+
+export function getGearOpsSchemaRequirements(scope: GearOpsSchemaScope): GearOpsSchemaRequirement[] {
+  return GEAR_OPS_SCHEMA_REQUIREMENTS[scope].map((requirement) => ({
+    table: requirement.table,
+    columns: [...requirement.columns],
+  }));
 }
 
 export function formatGearOpsSchemaMissingDetail(input: {
@@ -88,9 +434,55 @@ export function formatGearOpsSchemaMissingDetail(input: {
   return parts.length > 0 ? parts.join(" | ") : null;
 }
 
+export function buildGearOpsSchemaUnavailableMessage(
+  status: Pick<GearOpsSchemaStatus, "missingTables" | "missingColumns">,
+  actionMessage: string,
+): string {
+  const detail = formatGearOpsSchemaMissingDetail(status);
+  return detail
+    ? `Database schema is not available yet (${detail}). ${actionMessage}`
+    : `Database schema is not available yet. ${actionMessage}`;
+}
+
+export function evaluateGearOpsSchemaStatus(input: GearOpsSchemaEvaluationInput): Omit<GearOpsSchemaStatus, "connected" | "checkedAt" | "databaseProvider"> {
+  const requirements = getGearOpsSchemaRequirements(input.scope);
+  const availableTables = new Set(input.availableTables);
+  const missingTables = requirements
+    .filter((requirement) => !availableTables.has(requirement.table))
+    .map((requirement) => requirement.table)
+    .sort();
+
+  const missingColumns: string[] = [];
+  for (const requirement of requirements) {
+    if (missingTables.includes(requirement.table)) {
+      continue;
+    }
+
+    const availableColumns = input.availableColumnsByTable.get(requirement.table) ?? new Set<string>();
+    for (const column of requirement.columns) {
+      if (!availableColumns.has(column)) {
+        missingColumns.push(`${requirement.table}.${column}`);
+      }
+    }
+  }
+
+  missingColumns.sort();
+
+  return {
+    schemaReady: missingTables.length === 0 && missingColumns.length === 0,
+    missingTables,
+    missingColumns,
+    checkedTables: requirements.map((requirement) => requirement.table),
+    pendingActions: buildGearOpsPendingActions({ missingTables, missingColumns }),
+    setupRequired: missingTables.length > 0 || missingColumns.length > 0,
+    scope: input.scope,
+  };
+}
+
 export async function getGearOpsSchemaStatus(scope: GearOpsSchemaScope = "core"): Promise<GearOpsSchemaStatus> {
   const checkedAt = new Date().toISOString();
-  const requirements = requirementsForScope(scope);
+  const statusShell = getStatusShell(scope, checkedAt);
+  const requirements = getGearOpsSchemaRequirements(scope);
 
   try {
     await db.$queryRaw`SELECT 1`;
@@ -98,9 +490,8 @@ export async function getGearOpsSchemaStatus(scope: GearOpsSchemaScope = "core")
     return {
       connected: false,
       schemaReady: false,
-      missingTables: [],
-      missingColumns: [],
-      checkedAt,
+      ...statusShell,
+      setupRequired: true,
     };
   }
 
@@ -112,19 +503,11 @@ export async function getGearOpsSchemaStatus(scope: GearOpsSchemaScope = "core")
     `;
 
     const availableTables = new Set(tableRows.map((row) => row.table_name));
-    const missingTables: string[] = [];
-
-    for (const requirement of requirements) {
-      if (!availableTables.has(requirement.table)) {
-        missingTables.push(requirement.table);
-      }
-    }
-
-    const tablesToCheckColumns = requirements.filter((requirement) => !missingTables.includes(requirement.table));
+    const tablesToCheck = requirements.filter((requirement) => availableTables.has(requirement.table));
     const availableColumnsByTable = new Map<string, Set<string>>();
 
-    if (tablesToCheckColumns.length > 0) {
-      const tableNameSql = tablesToCheckColumns.map((requirement) => Prisma.sql`${requirement.table}`);
+    if (tablesToCheck.length > 0) {
+      const tableNameSql = tablesToCheck.map((requirement) => Prisma.sql`${requirement.table}`);
       const columnRows = await db.$queryRaw<Array<{ table_name: string; column_name: string }>>(
         Prisma.sql`
           SELECT table_name, column_name
@@ -141,30 +524,24 @@ export async function getGearOpsSchemaStatus(scope: GearOpsSchemaScope = "core")
       }
     }
 
-    const missingColumns: string[] = [];
-    for (const requirement of tablesToCheckColumns) {
-      const availableColumns = availableColumnsByTable.get(requirement.table) ?? new Set<string>();
-      for (const column of requirement.columns) {
-        if (!availableColumns.has(column)) {
-          missingColumns.push(`${requirement.table}.${column}`);
-        }
-      }
-    }
+    const evaluated = evaluateGearOpsSchemaStatus({
+      scope,
+      availableTables,
+      availableColumnsByTable,
+    });
 
     return {
       connected: true,
-      schemaReady: missingTables.length === 0 && missingColumns.length === 0,
-      missingTables: missingTables.sort(),
-      missingColumns: missingColumns.sort(),
       checkedAt,
+      databaseProvider: statusShell.databaseProvider,
+      ...evaluated,
     };
   } catch {
     return {
       connected: true,
       schemaReady: false,
-      missingTables: [],
-      missingColumns: [],
-      checkedAt,
+      ...statusShell,
+      setupRequired: true,
     };
   }
 }

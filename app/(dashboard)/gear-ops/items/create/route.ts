@@ -2,6 +2,10 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import {
+  buildGearOpsSchemaUnavailableMessage,
+  getGearOpsSchemaStatus,
+} from "@/lib/gear-ops-schema-status";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   gearItemWorkflowSchema,
@@ -97,6 +101,17 @@ export async function POST(request: Request) {
     );
   }
   const organizationId = scope.organizationId;
+
+  const schemaStatus = await getGearOpsSchemaStatus("item-creation");
+  if (!schemaStatus.schemaReady) {
+    return NextResponse.redirect(
+      buildErrorRedirectUrl(request.url, redirectBase, {
+        values,
+        error: buildGearOpsSchemaUnavailableMessage(schemaStatus, "Run database setup before creating gear items."),
+      }),
+      303,
+    );
+  }
 
   const parsed = gearItemWorkflowSchema.safeParse(values);
 

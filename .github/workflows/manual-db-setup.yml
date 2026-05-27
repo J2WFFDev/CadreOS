@@ -86,15 +86,29 @@ jobs:
           const prisma = new PrismaClient();
           const requiredTables = [
             "GearCategory",
+            "GearCategoryField",
             "InventoryLocation",
             "GearItem",
             "GearAssignment",
             "GearCheckout",
+            "GearReservation",
             "GearMaintenanceLog",
+            "GearInspectionRecord",
             "ConsumableTransaction",
             "EventGearPlan",
             "EventGearRequirement",
             "EventGearAssignment",
+            "EventGearRequirementTemplate",
+            "GearOpsOrganizationSettings",
+            "InventoryKit",
+            "InventoryKitItem",
+            "GearKitInspection",
+            "GearKitCustodyEvent",
+            "InventoryAudit",
+            "InventoryAuditSession",
+            "InventoryAuditCheckpoint",
+            "InventoryAuditResult",
+            "InventoryAuditDiscrepancy",
           ];
 
           async function main() {

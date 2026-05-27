@@ -11,6 +11,7 @@ import {
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { FormActions } from "@/components/dashboard/form-actions";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { GearOpsSchemaWarning } from "@/components/gear-ops/schema-warning";
 import {
   GearCategoryConfigFields,
   type GearCategoryConfigFieldErrors,
@@ -23,7 +24,7 @@ import {
   getReportGroupBadgeClass,
 } from "@/lib/gear-category-config";
 import { formatGearOpsEnum } from "@/lib/gear-ops";
-import { formatGearOpsSchemaMissingDetail, getGearOpsSchemaStatus } from "@/lib/gear-ops-schema-status";
+import { getGearOpsSchemaStatus } from "@/lib/gear-ops-schema-status";
 import { resolveGearOpsAdminAccess, resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -143,36 +144,16 @@ export default async function NewGearCategoryPage({
   const showSchemaDiagnostics = process.env.NODE_ENV !== "production" || adminAccess.allowed;
 
   if (!schemaStatus.schemaReady) {
-    const detail = showSchemaDiagnostics ? formatGearOpsSchemaMissingDetail(schemaStatus) : null;
-
     return (
       <section className="space-y-6">
         <PageHeader title="New gear category" description={`Organization: ${scope.organizationName ?? scope.organizationId}`} />
         <GearOpsSubnav current="categories" />
-        <ErrorMessage
-          message={
-            detail
-              ? `Database schema is not available yet (${detail}). Run database setup before creating gear categories.`
-              : "Database schema is not available yet. Run database setup before creating gear categories."
-          }
+        <GearOpsSchemaWarning
+          actionMessage="Run database setup before creating gear categories."
+          status={schemaStatus}
+          organizationId={scope.organizationId}
+          actorPersonId={scope.auth.personId}
         />
-        {showSchemaDiagnostics ? (
-          <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-            <p className="font-medium">Missing GearOps schema elements</p>
-            {schemaStatus.missingTables.length === 0 && schemaStatus.missingColumns.length === 0 ? (
-              <p className="mt-2 text-zinc-700 dark:text-zinc-300">Schema verification failed, but missing elements could not be enumerated.</p>
-            ) : (
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-zinc-700 dark:text-zinc-300">
-                {schemaStatus.missingTables.map((table) => (
-                  <li key={`table-${table}`}>Table: {table}</li>
-                ))}
-                {schemaStatus.missingColumns.map((column) => (
-                  <li key={`column-${column}`}>Column: {column}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ) : null}
       </section>
     );
   }

@@ -4,9 +4,11 @@ import Link from "next/link";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { GearOpsSchemaWarning } from "@/components/gear-ops/schema-warning";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
 import { formatGearOpsEnum } from "@/lib/gear-ops";
+import { getGearOpsSchemaStatus } from "@/lib/gear-ops-schema-status";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -64,6 +66,22 @@ export default async function EventTemplateListPage({
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">{access.denialMessage}</p>
         </div>
+      </section>
+    );
+  }
+
+  const schemaStatus = await getGearOpsSchemaStatus("event-templates");
+  if (!schemaStatus.schemaReady) {
+    return (
+      <section className="space-y-4">
+        <PageHeader title="Event templates" description="Reusable event requirement starters." />
+        <GearOpsSubnav current="event-templates" />
+        <GearOpsSchemaWarning
+          actionMessage="Run database setup before loading event templates."
+          status={schemaStatus}
+          organizationId={scope.organizationId}
+          actorPersonId={scope.auth.personId}
+        />
       </section>
     );
   }
