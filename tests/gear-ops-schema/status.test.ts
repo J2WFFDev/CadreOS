@@ -169,6 +169,16 @@ test("item-list readiness does not require InventoryMovement or InventoryScanEve
   assert.ok(!requiredTables.includes("InventoryScanEvent"), "item-list must not require InventoryScanEvent");
 });
 
+test("item-list readiness does not require optional custody or maintenance tables", () => {
+  const requirements = getGearOpsSchemaRequirements("item-list");
+  const requiredTables = requirements.map((r) => r.table);
+
+  assert.ok(!requiredTables.includes("GearAssignment"), "item-list must not require GearAssignment");
+  assert.ok(!requiredTables.includes("GearCheckout"), "item-list must not require GearCheckout");
+  assert.ok(!requiredTables.includes("GearMaintenanceLog"), "item-list must not require GearMaintenanceLog");
+  assert.ok(!requiredTables.includes("ConsumableTransaction"), "item-list must not require ConsumableTransaction");
+});
+
 test("item-list readiness reports missing GearItem table", () => {
   const requirements = getGearOpsSchemaRequirements("item-list");
   const availableTables = requirements.map((r) => r.table).filter((t) => t !== "GearItem");

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { logDatabaseDiagnostic } from "@/lib/db/diagnostics";
 
 type GearOpsSchemaRequirement = {
   table: string;
@@ -251,33 +252,6 @@ const GEAR_ITEM_DETAIL_COLUMNS = [
   "quantityMin",
   "notes",
 ];
-const GEAR_ASSIGNMENT_LIST_COLUMNS = [
-  "organizationId",
-  "gearItemId",
-  "status",
-  "assignedAt",
-  "assignedToPersonId",
-];
-const GEAR_CHECKOUT_LIST_COLUMNS = [
-  "organizationId",
-  "gearItemId",
-  "status",
-  "checkedOutAt",
-  "checkedOutById",
-];
-const GEAR_MAINTENANCE_LOG_LIST_COLUMNS = [
-  "organizationId",
-  "gearItemId",
-  "maintenanceType",
-  "performedAt",
-];
-const CONSUMABLE_TRANSACTION_LIST_COLUMNS = [
-  "organizationId",
-  "gearItemId",
-  "transactionType",
-  "quantityDelta",
-  "recordedAt",
-];
 const GEAR_ASSIGNMENT_DETAIL_COLUMNS = [
   "organizationId",
   "gearItemId",
@@ -442,10 +416,6 @@ const ITEM_LIST_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
   [{ table: "GearItem", columns: GEAR_ITEM_LIST_COLUMNS }],
   [{ table: "GearCategory", columns: GEAR_CATEGORY_BASIC_COLUMNS }],
   [{ table: "Program", columns: PROGRAM_LOOKUP_COLUMNS }],
-  [{ table: "GearAssignment", columns: GEAR_ASSIGNMENT_LIST_COLUMNS }],
-  [{ table: "GearCheckout", columns: GEAR_CHECKOUT_LIST_COLUMNS }],
-  [{ table: "GearMaintenanceLog", columns: GEAR_MAINTENANCE_LOG_LIST_COLUMNS }],
-  [{ table: "ConsumableTransaction", columns: CONSUMABLE_TRANSACTION_LIST_COLUMNS }],
 );
 
 const ITEM_DETAIL_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
@@ -616,7 +586,19 @@ export async function getGearOpsSchemaStatus(scope: GearOpsSchemaScope = "core")
 
   try {
     await db.$queryRaw`SELECT 1`;
-  } catch {
+  } catch (error) {
+    logDatabaseDiagnostic({
+      module: "GearOps",
+      route: "/api/gear-ops/schema-status",
+      operation: "gearops.schemaProbe",
+      model: "GearItem",
+      table: "GearItem",
+      queryType: "raw SQL",
+      dependency: "required",
+      error,
+      code: "GEAROPS_SCHEMA_CONNECTION_FAILED",
+      clientMessage: "GearOps schema checks could not connect to the database.",
+    });
     return {
       connected: false,
       schemaReady: false,
@@ -666,7 +648,19 @@ export async function getGearOpsSchemaStatus(scope: GearOpsSchemaScope = "core")
       databaseProvider: statusShell.databaseProvider,
       ...evaluated,
     };
-  } catch {
+  } catch (error) {
+    logDatabaseDiagnostic({
+      module: "GearOps",
+      route: "/api/gear-ops/schema-status",
+      operation: "gearops.schemaProbe",
+      model: "GearItem",
+      table: "GearItem",
+      queryType: "raw SQL",
+      dependency: "required",
+      error,
+      code: "GEAROPS_SCHEMA_INTROSPECTION_FAILED",
+      clientMessage: "GearOps schema checks could not inspect required tables.",
+    });
     return {
       connected: true,
       schemaReady: false,

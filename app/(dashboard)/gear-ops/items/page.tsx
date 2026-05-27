@@ -19,18 +19,54 @@ import {
 } from "@/components/gear-ops/status-badge";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
+import { logDatabaseDiagnostic } from "@/lib/db/diagnostics";
 import {
   formatGearOpsDateTime,
   formatGearOpsEnum,
 } from "@/lib/gear-ops";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
+import { getGearOpsItemsReadiness } from "@/lib/gear-ops-items-diagnostics";
 import { deriveAvailabilitySignal } from "@/lib/gear-ops-ui";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
+
+type GearOpsItemsListRecord = {
+  id: string;
+  name: string;
+  assetId: string | null;
+  inventoryType: GearInventoryType;
+  lifecycleStatus: GearItemLifecycleStatus;
+  conditionStatus: GearConditionStatus | null;
+  quantityOnHand: number;
+  quantityMin: number | null;
+  category: { id: string; name: string; inventoryType: GearInventoryType };
+  program: { id: string; name: string } | null;
+  assignments?: Array<{
+    status: GearAssignmentStatus;
+    assignedAt: Date;
+    assignedTo: { id: string; firstName: string; lastName: string } | null;
+    assignedTeam: { id: string; name: string } | null;
+    assignedEvent: { id: string; title: string } | null;
+  }>;
+  checkouts?: Array<{
+    status: GearCheckoutStatus;
+    checkedOutAt: Date;
+    checkedOutBy: { id: string; firstName: string; lastName: string };
+    event: { id: string; title: string } | null;
+  }>;
+  maintenanceLogs?: Array<{
+    maintenanceType: string;
+    performedAt: Date;
+  }>;
+  consumableTransactions?: Array<{
+    transactionType: string;
+    recordedAt: Date;
+    quantityDelta: number;
+  }>;
+};
 
 function readSearchParams(searchParams: SearchParams, key: string) {
   const value = searchParams[key];
@@ -116,6 +152,34 @@ export default async function GearOpsItemsPage({
 
   const hasFilters = inventoryTypeFilter.length > 0 || lifecycleStatusFilter.length > 0 || conditionStatusFilter.length > 0;
 
+  const readiness = await getGearOpsItemsReadiness({
+    organizationId: scope.organizationId,
+    route: "/gear-ops/items",
+  });
+
+  if (!readiness.requiredReady) {
+    const firstFailure = readiness.requiredFailures[0];
+    const code = firstFailure?.diagnostic?.code ?? "GEAROPS_SCHEMA_REQUIRED_FAILED";
+    const message =
+      firstFailure?.diagnostic?.message ??
+      `GearOps items could not load because the ${firstFailure?.label ?? "required"} readiness check failed.`;
+    const hint = firstFailure?.diagnostic?.hint ?? `Check server logs for diagnostic code ${code}.`;
+
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">GearOps items</h2>
+        <ErrorMessage message={`${message} Diagnostic code: ${code}. ${hint}`} />
+      </section>
+    );
+  }
+
+  const optionalFailures = readiness.optionalFailures.filter((status) => status.diagnostic);
+  const optionalAvailability = {
+    custody: !optionalFailures.some((status) => status.key === "custody"),
+    maintenance: !optionalFailures.some((status) => status.key === "maintenance"),
+    consumables: !optionalFailures.some((status) => status.key === "consumables"),
+  };
+
   const itemWhere: Prisma.GearItemWhereInput = {
     ...access.where,
     ...(queryText.length > 0
@@ -134,98 +198,86 @@ export default async function GearOpsItemsPage({
     ...(conditionStatusFilter.length > 0 ? { conditionStatus: { in: conditionStatusFilter } } : {}),
   };
 
-  let items:
-    | Array<{
-        id: string;
-        name: string;
-        assetId: string | null;
-        inventoryType: GearInventoryType;
-        lifecycleStatus: GearItemLifecycleStatus;
-        conditionStatus: GearConditionStatus | null;
-        quantityOnHand: number;
-        quantityMin: number | null;
-        category: { id: string; name: string; inventoryType: GearInventoryType };
-        program: { id: string; name: string } | null;
-        assignments: Array<{
-          status: GearAssignmentStatus;
-          assignedAt: Date;
-          assignedTo: { id: string; firstName: string; lastName: string } | null;
-          assignedTeam: { id: string; name: string } | null;
-          assignedEvent: { id: string; title: string } | null;
-        }>;
-        checkouts: Array<{
-          status: GearCheckoutStatus;
-          checkedOutAt: Date;
-          checkedOutBy: { id: string; firstName: string; lastName: string };
-          event: { id: string; title: string } | null;
-        }>;
-        maintenanceLogs: Array<{
-          maintenanceType: string;
-          performedAt: Date;
-        }>;
-        consumableTransactions: Array<{
-          transactionType: string;
-          recordedAt: Date;
-          quantityDelta: number;
-        }>;
-      }>
-    | null = null;
+  let items: GearOpsItemsListRecord[] | null = null;
   let queryErrorMessage = "Unable to load GearOps items right now. Please try again later.";
+  let queryErrorCode: string | null = null;
+
+  const itemSelect: Prisma.GearItemSelect = {
+    id: true,
+    name: true,
+    assetId: true,
+    inventoryType: true,
+    lifecycleStatus: true,
+    conditionStatus: true,
+    quantityOnHand: true,
+    quantityMin: true,
+    category: { select: { id: true, name: true, inventoryType: true } },
+    program: { select: { id: true, name: true } },
+  };
+
+  if (optionalAvailability.custody) {
+    itemSelect.assignments = {
+      where: { status: { in: [GearAssignmentStatus.ACTIVE, GearAssignmentStatus.PENDING, GearAssignmentStatus.OVERDUE] } },
+      select: {
+        status: true,
+        assignedAt: true,
+        assignedTo: { select: { id: true, firstName: true, lastName: true } },
+        assignedTeam: { select: { id: true, name: true } },
+        assignedEvent: { select: { id: true, title: true } },
+      },
+      orderBy: [{ assignedAt: "desc" }, { createdAt: "desc" }],
+      take: 1,
+    };
+    itemSelect.checkouts = {
+      where: { status: { in: [GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE] } },
+      select: {
+        status: true,
+        checkedOutAt: true,
+        checkedOutBy: { select: { id: true, firstName: true, lastName: true } },
+        event: { select: { id: true, title: true } },
+      },
+      orderBy: [{ checkedOutAt: "desc" }, { createdAt: "desc" }],
+      take: 1,
+    };
+  }
+
+  if (optionalAvailability.maintenance) {
+    itemSelect.maintenanceLogs = {
+      select: { maintenanceType: true, performedAt: true },
+      orderBy: [{ performedAt: "desc" }, { createdAt: "desc" }],
+      take: 1,
+    };
+  }
+
+  if (optionalAvailability.consumables) {
+    itemSelect.consumableTransactions = {
+      select: { transactionType: true, recordedAt: true, quantityDelta: true },
+      orderBy: [{ recordedAt: "desc" }, { createdAt: "desc" }],
+      take: 1,
+    };
+  }
 
   try {
-    items = await db.gearItem.findMany({
+    items = (await db.gearItem.findMany({
       where: itemWhere,
-      select: {
-        id: true,
-        name: true,
-        assetId: true,
-        inventoryType: true,
-        lifecycleStatus: true,
-        conditionStatus: true,
-        quantityOnHand: true,
-        quantityMin: true,
-        category: { select: { id: true, name: true, inventoryType: true } },
-        program: { select: { id: true, name: true } },
-        assignments: {
-          where: { status: { in: [GearAssignmentStatus.ACTIVE, GearAssignmentStatus.PENDING, GearAssignmentStatus.OVERDUE] } },
-          select: {
-            status: true,
-            assignedAt: true,
-            assignedTo: { select: { id: true, firstName: true, lastName: true } },
-            assignedTeam: { select: { id: true, name: true } },
-            assignedEvent: { select: { id: true, title: true } },
-          },
-          orderBy: [{ assignedAt: "desc" }, { createdAt: "desc" }],
-          take: 1,
-        },
-        checkouts: {
-          where: { status: { in: [GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE] } },
-          select: {
-            status: true,
-            checkedOutAt: true,
-            checkedOutBy: { select: { id: true, firstName: true, lastName: true } },
-            event: { select: { id: true, title: true } },
-          },
-          orderBy: [{ checkedOutAt: "desc" }, { createdAt: "desc" }],
-          take: 1,
-        },
-        maintenanceLogs: {
-          select: { maintenanceType: true, performedAt: true },
-          orderBy: [{ performedAt: "desc" }, { createdAt: "desc" }],
-          take: 1,
-        },
-        consumableTransactions: {
-          select: { transactionType: true, recordedAt: true, quantityDelta: true },
-          orderBy: [{ recordedAt: "desc" }, { createdAt: "desc" }],
-          take: 1,
-        },
-      },
+      select: itemSelect,
       orderBy: [{ name: "asc" }, { createdAt: "asc" }],
-    });
+    })) as GearOpsItemsListRecord[];
   } catch (error) {
-    if (isSchemaUnavailableError(error)) {
-      queryErrorMessage = "Database schema is not available yet. Run database setup before loading GearOps items.";
-    }
+    const diagnostic = logDatabaseDiagnostic({
+      module: "GearOps",
+      route: "/gear-ops/items",
+      operation: "gearops.items.load",
+      model: "GearItem",
+      table: "GearItem",
+      queryType: "findMany+select+relations",
+      dependency: "required",
+      error,
+      code: "GEAROPS_ITEMS_LOAD_FAILED",
+      clientMessage: "GearOps items could not be loaded.",
+    });
+    queryErrorMessage = `${diagnostic.message} Diagnostic code: ${diagnostic.code}. ${diagnostic.hint}`;
+    queryErrorCode = diagnostic.code;
   }
 
   if (!items) {
@@ -233,6 +285,7 @@ export default async function GearOpsItemsPage({
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">GearOps items</h2>
         <ErrorMessage message={queryErrorMessage} />
+        {queryErrorCode ? <p className="text-xs text-zinc-500 dark:text-zinc-400">Diagnostic code: {queryErrorCode}</p> : null}
       </section>
     );
   }
@@ -241,6 +294,18 @@ export default async function GearOpsItemsPage({
     <section className="space-y-4">
       <PageHeader title="GearOps items" description="Inventory item catalog with assignment, custody, and maintenance context." />
       <GearOpsSubnav current="items" />
+      {optionalFailures.length > 0 ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          <p className="font-medium">GearOps loaded with optional dependency warnings.</p>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {optionalFailures.map((failure) => (
+              <li key={failure.key}>
+                {failure.diagnostic?.message} Diagnostic code: {failure.diagnostic?.code}. {failure.diagnostic?.hint}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {/* Top action row */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -330,10 +395,10 @@ export default async function GearOpsItemsPage({
       ) : (
         <div className="space-y-3">
           {items.map((item) => {
-            const activeAssignment = item.assignments[0] ?? null;
-            const activeCheckout = item.checkouts[0] ?? null;
-            const latestMaintenance = item.maintenanceLogs[0] ?? null;
-            const latestTransaction = item.consumableTransactions[0] ?? null;
+            const activeAssignment = item.assignments?.[0] ?? null;
+            const activeCheckout = item.checkouts?.[0] ?? null;
+            const latestMaintenance = item.maintenanceLogs?.[0] ?? null;
+            const latestTransaction = item.consumableTransactions?.[0] ?? null;
             const availabilitySignal = deriveAvailabilitySignal({
               lifecycleStatus: item.lifecycleStatus,
               hasOpenCheckout: activeCheckout !== null,
