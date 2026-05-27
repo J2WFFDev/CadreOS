@@ -19,6 +19,7 @@ const NAV_LINKS = [
   { href: "/notes", label: "Notes" },
   { href: "/tasks", label: "Tasks" },
   { href: "/decisions", label: "Decisions" },
+  { href: "/entries/inbox", label: "Entry Inbox" },
   { href: "/entries", label: "All Entries" },
   { href: "/account", label: "Account" },
 ] as const;
@@ -30,9 +31,11 @@ export function NavSidebar({ unreadNotificationCount = 0 }: { unreadNotification
     <nav className="hidden w-52 shrink-0 border-r bg-white pt-4 dark:bg-zinc-900 md:block">
       <ul className="space-y-0.5 px-2">
         {NAV_LINKS.map((link) => {
+          const isEntriesRoot = link.href === "/entries";
+          const isEntryInboxPath = pathname.startsWith("/entries/inbox");
           const isActive =
             pathname === link.href ||
-            (link.href !== "/dashboard" && pathname.startsWith(link.href + "/")) ||
+            (link.href !== "/dashboard" && pathname.startsWith(link.href + "/") && !(isEntriesRoot && isEntryInboxPath)) ||
             (link.href !== "/dashboard" && pathname === link.href);
 
           return (

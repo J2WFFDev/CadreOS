@@ -82,6 +82,7 @@ export type UpcomingWindow = {
 
 /** The full aggregated operational feed result. */
 export type OperationalFeedResult = {
+  inbox: FeedEntryItem[];
   today: FeedEntryItem[];
   assigned: FeedEntryItem[];
   upcoming: FeedEntryItem[];

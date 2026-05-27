@@ -5,7 +5,10 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import {
   inferQuickCaptureContextFromPath,
+  isQuickCaptureType,
+  normalizeQuickCapturePriority,
   QUICK_CAPTURE_PRESETS,
+  resolveQuickCaptureDueDate,
   type QuickCaptureDueShortcut,
   type QuickCapturePriority,
   type QuickCaptureType,
@@ -29,10 +32,22 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
-  const [captureType, setCaptureType] = useState<QuickCaptureType>("QUICK_TASK");
-  const [showDetails, setShowDetails] = useState(false);
-  const [dueShortcut, setDueShortcut] = useState<QuickCaptureDueShortcut | "">("");
-  const [priority, setPriority] = useState<QuickCapturePriority>("MEDIUM");
+  const queryCaptureType = searchParams.get("captureType") ?? "";
+  const queryPriority = searchParams.get("priority");
+  const queryDueShortcut = (searchParams.get("dueShortcut") ?? "").toUpperCase();
+  const queryTitle = searchParams.get("title") ?? "";
+  const queryDetails = searchParams.get("details") ?? "";
+  const queryError = searchParams.get("quickCaptureError");
+  const [captureType, setCaptureType] = useState<QuickCaptureType>(
+    isQuickCaptureType(queryCaptureType.toUpperCase()) ? (queryCaptureType.toUpperCase() as QuickCaptureType) : "QUICK_TASK",
+  );
+  const [showDetails, setShowDetails] = useState(() => queryDetails.length > 0);
+  const [dueShortcut, setDueShortcut] = useState<QuickCaptureDueShortcut | "">(
+    resolveQuickCaptureDueDate(queryDueShortcut) ? (queryDueShortcut as QuickCaptureDueShortcut) : "",
+  );
+  const [priority, setPriority] = useState<QuickCapturePriority>(
+    normalizeQuickCapturePriority(queryPriority, "MEDIUM"),
+  );
 
   const context = useMemo(() => inferQuickCaptureContextFromPath(pathname), [pathname]);
   const quickCaptureQuery = searchParams.get("quickCapture");
@@ -127,6 +142,12 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
                 </>
               ) : null}
 
+              {queryError ? (
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                  {queryError}
+                </div>
+              ) : null}
+
               <div className="space-y-1">
                 <label htmlFor="captureType" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
                   Capture type
@@ -156,6 +177,7 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
                   required
                   maxLength={160}
                   autoFocus
+                  defaultValue={queryTitle}
                   placeholder="Capture it fast…"
                   className="w-full rounded-md border px-3 py-2 text-sm"
                 />
@@ -181,6 +203,7 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
                     name="details"
                     rows={4}
                     maxLength={4000}
+                    defaultValue={queryDetails}
                     className="w-full rounded-md border px-3 py-2 text-sm"
                     placeholder="Add optional detail, tags, or context."
                   />
@@ -243,7 +266,11 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
                 <p className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
                   {context.label}
                 </p>
-              ) : null}
+              ) : (
+                <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-300">
+                  Low-context captures are saved to Inbox for later routing.
+                </p>
+              )}
 
               <div className="flex items-center justify-between gap-3 pt-1">
                 <p className="text-xs text-zinc-500">Tip: Use ⌘/Ctrl + K to open quick capture.</p>
