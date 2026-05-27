@@ -1599,6 +1599,8 @@ model GearItem {
   gearCategoryId         String
   name                   String
   inventoryType          GearInventoryType
+  // Arc 20Z: human-readable asset identity (e.g. GO-RIFLE-0007). Auto-generated on create; admin-overridable.
+  assetId                String?
   sku                    String?
   serialNumber           String?
   quantityOnHand         Int                       @default(0)
@@ -1642,6 +1644,8 @@ model GearItem {
   inventoryAuditDiscrepancies InventoryAuditDiscrepancy[]
 
   @@unique([organizationId, serialNumber])
+  @@unique([organizationId, assetId])
+  @@index([organizationId, assetId])
   @@index([organizationId, gearCategoryId])
   @@index([organizationId, programId])
   @@index([organizationId, inventoryType, lifecycleStatus])

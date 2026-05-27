@@ -131,6 +131,7 @@ export default async function GearOpsItemDetailsPage({
     | {
         id: string;
         name: string;
+        assetId: string | null;
         inventoryType: GearInventoryType;
         lifecycleStatus: GearItemLifecycleStatus;
         conditionStatus: GearConditionStatus | null;
@@ -246,6 +247,7 @@ export default async function GearOpsItemDetailsPage({
       select: {
         id: true,
         name: true,
+        assetId: true,
         inventoryType: true,
         lifecycleStatus: true,
         conditionStatus: true,
@@ -898,6 +900,9 @@ export default async function GearOpsItemDetailsPage({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">{item.name}</h2>
+            {item.assetId ? (
+              <p className="mt-0.5 font-mono text-sm font-semibold text-zinc-700 dark:text-zinc-300">{item.assetId}</p>
+            ) : null}
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               Category:{" "}
               <Link href={`/gear-ops/categories/${item.category.id}`} className="underline">
@@ -1050,6 +1055,10 @@ export default async function GearOpsItemDetailsPage({
           <dd className="text-zinc-600 dark:text-zinc-400">
             {item.program ? <Link href={`/programs/${item.program.id}`} className="underline">{item.program.name}</Link> : "—"}
           </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Asset ID</dt>
+          <dd className="font-mono text-zinc-600 dark:text-zinc-400">{item.assetId ?? "—"}</dd>
         </div>
         <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">SKU / Serial</dt>

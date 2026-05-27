@@ -16,6 +16,7 @@ const TEMPLATE_COLUMNS = [
   "description",
   "serial_number",
   "asset_tag",
+  "asset_id",
   "qr_identifier",
   "owner_source",
   "location",
@@ -58,6 +59,7 @@ export type GearImportPreviewRow = {
   quantityMin: number | null;
   serialNumber: string | null;
   barcodeValue: string | null;
+  assetId: string | null;
   sku: string | null;
   notes: string | null;
   existingItemId: string | null;
@@ -98,6 +100,8 @@ const HEADER_ALIASES: Record<string, TemplateColumn> = {
   serial: "serial_number",
   asset_tag: "asset_tag",
   barcode: "asset_tag",
+  asset_id: "asset_id",
+  go_id: "asset_id",
   qr_identifier: "qr_identifier",
   qr_value: "qr_identifier",
   owner_source: "owner_source",
@@ -302,13 +306,15 @@ function parseBooleanLike(value: string): boolean | null {
 function pickIdentifier(values: Record<TemplateColumn, string>) {
   const serialNumber = values.serial_number.trim() || null;
   const barcodeValue = values.asset_tag.trim() || values.qr_identifier.trim() || null;
+  const assetId = values.asset_id.trim() || null;
   const sku = values.template_key.trim() || null;
 
   return {
     serialNumber,
     barcodeValue,
+    assetId,
     sku,
-    identifier: serialNumber || barcodeValue || sku,
+    identifier: serialNumber || assetId || barcodeValue || sku,
   };
 }
 
@@ -347,7 +353,7 @@ export async function previewGearImport(input: {
     }),
     db.gearItem.findMany({
       where: { organizationId: input.organizationId },
-      select: { id: true, serialNumber: true, barcodeValue: true, sku: true },
+      select: { id: true, serialNumber: true, barcodeValue: true, assetId: true, sku: true },
     }),
   ]);
 
@@ -368,6 +374,9 @@ export async function previewGearImport(input: {
   for (const item of existingItems) {
     if (item.serialNumber) {
       existingByIdentifier.set(`serial:${normalizeToken(item.serialNumber)}`, { id: item.id });
+    }
+    if (item.assetId) {
+      existingByIdentifier.set(`assetid:${normalizeToken(item.assetId)}`, { id: item.id });
     }
     if (item.barcodeValue) {
       existingByIdentifier.set(`barcode:${normalizeToken(item.barcodeValue)}`, { id: item.id });
@@ -414,9 +423,11 @@ export async function previewGearImport(input: {
 
     const identifierKey = identifierParts.serialNumber
       ? `serial:${normalizeToken(identifierParts.serialNumber)}`
-      : identifierParts.barcodeValue
-        ? `barcode:${normalizeToken(identifierParts.barcodeValue)}`
-        : `sku:${normalizeToken(identifierParts.sku ?? "")}`;
+      : identifierParts.assetId
+        ? `assetid:${normalizeToken(identifierParts.assetId)}`
+        : identifierParts.barcodeValue
+          ? `barcode:${normalizeToken(identifierParts.barcodeValue)}`
+          : `sku:${normalizeToken(identifierParts.sku ?? "")}`;
 
     if (seenIdentifierRows.has(identifierKey)) {
       issues.push({
@@ -526,6 +537,7 @@ export async function previewGearImport(input: {
       quantityMin,
       serialNumber: identifierParts.serialNumber,
       barcodeValue: identifierParts.barcodeValue,
+      assetId: identifierParts.assetId,
       sku: identifierParts.sku,
       notes: [row.values.description.trim(), row.values.notes.trim()].filter(Boolean).join("\n") || null,
       existingItemId: existing?.id ?? null,
@@ -578,6 +590,7 @@ export async function commitGearImport(input: {
         quantityMin: row.quantityMin,
         serialNumber: row.serialNumber,
         barcodeValue: row.barcodeValue,
+        assetId: row.assetId,
         sku: row.sku,
         locationId: row.locationId,
         notes: row.notes,
@@ -668,6 +681,7 @@ export async function buildGearExportCsv(input: {
         inventoryType: true,
         lifecycleStatus: true,
         serialNumber: true,
+        assetId: true,
         barcodeValue: true,
         sku: true,
         quantityOnHand: true,
@@ -689,6 +703,7 @@ export async function buildGearExportCsv(input: {
           "inventory_type",
           "lifecycle_status",
           "serial_number",
+          "asset_id",
           "asset_tag",
           "sku",
           "quantity",
@@ -705,6 +720,7 @@ export async function buildGearExportCsv(input: {
           item.inventoryType,
           item.lifecycleStatus,
           item.serialNumber,
+          item.assetId,
           item.barcodeValue,
           item.sku,
           item.quantityOnHand,
