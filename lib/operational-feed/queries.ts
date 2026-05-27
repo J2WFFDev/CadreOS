@@ -66,6 +66,7 @@ const FEED_ENTRY_SELECT = {
   dueTime: true,
   teamId: true,
   assignedToPersonId: true,
+  assignedTo: { select: { firstName: true, lastName: true } },
   createdAt: true,
 } as const;
 

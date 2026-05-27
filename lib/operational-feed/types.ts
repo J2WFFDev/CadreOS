@@ -37,6 +37,8 @@ export type FeedEntryItem = {
   dueTime: string | null;
   teamId: string | null;
   assignedToPersonId: string | null;
+  /** Resolved assignee name from the Entry.assignedTo relation. Null when unassigned. */
+  assignedTo: { firstName: string; lastName: string } | null;
   createdAt: Date;
 };
 
