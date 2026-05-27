@@ -95,7 +95,6 @@ export default async function CheckoutGearItemPage({
         where: { organizationId: scope.organizationId },
         select: { id: true, title: true },
         orderBy: [{ startsAt: "desc" }],
-        take: 50,
       }),
     ]);
   } catch (error) {

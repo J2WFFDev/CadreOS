@@ -109,7 +109,6 @@ export default async function ReserveGearItemPage({
         where: { organizationId: scope.organizationId },
         select: { id: true, title: true },
         orderBy: [{ startsAt: "desc" }],
-        take: 50,
       }),
       db.program.findMany({
         where: { organizationId: scope.organizationId },
