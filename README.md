@@ -20,6 +20,9 @@
   7. `20260526143000_add_person_lifecycle_status`
   8. `20260526152000_add_gearops_core_tables`
   9. `20260526223000_fix_missing_gearops_consumable_tables`
+  10. `20260527000000_add_gear_reservation`
+  11. `20260527133000_add_gearcategory_configuration_columns`
+  12. `20260527143000_align_gearops_schema_readiness`
 - `MIGRATE_DATABASE_URL` should be the Neon direct connection string for baseline/rebuild workflows and must not use the `-pooler` host.
 - **Manual DB Setup** uses the runtime `DATABASE_URL` value (same secret used by Vercel app runtime).
 
@@ -41,6 +44,9 @@
      - `20260526143000_add_person_lifecycle_status`
      - `20260526152000_add_gearops_core_tables`
      - `20260526223000_fix_missing_gearops_consumable_tables`
+     - `20260527000000_add_gear_reservation`
+     - `20260527133000_add_gearcategory_configuration_columns`
+     - `20260527143000_align_gearops_schema_readiness`
   5. Redeploy the application build to Vercel after the database migration succeeds.
 - Decision guidance for non-empty databases with no Prisma migration history:
   - If no historical core or Arc-19 markers exist, do **not** baseline historical migrations. Migrate forward (and add compatibility migrations only if concrete conflicts occur).

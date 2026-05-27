@@ -102,6 +102,19 @@ const PROTECTED_MIGRATION_MARKERS = [
       { table: "GearCategory", column: "supportsEventDeployment" },
     ],
   },
+  {
+    migration: "20260527000000_add_gear_reservation",
+    requires: [{ table: "GearReservation" }],
+  },
+  {
+    migration: "20260527143000_align_gearops_schema_readiness",
+    requires: [
+      { table: "InventoryKit" },
+      { table: "EventGearRequirementTemplate" },
+      { table: "InventoryAudit" },
+      { table: "GearItem", column: "inspectionDueStatus" },
+    ],
+  },
 ];
 
 function parseArgs(argv) {

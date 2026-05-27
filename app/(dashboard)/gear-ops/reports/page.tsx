@@ -16,6 +16,7 @@ import Link from "next/link";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { GearOpsSchemaWarning } from "@/components/gear-ops/schema-warning";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
 import {
@@ -37,6 +38,7 @@ import {
   type GearOpsReportFilter,
 } from "@/lib/gear-ops-dashboard";
 import { formatGearOpsDateTime, formatGearOpsEnum } from "@/lib/gear-ops";
+import { getGearOpsSchemaStatus } from "@/lib/gear-ops-schema-status";
 import { summarizeGearReservations } from "@/lib/gear-reservations";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -242,6 +244,22 @@ export default async function GearOpsReportsPage({ searchParams }: { searchParam
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">{access.denialMessage}</p>
         </div>
+      </section>
+    );
+  }
+
+  const schemaStatus = await getGearOpsSchemaStatus("reports");
+  if (!schemaStatus.schemaReady) {
+    return (
+      <section className="space-y-4">
+        <PageHeader title="GearOps reports" description="Operational dashboard and exception reporting for GearOps." />
+        <GearOpsSubnav current="reports" />
+        <GearOpsSchemaWarning
+          actionMessage="Run database setup before loading GearOps reports."
+          status={schemaStatus}
+          organizationId={scope.organizationId}
+          actorPersonId={scope.auth.personId}
+        />
       </section>
     );
   }

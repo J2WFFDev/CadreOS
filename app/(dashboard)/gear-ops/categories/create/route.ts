@@ -3,7 +3,10 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { getGearCategoryTemplate } from "@/lib/gear-category-config";
-import { getGearOpsSchemaStatus } from "@/lib/gear-ops-schema-status";
+import {
+  buildGearOpsSchemaUnavailableMessage,
+  getGearOpsSchemaStatus,
+} from "@/lib/gear-ops-schema-status";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   gearCategoryWorkflowSchema,
@@ -130,7 +133,7 @@ export async function POST(request: Request) {
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, {
         values: basicValues,
-        error: "Database schema is not available yet. Run database setup before creating gear categories.",
+        error: buildGearOpsSchemaUnavailableMessage(schemaStatus, "Run database setup before creating gear categories."),
         missingTables: schemaStatus.missingTables,
         missingColumns: schemaStatus.missingColumns,
       }),
@@ -221,7 +224,7 @@ export async function POST(request: Request) {
         error: isPermissionDeniedError(error)
           ? error.message
           : categorySchemaMissing
-            ? "Database schema is not available yet. Run database setup before creating gear categories."
+            ? buildGearOpsSchemaUnavailableMessage(schemaStatus, "Run database setup before creating gear categories.")
             : "Unable to create gear category right now. Please try again.",
         missingTables: categorySchemaMissing ? schemaStatus.missingTables : undefined,
         missingColumns: categorySchemaMissing ? schemaStatus.missingColumns : undefined,
