@@ -9,6 +9,7 @@ import {
   GearItemLifecycleStatus,
   MemberLifecycleStatus,
   Prisma,
+  RoleType,
   ScopeType,
   TaskStatus,
 } from "@prisma/client";
@@ -23,6 +24,7 @@ import {
 import { canReadStaffOnlyContent, resolveActorRoleContext } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { isTaskOverdue, isUnresolvedTaskStatus } from "@/lib/follow-up-tasks";
+import { MEMBEROPS_ROSTER_ROLE_TYPES } from "@/lib/member-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   buildSupportedTaskSourceNoteVisibilityWhere,
@@ -58,6 +60,38 @@ function readSearchParam(searchParams: SearchParams, key: string): string {
   }
 
   return value ?? "";
+}
+
+function buildProgramViewHref(
+  programId: string,
+  filters: {
+    seasonId?: string;
+    teamId?: string;
+    rosterRole?: string;
+    lifecycleStatus?: string;
+    assignmentState?: string;
+  },
+) {
+  const params = new URLSearchParams();
+
+  if (filters.seasonId) {
+    params.set("seasonId", filters.seasonId);
+  }
+  if (filters.teamId) {
+    params.set("teamId", filters.teamId);
+  }
+  if (filters.rosterRole) {
+    params.set("rosterRole", filters.rosterRole);
+  }
+  if (filters.lifecycleStatus) {
+    params.set("lifecycleStatus", filters.lifecycleStatus);
+  }
+  if (filters.assignmentState) {
+    params.set("assignmentState", filters.assignmentState);
+  }
+
+  const query = params.toString();
+  return query ? `/programs/${programId}?${query}` : `/programs/${programId}`;
 }
 
 export default async function ProgramDetailsPage({
@@ -204,7 +238,26 @@ export default async function ProgramDetailsPage({
       programId: program.id,
     }));
 
-  const selectedSeason = selectSeededOrCurrentSeason(program.seasons);
+  const activeSeason = selectSeededOrCurrentSeason(program.seasons);
+  const requestedSeasonId = readSearchParam(resolvedSearchParams, "seasonId");
+  const selectedSeason =
+    program.seasons.find((season) => season.id === requestedSeasonId) ?? activeSeason;
+  const selectedTeamId = readSearchParam(resolvedSearchParams, "teamId");
+  const selectedRosterRoleParam = readSearchParam(resolvedSearchParams, "rosterRole");
+  const selectedRosterRole =
+    selectedRosterRoleParam && MEMBEROPS_ROSTER_ROLE_TYPES.includes(selectedRosterRoleParam as RoleType)
+      ? selectedRosterRoleParam
+      : "";
+  const selectedLifecycleStatusParam = readSearchParam(resolvedSearchParams, "lifecycleStatus");
+  const selectedLifecycleStatus =
+    selectedLifecycleStatusParam && Object.values(MemberLifecycleStatus).includes(selectedLifecycleStatusParam as MemberLifecycleStatus)
+      ? selectedLifecycleStatusParam
+      : "";
+  const assignmentStateParam = readSearchParam(resolvedSearchParams, "assignmentState");
+  const assignmentState =
+    assignmentStateParam === "complete" || assignmentStateParam === "incomplete"
+      ? assignmentStateParam
+      : "all";
   const hasNoSeasonConfigured = program.seasons.length === 0;
   const selectedSeasonRoster = selectedSeason
     ? await db.rosterMembership.findMany({
@@ -218,8 +271,21 @@ export default async function ProgramDetailsPage({
         select: {
           id: true,
           teamId: true,
+          seasonId: true,
           rosterRole: true,
           personId: true,
+          team: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          season: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           person: {
             select: {
               id: true,
@@ -238,6 +304,112 @@ export default async function ProgramDetailsPage({
             },
           },
         },
+      })
+    : [];
+  const selectedSeasonRosterByTeamMemberKey = new Map<string, Set<RoleType>>();
+  const rosterTeamRoleAssignments = selectedSeason
+    ? await db.roleAssignment.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          scopeType: ScopeType.TEAM,
+          team: {
+            programId: program.id,
+          },
+          personId: {
+            in: [...new Set(selectedSeasonRoster.map((membership) => membership.personId))],
+          },
+        },
+        select: {
+          teamId: true,
+          personId: true,
+          roleType: true,
+        },
+      })
+    : [];
+  for (const assignment of rosterTeamRoleAssignments) {
+    if (!assignment.teamId) {
+      continue;
+    }
+    const key = `${assignment.teamId}:${assignment.personId}`;
+    const roleTypes = selectedSeasonRosterByTeamMemberKey.get(key) ?? new Set<RoleType>();
+    roleTypes.add(assignment.roleType);
+    selectedSeasonRosterByTeamMemberKey.set(key, roleTypes);
+  }
+  const selectedSeasonRosterWithAssignmentState = selectedSeasonRoster.map((membership) => {
+    const roleTypes = selectedSeasonRosterByTeamMemberKey.get(`${membership.teamId}:${membership.personId}`) ?? new Set<RoleType>();
+    const hasMatchingTeamAssignment = roleTypes.has(membership.rosterRole);
+    return {
+      ...membership,
+      hasMatchingTeamAssignment,
+      participationState:
+        membership.person.lifecycleStatus === MemberLifecycleStatus.ACTIVE
+          ? "active_participation"
+          : "inactive_participation",
+    };
+  });
+  const filteredSelectedSeasonRosterMemberships = selectedSeasonRosterWithAssignmentState.filter((membership) => {
+    if (selectedTeamId && membership.teamId !== selectedTeamId) {
+      return false;
+    }
+    if (selectedRosterRole && membership.rosterRole !== selectedRosterRole) {
+      return false;
+    }
+    if (selectedLifecycleStatus && membership.person.lifecycleStatus !== selectedLifecycleStatus) {
+      return false;
+    }
+    if (assignmentState === "complete" && !membership.hasMatchingTeamAssignment) {
+      return false;
+    }
+    if (assignmentState === "incomplete" && membership.hasMatchingTeamAssignment) {
+      return false;
+    }
+    return true;
+  });
+  const activeProgramMembersWithoutSelectedSeasonRoster = selectedSeason
+    ? await db.person.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          lifecycleStatus: MemberLifecycleStatus.ACTIVE,
+          OR: [
+            {
+              roles: {
+                some: {
+                  organizationId: scope.organizationId,
+                  programId: program.id,
+                },
+              },
+            },
+            {
+              roles: {
+                some: {
+                  organizationId: scope.organizationId,
+                  team: {
+                    is: {
+                      programId: program.id,
+                    },
+                  },
+                },
+              },
+            },
+          ],
+          NOT: {
+            roster: {
+              some: {
+                organizationId: scope.organizationId,
+                seasonId: selectedSeason.id,
+                team: {
+                  programId: program.id,
+                },
+              },
+            },
+          },
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+        },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       })
     : [];
   const selectedSeasonRosterUniqueMembers = Array.from(
@@ -909,7 +1081,10 @@ export default async function ProgramDetailsPage({
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-2 text-lg font-medium">Roster lifecycle readiness</h3>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Selected season: {selectedSeason?.name ?? "No season available"}.
+          Active season default: {activeSeason?.name ?? "No active season available"}.
+        </p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Roster season view: {selectedSeason?.name ?? "No season available"}.
         </p>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Unique roster members in selected season: {selectedSeasonRosterPersonIds.size}.
@@ -938,6 +1113,151 @@ export default async function ProgramDetailsPage({
             Team readiness lane
           </Link>
         </div>
+        {selectedSeason ? (
+          <form action={`/programs/${program.id}`} method="get" className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="space-y-1">
+              <label htmlFor="seasonId" className="text-xs font-medium">
+                Season
+              </label>
+              <select id="seasonId" name="seasonId" defaultValue={selectedSeason.id} className="w-full rounded-md border px-2 py-1 text-sm">
+                {program.seasons.map((season) => (
+                  <option key={season.id} value={season.id}>
+                    {season.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="teamId" className="text-xs font-medium">
+                Team
+              </label>
+              <select id="teamId" name="teamId" defaultValue={selectedTeamId} className="w-full rounded-md border px-2 py-1 text-sm">
+                <option value="">All teams</option>
+                {program.teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="rosterRole" className="text-xs font-medium">
+                Assignment role
+              </label>
+              <select id="rosterRole" name="rosterRole" defaultValue={selectedRosterRole} className="w-full rounded-md border px-2 py-1 text-sm">
+                <option value="">All roles</option>
+                {MEMBEROPS_ROSTER_ROLE_TYPES.map((roleType) => (
+                  <option key={roleType} value={roleType}>
+                    {formatEnumLabel(roleType)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="lifecycleStatus" className="text-xs font-medium">
+                Participation status
+              </label>
+              <select
+                id="lifecycleStatus"
+                name="lifecycleStatus"
+                defaultValue={selectedLifecycleStatus}
+                className="w-full rounded-md border px-2 py-1 text-sm"
+              >
+                <option value="">All statuses</option>
+                {Object.values(MemberLifecycleStatus).map((status) => (
+                  <option key={status} value={status}>
+                    {formatEnumLabel(status)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="assignmentState" className="text-xs font-medium">
+                Assignment completeness
+              </label>
+              <select id="assignmentState" name="assignmentState" defaultValue={assignmentState} className="w-full rounded-md border px-2 py-1 text-sm">
+                <option value="all">All records</option>
+                <option value="complete">Complete assignment</option>
+                <option value="incomplete">Incomplete assignment</option>
+              </select>
+            </div>
+            <div className="sm:col-span-2 lg:col-span-5 flex gap-2">
+              <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+                Apply filters
+              </button>
+              <Link
+                href={buildProgramViewHref(program.id, { seasonId: selectedSeason.id })}
+                className="rounded-md border px-3 py-1.5 text-sm"
+              >
+                Reset
+              </Link>
+            </div>
+          </form>
+        ) : null}
+        {selectedSeason ? (
+          filteredSelectedSeasonRosterMemberships.length === 0 ? (
+            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+              No roster assignments match the selected season/team/program/status filters.
+            </p>
+          ) : (
+            <div className="mt-3 overflow-x-auto rounded-md border">
+              <table className="min-w-full text-left text-sm">
+                <thead className="border-b bg-zinc-50 dark:bg-zinc-800/60">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Member</th>
+                    <th className="px-3 py-2 font-medium">Team</th>
+                    <th className="px-3 py-2 font-medium">Season</th>
+                    <th className="px-3 py-2 font-medium">Assignment role</th>
+                    <th className="px-3 py-2 font-medium">Assignment status</th>
+                    <th className="px-3 py-2 font-medium">Participation status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSelectedSeasonRosterMemberships.map((membership) => (
+                    <tr key={membership.id} className="border-b last:border-b-0">
+                      <td className="px-3 py-2">
+                        <Link href={`/people/${membership.person.id}`} className="underline">
+                          {membership.person.firstName} {membership.person.lastName}
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">{membership.team.name}</td>
+                      <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">{membership.season.name}</td>
+                      <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">{formatEnumLabel(membership.rosterRole)}</td>
+                      <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
+                        {membership.hasMatchingTeamAssignment ? "Complete assignment" : "Incomplete assignment"}
+                      </td>
+                      <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
+                        {membership.participationState === "active_participation"
+                          ? "Active participation"
+                          : `Inactive participation (${formatEnumLabel(membership.person.lifecycleStatus)})`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : null}
+        {selectedSeason ? (
+          activeProgramMembersWithoutSelectedSeasonRoster.length === 0 ? (
+            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+              No unassigned active members detected for the selected season in this program.
+            </p>
+          ) : (
+            <div className="mt-3">
+              <h4 className="text-sm font-medium">Unassigned active members (selected season)</h4>
+              <ul className="mt-2 space-y-1 text-sm">
+                {activeProgramMembersWithoutSelectedSeasonRoster.slice(0, 10).map((person) => (
+                  <li key={person.id}>
+                    <Link href={`/people/${person.id}`} className="underline">
+                      {person.firstName} {person.lastName}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        ) : null}
         {selectedSeasonAthletesMissingGuardianLinkageMembers.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
             No athlete guardian-linkage gaps are currently detected for the selected season.
