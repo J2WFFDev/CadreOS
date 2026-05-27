@@ -14,10 +14,12 @@ import {
 import { db } from "@/lib/db";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import {
+  matchesMemberAssignmentFilter,
   isDefaultVisibleMemberLifecycleStatus,
   MEMBER_LIFECYCLE_STATUS_LABELS,
   MEMBEROPS_ROSTER_ROLE_TYPES,
   MEMBEROPS_TEAM_ROLE_TYPES,
+  resolveMemberAssignmentFilter,
 } from "@/lib/member-ops";
 import { deriveMemberRosterReadiness } from "@/lib/member-ops-roster-readiness";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -431,13 +433,7 @@ export default async function PeoplePage({
     Object.values(MemberLifecycleStatus).includes(lifecycleFilterParam as MemberLifecycleStatus)
       ? lifecycleFilterParam
       : "";
-  const assignmentFilterParam = readSearchParam(resolvedSearchParams, "assignmentFilter");
-  const assignmentFilter =
-    assignmentFilterParam === "all" ||
-    assignmentFilterParam === "unassigned" ||
-    assignmentFilterParam === "current_season_assigned"
-      ? assignmentFilterParam
-      : "current_season_assigned";
+  const assignmentFilter = resolveMemberAssignmentFilter(readSearchParam(resolvedSearchParams, "assignmentFilter"));
   const guardianFilterParam = readSearchParam(resolvedSearchParams, "guardianFilter");
   const guardianFilter =
     guardianFilterParam === "all" ||
@@ -502,11 +498,11 @@ export default async function PeoplePage({
         return false;
       }
     }
-    const assignmentMatches =
-      assignmentFilter === "all" ||
-      (assignmentFilter === "unassigned" && !person.hasAnyAssignment) ||
-      (assignmentFilter === "current_season_assigned" &&
-        (selectedSeasonId ? person.hasCurrentSeasonAssignment : person.hasAnyAssignment));
+    const assignmentMatches = matchesMemberAssignmentFilter(assignmentFilter, {
+      selectedSeasonId,
+      hasAnyAssignment: person.hasAnyAssignment,
+      hasCurrentSeasonAssignment: person.hasCurrentSeasonAssignment,
+    });
     if (!assignmentMatches) {
       return false;
     }
