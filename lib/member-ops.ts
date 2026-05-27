@@ -40,13 +40,21 @@ export const MEMBEROPS_ROSTER_ROLE_TYPES = [
   RoleType.PARENT_GUARDIAN,
 ] as const;
 
+export const MEMBEROPS_ASSIGNMENT_FILTERS = [
+  "all",
+  "unassigned",
+  "current_season_assigned",
+] as const;
+
 export type MemberOpsStaffRoleType = (typeof MEMBEROPS_STAFF_ROLE_TYPES)[number];
 export type MemberOpsTeamRoleType = (typeof MEMBEROPS_TEAM_ROLE_TYPES)[number];
 export type MemberOpsRosterRoleType = (typeof MEMBEROPS_ROSTER_ROLE_TYPES)[number];
+export type MemberOpsAssignmentFilter = (typeof MEMBEROPS_ASSIGNMENT_FILTERS)[number];
 
 const staffRoleTypeSet = new Set<RoleType>(MEMBEROPS_STAFF_ROLE_TYPES);
 const teamRoleTypeSet = new Set<RoleType>(MEMBEROPS_TEAM_ROLE_TYPES);
 const rosterRoleTypeSet = new Set<RoleType>(MEMBEROPS_ROSTER_ROLE_TYPES);
+const assignmentFilterSet = new Set<MemberOpsAssignmentFilter>(MEMBEROPS_ASSIGNMENT_FILTERS);
 
 export function isStaffRoleType(roleType: RoleType | string): roleType is MemberOpsStaffRoleType {
   return staffRoleTypeSet.has(roleType as RoleType);
@@ -58,6 +66,28 @@ export function isTeamScopedRoleType(roleType: RoleType | string): roleType is M
 
 export function isRosterRoleType(roleType: RoleType | string): roleType is MemberOpsRosterRoleType {
   return rosterRoleTypeSet.has(roleType as RoleType);
+}
+
+export function resolveMemberAssignmentFilter(filter: string): MemberOpsAssignmentFilter {
+  return assignmentFilterSet.has(filter as MemberOpsAssignmentFilter)
+    ? (filter as MemberOpsAssignmentFilter)
+    : "all";
+}
+
+export function matchesMemberAssignmentFilter(
+  filter: MemberOpsAssignmentFilter,
+  input: {
+    selectedSeasonId: string;
+    hasAnyAssignment: boolean;
+    hasCurrentSeasonAssignment: boolean;
+  },
+): boolean {
+  return (
+    filter === "all" ||
+    (filter === "unassigned" && !input.hasAnyAssignment) ||
+    (filter === "current_season_assigned" &&
+      (input.selectedSeasonId ? input.hasCurrentSeasonAssignment : input.hasAnyAssignment))
+  );
 }
 
 export const MEMBEROPS_NAMING_RULES = {

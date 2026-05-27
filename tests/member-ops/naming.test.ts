@@ -4,15 +4,18 @@ import test from "node:test";
 import { MemberLifecycleStatus, RoleType } from "@prisma/client";
 
 import {
+  matchesMemberAssignmentFilter,
   isRosterRoleType,
   isStaffRoleType,
   isTeamScopedRoleType,
   isDefaultVisibleMemberLifecycleStatus,
   MEMBER_LIFECYCLE_DEFAULT_VISIBLE_STATUSES,
   MEMBER_LIFECYCLE_STATUS_LABELS,
+  MEMBEROPS_ASSIGNMENT_FILTERS,
   MEMBEROPS_NAMING_RULES,
   MEMBEROPS_ROSTER_ROLE_TYPES,
   MEMBEROPS_TEAM_ROLE_TYPES,
+  resolveMemberAssignmentFilter,
 } from "../../lib/member-ops";
 import { memberMoveWorkflowSchema, rosterMembershipWorkflowSchema } from "../../lib/workflows";
 
@@ -91,4 +94,50 @@ test("default roster visibility includes active and pending only", () => {
   assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.INACTIVE), false);
   assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.ARCHIVED), false);
   assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.ALUMNI), false);
+});
+
+test("member assignment filter defaults to all so newly created unassigned people remain visible", () => {
+  assert.deepEqual(MEMBEROPS_ASSIGNMENT_FILTERS, [
+    "all",
+    "unassigned",
+    "current_season_assigned",
+  ]);
+  assert.equal(resolveMemberAssignmentFilter(""), "all");
+  assert.equal(resolveMemberAssignmentFilter("unexpected"), "all");
+  assert.equal(resolveMemberAssignmentFilter("current_season_assigned"), "current_season_assigned");
+});
+
+test("member assignment filter matching preserves explicit roster-only filters", () => {
+  assert.equal(
+    matchesMemberAssignmentFilter("all", {
+      selectedSeasonId: "season-1",
+      hasAnyAssignment: false,
+      hasCurrentSeasonAssignment: false,
+    }),
+    true,
+  );
+  assert.equal(
+    matchesMemberAssignmentFilter("unassigned", {
+      selectedSeasonId: "season-1",
+      hasAnyAssignment: false,
+      hasCurrentSeasonAssignment: false,
+    }),
+    true,
+  );
+  assert.equal(
+    matchesMemberAssignmentFilter("current_season_assigned", {
+      selectedSeasonId: "season-1",
+      hasAnyAssignment: false,
+      hasCurrentSeasonAssignment: false,
+    }),
+    false,
+  );
+  assert.equal(
+    matchesMemberAssignmentFilter("current_season_assigned", {
+      selectedSeasonId: "",
+      hasAnyAssignment: true,
+      hasCurrentSeasonAssignment: false,
+    }),
+    true,
+  );
 });
