@@ -3,8 +3,10 @@ import type {
   GearAssignmentStatus,
   GearCheckoutStatus,
   GearConditionStatus,
+  GearInspectionDueStatus,
   GearInventoryType,
   GearItemLifecycleStatus,
+  GearMaintenanceDueStatus,
   InventoryOwnershipType,
   InventoryReadinessState,
 } from "@prisma/client";
@@ -57,6 +59,11 @@ export type GearOpsItemSnapshot = {
   locationName: string | null;
   quantityOnHand: number;
   quantityMin: number | null;
+  // Arc 20Y: inspection/maintenance due tracking
+  inspectionDueStatus: GearInspectionDueStatus | null;
+  maintenanceDueStatus: GearMaintenanceDueStatus | null;
+  nextInspectionDueAt: Date | null;
+  nextMaintenanceDueAt: Date | null;
   assignments: GearOpsAssignmentSnapshot[];
   checkouts: GearOpsCheckoutSnapshot[];
 };
@@ -92,7 +99,11 @@ export type GearOpsException = {
     | "OVERDUE_UNRETURNED"
     | "LOW_CONSUMABLE"
     | "EVENT_GEAR_GAP"
-    | "EVENT_GEAR_UNRETURNED";
+    | "EVENT_GEAR_UNRETURNED"
+    | "INSPECTION_DUE"
+    | "INSPECTION_OVERDUE"
+    | "MAINTENANCE_DUE"
+    | "MAINTENANCE_OVERDUE";
   severity: "high" | "medium";
   title: string;
   detail: string;
@@ -429,6 +440,48 @@ export function buildGearOpsExceptions(input: {
       });
     }
 
+    // Arc 20Y: inspection due/overdue exceptions
+    if (item.inspectionDueStatus === "OVERDUE") {
+      exceptions.push({
+        id: `item-inspection-overdue-${item.id}`,
+        kind: "INSPECTION_OVERDUE",
+        severity: "high",
+        title: item.name,
+        detail: "Inspection is overdue.",
+        href: `/gear-ops/items/${item.id}`,
+      });
+    } else if (item.inspectionDueStatus === "DUE") {
+      exceptions.push({
+        id: `item-inspection-due-${item.id}`,
+        kind: "INSPECTION_DUE",
+        severity: "medium",
+        title: item.name,
+        detail: "Inspection is due.",
+        href: `/gear-ops/items/${item.id}`,
+      });
+    }
+
+    // Arc 20Y: maintenance schedule due/overdue exceptions
+    if (item.maintenanceDueStatus === "OVERDUE") {
+      exceptions.push({
+        id: `item-maintenance-overdue-${item.id}`,
+        kind: "MAINTENANCE_OVERDUE",
+        severity: "high",
+        title: item.name,
+        detail: "Scheduled maintenance is overdue.",
+        href: `/gear-ops/items/${item.id}`,
+      });
+    } else if (item.maintenanceDueStatus === "DUE") {
+      exceptions.push({
+        id: `item-maintenance-due-${item.id}`,
+        kind: "MAINTENANCE_DUE",
+        severity: "medium",
+        title: item.name,
+        detail: "Scheduled maintenance is due.",
+        href: `/gear-ops/items/${item.id}`,
+      });
+    }
+
     if (isLowConsumableItem(item)) {
       exceptions.push({
         id: `item-low-consumable-${item.id}`,
@@ -520,7 +573,15 @@ export function summarizeOperationalRisk(input: {
   lowConsumableCount: number;
   eventGapCount: number;
   eventUnreturnedCount: number;
+  // Arc 20Y
+  inspectionOverdueCount?: number;
+  inspectionDueSoonCount?: number;
+  maintenanceScheduleOverdueCount?: number;
+  maintenanceScheduleDueSoonCount?: number;
 }) {
+  const inspectionOverdueCount = input.inspectionOverdueCount ?? 0;
+  const maintenanceScheduleOverdueCount = input.maintenanceScheduleOverdueCount ?? 0;
+
   return [
     {
       key: "overdue",
@@ -535,6 +596,20 @@ export function summarizeOperationalRisk(input: {
       count: input.maintenanceConcernCount,
       severity: input.maintenanceConcernCount > 0 ? "high" : "low",
       href: "/gear-ops/reports?exception=MAINTENANCE_NEEDED",
+    },
+    {
+      key: "inspection-overdue",
+      label: "Inspections overdue",
+      count: inspectionOverdueCount,
+      severity: inspectionOverdueCount > 0 ? "high" : "low",
+      href: "/gear-ops/reports?exception=INSPECTION_OVERDUE",
+    },
+    {
+      key: "maintenance-schedule-overdue",
+      label: "Scheduled maintenance overdue",
+      count: maintenanceScheduleOverdueCount,
+      severity: maintenanceScheduleOverdueCount > 0 ? "high" : "low",
+      href: "/gear-ops/reports?exception=MAINTENANCE_OVERDUE",
     },
     {
       key: "consumable",
@@ -558,4 +633,48 @@ export function summarizeOperationalRisk(input: {
       href: "/gear-ops/reports?exception=EVENT_GEAR_UNRETURNED",
     },
   ] as const;
+}
+
+/**
+ * Arc 20Y — Summarize inspection and maintenance due/overdue counts across
+ * all gear items in a snapshot set.
+ *
+ * Suitable for dashboard cards and report header summaries.
+ */
+export function summarizeInspectionMaintenance(items: GearOpsItemSnapshot[]) {
+  let inspectionOverdueCount = 0;
+  let inspectionDueCount = 0;
+  let inspectionDueSoonCount = 0;
+  let maintenanceOverdueCount = 0;
+  let maintenanceDueCount = 0;
+  let maintenanceDueSoonCount = 0;
+
+  for (const item of items) {
+    if (item.inspectionDueStatus === "OVERDUE") {
+      inspectionOverdueCount += 1;
+    } else if (item.inspectionDueStatus === "DUE") {
+      inspectionDueCount += 1;
+    } else if (item.inspectionDueStatus === "DUE_SOON") {
+      inspectionDueSoonCount += 1;
+    }
+
+    if (item.maintenanceDueStatus === "OVERDUE") {
+      maintenanceOverdueCount += 1;
+    } else if (item.maintenanceDueStatus === "DUE") {
+      maintenanceDueCount += 1;
+    } else if (item.maintenanceDueStatus === "DUE_SOON") {
+      maintenanceDueSoonCount += 1;
+    }
+  }
+
+  return {
+    inspectionOverdueCount,
+    inspectionDueCount,
+    inspectionDueSoonCount,
+    maintenanceOverdueCount,
+    maintenanceDueCount,
+    maintenanceDueSoonCount,
+    totalInspectionConcernCount: inspectionOverdueCount + inspectionDueCount,
+    totalMaintenanceConcernCount: maintenanceOverdueCount + maintenanceDueCount,
+  };
 }

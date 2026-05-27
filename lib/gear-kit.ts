@@ -10,12 +10,14 @@
 
 import type {
   GearConditionStatus,
+  GearInspectionDueStatus,
   GearItemLifecycleStatus,
   GearKitComponentRole,
   GearKitCustodyStatus,
   GearKitInspectionStatus,
   GearKitReadinessLabel,
   GearKitType,
+  GearMaintenanceDueStatus,
   InventoryReadinessState,
 } from "@prisma/client";
 
@@ -37,6 +39,9 @@ export type GearKitComponentSnapshot = {
   lifecycleStatus: GearItemLifecycleStatus;
   conditionStatus: GearConditionStatus | null;
   readinessState: InventoryReadinessState | null;
+  // Arc 20Y: inspection/maintenance due status
+  inspectionDueStatus?: GearInspectionDueStatus | null;
+  maintenanceDueStatus?: GearMaintenanceDueStatus | null;
 };
 
 // ── Completeness result ──────────────────────────────────────────────────────
@@ -56,6 +61,9 @@ export type GearKitComponentSummary = {
   lifecycleStatus: GearItemLifecycleStatus;
   conditionStatus: GearConditionStatus | null;
   readinessState: InventoryReadinessState | null;
+  // Arc 20Y
+  inspectionDueStatus: GearInspectionDueStatus | null;
+  maintenanceDueStatus: GearMaintenanceDueStatus | null;
 };
 
 export type GearKitCompletenessResult = {
@@ -68,6 +76,9 @@ export type GearKitCompletenessResult = {
   outOfServiceCount: number;
   maintenanceNeededCount: number;
   damagedCount: number;
+  // Arc 20Y
+  inspectionOverdueCount: number;
+  maintenanceOverdueCount: number;
   /** Fraction of required components present (0.0 – 1.0). */
   requiredCompleteness: number;
   /** Fraction of all components present (0.0 – 1.0). */
@@ -147,6 +158,9 @@ export function computeKitCompleteness(
       lifecycleStatus: c.lifecycleStatus,
       conditionStatus: c.conditionStatus,
       readinessState: c.readinessState,
+      // Arc 20Y
+      inspectionDueStatus: c.inspectionDueStatus ?? null,
+      maintenanceDueStatus: c.maintenanceDueStatus ?? null,
     };
   });
 
@@ -165,6 +179,13 @@ export function computeKitCompleteness(
     (s) => s.maintenanceNeeded,
   ).length;
   const damagedCount = summaries.filter((s) => s.damaged).length;
+  // Arc 20Y
+  const inspectionOverdueCount = summaries.filter(
+    (s) => s.inspectionDueStatus === "OVERDUE",
+  ).length;
+  const maintenanceOverdueCount = summaries.filter(
+    (s) => s.maintenanceDueStatus === "OVERDUE",
+  ).length;
 
   const requiredCompleteness =
     requiredComponents.length === 0
@@ -187,6 +208,8 @@ export function computeKitCompleteness(
     outOfServiceCount,
     maintenanceNeededCount,
     damagedCount,
+    inspectionOverdueCount,
+    maintenanceOverdueCount,
     requiredCompleteness,
     overallCompleteness,
     components: summaries,
@@ -202,8 +225,8 @@ export function computeKitCompleteness(
  * 1. CONFLICT          — active reservation/hold conflict
  * 2. OUT_OF_SERVICE    — kit custody status is IN_MAINTENANCE or kit has OOS required components
  * 3. MISSING_COMPONENTS — required components missing
- * 4. MAINTENANCE_NEEDED — required components need maintenance
- * 5. NEEDS_INSPECTION  — last inspection failed or never inspected for deployed kit
+ * 4. MAINTENANCE_NEEDED — required components need maintenance or have overdue scheduled maintenance
+ * 5. NEEDS_INSPECTION  — last inspection failed, kit in inspection, or required component inspection overdue
  * 6. INCOMPLETE        — optional components missing (required all present)
  * 7. LIMITED_USE       — damaged components present but kit is complete
  * 8. READY_WITH_WARNING — all present, minor issues
@@ -230,16 +253,19 @@ export function computeKitReadiness(
     return "MISSING_COMPONENTS";
   }
 
-  const requiredMaintenanceNeeded = completeness.components.some(
-    (c) => c.isRequired && c.maintenanceNeeded,
-  );
+  const requiredMaintenanceNeeded =
+    completeness.components.some((c) => c.isRequired && c.maintenanceNeeded) ||
+    // Arc 20Y: required components with overdue scheduled maintenance
+    completeness.components.some((c) => c.isRequired && c.maintenanceDueStatus === "OVERDUE");
   if (requiredMaintenanceNeeded) {
     return "MAINTENANCE_NEEDED";
   }
 
   if (
     lastInspectionStatus === "FAILED" ||
-    custodyStatus === "IN_INSPECTION"
+    custodyStatus === "IN_INSPECTION" ||
+    // Arc 20Y: required components with overdue inspection
+    completeness.components.some((c) => c.isRequired && c.inspectionDueStatus === "OVERDUE")
   ) {
     return "NEEDS_INSPECTION";
   }
@@ -259,6 +285,8 @@ export function computeKitReadiness(
     completeness.outOfServiceCount > 0 ||
     completeness.maintenanceNeededCount > 0 ||
     completeness.damagedCount > 0 ||
+    completeness.inspectionOverdueCount > 0 ||
+    completeness.maintenanceOverdueCount > 0 ||
     lastInspectionStatus === "PASSED_WITH_NOTES";
 
   if (hasAnyWarning) {

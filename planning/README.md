@@ -60,6 +60,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Arc 20U GearOps Notification Handoff Design](./PHASE_20U_GEAROPS_NOTIFICATION_HANDOFF_DESIGN.md)
 - [Arc 20V GearOps Offline Sync Phase 2 Design](./PHASE_20V_GEAROPS_OFFLINE_SYNC_PHASE_2_DESIGN.md)
 - [Arc 20W GearOps Native Mobile Readiness Plan](./PHASE_20W_GEAROPS_NATIVE_MOBILE_READINESS_PLAN.md)
+- [Arc 20Y GearOps Advanced Inspection and Recurring Maintenance Scheduling](./PHASE_20Y_GEAROPS_INSPECTION_MAINTENANCE_SCHEDULING.md)
 - [Phase 21A Athlete Journaling Capability Roadmap (Planning)](./PHASE_21A_ATHLETE_JOURNALING_CAPABILITY_ROADMAP.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)

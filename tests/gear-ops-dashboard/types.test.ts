@@ -33,6 +33,10 @@ function buildItem(overrides: Partial<Parameters<typeof filterGearOpsItems>[0][n
     locationName: "Vault",
     quantityOnHand: 5,
     quantityMin: null,
+    inspectionDueStatus: null,
+    maintenanceDueStatus: null,
+    nextInspectionDueAt: null,
+    nextMaintenanceDueAt: null,
     assignments: [],
     checkouts: [],
   };
@@ -327,7 +331,7 @@ test("exceptions include overdue, maintenance, low consumable, and event gap/unr
 
 import { summarizeOperationalRisk } from "../../lib/gear-ops-dashboard";
 
-test("summarizeOperationalRisk returns five risk categories in order", () => {
+test("summarizeOperationalRisk returns seven risk categories in order", () => {
   const risks = summarizeOperationalRisk({
     overdueCount: 2,
     maintenanceConcernCount: 1,
@@ -336,12 +340,14 @@ test("summarizeOperationalRisk returns five risk categories in order", () => {
     eventUnreturnedCount: 1,
   });
 
-  assert.equal(risks.length, 5);
+  assert.equal(risks.length, 7);
   assert.equal(risks[0].key, "overdue");
   assert.equal(risks[1].key, "maintenance");
-  assert.equal(risks[2].key, "consumable");
-  assert.equal(risks[3].key, "event-gap");
-  assert.equal(risks[4].key, "event-unreturned");
+  assert.equal(risks[2].key, "inspection-overdue");
+  assert.equal(risks[3].key, "maintenance-schedule-overdue");
+  assert.equal(risks[4].key, "consumable");
+  assert.equal(risks[5].key, "event-gap");
+  assert.equal(risks[6].key, "event-unreturned");
 });
 
 test("summarizeOperationalRisk marks non-zero counts as high or medium severity", () => {
