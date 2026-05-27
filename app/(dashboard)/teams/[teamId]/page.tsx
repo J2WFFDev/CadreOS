@@ -1093,7 +1093,7 @@ export default async function TeamDetailsPage({
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Athlete rows with inactive guardian account signals: {athleteRosterWithInactiveGuardianAccountSignals} athlete
               {athleteRosterWithInactiveGuardianAccountSignals === 1 ? "" : "s"} have linked guardian account records with
-              missing parent/guardian role assignments.
+              missing guardian role assignments.
             </p>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Athlete rows with pending/incomplete relationship support:{" "}
