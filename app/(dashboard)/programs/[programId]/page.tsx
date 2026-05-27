@@ -34,6 +34,7 @@ import { canPerformAction } from "@/lib/permissions";
 import { selectSeededOrCurrentSeason } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
+const MAX_UNASSIGNED_MEMBER_DISPLAY_COUNT = 10;
 
 function formatEnumLabel(value: string) {
   return value
@@ -92,6 +93,14 @@ function buildProgramViewHref(
 
   const query = params.toString();
   return query ? `/programs/${programId}?${query}` : `/programs/${programId}`;
+}
+
+function isMemberOpsRosterRoleValue(value: string): value is (typeof MEMBEROPS_ROSTER_ROLE_TYPES)[number] {
+  return MEMBEROPS_ROSTER_ROLE_TYPES.includes(value as (typeof MEMBEROPS_ROSTER_ROLE_TYPES)[number]);
+}
+
+function isMemberLifecycleStatusValue(value: string): value is MemberLifecycleStatus {
+  return Object.values(MemberLifecycleStatus).includes(value as MemberLifecycleStatus);
 }
 
 export default async function ProgramDetailsPage({
@@ -240,17 +249,20 @@ export default async function ProgramDetailsPage({
 
   const activeSeason = selectSeededOrCurrentSeason(program.seasons);
   const requestedSeasonId = readSearchParam(resolvedSearchParams, "seasonId");
-  const selectedSeason =
-    program.seasons.find((season) => season.id === requestedSeasonId) ?? activeSeason;
+  const requestedSeason = requestedSeasonId
+    ? program.seasons.find((season) => season.id === requestedSeasonId) ?? null
+    : null;
+  const hasInvalidSeasonFilter = Boolean(requestedSeasonId) && !requestedSeason;
+  const selectedSeason = requestedSeason ?? activeSeason;
   const selectedTeamId = readSearchParam(resolvedSearchParams, "teamId");
   const selectedRosterRoleParam = readSearchParam(resolvedSearchParams, "rosterRole");
   const selectedRosterRole =
-    selectedRosterRoleParam && MEMBEROPS_ROSTER_ROLE_TYPES.includes(selectedRosterRoleParam as RoleType)
+    selectedRosterRoleParam && isMemberOpsRosterRoleValue(selectedRosterRoleParam)
       ? selectedRosterRoleParam
       : "";
   const selectedLifecycleStatusParam = readSearchParam(resolvedSearchParams, "lifecycleStatus");
   const selectedLifecycleStatus =
-    selectedLifecycleStatusParam && Object.values(MemberLifecycleStatus).includes(selectedLifecycleStatusParam as MemberLifecycleStatus)
+    selectedLifecycleStatusParam && isMemberLifecycleStatusValue(selectedLifecycleStatusParam)
       ? selectedLifecycleStatusParam
       : "";
   const assignmentStateParam = readSearchParam(resolvedSearchParams, "assignmentState");
@@ -1081,10 +1093,10 @@ export default async function ProgramDetailsPage({
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-2 text-lg font-medium">Roster lifecycle readiness</h3>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Active season default: {activeSeason?.name ?? "No active season available"}.
+          Default active season: {activeSeason?.name ?? "No active season available"}
         </p>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Roster season view: {selectedSeason?.name ?? "No season available"}.
+          Roster season view: {selectedSeason?.name ?? "No season available"}
         </p>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Unique roster members in selected season: {selectedSeasonRosterPersonIds.size}.
@@ -1113,6 +1125,11 @@ export default async function ProgramDetailsPage({
             Team readiness lane
           </Link>
         </div>
+        {hasInvalidSeasonFilter ? (
+          <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
+            Selected season filter is not valid for this program. Showing default active-season view instead.
+          </p>
+        ) : null}
         {selectedSeason ? (
           <form action={`/programs/${program.id}`} method="get" className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             <div className="space-y-1">
@@ -1181,7 +1198,7 @@ export default async function ProgramDetailsPage({
                 <option value="incomplete">Incomplete assignment</option>
               </select>
             </div>
-            <div className="sm:col-span-2 lg:col-span-5 flex gap-2">
+            <div className="flex gap-2 sm:col-span-2 lg:col-span-5">
               <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
                 Apply filters
               </button>
@@ -1247,14 +1264,23 @@ export default async function ProgramDetailsPage({
             <div className="mt-3">
               <h4 className="text-sm font-medium">Unassigned active members (selected season)</h4>
               <ul className="mt-2 space-y-1 text-sm">
-                {activeProgramMembersWithoutSelectedSeasonRoster.slice(0, 10).map((person) => (
-                  <li key={person.id}>
-                    <Link href={`/people/${person.id}`} className="underline">
-                      {person.firstName} {person.lastName}
-                    </Link>
-                  </li>
-                ))}
+                {activeProgramMembersWithoutSelectedSeasonRoster
+                  .slice(0, MAX_UNASSIGNED_MEMBER_DISPLAY_COUNT)
+                  .map((person) => (
+                    <li key={person.id}>
+                      <Link href={`/people/${person.id}`} className="underline">
+                        {person.firstName} {person.lastName}
+                      </Link>
+                    </li>
+                  ))}
               </ul>
+              {activeProgramMembersWithoutSelectedSeasonRoster.length > MAX_UNASSIGNED_MEMBER_DISPLAY_COUNT ? (
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  and{" "}
+                  {activeProgramMembersWithoutSelectedSeasonRoster.length - MAX_UNASSIGNED_MEMBER_DISPLAY_COUNT} more
+                  unassigned active members
+                </p>
+              ) : null}
             </div>
           )
         ) : null}
