@@ -16,6 +16,7 @@ import {
   resolveEntryObjectLinkViews,
 } from "@/lib/entries/object-links";
 import { formatEnumLabel, getTaskStatusBadgeClassName, isTaskOverdue } from "@/lib/follow-up-tasks";
+import { labelForActivityAction } from "@/lib/operational-feed/render";
 import {
   labelForOperationalNodeType,
   labelForOperationalRelationshipType,
@@ -35,6 +36,47 @@ function formatPersonName(person: { firstName: string; lastName: string } | null
   if (!person) return "—";
   const fullName = `${person.firstName} ${person.lastName}`.trim();
   return fullName || "—";
+}
+
+function summarizeEntryActivityMetadata(metadataJson: string | null) {
+  if (!metadataJson) return [];
+  try {
+    const parsed = JSON.parse(metadataJson);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
+    const metadata = parsed as Record<string, unknown>;
+    const details: string[] = [];
+
+    if (typeof metadata.fromStatus === "string" && typeof metadata.toStatus === "string") {
+      details.push(`Status ${formatEnumLabel(metadata.fromStatus)} → ${formatEnumLabel(metadata.toStatus)}`);
+    } else if (typeof metadata.changedStatus === "string") {
+      details.push(`Status ${formatEnumLabel(metadata.changedStatus)}`);
+    }
+    if (typeof metadata.targetType === "string") {
+      details.push(`Target type ${formatEnumLabel(metadata.targetType)}`);
+    }
+    if (typeof metadata.relationshipType === "string") {
+      details.push(`Relationship ${formatEnumLabel(metadata.relationshipType)}`);
+    }
+    if (typeof metadata.captureType === "string") {
+      details.push(`Capture ${formatEnumLabel(metadata.captureType)}`);
+    }
+    if (typeof metadata.entryType === "string") {
+      details.push(`Entry type ${formatEnumLabel(metadata.entryType)}`);
+    }
+    if (metadata.followUpEntryId || metadata.followUpTaskId) {
+      details.push("Follow-up link recorded");
+    }
+    if (typeof metadata.selectedTextLength === "number") {
+      details.push(`Selection length ${metadata.selectedTextLength}`);
+    }
+    if (metadata.personId || metadata.assignedToPersonId) {
+      details.push("Assignment updated");
+    }
+
+    return details.slice(0, 3);
+  } catch {
+    return [];
+  }
 }
 
 export default async function EntryDetailPage({ params }: { params: Promise<{ entryId: string }> }) {
@@ -745,18 +787,25 @@ export default async function EntryDetailPage({ params }: { params: Promise<{ en
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No activity recorded yet.</p>
         ) : (
           <ul className="mt-2 space-y-2 text-sm">
-            {entry.activity.map((activity) => (
-              <li key={activity.id} className="rounded-md border px-3 py-2">
-                <div className="font-medium">{activity.action}</div>
-                <div className="text-xs text-zinc-600 dark:text-zinc-400">
-                  {activity.createdAt.toISOString().slice(0, 16).replace("T", " ")} UTC
-                  {activity.actor ? ` · ${activity.actor.firstName} ${activity.actor.lastName}` : ""}
-                </div>
-                {activity.metadataJson ? (
-                  <pre className="mt-2 overflow-x-auto text-xs text-zinc-600 dark:text-zinc-400">{activity.metadataJson}</pre>
-                ) : null}
-              </li>
-            ))}
+            {entry.activity.map((activity) => {
+              const details = summarizeEntryActivityMetadata(activity.metadataJson);
+              return (
+                <li key={activity.id} className="rounded-md border px-3 py-2">
+                  <div className="font-medium">{labelForActivityAction(activity.action)}</div>
+                  <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                    {activity.createdAt.toISOString().slice(0, 16).replace("T", " ")} UTC
+                    {activity.actor ? ` · ${activity.actor.firstName} ${activity.actor.lastName}` : ""}
+                  </div>
+                  {details.length > 0 ? (
+                    <ul className="mt-2 list-disc pl-4 text-xs text-zinc-600 dark:text-zinc-400">
+                      {details.map((detail) => (
+                        <li key={detail}>{detail}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

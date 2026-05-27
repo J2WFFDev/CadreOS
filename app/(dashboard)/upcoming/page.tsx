@@ -5,6 +5,7 @@ import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { queryUpcomingEntries } from "@/lib/operational-feed";
 import { formatDueDate, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
+import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,18 @@ export default async function UpcomingPage() {
       <section className="space-y-4">
         <PageHeader title="Upcoming" description="Look ahead at scheduled operational items." />
         <ErrorMessage message="No organization context is available yet." />
+      </section>
+    );
+  }
+  const entryAccess = await resolveEntryAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  if (entryAccess.level === "NONE") {
+    return (
+      <section className="space-y-4">
+        <PageHeader title="Upcoming" description="Look ahead at scheduled operational items." />
+        <ErrorMessage message="You do not have permission to view upcoming work items in this organization." />
       </section>
     );
   }

@@ -126,10 +126,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     organizationId,
     entryId: sourceEntry.id,
     actorPersonId,
-    action: "entry.follow_up_created",
+    action: ENTRY_ACTIVITY_ACTIONS.FOLLOW_UP_CREATED,
     metadata: {
       followUpTaskId: followUpTask.id,
       followUpEntryId: followUpEntry.id,
+      assignedToPersonId: assignee.id,
     },
   });
 
@@ -137,10 +138,32 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     organizationId,
     entryId: followUpEntry.id,
     actorPersonId,
-    action: ENTRY_ACTIVITY_ACTIONS.CREATED,
+    action: ENTRY_ACTIVITY_ACTIONS.ENTRY_CREATED,
     metadata: {
       sourceEntryId: sourceEntry.id,
       sourceTaskId: followUpTask.id,
+    },
+  });
+  await writeEntryActivity({
+    organizationId,
+    entryId: followUpEntry.id,
+    actorPersonId,
+    action: ENTRY_ACTIVITY_ACTIONS.ENTRY_ASSIGNED,
+    metadata: {
+      personId: assignee.id,
+      role: "OWNER",
+      sourceEntryId: sourceEntry.id,
+    },
+  });
+  await writeEntryActivity({
+    organizationId,
+    entryId: followUpEntry.id,
+    actorPersonId,
+    action: ENTRY_ACTIVITY_ACTIONS.FOLLOW_UP_ASSIGNED,
+    metadata: {
+      personId: assignee.id,
+      role: "OWNER",
+      sourceEntryId: sourceEntry.id,
     },
   });
 

@@ -54,7 +54,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     organizationId: organizationId,
     entryId: entry.id,
     actorPersonId: scope.auth.personId,
-    action: ENTRY_ACTIVITY_ACTIONS.DELETED,
+    action: ENTRY_ACTIVITY_ACTIONS.ENTRY_ARCHIVED,
+    metadata: { archivedAt: new Date().toISOString() },
   });
 
   return NextResponse.redirect(new URL(returnTo, request.url), 303);

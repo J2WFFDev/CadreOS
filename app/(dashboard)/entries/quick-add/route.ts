@@ -15,7 +15,7 @@ import { mapEntryPriorityToInboxPriority, shouldRouteEntryToInbox } from "@/lib/
 import { parseQuickAddEntryInput } from "@/lib/entries/parser";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { linkOperationalRecords, mapEntryObjectLinkTargetToGraphNodeType } from "@/lib/operational-graph";
-import { createOperationalEntry, linkEntryToObject, writeEntryActivity } from "@/lib/operational-entry";
+import { ENTRY_ACTIVITY_ACTIONS, createOperationalEntry, linkEntryToObject, writeEntryActivity } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { requirePermission } from "@/lib/permissions";
 import {
@@ -260,7 +260,11 @@ export async function POST(request: Request) {
     contextTargetId: contextTarget?.targetId ?? null,
   });
   const quickAddAction =
-    entryType === EntryType.TASK ? "entry.quick_add.task" : entryType === EntryType.NOTE ? "entry.quick_add.note" : "entry.quick_add.generic";
+    entryType === EntryType.TASK
+      ? ENTRY_ACTIVITY_ACTIONS.ENTRY_QUICK_ADD_TASK
+      : entryType === EntryType.NOTE
+        ? ENTRY_ACTIVITY_ACTIONS.ENTRY_QUICK_ADD_NOTE
+        : ENTRY_ACTIVITY_ACTIONS.ENTRY_QUICK_ADD_GENERIC;
 
   try {
     if (entryType === EntryType.TASK) {
@@ -302,6 +306,15 @@ export async function POST(request: Request) {
       action: quickAddAction,
       metadata: { inferredType: parsed.inferredType, captureType, sourceTaskId: createdTask.id, assignedToPersonId },
     });
+    if (assignedToPersonId) {
+      await writeEntryActivity({
+        organizationId: organizationId,
+        entryId: createdEntry.id,
+        actorPersonId,
+        action: ENTRY_ACTIVITY_ACTIONS.ENTRY_ASSIGNED,
+        metadata: { personId: assignedToPersonId, role: "OWNER", source: "quick_add" },
+      });
+    }
 
     if (contextTarget) {
       await linkEntryToObject({
@@ -371,6 +384,15 @@ export async function POST(request: Request) {
       action: quickAddAction,
       metadata: { inferredType: parsed.inferredType, captureType, sourceNoteId: createdNote.id, assignedToPersonId },
     });
+    if (assignedToPersonId) {
+      await writeEntryActivity({
+        organizationId: organizationId,
+        entryId: createdEntry.id,
+        actorPersonId,
+        action: ENTRY_ACTIVITY_ACTIONS.ENTRY_ASSIGNED,
+        metadata: { personId: assignedToPersonId, role: "OWNER", source: "quick_add" },
+      });
+    }
 
     if (contextTarget) {
       await linkEntryToObject({
@@ -431,6 +453,15 @@ export async function POST(request: Request) {
       action: quickAddAction,
       metadata: { inferredType: parsed.inferredType, captureType, entryType, assignedToPersonId },
     });
+    if (assignedToPersonId) {
+      await writeEntryActivity({
+        organizationId: organizationId,
+        entryId: createdEntry.id,
+        actorPersonId,
+        action: ENTRY_ACTIVITY_ACTIONS.ENTRY_ASSIGNED,
+        metadata: { personId: assignedToPersonId, role: "OWNER", source: "quick_add" },
+      });
+    }
 
     if (contextTarget) {
       await linkEntryToObject({

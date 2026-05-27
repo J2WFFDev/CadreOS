@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { writeEntryActivity } from "@/lib/entries/service";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
+import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { requirePermission } from "@/lib/permissions";
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
     organizationId: organizationId,
     entryId: fromEntryId,
     actorPersonId: scope.auth.personId,
-    action: "entry.unlinked",
+    action: ENTRY_ACTIVITY_ACTIONS.ENTRY_UNLINKED,
     metadata: { unlinkedEntryId: toEntryId },
   });
 

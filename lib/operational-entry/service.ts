@@ -62,7 +62,7 @@ export async function createOperationalEntry(input: CreateOperationalEntryInput)
     organizationId: entry.organizationId,
     entryId: entry.id,
     actorPersonId: input.createdByPersonId,
-    action: ENTRY_ACTIVITY_ACTIONS.CREATED,
+    action: ENTRY_ACTIVITY_ACTIONS.ENTRY_CREATED,
     metadata: { type: entry.type },
   });
 
@@ -120,7 +120,7 @@ export async function updateOperationalEntry(input: UpdateOperationalEntryInput)
     organizationId: input.organizationId,
     entryId: existing.id,
     actorPersonId: input.updatedByPersonId ?? null,
-    action: nextStatus && nextStatus !== prevStatus ? ENTRY_ACTIVITY_ACTIONS.STATUS_CHANGED : ENTRY_ACTIVITY_ACTIONS.UPDATED,
+    action: nextStatus && nextStatus !== prevStatus ? ENTRY_ACTIVITY_ACTIONS.ENTRY_STATUS_CHANGED : ENTRY_ACTIVITY_ACTIONS.ENTRY_UPDATED,
     metadata: {
       changedStatus: nextStatus ?? null,
       changedPriority: input.priority ?? null,
@@ -172,7 +172,7 @@ export async function changeEntryStatus(input: ChangeEntryStatusInput) {
     organizationId: input.organizationId,
     entryId: existing.id,
     actorPersonId: input.changedByPersonId ?? null,
-    action: ENTRY_ACTIVITY_ACTIONS.STATUS_CHANGED,
+    action: ENTRY_ACTIVITY_ACTIONS.ENTRY_STATUS_CHANGED,
     metadata: { fromStatus: prevStatus, toStatus: input.toStatus },
   });
 
@@ -213,7 +213,7 @@ export async function linkEntryToObject(input: LinkEntryToObjectInput) {
     organizationId: input.organizationId,
     entryId: input.entryId,
     actorPersonId: input.createdByPersonId,
-    action: ENTRY_ACTIVITY_ACTIONS.OBJECT_LINK_ADDED,
+    action: ENTRY_ACTIVITY_ACTIONS.ENTRY_OBJECT_LINKED,
     metadata: { targetType: input.targetType, targetId: input.targetId },
   });
 
@@ -242,7 +242,7 @@ export async function unlinkEntryFromObject(input: Omit<LinkEntryToObjectInput, 
     organizationId: input.organizationId,
     entryId: input.entryId,
     actorPersonId: input.actorPersonId ?? null,
-    action: ENTRY_ACTIVITY_ACTIONS.OBJECT_LINK_REMOVED,
+    action: ENTRY_ACTIVITY_ACTIONS.ENTRY_OBJECT_UNLINKED,
     metadata: { targetType: input.targetType, targetId: input.targetId },
   });
 
@@ -285,7 +285,7 @@ export async function assignEntry(input: AssignEntryInput) {
     organizationId: input.organizationId,
     entryId: input.entryId,
     actorPersonId: input.assignedByPersonId ?? null,
-    action: ENTRY_ACTIVITY_ACTIONS.ASSIGNMENT_ADDED,
+    action: ENTRY_ACTIVITY_ACTIONS.ENTRY_ASSIGNED,
     metadata: { personId: input.personId, role },
   });
 
@@ -318,7 +318,7 @@ export async function revokeEntryAssignment(input: RevokeEntryAssignmentInput) {
     organizationId: input.organizationId,
     entryId: input.entryId,
     actorPersonId: null,
-    action: ENTRY_ACTIVITY_ACTIONS.ASSIGNMENT_REVOKED,
+    action: ENTRY_ACTIVITY_ACTIONS.ENTRY_ASSIGNMENT_REVOKED,
     metadata: { personId: input.personId, role: input.role },
   });
 

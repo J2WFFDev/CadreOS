@@ -127,7 +127,7 @@ export async function upsertEntryFromTask(input: {
       completedAt: input.task.status === TaskStatus.DONE ? new Date() : null,
       version: { increment: 1 },
     },
-    select: { id: true },
+    select: { id: true, type: true },
   });
 }
 
