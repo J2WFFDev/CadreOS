@@ -318,6 +318,7 @@ export default async function EntryDetailPage({ params }: { params: Promise<{ en
                       id="followUpAssigneePersonId"
                       name="assigneePersonId"
                       defaultValue={entry.assignedToPersonId ?? ""}
+                      disabled={people.length === 0}
                       className="w-full rounded-md border px-3 py-2 text-sm"
                     >
                       {people.length === 0 ? <option value="">No people available</option> : null}
@@ -327,6 +328,11 @@ export default async function EntryDetailPage({ params }: { params: Promise<{ en
                         </option>
                       ))}
                     </select>
+                    {people.length === 0 ? (
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                        Add a person before creating follow-up assignments.
+                      </p>
+                    ) : null}
                   </div>
                   <div className="space-y-1">
                     <label htmlFor="followUpDueAt" className="text-sm font-medium">
