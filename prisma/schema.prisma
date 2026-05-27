@@ -596,6 +596,70 @@ enum NotificationDigestStatus {
   DISMISSED
 }
 
+// Arc 20X: GearKit advanced kit/bundle operation enums
+
+enum GearKitType {
+  KIT
+  BUNDLE
+  CASE
+  BAG
+  SET
+  LOADOUT
+  EQUIPMENT_PACKAGE
+}
+
+enum GearKitComponentRole {
+  REQUIRED
+  OPTIONAL
+  QUANTITY_MANAGED
+  CONSUMABLE
+  REPLACEABLE
+}
+
+enum GearKitReadinessLabel {
+  READY
+  READY_WITH_WARNING
+  INCOMPLETE
+  LIMITED_USE
+  NEEDS_INSPECTION
+  MAINTENANCE_NEEDED
+  OUT_OF_SERVICE
+  MISSING_COMPONENTS
+  CONFLICT
+}
+
+enum GearKitCustodyStatus {
+  AVAILABLE
+  CHECKED_OUT
+  ASSIGNED
+  DEPLOYED
+  RESERVED
+  IN_INSPECTION
+  IN_MAINTENANCE
+}
+
+enum GearKitInspectionStatus {
+  PASSED
+  PASSED_WITH_NOTES
+  FAILED
+  INCOMPLETE
+}
+
+enum GearKitCustodyEventType {
+  CHECKED_OUT
+  CHECKED_IN
+  ASSIGNED
+  UNASSIGNED
+  DEPLOYED
+  RECOVERED
+  RESERVED
+  RESERVATION_RELEASED
+  TRANSFERRED
+  INSPECTION_LOGGED
+  PARTIAL_CHECKOUT
+  PARTIAL_RETURN
+}
+
 model Organization {
   id        String    @id @default(cuid())
   name      String
@@ -637,6 +701,8 @@ model Organization {
   inventoryMovements           InventoryMovement[]
   inventoryKits                InventoryKit[]
   inventoryKitItems            InventoryKitItem[]
+  gearKitInspections           GearKitInspection[]
+  gearKitCustodyEvents         GearKitCustodyEvent[]
   inventoryScanEvents          InventoryScanEvent[]
   inventoryAudits              InventoryAudit[]
   inventoryAuditSessions       InventoryAuditSession[]
@@ -704,6 +770,7 @@ model Team {
   resourceBookings ResourceBooking[]
   gearAssignments  GearAssignment[]
   gearReservations GearReservation[]
+  assignedKits     InventoryKit[]    @relation("InventoryKitAssignedToTeam")
   entries          Entry[]
 
   @@unique([programId, name])
@@ -811,6 +878,10 @@ model Person {
   actorInventoryMovements              InventoryMovement[]           @relation("InventoryMovementActor")
   custodyInventoryMovements            InventoryMovement[]           @relation("InventoryMovementCustody")
   ownedInventoryKits                   InventoryKit[]                @relation("InventoryKitOwner")
+  assignedKits                         InventoryKit[]                @relation("InventoryKitAssignedTo")
+  gearKitInspections                   GearKitInspection[]           @relation("GearKitInspectionInspector")
+  actorGearKitCustodyEvents            GearKitCustodyEvent[]         @relation("GearKitCustodyEventActor")
+  custodyGearKitCustodyEvents          GearKitCustodyEvent[]         @relation("GearKitCustodyEventCustody")
   inventoryScanEvents                  InventoryScanEvent[]          @relation("InventoryScanEventActor")
   createdInventoryAudits               InventoryAudit[]              @relation("InventoryAuditCreatedBy")
   startedInventoryAuditSessions        InventoryAuditSession[]       @relation("InventoryAuditSessionStartedBy")
@@ -1187,6 +1258,8 @@ model Event {
   gearReservations       GearReservation[]
   consumableTransactions ConsumableTransaction[]
   gearPlan               EventGearPlan?
+  assignedKits           InventoryKit[]          @relation("InventoryKitAssignedToEvent")
+  gearKitCustodyEvents   GearKitCustodyEvent[]   @relation("GearKitCustodyEventEvent")
   awarenessEvents        AwarenessEvent[]
 
   @@index([organizationId, startsAt])
@@ -2086,37 +2159,61 @@ model InventoryMovement {
   @@index([organizationId, toLocationId, occurredAt])
 }
 
-// InventoryKit — operational kit or loadout grouping multiple gear items for coordinated use
+// InventoryKit — Arc 20X: advanced operational kit or loadout grouping multiple gear items for coordinated use
 model InventoryKit {
-  id             String   @id @default(cuid())
-  organizationId String
-  name           String
-  description    String?
-  ownerPersonId  String?
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                    String                  @id @default(cuid())
+  organizationId        String
+  name                  String
+  description           String?
+  kitType               GearKitType             @default(KIT)
+  ownerPersonId         String?
+  assignedToPersonId    String?
+  assignedToTeamId      String?
+  assignedToEventId     String?
+  labelCode             String?
+  readinessLabel        GearKitReadinessLabel   @default(INCOMPLETE)
+  custodyStatus         GearKitCustodyStatus    @default(AVAILABLE)
+  lastInspectedAt       DateTime?
+  lastInspectionStatus  GearKitInspectionStatus?
+  isActive              Boolean                 @default(true)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
 
-  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  owner        Person?            @relation("InventoryKitOwner", fields: [ownerPersonId], references: [id], onDelete: SetNull)
-  items        InventoryKitItem[]
+  organization    Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  owner           Person?               @relation("InventoryKitOwner", fields: [ownerPersonId], references: [id], onDelete: SetNull)
+  assignedTo      Person?               @relation("InventoryKitAssignedTo", fields: [assignedToPersonId], references: [id], onDelete: SetNull)
+  assignedToTeam  Team?                 @relation("InventoryKitAssignedToTeam", fields: [assignedToTeamId], references: [id], onDelete: SetNull)
+  assignedToEvent Event?                @relation("InventoryKitAssignedToEvent", fields: [assignedToEventId], references: [id], onDelete: SetNull)
+  items           InventoryKitItem[]
+  inspections     GearKitInspection[]
+  custodyEvents   GearKitCustodyEvent[]
 
   @@unique([organizationId, name])
+  @@unique([organizationId, labelCode])
   @@index([organizationId])
   @@index([organizationId, isActive])
+  @@index([organizationId, kitType])
+  @@index([organizationId, custodyStatus])
+  @@index([organizationId, readinessLabel])
   @@index([organizationId, ownerPersonId])
+  @@index([organizationId, assignedToPersonId])
+  @@index([organizationId, assignedToEventId])
 }
 
-// InventoryKitItem — join table linking GearItems to InventoryKits with quantity and metadata
+// InventoryKitItem — Arc 20X: extended join table linking GearItems to InventoryKits with component role and metadata
 model InventoryKitItem {
-  id             String    @id @default(cuid())
-  organizationId String
-  kitId          String
-  gearItemId     String
-  quantity       Int       @default(1)
-  notes          String?
-  addedAt        DateTime  @default(now())
-  removedAt      DateTime?
+  id               String               @id @default(cuid())
+  organizationId   String
+  kitId            String
+  gearItemId       String
+  componentRole    GearKitComponentRole @default(REQUIRED)
+  isRequired       Boolean              @default(true)
+  quantity         Int                  @default(1)
+  quantityExpected Int                  @default(1)
+  sortOrder        Int                  @default(0)
+  notes            String?
+  addedAt          DateTime             @default(now())
+  removedAt        DateTime?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   kit          InventoryKit @relation(fields: [kitId], references: [id], onDelete: Cascade)
@@ -2124,7 +2221,58 @@ model InventoryKitItem {
 
   @@unique([kitId, gearItemId])
   @@index([organizationId, kitId])
+  @@index([organizationId, kitId, componentRole])
   @@index([organizationId, gearItemId])
+}
+
+// Arc 20X: GearKitInspection — records a kit inspection event with per-item condition observations
+model GearKitInspection {
+  id                  String                  @id @default(cuid())
+  organizationId      String
+  kitId               String
+  inspectedByPersonId String
+  status              GearKitInspectionStatus
+  notes               String?
+  itemConditionsJson  String?
+  missingItemIdsJson  String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  kit          InventoryKit @relation(fields: [kitId], references: [id], onDelete: Restrict)
+  inspector    Person       @relation("GearKitInspectionInspector", fields: [inspectedByPersonId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, kitId, createdAt])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, inspectedByPersonId, createdAt])
+}
+
+// Arc 20X: GearKitCustodyEvent — immutable append-only custody event log for kit-level operations
+model GearKitCustodyEvent {
+  id                 String                  @id @default(cuid())
+  organizationId     String
+  kitId              String
+  eventType          GearKitCustodyEventType
+  actorPersonId      String
+  custodyPersonId    String?
+  relatedEventId     String?
+  notes              String?
+  childItemIdsJson   String?
+  isPartial          Boolean                 @default(false)
+  occurredAt         DateTime                @default(now())
+  createdAt          DateTime                @default(now())
+
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  kit             InventoryKit  @relation(fields: [kitId], references: [id], onDelete: Restrict)
+  actor           Person        @relation("GearKitCustodyEventActor", fields: [actorPersonId], references: [id], onDelete: Restrict)
+  custodyPerson   Person?       @relation("GearKitCustodyEventCustody", fields: [custodyPersonId], references: [id], onDelete: SetNull)
+  relatedEvent    Event?        @relation("GearKitCustodyEventEvent", fields: [relatedEventId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, kitId, occurredAt])
+  @@index([organizationId, eventType, occurredAt])
+  @@index([organizationId, actorPersonId, occurredAt])
+  @@index([organizationId, custodyPersonId, occurredAt])
+  @@index([organizationId, relatedEventId, occurredAt])
 }
 
 // Arc 20B: InventoryScanEvent — immutable scan activity records for barcode/QR operational workflows

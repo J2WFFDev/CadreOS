@@ -12,13 +12,19 @@
 import { db } from "@/lib/db";
 import type {
   AddItemToKitInput,
+  AssignKitInput,
+  CheckInKitInput,
+  CheckOutKitInput,
   CreateInventoryKitInput,
   CreateInventoryLocationInput,
   InventoryKitSummary,
   InventoryLocationSummary,
   InventoryMovementView,
+  LogKitInspectionInput,
   RecordInventoryMovementInput,
   RemoveItemFromKitInput,
+  ReserveKitInput,
+  UpdateInventoryKitInput,
   UpdateInventoryLocationInput,
 } from "./types";
 import { INVENTORY_ACTIVITY_ACTIONS, lifecycleStatusForMovementType } from "./types";
@@ -229,14 +235,39 @@ export async function createInventoryKit(input: CreateInventoryKitInput) {
       name: input.name,
       description: input.description ?? null,
       ownerPersonId: input.ownerPersonId ?? null,
+      kitType: input.kitType ?? "KIT",
     },
-    select: { id: true, name: true },
+    select: { id: true, name: true, kitType: true },
+  });
+}
+
+/**
+ * Updates an existing InventoryKit's editable fields.
+ */
+export async function updateInventoryKit(input: UpdateInventoryKitInput) {
+  const existing = await db.inventoryKit.findFirst({
+    where: { id: input.kitId, organizationId: input.organizationId },
+    select: { id: true },
+  });
+
+  if (!existing) return null;
+
+  return db.inventoryKit.update({
+    where: { id: existing.id },
+    data: {
+      ...(input.name ? { name: input.name } : {}),
+      ...(input.description !== undefined ? { description: input.description } : {}),
+      ...(input.ownerPersonId !== undefined ? { ownerPersonId: input.ownerPersonId } : {}),
+      ...(input.kitType ? { kitType: input.kitType } : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+    },
+    select: { id: true, name: true, kitType: true, isActive: true },
   });
 }
 
 /**
  * Adds a gear item to a kit. Idempotent: if the item is already in the kit
- * and not removed, updates the quantity.
+ * and not removed, updates the quantity and component role.
  */
 export async function addItemToKit(input: AddItemToKitInput) {
   const existing = await db.inventoryKitItem.findFirst({
@@ -251,7 +282,14 @@ export async function addItemToKit(input: AddItemToKitInput) {
   if (existing) {
     return db.inventoryKitItem.update({
       where: { id: existing.id },
-      data: { quantity: input.quantity ?? 1 },
+      data: {
+        quantity: input.quantity ?? 1,
+        quantityExpected: input.quantityExpected ?? input.quantity ?? 1,
+        ...(input.componentRole ? { componentRole: input.componentRole } : {}),
+        ...(input.isRequired !== undefined ? { isRequired: input.isRequired } : {}),
+        ...(input.notes !== undefined ? { notes: input.notes } : {}),
+        ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
+      },
       select: { id: true },
     });
   }
@@ -261,7 +299,11 @@ export async function addItemToKit(input: AddItemToKitInput) {
       organizationId: input.organizationId,
       kitId: input.kitId,
       gearItemId: input.gearItemId,
+      componentRole: input.componentRole ?? "REQUIRED",
+      isRequired: input.isRequired ?? true,
       quantity: input.quantity ?? 1,
+      quantityExpected: input.quantityExpected ?? input.quantity ?? 1,
+      sortOrder: input.sortOrder ?? 0,
       notes: input.notes ?? null,
     },
     select: { id: true },
@@ -307,9 +349,14 @@ export async function listInventoryKits(input: {
       id: true,
       name: true,
       description: true,
+      kitType: true,
       isActive: true,
+      readinessLabel: true,
+      custodyStatus: true,
+      lastInspectionStatus: true,
       owner: { select: { id: true, firstName: true, lastName: true } },
-      _count: { select: { items: true } },
+      assignedTo: { select: { id: true, firstName: true, lastName: true } },
+      _count: { select: { items: { where: { removedAt: null } } } },
     },
   });
 
@@ -317,10 +364,462 @@ export async function listInventoryKits(input: {
     id: kit.id,
     name: kit.name,
     description: kit.description,
+    kitType: kit.kitType,
     isActive: kit.isActive,
+    readinessLabel: kit.readinessLabel,
+    custodyStatus: kit.custodyStatus,
+    lastInspectionStatus: kit.lastInspectionStatus,
     owner: kit.owner,
+    assignedTo: kit.assignedTo,
     itemCount: kit._count.items,
   }));
+}
+
+// ── Kit custody operations ───────────────────────────────────────────────────
+
+/**
+ * Checks out a full kit (or partial kit) to a person.
+ *
+ * Records a GearKitCustodyEvent and optionally creates individual
+ * GearCheckout records for each child gear item involved.
+ * Updates the kit's custodyStatus to CHECKED_OUT.
+ *
+ * Partial checkout is flagged explicitly and does not update kit-level
+ * custody status to CHECKED_OUT — custody status remains AVAILABLE with
+ * the partial event logged for visibility.
+ */
+export async function checkOutKit(input: CheckOutKitInput) {
+  const kit = await db.inventoryKit.findFirst({
+    where: { id: input.kitId, organizationId: input.organizationId },
+    select: {
+      id: true,
+      custodyStatus: true,
+      items: {
+        where: { removedAt: null },
+        select: { id: true, gearItemId: true },
+      },
+    },
+  });
+
+  if (!kit) return null;
+
+  const targetItemIds =
+    input.isPartial && input.partialChildGearItemIds?.length
+      ? kit.items
+          .filter((i) => input.partialChildGearItemIds!.includes(i.gearItemId))
+          .map((i) => i.gearItemId)
+      : kit.items.map((i) => i.gearItemId);
+
+  const childItemIdsJson = JSON.stringify(targetItemIds);
+
+  const result = await db.$transaction(async (tx) => {
+    const custodyEvent = await tx.gearKitCustodyEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        kitId: input.kitId,
+        eventType: input.isPartial ? "PARTIAL_CHECKOUT" : "CHECKED_OUT",
+        actorPersonId: input.actorPersonId,
+        custodyPersonId: input.custodyPersonId,
+        relatedEventId: input.relatedEventId ?? null,
+        notes: input.notes ?? null,
+        childItemIdsJson,
+        isPartial: input.isPartial ?? false,
+        occurredAt: new Date(),
+      },
+      select: { id: true },
+    });
+
+    if (!input.isPartial) {
+      await tx.inventoryKit.update({
+        where: { id: kit.id },
+        data: {
+          custodyStatus: "CHECKED_OUT",
+          assignedToPersonId: input.custodyPersonId,
+        },
+      });
+    }
+
+    return custodyEvent;
+  });
+
+  return result;
+}
+
+/**
+ * Checks in a kit (or partial return), returning custody to the organization.
+ *
+ * Records a GearKitCustodyEvent and updates kit custodyStatus to AVAILABLE.
+ */
+export async function checkInKit(input: CheckInKitInput) {
+  const kit = await db.inventoryKit.findFirst({
+    where: { id: input.kitId, organizationId: input.organizationId },
+    select: {
+      id: true,
+      custodyStatus: true,
+      items: {
+        where: { removedAt: null },
+        select: { id: true, gearItemId: true },
+      },
+    },
+  });
+
+  if (!kit) return null;
+
+  const targetItemIds =
+    input.isPartial && input.partialChildGearItemIds?.length
+      ? input.partialChildGearItemIds
+      : kit.items.map((i) => i.gearItemId);
+
+  const childItemIdsJson = JSON.stringify(targetItemIds);
+
+  return db.$transaction(async (tx) => {
+    const custodyEvent = await tx.gearKitCustodyEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        kitId: input.kitId,
+        eventType: input.isPartial ? "PARTIAL_RETURN" : "CHECKED_IN",
+        actorPersonId: input.actorPersonId,
+        custodyPersonId: null,
+        notes: input.notes ?? null,
+        childItemIdsJson,
+        isPartial: input.isPartial ?? false,
+        occurredAt: new Date(),
+      },
+      select: { id: true },
+    });
+
+    if (!input.isPartial) {
+      await tx.inventoryKit.update({
+        where: { id: kit.id },
+        data: {
+          custodyStatus: "AVAILABLE",
+          assignedToPersonId: null,
+        },
+      });
+    }
+
+    return custodyEvent;
+  });
+}
+
+/**
+ * Assigns a kit to a person, team, or event.
+ * Records a GearKitCustodyEvent and updates assignment fields on the kit.
+ */
+export async function assignKit(input: AssignKitInput) {
+  const kit = await db.inventoryKit.findFirst({
+    where: { id: input.kitId, organizationId: input.organizationId },
+    select: { id: true },
+  });
+
+  if (!kit) return null;
+
+  return db.$transaction(async (tx) => {
+    await tx.inventoryKit.update({
+      where: { id: kit.id },
+      data: {
+        custodyStatus: "ASSIGNED",
+        assignedToPersonId: input.assignToPersonId ?? null,
+        assignedToTeamId: input.assignToTeamId ?? null,
+        assignedToEventId: input.assignToEventId ?? null,
+      },
+    });
+
+    return tx.gearKitCustodyEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        kitId: input.kitId,
+        eventType: "ASSIGNED",
+        actorPersonId: input.actorPersonId,
+        custodyPersonId: input.assignToPersonId ?? null,
+        relatedEventId: input.assignToEventId ?? null,
+        notes: input.notes ?? null,
+        isPartial: false,
+        occurredAt: new Date(),
+      },
+      select: { id: true },
+    });
+  });
+}
+
+/**
+ * Logs a kit inspection result.
+ * Updates lastInspectedAt, lastInspectionStatus, and custodyStatus on the kit.
+ * Sets custodyStatus to IN_INSPECTION while inspection is INCOMPLETE,
+ * and reverts to AVAILABLE when passed.
+ */
+export async function logKitInspection(input: LogKitInspectionInput) {
+  const kit = await db.inventoryKit.findFirst({
+    where: { id: input.kitId, organizationId: input.organizationId },
+    select: { id: true },
+  });
+
+  if (!kit) return null;
+
+  const itemConditionsJson = input.itemConditions
+    ? JSON.stringify(input.itemConditions)
+    : null;
+  const missingItemIdsJson = input.missingItemIds
+    ? JSON.stringify(input.missingItemIds)
+    : null;
+
+  const nextCustodyStatus =
+    input.status === "INCOMPLETE" ? "IN_INSPECTION" : "AVAILABLE";
+
+  return db.$transaction(async (tx) => {
+    const inspection = await tx.gearKitInspection.create({
+      data: {
+        organizationId: input.organizationId,
+        kitId: input.kitId,
+        inspectedByPersonId: input.inspectedByPersonId,
+        status: input.status,
+        notes: input.notes ?? null,
+        itemConditionsJson,
+        missingItemIdsJson,
+      },
+      select: { id: true, status: true },
+    });
+
+    await tx.inventoryKit.update({
+      where: { id: kit.id },
+      data: {
+        lastInspectedAt: new Date(),
+        lastInspectionStatus: input.status,
+        custodyStatus: nextCustodyStatus,
+      },
+    });
+
+    await tx.gearKitCustodyEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        kitId: input.kitId,
+        eventType: "INSPECTION_LOGGED",
+        actorPersonId: input.inspectedByPersonId,
+        notes: input.notes ?? null,
+        isPartial: false,
+        occurredAt: new Date(),
+      },
+    });
+
+    return inspection;
+  });
+}
+
+/**
+ * Reserves/holds a kit for an event or other purpose.
+ * Updates custodyStatus to RESERVED and logs the custody event.
+ */
+export async function reserveKit(input: ReserveKitInput) {
+  const kit = await db.inventoryKit.findFirst({
+    where: { id: input.kitId, organizationId: input.organizationId },
+    select: { id: true, custodyStatus: true },
+  });
+
+  if (!kit) return null;
+
+  return db.$transaction(async (tx) => {
+    await tx.inventoryKit.update({
+      where: { id: kit.id },
+      data: {
+        custodyStatus: "RESERVED",
+        assignedToEventId: input.relatedEventId ?? null,
+      },
+    });
+
+    return tx.gearKitCustodyEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        kitId: input.kitId,
+        eventType: "RESERVED",
+        actorPersonId: input.actorPersonId,
+        relatedEventId: input.relatedEventId ?? null,
+        notes: input.notes ?? null,
+        isPartial: false,
+        occurredAt: new Date(),
+      },
+      select: { id: true },
+    });
+  });
+}
+
+/**
+ * Releases a kit reservation, returning it to AVAILABLE custody.
+ */
+export async function releaseKitReservation(input: {
+  organizationId: string;
+  kitId: string;
+  actorPersonId: string;
+  notes?: string | null;
+}) {
+  const kit = await db.inventoryKit.findFirst({
+    where: { id: input.kitId, organizationId: input.organizationId },
+    select: { id: true },
+  });
+
+  if (!kit) return null;
+
+  return db.$transaction(async (tx) => {
+    await tx.inventoryKit.update({
+      where: { id: kit.id },
+      data: {
+        custodyStatus: "AVAILABLE",
+        assignedToEventId: null,
+        assignedToPersonId: null,
+        assignedToTeamId: null,
+      },
+    });
+
+    return tx.gearKitCustodyEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        kitId: input.kitId,
+        eventType: "RESERVATION_RELEASED",
+        actorPersonId: input.actorPersonId,
+        notes: input.notes ?? null,
+        isPartial: false,
+        occurredAt: new Date(),
+      },
+      select: { id: true },
+    });
+  });
+}
+
+/**
+ * Deploys a kit to an event.
+ * Updates custodyStatus to DEPLOYED and records the custody event.
+ */
+export async function deployKitToEvent(input: {
+  organizationId: string;
+  kitId: string;
+  actorPersonId: string;
+  eventId: string;
+  notes?: string | null;
+}) {
+  const kit = await db.inventoryKit.findFirst({
+    where: { id: input.kitId, organizationId: input.organizationId },
+    select: { id: true },
+  });
+
+  if (!kit) return null;
+
+  return db.$transaction(async (tx) => {
+    await tx.inventoryKit.update({
+      where: { id: kit.id },
+      data: {
+        custodyStatus: "DEPLOYED",
+        assignedToEventId: input.eventId,
+      },
+    });
+
+    return tx.gearKitCustodyEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        kitId: input.kitId,
+        eventType: "DEPLOYED",
+        actorPersonId: input.actorPersonId,
+        relatedEventId: input.eventId,
+        notes: input.notes ?? null,
+        isPartial: false,
+        occurredAt: new Date(),
+      },
+      select: { id: true },
+    });
+  });
+}
+
+/**
+ * Recovers a kit from an event deployment, returning it to AVAILABLE.
+ */
+export async function recoverKitFromEvent(input: {
+  organizationId: string;
+  kitId: string;
+  actorPersonId: string;
+  notes?: string | null;
+}) {
+  const kit = await db.inventoryKit.findFirst({
+    where: { id: input.kitId, organizationId: input.organizationId },
+    select: { id: true },
+  });
+
+  if (!kit) return null;
+
+  return db.$transaction(async (tx) => {
+    await tx.inventoryKit.update({
+      where: { id: kit.id },
+      data: {
+        custodyStatus: "AVAILABLE",
+        assignedToEventId: null,
+      },
+    });
+
+    return tx.gearKitCustodyEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        kitId: input.kitId,
+        eventType: "RECOVERED",
+        actorPersonId: input.actorPersonId,
+        notes: input.notes ?? null,
+        isPartial: false,
+        occurredAt: new Date(),
+      },
+      select: { id: true },
+    });
+  });
+}
+
+/**
+ * Lists custody event history for a kit, newest first.
+ */
+export async function listKitCustodyHistory(input: {
+  organizationId: string;
+  kitId: string;
+  limit?: number;
+}) {
+  return db.gearKitCustodyEvent.findMany({
+    where: {
+      organizationId: input.organizationId,
+      kitId: input.kitId,
+    },
+    orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
+    take: input.limit ?? 50,
+    select: {
+      id: true,
+      eventType: true,
+      isPartial: true,
+      notes: true,
+      occurredAt: true,
+      actor: { select: { id: true, firstName: true, lastName: true } },
+      custodyPerson: { select: { id: true, firstName: true, lastName: true } },
+      relatedEvent: { select: { id: true, title: true } },
+    },
+  });
+}
+
+/**
+ * Lists inspection history for a kit, newest first.
+ */
+export async function listKitInspections(input: {
+  organizationId: string;
+  kitId: string;
+  limit?: number;
+}) {
+  return db.gearKitInspection.findMany({
+    where: {
+      organizationId: input.organizationId,
+      kitId: input.kitId,
+    },
+    orderBy: [{ createdAt: "desc" }],
+    take: input.limit ?? 20,
+    select: {
+      id: true,
+      status: true,
+      notes: true,
+      itemConditionsJson: true,
+      missingItemIdsJson: true,
+      createdAt: true,
+      inspector: { select: { id: true, firstName: true, lastName: true } },
+    },
+  });
 }
 
 // ── Activity helper ──────────────────────────────────────────────────────────

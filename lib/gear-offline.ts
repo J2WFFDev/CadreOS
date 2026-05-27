@@ -30,6 +30,11 @@ export type GearOfflineActionType =
   | "gear.assignment.create"
   | "gear.maintenance.create"
   | "gear.consumable.create"
+  | "gear.kit.checkout.create"
+  | "gear.kit.checkin"
+  | "gear.kit.assign"
+  | "gear.kit.reserve"
+  | "gear.kit.inspection.create"
   | "event.gear.plan.save"
   | "event.gear.requirement.create"
   | "event.gear.assignment.create"
@@ -148,6 +153,60 @@ const POLICY_MAP: Record<GearOfflineActionType, GearOfflinePolicy> = {
     queueable: true,
     optimisticLabel: "Drafted locally",
     offlineDescription: "Consumable adjustments can be drafted offline, but stock counts remain unconfirmed until reviewed online.",
+  },
+  "gear.kit.checkout.create": {
+    actionType: "gear.kit.checkout.create",
+    label: "Kit checkout",
+    capability: "ONLINE_REQUIRED",
+    boundary: "SERVER_CONFIRMATION",
+    retryMode: "BLOCKED",
+    queueable: false,
+    optimisticLabel: "Online required",
+    offlineDescription: "Kit checkout moves custody of the parent kit and its child items. Custody changes remain server-confirmed only.",
+    onlineRequiredReason: "Kit checkout requires a live connection to confirm custody across parent and child items.",
+  },
+  "gear.kit.checkin": {
+    actionType: "gear.kit.checkin",
+    label: "Kit check-in",
+    capability: "ONLINE_REQUIRED",
+    boundary: "SERVER_CONFIRMATION",
+    retryMode: "BLOCKED",
+    queueable: false,
+    optimisticLabel: "Online required",
+    offlineDescription: "Kit check-in releases custody of all child items together. Custody changes stay server-confirmed only.",
+    onlineRequiredReason: "Kit check-in requires a live connection to confirm full custody return.",
+  },
+  "gear.kit.assign": {
+    actionType: "gear.kit.assign",
+    label: "Kit assignment",
+    capability: "ONLINE_REQUIRED",
+    boundary: "SERVER_CONFIRMATION",
+    retryMode: "BLOCKED",
+    queueable: false,
+    optimisticLabel: "Online required",
+    offlineDescription: "Kit assignments affect custody of the parent and child items. Assignments stay server-confirmed only.",
+    onlineRequiredReason: "Assigning a kit requires a live connection to check current availability.",
+  },
+  "gear.kit.reserve": {
+    actionType: "gear.kit.reserve",
+    label: "Kit reservation",
+    capability: "ONLINE_REQUIRED",
+    boundary: "SERVER_CONFIRMATION",
+    retryMode: "BLOCKED",
+    queueable: false,
+    optimisticLabel: "Online required",
+    offlineDescription: "Kit reservations and holds require live conflict checking across parent and child item availability.",
+    onlineRequiredReason: "Reserving a kit requires a live connection to check availability.",
+  },
+  "gear.kit.inspection.create": {
+    actionType: "gear.kit.inspection.create",
+    label: "Kit inspection",
+    capability: "OFFLINE_DRAFTABLE",
+    boundary: "REVIEW_BEFORE_CONFIRM",
+    retryMode: "MANUAL",
+    queueable: true,
+    optimisticLabel: "Drafted locally",
+    offlineDescription: "Kit inspection results can be drafted offline and reviewed before submitting. Final status remains pending until sync.",
   },
   "event.gear.plan.save": {
     actionType: "event.gear.plan.save",
