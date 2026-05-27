@@ -23,7 +23,7 @@ import { formatGearOpsDateTime, formatGearOpsEnum } from "@/lib/gear-ops";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { toneToBoxClass } from "@/lib/gear-ops-ui";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { isSchemaUnavailableError } from "@/lib/workflows";
+import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +102,8 @@ export default async function GearOpsDashboardPage() {
   let queryErrorMessage = "Unable to load GearOps dashboard metrics right now. Please try again later.";
 
   try {
+    // --- Core GearOps queries (required tables: GearCategory, GearItem, GearAssignment,
+    //     GearCheckout, ConsumableTransaction). These must succeed for the dashboard to load.
     const [
       totalCategories,
       totalItems,
@@ -113,10 +115,6 @@ export default async function GearOpsDashboardPage() {
       conditionConcernItems,
       activeAssignmentRecords,
       openCheckoutRecords,
-      activeReservations,
-      activeHolds,
-      upcomingReservations,
-      conflictingReservations,
       lowAvailabilityConsumablesCount,
       lowAvailabilityItems,
       openCheckoutItems,
@@ -158,41 +156,6 @@ export default async function GearOpsDashboardPage() {
           status: {
             in: [GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE],
           },
-          gearItem: { AND: [access.where] },
-        },
-      }),
-      db.gearReservation.count({
-        where: {
-          organizationId: scope.organizationId,
-          status: { in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW] },
-          mode: GearReservationMode.HARD_RESERVATION,
-          windowStartAt: { lte: now },
-          windowEndAt: { gte: now },
-          gearItem: { AND: [access.where] },
-        },
-      }),
-      db.gearReservation.count({
-        where: {
-          organizationId: scope.organizationId,
-          status: { in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW] },
-          mode: GearReservationMode.SOFT_HOLD,
-          windowStartAt: { lte: now },
-          windowEndAt: { gte: now },
-          gearItem: { AND: [access.where] },
-        },
-      }),
-      db.gearReservation.count({
-        where: {
-          organizationId: scope.organizationId,
-          status: { in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW] },
-          windowStartAt: { gt: now },
-          gearItem: { AND: [access.where] },
-        },
-      }),
-      db.gearReservation.count({
-        where: {
-          organizationId: scope.organizationId,
-          status: GearReservationStatus.CONFLICT,
           gearItem: { AND: [access.where] },
         },
       }),
@@ -274,6 +237,64 @@ export default async function GearOpsDashboardPage() {
     const consumableReplenishmentUnits30d = Math.max(replenishmentAggregate30d._sum.quantityDelta ?? 0, 0);
     const consumableNetDelta30d = consumableReplenishmentUnits30d - consumableUsageUnits30d;
 
+    // --- Optional GearReservation queries (Arc 20 feature — gracefully degrades to 0
+    //     if the GearReservation table is not yet migrated in this environment).
+    let activeReservations = 0;
+    let activeHolds = 0;
+    let upcomingReservations = 0;
+    let conflictingReservations = 0;
+
+    try {
+      [activeReservations, activeHolds, upcomingReservations, conflictingReservations] = await Promise.all([
+        db.gearReservation.count({
+          where: {
+            organizationId: scope.organizationId,
+            status: { in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW] },
+            mode: GearReservationMode.HARD_RESERVATION,
+            windowStartAt: { lte: now },
+            windowEndAt: { gte: now },
+            gearItem: { AND: [access.where] },
+          },
+        }),
+        db.gearReservation.count({
+          where: {
+            organizationId: scope.organizationId,
+            status: { in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW] },
+            mode: GearReservationMode.SOFT_HOLD,
+            windowStartAt: { lte: now },
+            windowEndAt: { gte: now },
+            gearItem: { AND: [access.where] },
+          },
+        }),
+        db.gearReservation.count({
+          where: {
+            organizationId: scope.organizationId,
+            status: { in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW] },
+            windowStartAt: { gt: now },
+            gearItem: { AND: [access.where] },
+          },
+        }),
+        db.gearReservation.count({
+          where: {
+            organizationId: scope.organizationId,
+            status: GearReservationStatus.CONFLICT,
+            gearItem: { AND: [access.where] },
+          },
+        }),
+      ]);
+    } catch (reservationError) {
+      const detail = describeSchemaUnavailableError(reservationError);
+      if (detail) {
+        console.warn(
+          `[GearOps] GearReservation schema check failed (${detail}). ` +
+            "Reservation counts will show 0. Run database setup to apply the GearReservation migration.",
+        );
+      } else {
+        console.warn("[GearOps] GearReservation queries failed unexpectedly:", reservationError);
+      }
+      // Reservation counts remain at their default 0 values — dashboard continues to load.
+    }
+
     summary = {
       totalCategories,
       totalItems,
@@ -300,7 +321,10 @@ export default async function GearOpsDashboardPage() {
     openCheckouts = openCheckoutItems;
   } catch (error) {
     if (isSchemaUnavailableError(error)) {
-      queryErrorMessage = "Database schema is not available yet. Run database setup before loading GearOps dashboard.";
+      const detail = describeSchemaUnavailableError(error);
+      queryErrorMessage = detail
+        ? `Database schema is not available yet (${detail}). Run database setup before loading GearOps dashboard.`
+        : "Database schema is not available yet. Run database setup before loading GearOps dashboard.";
     }
   }
 

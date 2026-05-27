@@ -1487,6 +1487,32 @@ export function isSchemaUnavailableError(error: unknown): boolean {
   );
 }
 
+/**
+ * Extracts the missing table or column name from a Prisma schema-unavailable error.
+ * Returns a human-readable description of what was missing, or null if the error
+ * is not a schema-unavailable error.
+ *
+ * P2021: The table `{table}` does not exist in the current database.
+ * P2022: The column `{column}` does not exist in the current database.
+ */
+export function describeSchemaUnavailableError(error: unknown): string | null {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    return null;
+  }
+
+  if (error.code === "P2021") {
+    const table = (error.meta as Record<string, unknown> | undefined)?.table;
+    return typeof table === "string" ? `table "${table}" is missing` : "a required table is missing";
+  }
+
+  if (error.code === "P2022") {
+    const column = (error.meta as Record<string, unknown> | undefined)?.column;
+    return typeof column === "string" ? `column "${column}" is missing` : "a required column is missing";
+  }
+
+  return null;
+}
+
 export function isPermissionDeniedError(error: unknown): error is PermissionDeniedError {
   return error instanceof PermissionDeniedError;
 }
