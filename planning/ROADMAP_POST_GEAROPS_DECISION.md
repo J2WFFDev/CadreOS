@@ -42,7 +42,7 @@ This is a planning-only decision artifact. It does not add runtime scope or sche
 
 | Option | Operational value | User pain addressed | Dependency readiness | Implementation risk | Authorization/privacy risk | Data model maturity | Likely MVP phases | Defer now |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **A. Roster / Member Lifecycle** | High daily value for coaches/admins; strengthens the people foundation used by all modules. | Team accuracy drift, role ambiguity, season rollover friction, manual cleanup burden. | **High** (builds on Team, Person, RosterMembership, RoleAssignment, Season, guardian context). | Medium (workflow/state consistency and UX continuity). | Medium (staff/guardian visibility boundaries must remain strict). | **High** (core entities already active). | 4–6 focused phases. | Advanced cross-org roster automation, parent self-service, bulk import migration tooling. |
+| **A. MemberOps / Roster Lifecycle** | High daily value for coaches/admins; strengthens the people foundation used by all modules. | Team accuracy drift, role ambiguity, season rollover friction, manual cleanup burden. | **High** (builds on Team, Person, RosterMembership, RoleAssignment, Season, guardian context). | Medium (workflow/state consistency and UX continuity). | Medium (staff/guardian visibility boundaries must remain strict). | **High** (core entities already active). | 4–6 focused phases. | Advanced cross-org roster automation, parent self-service, bulk import migration tooling. |
 | **B. Ops Reporting & Operational Review** | Medium-High value; improves weekly management visibility across events/tasks/attendance/FieldOps/GearOps. | Fragmented review cadence, delayed issue detection, limited trend context. | Medium (data exists, but depends on cleaner roster/member lifecycle baselines for reliable signals). | Medium | Medium (role-scoped summary visibility and sensitive context rollups). | Medium (enough for summary reporting, not full analytics). | 3–5 phases. | Predictive analytics, BI exports, automated recommendation engines. |
 | **C. Track 3 Communications Toolset** | Medium strategic value, lower immediate safety for current maturity. | Slow follow-up loops, manual outreach gaps, no delivery channels. | **Low-Medium** (blocked by tighter access boundaries, consent policy, and notification governance). | High | **High** (delivery mistakes, audience leakage, guardian/privacy boundary violations). | Low-Medium (operational data exists, but communication-specific policy/consent models are incomplete). | 5–8 phases plus policy hardening. | External channels, DM/group messaging, parent broadcast workflows, automation-triggered delivery. |
 
@@ -50,7 +50,7 @@ This is a planning-only decision artifact. It does not add runtime scope or sche
 
 ## Option Details
 
-## Option A — Roster / Member Lifecycle
+## Option A — MemberOps / Roster Lifecycle
 
 ### Operational value
 Improves the highest-frequency operational workflow: maintaining correct team membership, role ownership, and season continuity.
@@ -156,7 +156,7 @@ Low-Medium for communication runtime. Existing operational data is not enough on
 
 ## Recommendation
 
-**Recommended next arc: Option A — Roster / Member Lifecycle.**
+**Recommended next arc: Option A — MemberOps / Roster Lifecycle.**
 
 ### Why this is next
 1. Highest immediate operational value with lowest strategic risk among the three options.
@@ -190,7 +190,7 @@ Low-Medium for communication runtime. Existing operational data is not enough on
 
 ## Decision Summary
 
-After Arc 16I GearOps closeout, CadreOS should proceed with **Roster / Member Lifecycle** as the next build arc, then sequence into **Ops Reporting** after roster-quality foundations are stabilized, while keeping **Track 3 Communications** deferred until privacy, authorization, and consent boundaries are mature.
+After Arc 16I GearOps closeout, CadreOS should proceed with **MemberOps / Roster Lifecycle** as the next build arc, then sequence into **Ops Reporting** after roster-quality foundations are stabilized, while keeping **Track 3 Communications** deferred until privacy, authorization, and consent boundaries are mature.
 
 ---
 
