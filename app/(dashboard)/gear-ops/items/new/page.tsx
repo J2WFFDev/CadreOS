@@ -141,6 +141,7 @@ export default async function NewGearItemPage({
   const sku = readSearchParam(resolvedSearchParams, "sku");
   const serialNumber = readSearchParam(resolvedSearchParams, "serialNumber");
   const barcodeValue = readSearchParam(resolvedSearchParams, "barcodeValue");
+  const assetId = readSearchParam(resolvedSearchParams, "assetId");
   const quantityOnHand = readSearchParam(resolvedSearchParams, "quantityOnHand");
   const quantityMin = readSearchParam(resolvedSearchParams, "quantityMin");
   const lifecycleStatus = readSearchParam(resolvedSearchParams, "lifecycleStatus");
@@ -320,6 +321,21 @@ export default async function NewGearItemPage({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label htmlFor="assetId" className="text-sm font-medium">
+              Asset ID <span className="text-zinc-500">(auto-generated if blank)</span>
+            </label>
+            <input
+              id="assetId"
+              name="assetId"
+              defaultValue={assetId}
+              placeholder="e.g. GO-RIFLE-0007"
+              className="w-full rounded-md border px-3 py-2 text-sm font-mono"
+            />
+            {readSearchParam(resolvedSearchParams, "assetIdError") ? (
+              <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "assetIdError")}</p>
+            ) : null}
+          </div>
           <div className="space-y-1">
             <label htmlFor="barcodeValue" className="text-sm font-medium">
               Barcode / QR value (optional)

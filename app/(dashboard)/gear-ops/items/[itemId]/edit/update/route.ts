@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { validateAssetIdFormat } from "@/lib/gear-asset-id";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   gearItemWorkflowSchema,
@@ -16,6 +17,7 @@ type GearItemFormValues = {
   gearCategoryId: string;
   inventoryType: string;
   programId: string;
+  assetId: string;
   sku: string;
   serialNumber: string;
   barcodeValue: string;
@@ -69,6 +71,7 @@ export async function POST(
     gearCategoryId: getStringField(formData, "gearCategoryId"),
     inventoryType: getStringField(formData, "inventoryType"),
     programId: getStringField(formData, "programId"),
+    assetId: getStringField(formData, "assetId"),
     sku: getStringField(formData, "sku"),
     serialNumber: getStringField(formData, "serialNumber"),
     barcodeValue: getStringField(formData, "barcodeValue"),
@@ -99,6 +102,19 @@ export async function POST(
     );
   }
   const organizationId = scope.organizationId;
+
+  // Validate optional admin-supplied Asset ID format before schema validation.
+  const assetIdFormatError = validateAssetIdFormat(values.assetId);
+  if (assetIdFormatError) {
+    return NextResponse.redirect(
+      buildErrorRedirectUrl(request.url, itemId, {
+        values,
+        fieldErrors: { assetId: assetIdFormatError } as Partial<Record<keyof GearItemFormValues, string>>,
+        error: "Please correct the highlighted fields.",
+      }),
+      303,
+    );
+  }
 
   const parsed = gearItemWorkflowSchema.safeParse(values);
 
@@ -179,6 +195,7 @@ export async function POST(
       }
     }
 
+    const suppliedAssetId = values.assetId.trim().toUpperCase();
     const updated = await db.gearItem.updateMany({
       where: {
         id: itemId,
@@ -189,6 +206,9 @@ export async function POST(
         gearCategoryId: parsed.data.gearCategoryId,
         inventoryType: parsed.data.inventoryType,
         programId: parsed.data.programId,
+        // Only update assetId when the admin explicitly supplies one; leave existing value
+        // unchanged if the field was submitted empty (empty string = no change).
+        ...(suppliedAssetId ? { assetId: suppliedAssetId } : {}),
         sku: parsed.data.sku,
         serialNumber: parsed.data.serialNumber,
         barcodeValue: parsed.data.barcodeValue,
@@ -213,13 +233,19 @@ export async function POST(
     return NextResponse.redirect(new URL(`/gear-ops/items/${itemId}`, request.url), 303);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const target = (error.meta?.target as string[] | undefined) ?? [];
+      const isAssetIdConflict = target.some((f) => f === "assetId");
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, itemId, {
           values,
           fieldErrors: {
-            serialNumber: "A gear item with this serial number already exists in this organization.",
+            ...(isAssetIdConflict
+              ? { assetId: "A gear item with this Asset ID already exists in this organization." }
+              : { serialNumber: "A gear item with this serial number already exists in this organization." }),
           },
-          error: "Serial number already exists in this organization.",
+          error: isAssetIdConflict
+            ? "Asset ID already exists in this organization."
+            : "Serial number already exists in this organization.",
         }),
         303,
       );

@@ -130,6 +130,7 @@ export async function getInventoryLabelPreview(input: {
       select: {
         id: true,
         name: true,
+        assetId: true,
         inventoryType: true,
         lifecycleStatus: true,
         conditionStatus: true,
@@ -183,7 +184,14 @@ export async function getInventoryLabelPreview(input: {
     );
 
     const fallbackRef = buildDisplayReference(item.inventoryType === GearInventoryType.CONSUMABLE ? "CON" : "INV", item.id);
-    const scanReadyValue = item.barcodeValue?.trim() ? `BC:${item.barcodeValue.trim()}` : `ITEM:${item.id}`;
+    const trimmedAssetId = item.assetId?.trim() || null;
+    const trimmedBarcodeValue = item.barcodeValue?.trim() || null;
+    const scanReadyValue = trimmedAssetId
+      ? `ASSETID:${trimmedAssetId}`
+      : trimmedBarcodeValue
+        ? `BC:${trimmedBarcodeValue}`
+        : `ITEM:${item.id}`;
+    const primaryDisplayId = trimmedAssetId || trimmedBarcodeValue || item.serialNumber?.trim() || item.sku?.trim() || fallbackRef;
     const printableIdentifier =
       input.templateKey === "TEMPORARY_OPERATIONAL"
         ? buildFutureIdentifier({
@@ -194,10 +202,11 @@ export async function getInventoryLabelPreview(input: {
           })
         : buildScanReadyIdentifier({
             label: "Printable identifier",
-            displayValue: item.barcodeValue?.trim() || item.serialNumber?.trim() || item.sku?.trim() || fallbackRef,
+            displayValue: primaryDisplayId,
             scanValue: scanReadyValue,
-            description:
-              item.barcodeValue?.trim() || item.serialNumber?.trim() || item.sku?.trim()
+            description: trimmedAssetId
+              ? "Encodes the Asset ID for scan workflows."
+              : trimmedBarcodeValue || item.serialNumber?.trim() || item.sku?.trim()
                 ? "Encodes the existing inventory lookup identifier for scan workflows."
                 : "Encodes the canonical ITEM-prefixed inventory identifier for scan workflows.",
           });

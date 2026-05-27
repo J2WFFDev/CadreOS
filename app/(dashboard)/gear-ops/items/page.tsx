@@ -122,6 +122,7 @@ export default async function GearOpsItemsPage({
       ? {
           OR: [
             { name: { contains: queryText, mode: "insensitive" } },
+            { assetId: { contains: queryText, mode: "insensitive" } },
             { barcodeValue: { equals: queryText, mode: "insensitive" } },
             { serialNumber: { equals: queryText, mode: "insensitive" } },
             { sku: { equals: queryText, mode: "insensitive" } },
@@ -137,6 +138,7 @@ export default async function GearOpsItemsPage({
     | Array<{
         id: string;
         name: string;
+        assetId: string | null;
         inventoryType: GearInventoryType;
         lifecycleStatus: GearItemLifecycleStatus;
         conditionStatus: GearConditionStatus | null;
@@ -176,6 +178,7 @@ export default async function GearOpsItemsPage({
       select: {
         id: true,
         name: true,
+        assetId: true,
         inventoryType: true,
         lifecycleStatus: true,
         conditionStatus: true,
@@ -306,7 +309,7 @@ export default async function GearOpsItemsPage({
           <input
             name="q"
             defaultValue={queryText}
-            placeholder="Search by name, barcode/QR, serial, or SKU"
+            placeholder="Search by Asset ID, name, barcode/QR, serial, or SKU"
             className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
           />
           <button
@@ -348,6 +351,10 @@ export default async function GearOpsItemsPage({
                       </Link>
                     </h3>
                     <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      {item.assetId ? (
+                        <span className="font-mono font-medium text-zinc-700 dark:text-zinc-300">{item.assetId}</span>
+                      ) : null}
+                      {item.assetId ? " · " : null}
                       <Link href={`/gear-ops/categories/${item.category.id}`} className="underline">
                         {item.category.name}
                       </Link>

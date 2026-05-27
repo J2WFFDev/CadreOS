@@ -78,6 +78,7 @@ export default async function EditGearItemPage({
     inventoryType: GearInventoryType;
     lifecycleStatus: GearItemLifecycleStatus;
     conditionStatus: GearConditionStatus | null;
+    assetId: string | null;
     sku: string | null;
     serialNumber: string | null;
     barcodeValue: string | null;
@@ -105,6 +106,7 @@ export default async function EditGearItemPage({
           inventoryType: true,
           lifecycleStatus: true,
           conditionStatus: true,
+          assetId: true,
           sku: true,
           serialNumber: true,
           barcodeValue: true,
@@ -163,6 +165,7 @@ export default async function EditGearItemPage({
   const sku = readSearchParam(resolvedSearchParams, "sku") ?? item.sku ?? "";
   const serialNumber = readSearchParam(resolvedSearchParams, "serialNumber") ?? item.serialNumber ?? "";
   const barcodeValue = readSearchParam(resolvedSearchParams, "barcodeValue") ?? item.barcodeValue ?? "";
+  const assetId = readSearchParam(resolvedSearchParams, "assetId") ?? item.assetId ?? "";
   const quantityOnHand =
     readSearchParam(resolvedSearchParams, "quantityOnHand") || String(item.quantityOnHand);
   const quantityMin =
@@ -353,6 +356,21 @@ export default async function EditGearItemPage({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label htmlFor="assetId" className="text-sm font-medium">
+              Asset ID <span className="text-zinc-500">(leave blank to keep current)</span>
+            </label>
+            <input
+              id="assetId"
+              name="assetId"
+              defaultValue={assetId}
+              placeholder="e.g. GO-RIFLE-0007"
+              className="w-full rounded-md border px-3 py-2 text-sm font-mono"
+            />
+            {readSearchParam(resolvedSearchParams, "assetIdError") ? (
+              <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "assetIdError")}</p>
+            ) : null}
+          </div>
           <div className="space-y-1">
             <label htmlFor="barcodeValue" className="text-sm font-medium">
               Barcode / QR value (optional)
