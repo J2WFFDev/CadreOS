@@ -35,6 +35,7 @@ import {
 import { z } from "zod";
 
 import { requireAuthContext } from "@/lib/auth";
+import { buildGearCheckoutReturnNotes } from "@/lib/gear-checkout-usage";
 import { validateInventoryCodeValue } from "@/lib/inventory-scan";
 import { isRosterRoleType } from "@/lib/member-ops";
 import { PermissionDeniedError, requirePermission } from "@/lib/permissions";
@@ -951,6 +952,10 @@ export const gearCheckoutWorkflowSchema = z
     returnedById: z.string().trim(),
     receivedById: z.string().trim(),
     conditionOnReturn: z.string().trim(),
+    usageLog: z
+      .string()
+      .trim()
+      .max(MAX_GEAR_NOTES_LENGTH, `Usage log must be ${MAX_GEAR_NOTES_LENGTH} characters or less.`),
     purposeNotes: z
       .string()
       .trim()
@@ -1077,6 +1082,13 @@ export const gearCheckoutWorkflowSchema = z
           message: "Return notes can only be set when status is RETURNED.",
         });
       }
+      if (value.usageLog.length > 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["usageLog"],
+          message: "Usage log can only be set when status is RETURNED.",
+        });
+      }
     }
 
     if (DATETIME_LOCAL_INPUT_PATTERN.test(value.checkedOutAt) && DATETIME_LOCAL_INPUT_PATTERN.test(value.expectedReturnAt)) {
@@ -1104,6 +1116,19 @@ export const gearCheckoutWorkflowSchema = z
         });
       }
     }
+
+    const combinedReturnNotes = buildGearCheckoutReturnNotes({
+      usageLog: value.usageLog,
+      returnNotes: value.returnNotes,
+    });
+
+    if ((combinedReturnNotes?.length ?? 0) > MAX_GEAR_NOTES_LENGTH) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["usageLog"],
+        message: `Combined usage log and return notes must be ${MAX_GEAR_NOTES_LENGTH} characters or less.`,
+      });
+    }
   })
   .transform((value) => ({
     status: value.status,
@@ -1117,6 +1142,7 @@ export const gearCheckoutWorkflowSchema = z
     receivedById: value.receivedById.length === 0 ? null : value.receivedById,
     conditionOnReturn:
       value.conditionOnReturn.length === 0 ? null : (value.conditionOnReturn as GearConditionStatus),
+    usageLog: value.usageLog.length === 0 ? null : value.usageLog,
     purposeNotes: value.purposeNotes.length === 0 ? null : value.purposeNotes,
     returnNotes: value.returnNotes.length === 0 ? null : value.returnNotes,
   }));

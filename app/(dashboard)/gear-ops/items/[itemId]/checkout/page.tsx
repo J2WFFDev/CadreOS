@@ -6,6 +6,7 @@ import { FormActions } from "@/components/dashboard/form-actions";
 import { GearOfflineForm } from "@/components/gear-ops/offline-form";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
+import { parseGearCheckoutReturnNotes } from "@/lib/gear-checkout-usage";
 import { formatGearOpsEnum } from "@/lib/gear-ops";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -136,7 +137,9 @@ export default async function CheckoutGearItemPage({
   const receivedById = readSearchParam(resolvedSearchParams, "receivedById");
   const conditionOnReturn = readSearchParam(resolvedSearchParams, "conditionOnReturn");
   const purposeNotes = readSearchParam(resolvedSearchParams, "purposeNotes");
-  const returnNotes = readSearchParam(resolvedSearchParams, "returnNotes");
+  const parsedReturnNotes = parseGearCheckoutReturnNotes(readSearchParam(resolvedSearchParams, "returnNotes"));
+  const usageLog = readSearchParam(resolvedSearchParams, "usageLog") || parsedReturnNotes.usageLog;
+  const returnNotes = parsedReturnNotes.returnNotes;
   const generalError = readSearchParam(resolvedSearchParams, "error");
 
   return (
@@ -373,6 +376,26 @@ export default async function CheckoutGearItemPage({
           />
           {readSearchParam(resolvedSearchParams, "purposeNotesError") ? (
             <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "purposeNotesError")}</p>
+          ) : null}
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="usageLog" className="text-sm font-medium">
+            Usage log / estimate (optional)
+          </label>
+          <textarea
+            id="usageLog"
+            name="usageLog"
+            defaultValue={usageLog}
+            rows={2}
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            placeholder="Example: Practice · estimated 90 minutes"
+          />
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Add estimated match, practice, or other operational use when logging check-in details.
+          </p>
+          {readSearchParam(resolvedSearchParams, "usageLogError") ? (
+            <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "usageLogError")}</p>
           ) : null}
         </div>
 

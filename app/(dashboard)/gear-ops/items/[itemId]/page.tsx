@@ -27,6 +27,7 @@ import { GearPendingSubjectCard } from "@/components/gear-ops/pending-subject-ca
 import { GearOpsSchemaWarning } from "@/components/gear-ops/schema-warning";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
+import { buildGearCheckoutUsageHistoryLabel, parseGearCheckoutReturnNotes } from "@/lib/gear-checkout-usage";
 import {
   formatGearOpsDateTime,
   formatGearOpsEnum,
@@ -577,6 +578,8 @@ export default async function GearOpsItemDetailsPage({
   function renderCheckoutCard(checkout: (typeof gearItem.checkouts)[number]) {
     const checkoutProgram = checkout.event?.program ?? gearItem.program;
     const checkoutTeam = checkout.event?.team;
+    const parsedReturnNotes = parseGearCheckoutReturnNotes(checkout.returnNotes);
+    const usageHistoryLabel = buildGearCheckoutUsageHistoryLabel(parsedReturnNotes.usageLog);
 
     return (
       <article key={checkout.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
@@ -653,7 +656,10 @@ export default async function GearOpsItemDetailsPage({
           </p>
         ) : null}
         {checkout.purposeNotes ? <p className="mt-1 text-zinc-600 dark:text-zinc-400">{checkout.purposeNotes}</p> : null}
-        {checkout.returnNotes ? <p className="mt-1 text-zinc-600 dark:text-zinc-400">{checkout.returnNotes}</p> : null}
+        {usageHistoryLabel ? <p className="mt-1 text-zinc-600 dark:text-zinc-400">{usageHistoryLabel}</p> : null}
+        {parsedReturnNotes.returnNotes ? (
+          <p className="mt-1 text-zinc-600 dark:text-zinc-400">{parsedReturnNotes.returnNotes}</p>
+        ) : null}
       </article>
     );
   }
