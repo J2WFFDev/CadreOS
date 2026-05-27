@@ -24,7 +24,11 @@ import {
 import { canReadStaffOnlyContent, resolveActorRoleContext } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { isTaskOverdue, isUnresolvedTaskStatus } from "@/lib/follow-up-tasks";
-import { MEMBEROPS_ROSTER_ROLE_TYPES } from "@/lib/member-ops";
+import {
+  isDefaultVisibleMemberLifecycleStatus,
+  MEMBER_LIFECYCLE_STATUS_LABELS,
+  MEMBEROPS_ROSTER_ROLE_TYPES,
+} from "@/lib/member-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   buildSupportedTaskSourceNoteVisibilityWhere,
@@ -261,8 +265,9 @@ export default async function ProgramDetailsPage({
       ? selectedRosterRoleParam
       : "";
   const selectedLifecycleStatusParam = readSearchParam(resolvedSearchParams, "lifecycleStatus");
+  const includesAllLifecycleStatuses = selectedLifecycleStatusParam === "all";
   const selectedLifecycleStatus =
-    selectedLifecycleStatusParam && isMemberLifecycleStatusValue(selectedLifecycleStatusParam)
+    !includesAllLifecycleStatuses && selectedLifecycleStatusParam && isMemberLifecycleStatusValue(selectedLifecycleStatusParam)
       ? selectedLifecycleStatusParam
       : "";
   const assignmentStateParam = readSearchParam(resolvedSearchParams, "assignmentState");
@@ -367,6 +372,9 @@ export default async function ProgramDetailsPage({
       return false;
     }
     if (selectedLifecycleStatus && membership.person.lifecycleStatus !== selectedLifecycleStatus) {
+      return false;
+    }
+    if (!selectedLifecycleStatus && !includesAllLifecycleStatuses && !isDefaultVisibleMemberLifecycleStatus(membership.person.lifecycleStatus)) {
       return false;
     }
     if (assignmentState === "complete" && !membership.hasMatchingTeamAssignment) {
@@ -1102,12 +1110,17 @@ export default async function ProgramDetailsPage({
           Unique roster members in selected season: {selectedSeasonRosterPersonIds.size}.
         </p>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Lifecycle mix: Active {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ACTIVE]} · Prospect{" "}
+          Lifecycle mix: Active {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ACTIVE]} · Pending{" "}
           {selectedSeasonLifecycleCounts[MemberLifecycleStatus.PROSPECT]} · Inactive{" "}
           {selectedSeasonLifecycleCounts[MemberLifecycleStatus.INACTIVE]} · Archived{" "}
-          {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ARCHIVED]} · Alumni{" "}
+          {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ARCHIVED]} · Graduated{" "}
           {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ALUMNI]}.
         </p>
+        {!selectedLifecycleStatus && !includesAllLifecycleStatuses ? (
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            Default roster filter is Active + Pending. Use Participation status to include inactive, archived, or graduated rows.
+          </p>
+        ) : null}
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Athlete rows missing guardian linkage in selected season: {selectedSeasonAthletesMissingGuardianLinkage}.
         </p>
@@ -1177,13 +1190,14 @@ export default async function ProgramDetailsPage({
               <select
                 id="lifecycleStatus"
                 name="lifecycleStatus"
-                defaultValue={selectedLifecycleStatus}
+                defaultValue={includesAllLifecycleStatuses ? "all" : selectedLifecycleStatus}
                 className="w-full rounded-md border px-2 py-1 text-sm"
               >
-                <option value="">All statuses</option>
+                <option value="">Default operational view (Active + Pending)</option>
+                <option value="all">All statuses</option>
                 {Object.values(MemberLifecycleStatus).map((status) => (
                   <option key={status} value={status}>
-                    {formatEnumLabel(status)}
+                    {MEMBER_LIFECYCLE_STATUS_LABELS[status]}
                   </option>
                 ))}
               </select>
@@ -1246,7 +1260,7 @@ export default async function ProgramDetailsPage({
                       <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
                         {membership.participationState === "active_participation"
                           ? "Active participation"
-                          : `Inactive participation (${formatEnumLabel(membership.person.lifecycleStatus)})`}
+                          : `Inactive participation (${MEMBER_LIFECYCLE_STATUS_LABELS[membership.person.lifecycleStatus]})`}
                       </td>
                     </tr>
                   ))}
@@ -1317,7 +1331,7 @@ export default async function ProgramDetailsPage({
                   </Link>
                   <span className="text-zinc-600 dark:text-zinc-400">
                     {" "}
-                    · {formatEnumLabel(membership.person.lifecycleStatus)}
+                    · {MEMBER_LIFECYCLE_STATUS_LABELS[membership.person.lifecycleStatus]}
                   </span>
                 </li>
               ))}

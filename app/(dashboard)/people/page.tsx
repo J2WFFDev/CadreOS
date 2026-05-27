@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MemberLifecycleStatus } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
@@ -12,6 +13,7 @@ import {
 } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import { MEMBER_LIFECYCLE_STATUS_LABELS } from "@/lib/member-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -169,7 +171,7 @@ export default async function PeoplePage() {
         firstName: string;
         lastName: string;
         email: string | null;
-        lifecycleStatus: string;
+        lifecycleStatus: MemberLifecycleStatus;
         roles: Array<{
           roleType: string;
           scopeType: string;
@@ -373,7 +375,7 @@ export default async function PeoplePage() {
                       <td className="px-4 py-3">{person.lastName}</td>
                       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{person.email ?? "—"}</td>
                       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                        {person.lifecycleStatus.charAt(0).toUpperCase() + person.lifecycleStatus.slice(1).toLowerCase()}
+                        {MEMBER_LIFECYCLE_STATUS_LABELS[person.lifecycleStatus]}
                       </td>
                       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                         {formatAssignmentSummary(person.roles)}

@@ -1,12 +1,23 @@
 import { MemberLifecycleStatus, RoleType } from "@prisma/client";
 
 export const MEMBER_LIFECYCLE_STATUS_LABELS: Record<MemberLifecycleStatus, string> = {
-  [MemberLifecycleStatus.PROSPECT]: "Prospect (pending activation)",
+  [MemberLifecycleStatus.PROSPECT]: "Pending",
   [MemberLifecycleStatus.ACTIVE]: "Active",
   [MemberLifecycleStatus.INACTIVE]: "Inactive",
   [MemberLifecycleStatus.ARCHIVED]: "Archived",
-  [MemberLifecycleStatus.ALUMNI]: "Alumni",
+  [MemberLifecycleStatus.ALUMNI]: "Graduated",
 };
+
+export const MEMBER_LIFECYCLE_DEFAULT_VISIBLE_STATUSES = [
+  MemberLifecycleStatus.ACTIVE,
+  MemberLifecycleStatus.PROSPECT,
+] as const;
+
+const defaultVisibleLifecycleStatusSet = new Set<MemberLifecycleStatus>(MEMBER_LIFECYCLE_DEFAULT_VISIBLE_STATUSES);
+
+export function isDefaultVisibleMemberLifecycleStatus(status: MemberLifecycleStatus): boolean {
+  return defaultVisibleLifecycleStatusSet.has(status);
+}
 
 export const MEMBEROPS_STAFF_ROLE_TYPES = [
   RoleType.ORGANIZATION_ADMIN,
