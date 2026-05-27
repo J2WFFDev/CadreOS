@@ -91,7 +91,7 @@ export async function POST(
         buildErrorRedirectUrl(
           request.url,
           personId,
-          `This person cannot be archived from their current status (${person.lifecycleStatus}). Only Active, Prospect, Inactive, or Alumni members can be archived.`,
+          `This person cannot be archived from their current status (${person.lifecycleStatus}). Only Active, Pending, Inactive, or Graduated members can be archived.`,
         ),
         303,
       );

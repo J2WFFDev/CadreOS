@@ -1,12 +1,15 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import { RoleType } from "@prisma/client";
+import { MemberLifecycleStatus, RoleType } from "@prisma/client";
 
 import {
   isRosterRoleType,
   isStaffRoleType,
   isTeamScopedRoleType,
+  isDefaultVisibleMemberLifecycleStatus,
+  MEMBER_LIFECYCLE_DEFAULT_VISIBLE_STATUSES,
+  MEMBER_LIFECYCLE_STATUS_LABELS,
   MEMBEROPS_NAMING_RULES,
   MEMBEROPS_ROSTER_ROLE_TYPES,
   MEMBEROPS_TEAM_ROLE_TYPES,
@@ -71,4 +74,21 @@ test("member move workflow accepts valid roster role types", () => {
   });
 
   assert.equal(parsed.success, true);
+});
+
+test("lifecycle labels use pending/graduated language", () => {
+  assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.PROSPECT], "Pending");
+  assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.ALUMNI], "Graduated");
+});
+
+test("default roster visibility includes active and pending only", () => {
+  assert.deepEqual(MEMBER_LIFECYCLE_DEFAULT_VISIBLE_STATUSES, [
+    MemberLifecycleStatus.ACTIVE,
+    MemberLifecycleStatus.PROSPECT,
+  ]);
+  assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.ACTIVE), true);
+  assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.PROSPECT), true);
+  assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.INACTIVE), false);
+  assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.ARCHIVED), false);
+  assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.ALUMNI), false);
 });

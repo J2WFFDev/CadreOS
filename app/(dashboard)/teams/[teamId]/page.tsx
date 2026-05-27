@@ -32,6 +32,8 @@ import {
   formatGuardianOperationalIndicator,
 } from "@/lib/guardian-operational-context";
 import {
+  isDefaultVisibleMemberLifecycleStatus,
+  MEMBER_LIFECYCLE_STATUS_LABELS,
   isRosterRoleType,
   isTeamScopedRoleType,
   MEMBEROPS_ROSTER_ROLE_TYPES,
@@ -64,7 +66,12 @@ function formatEnumLabel(value: string) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function buildTeamViewHref(teamId: string, filters: { seasonId?: string; roleFilter?: string; guardianFilter?: string }) {
+function buildTeamViewHref(teamId: string, filters: {
+  seasonId?: string;
+  roleFilter?: string;
+  guardianFilter?: string;
+  lifecycleFilter?: string;
+}) {
   const params = new URLSearchParams();
 
   if (filters.seasonId) {
@@ -77,6 +84,10 @@ function buildTeamViewHref(teamId: string, filters: { seasonId?: string; roleFil
 
   if (filters.guardianFilter) {
     params.set("guardianFilter", filters.guardianFilter);
+  }
+
+  if (filters.lifecycleFilter) {
+    params.set("lifecycleFilter", filters.lifecycleFilter);
   }
 
   const query = params.toString();
@@ -159,7 +170,7 @@ export default async function TeamDetailsPage({
             firstName: string;
             lastName: string;
             email: string | null;
-            lifecycleStatus: string;
+            lifecycleStatus: MemberLifecycleStatus;
             athleteLinks: Array<{
               id: string;
               guardian: {
@@ -350,6 +361,13 @@ export default async function TeamDetailsPage({
     guardianFilterParam === "incomplete_support"
       ? guardianFilterParam
       : "";
+  const lifecycleFilterParam = readSearchParam(resolvedSearchParams, "lifecycleFilter");
+  const lifecycleFilter =
+    lifecycleFilterParam === "all" ||
+    lifecycleFilterParam === "incomplete" ||
+    Object.values(MemberLifecycleStatus).includes(lifecycleFilterParam as MemberLifecycleStatus)
+      ? lifecycleFilterParam
+      : "";
   const filteredSelectedSeasonRosterMembers =
     roleFilter === "ALL"
       ? selectedSeasonRosterMembers
@@ -403,6 +421,27 @@ export default async function TeamDetailsPage({
     personRoles.push(role);
     roleAssignmentsByPersonId.set(role.person.id, personRoles);
   }
+  const lifecycleFilteredSelectedSeasonRosterMembers = guardianFilteredSelectedSeasonRosterMembers.filter((membership) => {
+    if (lifecycleFilter === "all") {
+      return true;
+    }
+
+    if (lifecycleFilter === "incomplete") {
+      const hasMissingRoleAssignment = (roleAssignmentsByPersonId.get(membership.person.id) ?? []).length === 0;
+      const hasPendingLifecycle = membership.person.lifecycleStatus === MemberLifecycleStatus.PROSPECT;
+      const hasGuardianReadinessGap =
+        membership.rosterRole === RoleType.ATHLETE &&
+        deriveGuardianOperationalContext(membership.person.athleteLinks).hasIncompleteRelationshipSupport;
+
+      return hasMissingRoleAssignment || hasPendingLifecycle || hasGuardianReadinessGap;
+    }
+
+    if (lifecycleFilter) {
+      return membership.person.lifecycleStatus === lifecycleFilter;
+    }
+
+    return isDefaultVisibleMemberLifecycleStatus(membership.person.lifecycleStatus);
+  });
   const rosterMembersWithoutRoleAssignments = selectedSeasonRosterMembers.filter(
     (membership) => (roleAssignmentsByPersonId.get(membership.person.id) ?? []).length === 0,
   ).length;
@@ -886,6 +925,7 @@ export default async function TeamDetailsPage({
                   seasonId: season.id,
                   roleFilter: roleFilter === "ALL" ? undefined : roleFilter,
                   guardianFilter: guardianFilter || undefined,
+                  lifecycleFilter: lifecycleFilter || undefined,
                 })}
                 className={`rounded-md border px-2 py-1 ${
                   selectedSeasonForView?.id === season.id ? "bg-zinc-100 dark:bg-zinc-800" : ""
@@ -903,6 +943,7 @@ export default async function TeamDetailsPage({
                 seasonId: selectedSeasonForView?.id,
                 roleFilter: undefined,
                 guardianFilter: guardianFilter || undefined,
+                lifecycleFilter: lifecycleFilter || undefined,
               })}
               className={`rounded-md border px-2 py-1 ${roleFilter === "ALL" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
             >
@@ -915,6 +956,7 @@ export default async function TeamDetailsPage({
                   seasonId: selectedSeasonForView?.id,
                   roleFilter: roleType,
                   guardianFilter: guardianFilter || undefined,
+                  lifecycleFilter: lifecycleFilter || undefined,
                 })}
                 className={`rounded-md border px-2 py-1 ${roleFilter === roleType ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
               >
@@ -929,6 +971,7 @@ export default async function TeamDetailsPage({
               href={buildTeamViewHref(team.id, {
                 seasonId: selectedSeasonForView?.id,
                 roleFilter: roleFilter === "ALL" ? undefined : roleFilter,
+                lifecycleFilter: lifecycleFilter || undefined,
               })}
               className={`rounded-md border px-2 py-1 ${guardianFilter === "" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
             >
@@ -939,6 +982,7 @@ export default async function TeamDetailsPage({
                 seasonId: selectedSeasonForView?.id,
                 roleFilter: roleFilter === "ALL" ? undefined : roleFilter,
                 guardianFilter: "missing_guardian_linkage",
+                lifecycleFilter: lifecycleFilter || undefined,
               })}
               className={`rounded-md border px-2 py-1 ${guardianFilter === "missing_guardian_linkage" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
             >
@@ -949,6 +993,7 @@ export default async function TeamDetailsPage({
                 seasonId: selectedSeasonForView?.id,
                 roleFilter: roleFilter === "ALL" ? undefined : roleFilter,
                 guardianFilter: "inactive_guardian_account",
+                lifecycleFilter: lifecycleFilter || undefined,
               })}
               className={`rounded-md border px-2 py-1 ${guardianFilter === "inactive_guardian_account" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
             >
@@ -959,6 +1004,7 @@ export default async function TeamDetailsPage({
                 seasonId: selectedSeasonForView?.id,
                 roleFilter: roleFilter === "ALL" ? undefined : roleFilter,
                 guardianFilter: "incomplete_support",
+                lifecycleFilter: lifecycleFilter || undefined,
               })}
               className={`rounded-md border px-2 py-1 ${guardianFilter === "incomplete_support" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
             >
@@ -966,13 +1012,63 @@ export default async function TeamDetailsPage({
             </Link>
           </div>
         ) : null}
+        {selectedSeasonRosterMembers.length > 0 ? (
+          <div className="mb-3 flex flex-wrap gap-2 text-xs">
+            <Link
+              href={buildTeamViewHref(team.id, {
+                seasonId: selectedSeasonForView?.id,
+                roleFilter: roleFilter === "ALL" ? undefined : roleFilter,
+                guardianFilter: guardianFilter || undefined,
+              })}
+              className={`rounded-md border px-2 py-1 ${lifecycleFilter === "" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
+            >
+              Default (Active + Pending)
+            </Link>
+            <Link
+              href={buildTeamViewHref(team.id, {
+                seasonId: selectedSeasonForView?.id,
+                roleFilter: roleFilter === "ALL" ? undefined : roleFilter,
+                guardianFilter: guardianFilter || undefined,
+                lifecycleFilter: "all",
+              })}
+              className={`rounded-md border px-2 py-1 ${lifecycleFilter === "all" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
+            >
+              All statuses
+            </Link>
+            {Object.values(MemberLifecycleStatus).map((status) => (
+              <Link
+                key={status}
+                href={buildTeamViewHref(team.id, {
+                  seasonId: selectedSeasonForView?.id,
+                  roleFilter: roleFilter === "ALL" ? undefined : roleFilter,
+                  guardianFilter: guardianFilter || undefined,
+                  lifecycleFilter: status,
+                })}
+                className={`rounded-md border px-2 py-1 ${lifecycleFilter === status ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
+              >
+                {MEMBER_LIFECYCLE_STATUS_LABELS[status]}
+              </Link>
+            ))}
+            <Link
+              href={buildTeamViewHref(team.id, {
+                seasonId: selectedSeasonForView?.id,
+                roleFilter: roleFilter === "ALL" ? undefined : roleFilter,
+                guardianFilter: guardianFilter || undefined,
+                lifecycleFilter: "incomplete",
+              })}
+              className={`rounded-md border px-2 py-1 ${lifecycleFilter === "incomplete" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
+            >
+              Incomplete / missing readiness data
+            </Link>
+          </div>
+        ) : null}
         {selectedSeasonRosterMembers.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             No members on team for this season yet.
           </p>
-        ) : guardianFilteredSelectedSeasonRosterMembers.length === 0 ? (
+        ) : lifecycleFilteredSelectedSeasonRosterMembers.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            No roster members match the selected role/guardian filters.
+            No roster members match the selected role/guardian/status filters.
           </p>
         ) : (
           <div className="overflow-x-auto rounded-md border">
@@ -988,7 +1084,7 @@ export default async function TeamDetailsPage({
                 </tr>
               </thead>
               <tbody>
-                {guardianFilteredSelectedSeasonRosterMembers.map((membership) => {
+                {lifecycleFilteredSelectedSeasonRosterMembers.map((membership) => {
                   const personRoleAssignments = roleAssignmentsByPersonId.get(membership.person.id) ?? [];
                   const roleAssignmentStatus =
                     personRoleAssignments.length === 0
@@ -1039,7 +1135,7 @@ export default async function TeamDetailsPage({
                       <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">{formatEnumLabel(membership.rosterRole)}</td>
                       <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">{roleAssignmentStatus}</td>
                       <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
-                        {formatEnumLabel(membership.person.lifecycleStatus)}
+                        {MEMBER_LIFECYCLE_STATUS_LABELS[membership.person.lifecycleStatus]}
                       </td>
                       <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">{guardianStatus}</td>
                       <td className="px-3 py-2">
@@ -1068,12 +1164,17 @@ export default async function TeamDetailsPage({
             : "staff write permissions are required via existing person/roster/role assignment routes."}
         </p>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Selected-season lifecycle mix: Active {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ACTIVE]} · Prospect{" "}
+          Selected-season lifecycle mix: Active {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ACTIVE]} · Pending{" "}
           {selectedSeasonLifecycleCounts[MemberLifecycleStatus.PROSPECT]} · Inactive{" "}
           {selectedSeasonLifecycleCounts[MemberLifecycleStatus.INACTIVE]} · Archived{" "}
-          {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ARCHIVED]} · Alumni{" "}
+          {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ARCHIVED]} · Graduated{" "}
           {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ALUMNI]}.
         </p>
+        {lifecycleFilter === "" ? (
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            Default roster view shows Active + Pending participants; inactive, archived, and graduated members are hidden until status filters are changed.
+          </p>
+        ) : null}
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Selected-season roster members not currently Active in lifecycle status:{" "}
           {selectedSeasonMembersWithoutActiveLifecycle}.

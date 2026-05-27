@@ -14,6 +14,7 @@ import {
 import { db } from "@/lib/db";
 import { isUnresolvedTaskStatus } from "@/lib/follow-up-tasks";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import { MEMBER_LIFECYCLE_STATUS_LABELS } from "@/lib/member-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { getOperationalHistory } from "@/lib/operational-history";
 import {
@@ -177,7 +178,7 @@ export default async function PersonDetailsPage({
         lastName: string;
         email: string | null;
         phone: string | null;
-        lifecycleStatus: string;
+        lifecycleStatus: MemberLifecycleStatus;
         roles: Array<{
           id: string;
           roleType: string;
@@ -688,8 +689,8 @@ export default async function PersonDetailsPage({
                 : person.lifecycleStatus === MemberLifecycleStatus.ARCHIVED
                   ? "font-medium text-red-700 dark:text-red-400"
                   : "font-medium text-zinc-700 dark:text-zinc-300"
-          }>
-            {formatEnumLabel(person.lifecycleStatus)}
+            }>
+            {MEMBER_LIFECYCLE_STATUS_LABELS[person.lifecycleStatus]}
           </span>
         </p>
         {hasLifecycleRosterReadinessGap ? (
@@ -699,7 +700,7 @@ export default async function PersonDetailsPage({
         ) : null}
         {hasNonActiveLifecycleRosterMembership ? (
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            Lifecycle note: member has roster membership while lifecycle status is {formatEnumLabel(person.lifecycleStatus)}.
+            Lifecycle note: member has roster membership while lifecycle status is {MEMBER_LIFECYCLE_STATUS_LABELS[person.lifecycleStatus]}.
           </p>
         ) : null}
         {activateError ? (

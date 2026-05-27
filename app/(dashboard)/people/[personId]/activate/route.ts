@@ -90,7 +90,7 @@ export async function POST(
         buildErrorRedirectUrl(
           request.url,
           personId,
-          `This person cannot be activated from their current status (${person.lifecycleStatus}). Only Prospect, Inactive, or Alumni members can be activated.`,
+          `This person cannot be activated from their current status (${person.lifecycleStatus}). Only Pending, Inactive, or Graduated members can be activated.`,
         ),
         303,
       );
