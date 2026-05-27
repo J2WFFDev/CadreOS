@@ -38,6 +38,7 @@ test("resolveMobileInventoryActions prefers active checkout flow for check-in co
   assert.equal(resolved.primaryAction.key, "checkin");
   assert.ok(resolved.primaryAction.href.includes("/gear-ops/items/item-1/checkouts/checkout-1/edit"));
   assert.equal(resolved.quickCustodyFlows.length, 3);
+  assert.ok(resolved.actions.every((action) => !resolved.quickCustodyFlows.some((flow) => flow.key === action.key)));
 });
 
 test("resolveMobileInventoryActions exposes consumable adjustment and fallback movement history", () => {
@@ -55,5 +56,6 @@ test("resolveMobileInventoryActions exposes consumable adjustment and fallback m
 
   assert.equal(resolved.primaryAction.key, "movement-history");
   assert.ok(resolved.actions.some((action) => action.key === "consumable-adjust"));
-  assert.ok(resolved.actions.some((action) => action.key === "assignment-update"));
+  assert.ok(resolved.quickCustodyFlows.some((action) => action.key === "assignment-update"));
+  assert.ok(resolved.actions.every((action) => action.key !== "assignment-update"));
 });

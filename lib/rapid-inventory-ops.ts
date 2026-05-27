@@ -287,10 +287,12 @@ export function resolveMobileInventoryActions(input: {
     seen.add(action.key);
     return true;
   });
+  const quickCustodyFlowKeys = new Set(quickCustodyFlows.map((action) => action.key));
+  const supplementalActions = dedupedActions.filter((action) => !quickCustodyFlowKeys.has(action.key));
 
   return {
     primaryAction,
     quickCustodyFlows,
-    actions: dedupedActions,
+    actions: supplementalActions,
   };
 }
