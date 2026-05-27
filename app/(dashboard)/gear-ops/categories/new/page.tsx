@@ -23,7 +23,8 @@ import {
   getReportGroupBadgeClass,
 } from "@/lib/gear-category-config";
 import { formatGearOpsEnum } from "@/lib/gear-ops";
-import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
+import { formatGearOpsSchemaMissingDetail, getGearOpsSchemaStatus } from "@/lib/gear-ops-schema-status";
+import { resolveGearOpsAdminAccess, resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -77,6 +78,18 @@ function readBooleanSearchParam(searchParams: SearchParams, key: string, fallbac
   return fallback;
 }
 
+function readCsvSearchParam(searchParams: SearchParams, key: string): string[] {
+  const value = readSearchParam(searchParams, key);
+  if (!value.trim()) {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
 export default async function NewGearCategoryPage({
   searchParams,
 }: {
@@ -122,6 +135,48 @@ export default async function NewGearCategoryPage({
     );
   }
 
+  const schemaStatus = await getGearOpsSchemaStatus("category-creation");
+  const adminAccess = await resolveGearOpsAdminAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const showSchemaDiagnostics = process.env.NODE_ENV !== "production" || adminAccess.allowed;
+
+  if (!schemaStatus.schemaReady) {
+    const detail = showSchemaDiagnostics ? formatGearOpsSchemaMissingDetail(schemaStatus) : null;
+
+    return (
+      <section className="space-y-6">
+        <PageHeader title="New gear category" description={`Organization: ${scope.organizationName ?? scope.organizationId}`} />
+        <GearOpsSubnav current="categories" />
+        <ErrorMessage
+          message={
+            detail
+              ? `Database schema is not available yet (${detail}). Run database setup before creating gear categories.`
+              : "Database schema is not available yet. Run database setup before creating gear categories."
+          }
+        />
+        {showSchemaDiagnostics ? (
+          <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
+            <p className="font-medium">Missing GearOps schema elements</p>
+            {schemaStatus.missingTables.length === 0 && schemaStatus.missingColumns.length === 0 ? (
+              <p className="mt-2 text-zinc-700 dark:text-zinc-300">Schema verification failed, but missing elements could not be enumerated.</p>
+            ) : (
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-zinc-700 dark:text-zinc-300">
+                {schemaStatus.missingTables.map((table) => (
+                  <li key={`table-${table}`}>Table: {table}</li>
+                ))}
+                {schemaStatus.missingColumns.map((column) => (
+                  <li key={`column-${column}`}>Column: {column}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
   const defaultTemplate = applyGearCategoryTemplate("generic-asset");
   const name = readSearchParam(resolvedSearchParams, "name");
   const inventoryType = readEnumSearchParam(
@@ -132,6 +187,8 @@ export default async function NewGearCategoryPage({
   );
   const description = readSearchParam(resolvedSearchParams, "description");
   const generalError = readSearchParam(resolvedSearchParams, "error");
+  const missingTablesFromError = readCsvSearchParam(resolvedSearchParams, "missingTables");
+  const missingColumnsFromError = readCsvSearchParam(resolvedSearchParams, "missingColumns");
   const configErrors: GearCategoryConfigFieldErrors = {
     behaviorType: readSearchParam(resolvedSearchParams, "behaviorTypeError"),
     custodyMode: readSearchParam(resolvedSearchParams, "custodyModeError"),
@@ -226,6 +283,19 @@ export default async function NewGearCategoryPage({
       <GearOpsSubnav current="categories" />
 
       {generalError ? <ErrorMessage message={generalError} /> : null}
+      {showSchemaDiagnostics && (missingTablesFromError.length > 0 || missingColumnsFromError.length > 0) ? (
+        <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
+          <p className="font-medium">Missing GearOps schema elements</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-zinc-700 dark:text-zinc-300">
+            {missingTablesFromError.map((table) => (
+              <li key={`missing-table-${table}`}>Table: {table}</li>
+            ))}
+            {missingColumnsFromError.map((column) => (
+              <li key={`missing-column-${column}`}>Column: {column}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="space-y-3 rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <div>

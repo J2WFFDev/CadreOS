@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { getGearCategoryTemplate } from "@/lib/gear-category-config";
+import { getGearOpsSchemaStatus } from "@/lib/gear-ops-schema-status";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   gearCategoryWorkflowSchema,
@@ -39,6 +40,8 @@ function buildErrorRedirectUrl(
     values: { name: string; inventoryType: string; description: string };
     fieldErrors?: Partial<Record<string, string>>;
     error?: string;
+    missingTables?: string[];
+    missingColumns?: string[];
   },
 ) {
   const url = new URL("/gear-ops/categories/new", requestUrl);
@@ -57,6 +60,14 @@ function buildErrorRedirectUrl(
 
   if (input.error) {
     url.searchParams.set("error", input.error);
+  }
+
+  if (input.missingTables && input.missingTables.length > 0) {
+    url.searchParams.set("missingTables", input.missingTables.join(","));
+  }
+
+  if (input.missingColumns && input.missingColumns.length > 0) {
+    url.searchParams.set("missingColumns", input.missingColumns.join(","));
   }
 
   return url;
@@ -113,6 +124,19 @@ export async function POST(request: Request) {
     );
   }
   const organizationId = scope.organizationId;
+
+  const schemaStatus = await getGearOpsSchemaStatus("category-creation");
+  if (!schemaStatus.schemaReady) {
+    return NextResponse.redirect(
+      buildErrorRedirectUrl(request.url, {
+        values: basicValues,
+        error: "Database schema is not available yet. Run database setup before creating gear categories.",
+        missingTables: schemaStatus.missingTables,
+        missingColumns: schemaStatus.missingColumns,
+      }),
+      303,
+    );
+  }
 
   const parsed = gearCategoryWorkflowSchema.safeParse(values);
 
@@ -189,14 +213,21 @@ export async function POST(request: Request) {
       );
     }
 
+    const failureSchemaStatus = isSchemaUnavailableError(error)
+      ? await getGearOpsSchemaStatus("category-creation")
+      : null;
+    const categorySchemaMissing = Boolean(failureSchemaStatus && !failureSchemaStatus.schemaReady);
+
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, {
         values: basicValues,
         error: isPermissionDeniedError(error)
           ? error.message
-          : isSchemaUnavailableError(error)
+          : categorySchemaMissing
             ? "Database schema is not available yet. Run database setup before creating gear categories."
             : "Unable to create gear category right now. Please try again.",
+        missingTables: categorySchemaMissing ? failureSchemaStatus?.missingTables : undefined,
+        missingColumns: categorySchemaMissing ? failureSchemaStatus?.missingColumns : undefined,
       }),
       303,
     );
