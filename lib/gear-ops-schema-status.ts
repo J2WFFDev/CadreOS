@@ -63,7 +63,7 @@ const GEAR_CATEGORY_CONFIGURATION_COLUMNS = [
 const GEAR_CATEGORY_BASIC_COLUMNS = ["organizationId", "name", "inventoryType"];
 const PROGRAM_LOOKUP_COLUMNS = ["organizationId", "name"];
 const INVENTORY_LOCATION_COLUMNS = ["organizationId", "name", "isActive", "locationType", "parentLocationId"];
-const INVENTORY_LOCATION_DETAIL_COLUMNS = ["organizationId", "name", "locationCode"];
+const INVENTORY_LOCATION_MINIMAL_COLUMNS = ["organizationId", "name", "locationCode"];
 const GEAR_ITEM_CREATE_COLUMNS = [
   "organizationId",
   "programId",
@@ -452,7 +452,7 @@ const ITEM_DETAIL_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
   [{ table: "GearItem", columns: GEAR_ITEM_DETAIL_COLUMNS }],
   [{ table: "GearCategory", columns: GEAR_CATEGORY_BASIC_COLUMNS }],
   [{ table: "Program", columns: PROGRAM_LOOKUP_COLUMNS }],
-  [{ table: "InventoryLocation", columns: INVENTORY_LOCATION_DETAIL_COLUMNS }],
+  [{ table: "InventoryLocation", columns: INVENTORY_LOCATION_MINIMAL_COLUMNS }],
   [{ table: "GearAssignment", columns: GEAR_ASSIGNMENT_DETAIL_COLUMNS }],
   [{ table: "GearCheckout", columns: GEAR_CHECKOUT_DETAIL_COLUMNS }],
   [{ table: "GearReservation", columns: GEAR_RESERVATION_DETAIL_COLUMNS }],

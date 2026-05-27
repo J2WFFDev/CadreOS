@@ -422,7 +422,7 @@ export default async function GearOpsItemDetailsPage({
       inventoryMovements = movements;
       scanEvents = scans;
     } catch {
-      // Tables not yet migrated — optional panels render as empty
+      // Tables not yet migrated -- optional panels render as empty
     }
   }
 
