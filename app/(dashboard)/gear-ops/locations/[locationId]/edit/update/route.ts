@@ -1,34 +1,33 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 
-import { createInventoryLocation, resolveInventoryOpsWriteAccess } from "@/lib/inventory-ops";
+import { db } from "@/lib/db";
+import { updateInventoryLocation, resolveInventoryOpsWriteAccess } from "@/lib/inventory-ops";
 import { validateInventoryLocationFields } from "@/lib/inventory-ops/location-validation";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { db } from "@/lib/db";
 
-export const dynamic = "force-dynamic";
-
-type NewLocationFormValues = {
+type EditLocationFormValues = {
   name: string;
   locationCode: string;
   description: string;
-  parentLocationId: string;
+  isActive: string;
 };
 
 function buildErrorRedirectUrl(
   requestUrl: string,
+  locationId: string,
   input: {
-    values: NewLocationFormValues;
-    fieldErrors?: Partial<Record<keyof NewLocationFormValues, string>>;
+    values: EditLocationFormValues;
+    fieldErrors?: Partial<Record<keyof EditLocationFormValues, string>>;
     error?: string;
   },
 ) {
-  const url = new URL("/gear-ops/locations/new", requestUrl);
+  const url = new URL(`/gear-ops/locations/${locationId}/edit`, requestUrl);
 
   url.searchParams.set("name", input.values.name);
   url.searchParams.set("locationCode", input.values.locationCode);
   url.searchParams.set("description", input.values.description);
-  url.searchParams.set("parentLocationId", input.values.parentLocationId);
+  url.searchParams.set("isActive", input.values.isActive);
 
   if (input.fieldErrors) {
     Object.entries(input.fieldErrors).forEach(([key, message]) => {
@@ -45,19 +44,23 @@ function buildErrorRedirectUrl(
   return url;
 }
 
-export async function POST(request: Request) {
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ locationId: string }> },
+) {
+  const { locationId } = await params;
   const scope = await getOrganizationScope();
   const formData = await request.formData();
-  const values: NewLocationFormValues = {
+  const values: EditLocationFormValues = {
     name: (formData.get("name") as string | null)?.trim() ?? "",
     locationCode: (formData.get("locationCode") as string | null)?.trim() ?? "",
     description: (formData.get("description") as string | null)?.trim() ?? "",
-    parentLocationId: (formData.get("parentLocationId") as string | null)?.trim() ?? "",
+    isActive: ((formData.get("isActive") as string | null) ?? "true").trim(),
   };
 
   if (!scope.organizationId) {
     return NextResponse.redirect(
-      buildErrorRedirectUrl(request.url, {
+      buildErrorRedirectUrl(request.url, locationId, {
         values,
         error: "No organization context is available yet.",
       }),
@@ -67,19 +70,32 @@ export async function POST(request: Request) {
   const organizationId = scope.organizationId;
 
   const access = await resolveInventoryOpsWriteAccess({
-    organizationId: organizationId,
+    organizationId,
     actorPersonId: scope.auth.personId,
-    workflow: "inventory-ops.locations.create",
+    workflow: "inventory-ops.locations.update",
   });
 
   if (!access.allowed) {
-    return new Response(access.denialMessage ?? "Access denied.", { status: 403 });
+    return NextResponse.redirect(
+      buildErrorRedirectUrl(request.url, locationId, {
+        values,
+        error: access.denialMessage ?? "Access denied.",
+      }),
+      303,
+    );
   }
 
-  const fieldErrors = validateInventoryLocationFields(values);
+  const validationErrors = validateInventoryLocationFields(values);
+  const fieldErrors: Partial<Record<keyof EditLocationFormValues, string>> = {
+    ...validationErrors,
+  };
+  if (values.isActive !== "true" && values.isActive !== "false") {
+    fieldErrors.isActive = "Status must be Active or Inactive.";
+  }
+
   if (Object.keys(fieldErrors).length > 0) {
     return NextResponse.redirect(
-      buildErrorRedirectUrl(request.url, {
+      buildErrorRedirectUrl(request.url, locationId, {
         values,
         fieldErrors,
         error: "Please correct the highlighted fields.",
@@ -88,17 +104,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const name = values.name;
-  const locationCode = values.locationCode || null;
-  const description = values.description || null;
-  const parentLocationId = values.parentLocationId || null;
-
   const duplicateWhere: Prisma.InventoryLocationWhereInput = {
     organizationId,
-    OR: [{ name: { equals: name, mode: "insensitive" } }],
+    id: { not: locationId },
+    OR: [{ name: { equals: values.name, mode: "insensitive" } }],
   };
-  if (locationCode) {
-    duplicateWhere.OR?.push({ locationCode: { equals: locationCode, mode: "insensitive" } });
+  if (values.locationCode) {
+    duplicateWhere.OR?.push({
+      locationCode: { equals: values.locationCode, mode: "insensitive" },
+    });
   }
 
   const duplicateLocation = await db.inventoryLocation.findFirst({
@@ -107,7 +121,7 @@ export async function POST(request: Request) {
   });
 
   if (duplicateLocation) {
-    const codeToCheck = locationCode;
+    const codeToCheck = values.locationCode || null;
     const isCodeConflict =
       codeToCheck !== null &&
       duplicateLocation.locationCode !== null &&
@@ -116,7 +130,7 @@ export async function POST(request: Request) {
       }) === 0;
 
     return NextResponse.redirect(
-      buildErrorRedirectUrl(request.url, {
+      buildErrorRedirectUrl(request.url, locationId, {
         values,
         fieldErrors: isCodeConflict
           ? { locationCode: "A location with this code already exists in this organization." }
@@ -130,20 +144,31 @@ export async function POST(request: Request) {
   }
 
   try {
-    const location = await createInventoryLocation({
+    const updated = await updateInventoryLocation({
       organizationId,
-      name,
-      locationCode,
-      description,
-      parentLocationId,
+      locationId,
+      name: values.name,
+      locationCode: values.locationCode || null,
+      description: values.description || null,
+      isActive: values.isActive === "true",
     });
 
-    return NextResponse.redirect(new URL(`/gear-ops/locations/${location.id}`, request.url), 303);
+    if (!updated) {
+      return NextResponse.redirect(
+        buildErrorRedirectUrl(request.url, locationId, {
+          values,
+          error: "Location not found in the selected organization.",
+        }),
+        303,
+      );
+    }
+
+    return NextResponse.redirect(new URL(`/gear-ops/locations/${locationId}`, request.url), 303);
   } catch {
     return NextResponse.redirect(
-      buildErrorRedirectUrl(request.url, {
+      buildErrorRedirectUrl(request.url, locationId, {
         values,
-        error: "Unable to create location right now. Please try again.",
+        error: "Unable to update location right now. Please try again.",
       }),
       303,
     );
