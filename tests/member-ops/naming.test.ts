@@ -17,7 +17,7 @@ test("memberops naming rules distinguish user, person, member, and membership", 
   assert.match(MEMBEROPS_NAMING_RULES.user, /login\/auth/i);
   assert.match(MEMBEROPS_NAMING_RULES.person, /canonical human identity/i);
   assert.match(MEMBEROPS_NAMING_RULES.member, /participating in the organization/i);
-  assert.match(MEMBEROPS_NAMING_RULES.membership, /team\/season/i);
+  assert.match(MEMBEROPS_NAMING_RULES.membership, /team and season/i);
 });
 
 test("roster role guard only allows roster-safe role types", () => {
