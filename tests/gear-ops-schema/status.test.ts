@@ -52,23 +52,19 @@ test("reports readiness enumerates missing columns instead of using stale names"
 test("kits readiness lists missing tables for shared screens", () => {
   const status = evaluateGearOpsSchemaStatus({
     scope: "kits",
-    availableTables: ["GearItem", "InventoryKit"],
+    availableTables: ["InventoryKit"],
     availableColumnsByTable: new Map([
-      ["GearItem", new Set(["organizationId", "name", "inventoryType", "lifecycleStatus"])],
       [
         "InventoryKit",
         new Set([
           "organizationId",
           "name",
+          "description",
           "kitType",
           "ownerPersonId",
           "assignedToPersonId",
-          "assignedToTeamId",
-          "assignedToEventId",
-          "labelCode",
           "readinessLabel",
           "custodyStatus",
-          "lastInspectedAt",
           "lastInspectionStatus",
           "isActive",
         ]),
@@ -77,8 +73,61 @@ test("kits readiness lists missing tables for shared screens", () => {
   });
 
   assert.equal(status.schemaReady, false);
-  assert.deepEqual(status.missingTables, ["GearKitCustodyEvent", "GearKitInspection", "InventoryKitItem"]);
+  assert.deepEqual(status.missingTables, ["InventoryKitItem"]);
   assert.ok(status.pendingActions.some((entry) => entry.startsWith("Create missing tables:")));
+});
+
+test("item-creation readiness requires the shared Program lookup table but not unrelated location columns", () => {
+  const status = evaluateGearOpsSchemaStatus({
+    scope: "item-creation",
+    availableTables: ["GearCategory", "GearItem"],
+    availableColumnsByTable: new Map([
+      ["GearCategory", new Set(["organizationId", "name", "inventoryType"])],
+      [
+        "GearItem",
+        new Set([
+          "organizationId",
+          "programId",
+          "gearCategoryId",
+          "name",
+          "inventoryType",
+          "sku",
+          "serialNumber",
+          "quantityOnHand",
+          "quantityMin",
+          "lifecycleStatus",
+          "conditionStatus",
+          "barcodeValue",
+          "notes",
+        ]),
+      ],
+    ]),
+  });
+
+  assert.equal(status.schemaReady, false);
+  assert.deepEqual(status.missingTables, ["Program"]);
+  assert.deepEqual(status.missingColumns, []);
+});
+
+test("audits readiness no longer blocks the list screen on unrelated reconciliation tables", () => {
+  const status = evaluateGearOpsSchemaStatus({
+    scope: "audits",
+    availableTables: ["InventoryAudit", "InventoryAuditSession"],
+    availableColumnsByTable: new Map([
+      [
+        "InventoryAudit",
+        new Set(["organizationId", "name", "description", "auditType", "scope", "nextScheduledAt", "lastExecutedAt", "archivedAt"]),
+      ],
+      [
+        "InventoryAuditSession",
+        new Set(["organizationId", "inventoryAuditId", "status", "startedAt", "completedAt"]),
+      ],
+    ]),
+  });
+
+  assert.equal(status.schemaReady, true);
+  assert.deepEqual(status.missingTables, []);
+  assert.deepEqual(status.missingColumns, []);
 });
 
 test("schema unavailable message includes explicit missing tables and columns", () => {

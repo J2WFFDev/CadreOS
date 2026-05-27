@@ -40,6 +40,7 @@ const GEAR_CATEGORY_CONFIGURATION_COLUMNS = [
   "organizationId",
   "name",
   "inventoryType",
+  "description",
   "templateSlug",
   "behaviorType",
   "custodyMode",
@@ -58,6 +59,7 @@ const GEAR_CATEGORY_CONFIGURATION_COLUMNS = [
 ];
 
 const GEAR_CATEGORY_BASIC_COLUMNS = ["organizationId", "name", "inventoryType"];
+const PROGRAM_LOOKUP_COLUMNS = ["organizationId", "name"];
 const INVENTORY_LOCATION_COLUMNS = ["organizationId", "name", "isActive", "locationType", "parentLocationId"];
 const GEAR_ITEM_CREATE_COLUMNS = [
   "organizationId",
@@ -71,7 +73,6 @@ const GEAR_ITEM_CREATE_COLUMNS = [
   "quantityMin",
   "lifecycleStatus",
   "conditionStatus",
-  "locationId",
   "barcodeValue",
   "notes",
 ];
@@ -183,95 +184,39 @@ const GEAR_OPS_SETTINGS_COLUMNS = [
   "enableMaintenanceTracking",
   "defaultReportGroup",
 ];
-const INVENTORY_KIT_COLUMNS = [
+const INVENTORY_KIT_LIST_COLUMNS = [
   "organizationId",
   "name",
+  "description",
   "kitType",
   "ownerPersonId",
   "assignedToPersonId",
-  "assignedToTeamId",
-  "assignedToEventId",
-  "labelCode",
   "readinessLabel",
   "custodyStatus",
-  "lastInspectedAt",
   "lastInspectionStatus",
   "isActive",
 ];
-const INVENTORY_KIT_ITEM_COLUMNS = [
+const INVENTORY_KIT_LIST_ITEM_COLUMNS = [
   "organizationId",
   "kitId",
-  "gearItemId",
-  "componentRole",
-  "isRequired",
-  "quantity",
-  "quantityExpected",
-  "sortOrder",
   "removedAt",
 ];
-const GEAR_KIT_INSPECTION_COLUMNS = ["organizationId", "kitId", "inspectedByPersonId", "status"];
-const GEAR_KIT_CUSTODY_EVENT_COLUMNS = [
-  "organizationId",
-  "kitId",
-  "eventType",
-  "actorPersonId",
-  "custodyPersonId",
-  "relatedEventId",
-  "isPartial",
-  "occurredAt",
-];
-const INVENTORY_AUDIT_COLUMNS = [
+const INVENTORY_AUDIT_LIST_COLUMNS = [
   "organizationId",
   "name",
+  "description",
   "auditType",
   "scope",
-  "scopeReferenceId",
   "nextScheduledAt",
   "lastExecutedAt",
-  "createdByPersonId",
   "archivedAt",
 ];
-const INVENTORY_AUDIT_SESSION_COLUMNS = [
+const INVENTORY_AUDIT_SESSION_LIST_COLUMNS = [
   "organizationId",
   "inventoryAuditId",
-  "title",
   "status",
-  "plannedAt",
   "startedAt",
   "completedAt",
-  "startedByPersonId",
-  "completedByPersonId",
-];
-const INVENTORY_AUDIT_CHECKPOINT_COLUMNS = ["organizationId", "auditSessionId", "label", "orderIndex", "status"];
-const INVENTORY_AUDIT_RESULT_COLUMNS = [
-  "organizationId",
-  "auditSessionId",
-  "gearItemId",
-  "verificationStatus",
-  "expectedLocationId",
-  "observedLocationId",
-  "expectedCustodyPersonId",
-  "observedCustodyPersonId",
-  "expectedQuantity",
-  "observedQuantity",
-  "expectedReadinessState",
-  "observedReadinessState",
-  "observedConditionStatus",
-  "verifiedAt",
-  "verifiedByPersonId",
-];
-const INVENTORY_AUDIT_DISCREPANCY_COLUMNS = [
-  "organizationId",
-  "auditSessionId",
-  "auditResultId",
-  "gearItemId",
-  "locationId",
-  "discrepancyType",
-  "status",
-  "summary",
-  "detectedAt",
-  "resolvedAt",
-  "resolvedByPersonId",
 ];
 
 const CATEGORY_CREATION_REQUIREMENTS: GearOpsSchemaRequirement[] = [
@@ -299,6 +244,7 @@ const CORE_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
 
 const ITEM_CREATION_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
   [{ table: "GearCategory", columns: GEAR_CATEGORY_BASIC_COLUMNS }],
+  [{ table: "Program", columns: PROGRAM_LOOKUP_COLUMNS }],
   [{ table: "GearItem", columns: GEAR_ITEM_CREATE_COLUMNS }],
 );
 
@@ -314,26 +260,51 @@ const ADMIN_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
 );
 
 const KIT_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
-  [{ table: "InventoryKit", columns: INVENTORY_KIT_COLUMNS }],
-  [{ table: "InventoryKitItem", columns: INVENTORY_KIT_ITEM_COLUMNS }],
-  [{ table: "GearKitInspection", columns: GEAR_KIT_INSPECTION_COLUMNS }],
-  [{ table: "GearKitCustodyEvent", columns: GEAR_KIT_CUSTODY_EVENT_COLUMNS }],
-  [{ table: "GearItem", columns: ["organizationId", "name", "inventoryType", "lifecycleStatus"] }],
+  [{ table: "InventoryKit", columns: INVENTORY_KIT_LIST_COLUMNS }],
+  [{ table: "InventoryKitItem", columns: INVENTORY_KIT_LIST_ITEM_COLUMNS }],
 );
 
-const REPORT_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
-  CORE_REQUIREMENTS,
-  [{ table: "GearItem", columns: GEAR_ITEM_REPORTING_COLUMNS }],
-);
+const REPORT_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements([
+  { table: "GearCategory", columns: GEAR_CATEGORY_BASIC_COLUMNS },
+  {
+    table: "GearItem",
+    columns: [
+      "organizationId",
+      "gearCategoryId",
+      "name",
+      "inventoryType",
+      "lifecycleStatus",
+      "conditionStatus",
+      "ownershipType",
+      "readinessState",
+      "locationId",
+      "quantityOnHand",
+      "quantityMin",
+      "inspectionDueStatus",
+      "maintenanceDueStatus",
+      "nextInspectionDueAt",
+      "nextMaintenanceDueAt",
+    ],
+  },
+  { table: "InventoryLocation", columns: ["organizationId", "name"] },
+  {
+    table: "GearAssignment",
+    columns: ["organizationId", "gearItemId", "status", "expectedReturnAt", "returnedAt", "assignedToPersonId", "assignedToEventId"],
+  },
+  {
+    table: "GearCheckout",
+    columns: ["organizationId", "gearItemId", "status", "expectedReturnAt", "returnedAt", "checkedOutAt", "checkedOutById", "eventId"],
+  },
+  { table: "GearReservation", columns: GEAR_RESERVATION_COLUMNS },
+  { table: "ConsumableTransaction", columns: CONSUMABLE_TRANSACTION_COLUMNS },
+  { table: "EventGearPlan", columns: ["organizationId", "eventId"] },
+  { table: "EventGearRequirement", columns: ["organizationId", "planId", "quantityNeeded"] },
+  { table: "EventGearAssignment", columns: ["organizationId", "requirementId", "gearItemId", "stagedAt", "recoveredAt"] },
+]);
 
 const AUDIT_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
-  [{ table: "InventoryAudit", columns: INVENTORY_AUDIT_COLUMNS }],
-  [{ table: "InventoryAuditSession", columns: INVENTORY_AUDIT_SESSION_COLUMNS }],
-  [{ table: "InventoryAuditCheckpoint", columns: INVENTORY_AUDIT_CHECKPOINT_COLUMNS }],
-  [{ table: "InventoryAuditResult", columns: INVENTORY_AUDIT_RESULT_COLUMNS }],
-  [{ table: "InventoryAuditDiscrepancy", columns: INVENTORY_AUDIT_DISCREPANCY_COLUMNS }],
-  [{ table: "InventoryLocation", columns: INVENTORY_LOCATION_COLUMNS }],
-  [{ table: "GearItem", columns: ["organizationId", "name", "locationId", "readinessState"] }],
+  [{ table: "InventoryAudit", columns: INVENTORY_AUDIT_LIST_COLUMNS }],
+  [{ table: "InventoryAuditSession", columns: INVENTORY_AUDIT_SESSION_LIST_COLUMNS }],
 );
 
 const GEAR_OPS_SCHEMA_REQUIREMENTS: Record<GearOpsSchemaScope, GearOpsSchemaRequirement[]> = {

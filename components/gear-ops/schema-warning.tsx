@@ -28,10 +28,16 @@ export async function GearOpsSchemaWarning({
         <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
           <p className="font-medium">GearOps schema diagnostics</p>
           <p className="mt-2 text-zinc-700 dark:text-zinc-300">
+            Connected: {status.connected ? "yes" : "no"} · Schema ready: {status.schemaReady ? "yes" : "no"}
+          </p>
+          <p className="mt-2 text-zinc-700 dark:text-zinc-300">
             Missing tables: {status.missingTables.length > 0 ? status.missingTables.join(", ") : "none"}
           </p>
           <p className="mt-1 text-zinc-700 dark:text-zinc-300">
             Missing columns: {status.missingColumns.length > 0 ? status.missingColumns.join(", ") : "none"}
+          </p>
+          <p className="mt-1 text-zinc-700 dark:text-zinc-300">
+            Pending actions: {status.pendingActions.length > 0 ? status.pendingActions.join(" · ") : "none"}
           </p>
           <p className="mt-1 text-zinc-500 dark:text-zinc-400">Checked tables: {status.checkedTables.join(", ")}</p>
           <p className="mt-1 text-zinc-500 dark:text-zinc-400">

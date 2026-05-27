@@ -78,7 +78,7 @@ jobs:
       - name: Prisma migration status after deploy (diagnostic)
         run: npx prisma migrate status || true
 
-      - name: Verify required GearOps tables exist
+      - name: Verify GearOps readiness schema exists
         run: |
           node - <<'NODE'
           const { PrismaClient } = require("@prisma/client");
@@ -110,6 +110,67 @@ jobs:
             "InventoryAuditResult",
             "InventoryAuditDiscrepancy",
           ];
+          const requiredColumns = [
+            { table: "Program", columns: ["organizationId", "name"] },
+            {
+              table: "GearCategory",
+              columns: [
+                "description",
+                "templateSlug",
+                "behaviorType",
+                "custodyMode",
+                "requiresReturnInspection",
+                "requiresMaintenanceTracking",
+                "maintenanceFrequency",
+                "maintenanceIntervalDays",
+                "primaryIdentifierType",
+                "supportsConsumableTracking",
+                "consumableLowStockDefault",
+                "supportsEventDeployment",
+                "reportGroup",
+                "reportLabel",
+                "isKitContainer",
+                "guardianApprovalRequired",
+              ],
+            },
+            {
+              table: "GearItem",
+              columns: ["inspectionDueStatus", "maintenanceDueStatus", "nextInspectionDueAt", "nextMaintenanceDueAt"],
+            },
+            {
+              table: "GearReservation",
+              columns: ["windowStartAt", "windowEndAt", "conflictSummary", "reservedForPersonId", "reservedForTeamId", "reservedForEventId"],
+            },
+            { table: "EventGearPlan", columns: ["eventId"] },
+            { table: "EventGearRequirement", columns: ["planId", "quantityNeeded"] },
+            { table: "EventGearAssignment", columns: ["requirementId", "gearItemId", "stagedAt", "recoveredAt"] },
+            {
+              table: "EventGearRequirementTemplate",
+              columns: ["description", "gearCategoryId", "label", "requirementType", "quantityNeeded", "isActive"],
+            },
+            {
+              table: "GearOpsOrganizationSettings",
+              columns: [
+                "defaultCustodyMode",
+                "enableGuardianApproval",
+                "enableConsumableTracking",
+                "enableEventDeployment",
+                "enableReadinessTracking",
+                "enableMaintenanceTracking",
+                "defaultReportGroup",
+              ],
+            },
+            {
+              table: "InventoryKit",
+              columns: ["description", "ownerPersonId", "assignedToPersonId", "readinessLabel", "custodyStatus", "lastInspectionStatus", "isActive"],
+            },
+            { table: "InventoryKitItem", columns: ["kitId", "removedAt"] },
+            {
+              table: "InventoryAudit",
+              columns: ["description", "auditType", "scope", "nextScheduledAt", "lastExecutedAt", "archivedAt"],
+            },
+            { table: "InventoryAuditSession", columns: ["inventoryAuditId", "status", "startedAt", "completedAt"] },
+          ];
 
           async function main() {
             const rows = await prisma.$queryRawUnsafe(`
@@ -125,7 +186,27 @@ jobs:
               throw new Error(`Missing required GearOps tables after setup: ${missing.join(", ")}`);
             }
 
+            for (const requirement of requiredColumns) {
+              const columnRows = await prisma.$queryRawUnsafe(
+                `
+                  SELECT column_name
+                  FROM information_schema.columns
+                  WHERE table_schema = 'public'
+                    AND table_name = $1
+                    AND column_name = ANY($2::text[])
+                `,
+                requirement.table,
+                requirement.columns,
+              );
+              const existingColumns = new Set(columnRows.map((row) => row.column_name));
+              const missingColumns = requirement.columns.filter((columnName) => !existingColumns.has(columnName));
+              if (missingColumns.length > 0) {
+                throw new Error(`Missing required GearOps columns after setup for ${requirement.table}: ${missingColumns.join(", ")}`);
+              }
+            }
+
             console.log("Verified required GearOps tables:", requiredTables.join(", "));
+            console.log("Verified required GearOps readiness columns.");
           }
 
           main()

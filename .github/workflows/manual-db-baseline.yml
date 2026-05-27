@@ -41,6 +41,9 @@ jobs:
         20260526143000_add_person_lifecycle_status
         20260526152000_add_gearops_core_tables
         20260526223000_fix_missing_gearops_consumable_tables
+        20260527000000_add_gear_reservation
+        20260527133000_add_gearcategory_configuration_columns
+        20260527143000_align_gearops_schema_readiness
 
     steps:
       - name: Confirm one-time baseline intent
