@@ -558,6 +558,9 @@ export default async function PeoplePage({
     ? filteredPeople.filter((person) => person.readiness.missingGuardian).length
     : 0;
   const membersNeedingAttention = filteredPeople.filter((person) => person.readiness.needsAttention).length;
+  const onboardingIncompleteMembers = filteredPeople.filter((person) => person.readiness.onboardingIncomplete).length;
+  const offboardingActionMembers = filteredPeople.filter((person) => person.readiness.offboardingActionRecommended).length;
+  const rolloverReviewMembers = filteredPeople.filter((person) => person.readiness.rolloverNeedsReview).length;
   const lifecycleStatusSummary = Object.values(MemberLifecycleStatus)
     .map((status) => `${MEMBER_LIFECYCLE_STATUS_LABELS[status]} ${lifecycleCounts[status] ?? 0}`)
     .join(" · ");
@@ -594,6 +597,10 @@ export default async function PeoplePage({
             ) : null}
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Members needing attention in current scope: {membersNeedingAttention}.
+            </p>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Onboarding incomplete: {onboardingIncompleteMembers} · Offboarding review needed:{" "}
+              {offboardingActionMembers} · Rollover readiness review needed: {rolloverReviewMembers}.
             </p>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Active members with no roster membership in current scope: {activePeopleWithoutRosterMembership}.
@@ -731,6 +738,7 @@ export default async function PeoplePage({
                   <th className="px-4 py-3 font-medium">Roles</th>
                   <th className="px-4 py-3 font-medium">Team / Program</th>
                   <th className="px-4 py-3 font-medium">Readiness</th>
+                  <th className="px-4 py-3 font-medium">Transition readiness</th>
                   {canViewGuardianRelationshipDetails ? (
                     <th className="px-4 py-3 font-medium">Guardian links</th>
                   ) : null}
@@ -769,6 +777,22 @@ export default async function PeoplePage({
                         {person.readiness.labels.length > 0 ? (
                           <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">{person.readiness.labels.join(" · ")}</p>
                         ) : null}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                        <p className="text-xs">
+                          Onboarding: {person.readiness.onboardingIncomplete ? "Incomplete" : "Ready"}
+                        </p>
+                        <p className="mt-1 text-xs">
+                          Offboarding: {person.readiness.offboardingActionRecommended ? "Review needed" : "No action"}
+                        </p>
+                        <p className="mt-1 text-xs">
+                          Rollover:{" "}
+                          {person.readiness.rolloverReady
+                            ? "Ready"
+                            : person.readiness.rolloverNeedsReview
+                              ? "Needs review"
+                              : "Not applicable"}
+                        </p>
                       </td>
                       {canViewGuardianRelationshipDetails ? (
                         <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">

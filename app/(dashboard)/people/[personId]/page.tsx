@@ -15,6 +15,7 @@ import { db } from "@/lib/db";
 import { isUnresolvedTaskStatus } from "@/lib/follow-up-tasks";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { MEMBER_LIFECYCLE_STATUS_LABELS } from "@/lib/member-ops";
+import { deriveMemberRosterReadiness } from "@/lib/member-ops-roster-readiness";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { getOperationalHistory } from "@/lib/operational-history";
 import {
@@ -475,6 +476,18 @@ export default async function PersonDetailsPage({
     (link) => link.guardian._count.userAccounts > 0 && link.guardian.roles.length === 0,
   );
   const hasPendingOrIncompleteRelationshipSupport = hasGuardianAccountLinkGap || hasInactiveGuardianAccountSignal;
+  const memberTransitionReadiness = deriveMemberRosterReadiness({
+    lifecycleStatus: person.lifecycleStatus,
+    roleTypes: [...new Set(visibleRoles.map((role) => role.roleType))],
+    rosterRoles: [...new Set(visibleRoster.map((membership) => membership.rosterRole))],
+    membershipCount: visibleRoster.length,
+    athleteGuardianLinkCount: person.athleteLinks.length,
+    hasProgramAssignment:
+      visibleRoster.length > 0 ||
+      visibleRoles.some((role) => role.program?.id || role.team?.program?.id),
+    hasSeasonAssignment: hasActiveRosterMembership,
+    hasProfileEmail: Boolean(person.email),
+  });
   const personOperationalHistory = await getOperationalHistory({
     organizationId: scope.organizationId,
     personId: person.id,
@@ -703,6 +716,19 @@ export default async function PersonDetailsPage({
             Lifecycle note: member has roster membership while lifecycle status is {MEMBER_LIFECYCLE_STATUS_LABELS[person.lifecycleStatus]}.
           </p>
         ) : null}
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          Onboarding: {memberTransitionReadiness.onboardingIncomplete ? "Incomplete" : "Ready"} · Offboarding:{" "}
+          {memberTransitionReadiness.offboardingActionRecommended ? "Review needed" : "No action"} · Rollover:{" "}
+          {memberTransitionReadiness.rolloverReady
+            ? "Ready"
+            : memberTransitionReadiness.rolloverNeedsReview
+              ? "Needs review"
+              : "Not applicable"}.
+        </p>
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          Transfer is represented in Release 1 as a non-destructive status and assignment update workflow (typically
+          Inactive plus updated team/program/season context), while historical records remain preserved.
+        </p>
         {activateError ? (
           <p className="mt-2 text-sm text-red-600">{activateError}</p>
         ) : null}

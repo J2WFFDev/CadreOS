@@ -19,6 +19,8 @@ test("deriveMemberRosterReadiness marks active athlete with complete setup as re
 
   assert.equal(readiness.needsAttention, false);
   assert.equal(readiness.ready, true);
+  assert.equal(readiness.rolloverReady, true);
+  assert.equal(readiness.rolloverNeedsReview, false);
   assert.deepEqual(readiness.labels, []);
 });
 
@@ -36,6 +38,8 @@ test("deriveMemberRosterReadiness marks missing guardian and assignments as atte
 
   assert.equal(readiness.needsAttention, true);
   assert.equal(readiness.ready, false);
+  assert.equal(readiness.onboardingIncomplete, true);
+  assert.equal(readiness.rolloverNeedsReview, true);
   assert.equal(readiness.missingGuardian, true);
   assert.equal(readiness.missingTeamAssignment, true);
   assert.equal(readiness.missingProgramAssignment, true);
@@ -56,6 +60,7 @@ test("deriveMemberRosterReadiness flags non-default lifecycle as attention requi
 
   assert.equal(readiness.needsAttention, true);
   assert.equal(readiness.labels.includes("Inactive/archived lifecycle"), true);
+  assert.equal(readiness.offboardingActionRecommended, false);
 });
 
 test("deriveMemberRosterReadiness marks incomplete profile when email or roles are missing", () => {
@@ -72,4 +77,22 @@ test("deriveMemberRosterReadiness marks incomplete profile when email or roles a
 
   assert.equal(readiness.incompleteProfile, true);
   assert.equal(readiness.labels.includes("Incomplete profile"), true);
+  assert.equal(readiness.labels.includes("Onboarding incomplete"), true);
+});
+
+test("deriveMemberRosterReadiness marks non-operational member with roster history for offboarding review", () => {
+  const readiness = deriveMemberRosterReadiness({
+    lifecycleStatus: MemberLifecycleStatus.INACTIVE,
+    roleTypes: ["ATHLETE"],
+    rosterRoles: ["ATHLETE"],
+    membershipCount: 1,
+    athleteGuardianLinkCount: 1,
+    hasProgramAssignment: true,
+    hasSeasonAssignment: true,
+    hasProfileEmail: true,
+  });
+
+  assert.equal(readiness.offboardingActionRecommended, true);
+  assert.equal(readiness.labels.includes("Offboarding review needed"), true);
+  assert.equal(readiness.rolloverReady, false);
 });
