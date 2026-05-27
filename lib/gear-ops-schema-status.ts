@@ -13,6 +13,7 @@ export type GearOpsSchemaScope =
   | "item-creation"
   | "item-list"
   | "item-detail"
+  | "reservation-creation"
   | "kits"
   | "reports"
   | "event-templates"
@@ -460,12 +461,26 @@ const ITEM_DETAIL_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
   [{ table: "ConsumableTransaction", columns: CONSUMABLE_TRANSACTION_DETAIL_COLUMNS }],
 );
 
+const RESERVATION_CREATION_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
+  [{ table: "GearCategory", columns: ["organizationId", "name", "guardianApprovalRequired"] }],
+  [
+    {
+      table: "GearItem",
+      columns: ["organizationId", "gearCategoryId", "name", "inventoryType", "lifecycleStatus", "quantityOnHand", "readinessState"],
+    },
+  ],
+  [{ table: "GearReservation", columns: GEAR_RESERVATION_DETAIL_COLUMNS }],
+  [{ table: "GearCheckout", columns: ["organizationId", "gearItemId", "status"] }],
+  [{ table: "GearAssignment", columns: ["organizationId", "gearItemId", "status"] }],
+);
+
 const GEAR_OPS_SCHEMA_REQUIREMENTS: Record<GearOpsSchemaScope, GearOpsSchemaRequirement[]> = {
   core: CORE_REQUIREMENTS,
   "category-creation": CATEGORY_CREATION_REQUIREMENTS,
   "item-creation": ITEM_CREATION_REQUIREMENTS,
   "item-list": ITEM_LIST_REQUIREMENTS,
   "item-detail": ITEM_DETAIL_REQUIREMENTS,
+  "reservation-creation": RESERVATION_CREATION_REQUIREMENTS,
   kits: KIT_REQUIREMENTS,
   reports: REPORT_REQUIREMENTS,
   "event-templates": EVENT_TEMPLATE_REQUIREMENTS,

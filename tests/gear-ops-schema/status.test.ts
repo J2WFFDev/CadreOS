@@ -237,3 +237,76 @@ test("item-detail readiness reports missing GearReservation but item-list does n
   assert.ok(!listTables.includes("GearReservation"), "item-list must not require GearReservation");
   assert.ok(detailTables.includes("GearReservation"), "item-detail must require GearReservation");
 });
+
+test("reservation-creation readiness is true when all required tables and columns exist", () => {
+  const requirements = getGearOpsSchemaRequirements("reservation-creation");
+  const availableTables = requirements.map((requirement) => requirement.table);
+  const status = evaluateGearOpsSchemaStatus({
+    scope: "reservation-creation",
+    availableTables,
+    availableColumnsByTable: buildAvailableColumns("reservation-creation"),
+  });
+
+  assert.equal(status.schemaReady, true);
+  assert.deepEqual(status.missingTables, []);
+  assert.deepEqual(status.missingColumns, []);
+  assert.equal(status.setupRequired, false);
+  assert.deepEqual(status.pendingActions, []);
+});
+
+test("reservation-creation requires GearReservation, GearItem, GearCategory, GearCheckout, GearAssignment", () => {
+  const requirements = getGearOpsSchemaRequirements("reservation-creation");
+  const requiredTables = requirements.map((r) => r.table);
+
+  assert.ok(requiredTables.includes("GearReservation"), "reservation-creation must require GearReservation");
+  assert.ok(requiredTables.includes("GearItem"), "reservation-creation must require GearItem");
+  assert.ok(requiredTables.includes("GearCategory"), "reservation-creation must require GearCategory");
+  assert.ok(requiredTables.includes("GearCheckout"), "reservation-creation must require GearCheckout");
+  assert.ok(requiredTables.includes("GearAssignment"), "reservation-creation must require GearAssignment");
+});
+
+test("reservation-creation requires guardianApprovalRequired column on GearCategory", () => {
+  const requirements = getGearOpsSchemaRequirements("reservation-creation");
+  const categoryReq = requirements.find((r) => r.table === "GearCategory");
+
+  assert.ok(categoryReq, "GearCategory must be in reservation-creation requirements");
+  if (!categoryReq) return;
+  assert.ok(
+    categoryReq.columns.includes("guardianApprovalRequired"),
+    "GearCategory must require guardianApprovalRequired for reservation-creation",
+  );
+});
+
+test("reservation-creation reports missing GearReservation table", () => {
+  const requirements = getGearOpsSchemaRequirements("reservation-creation");
+  const availableTables = requirements.map((r) => r.table).filter((t) => t !== "GearReservation");
+  const availableColumnsByTable = buildAvailableColumns("reservation-creation");
+  availableColumnsByTable.delete("GearReservation");
+
+  const status = evaluateGearOpsSchemaStatus({
+    scope: "reservation-creation",
+    availableTables,
+    availableColumnsByTable,
+  });
+
+  assert.equal(status.schemaReady, false);
+  assert.ok(status.missingTables.includes("GearReservation"));
+  assert.equal(status.setupRequired, true);
+});
+
+test("reservation-creation reports missing column on GearReservation", () => {
+  const requirements = getGearOpsSchemaRequirements("reservation-creation");
+  const availableTables = requirements.map((r) => r.table);
+  const availableColumnsByTable = buildAvailableColumns("reservation-creation");
+  availableColumnsByTable.get("GearReservation")?.delete("quantityRequested");
+
+  const status = evaluateGearOpsSchemaStatus({
+    scope: "reservation-creation",
+    availableTables,
+    availableColumnsByTable,
+  });
+
+  assert.equal(status.schemaReady, false);
+  assert.ok(status.missingColumns.includes("GearReservation.quantityRequested"));
+  assert.equal(status.setupRequired, true);
+});

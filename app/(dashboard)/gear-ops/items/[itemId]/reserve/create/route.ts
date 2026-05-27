@@ -11,6 +11,10 @@ import {
   evaluateGearReservationConflicts,
   formatGearReservationEnum,
 } from "@/lib/gear-reservations";
+import {
+  buildGearOpsSchemaUnavailableMessage,
+  getGearOpsSchemaStatus,
+} from "@/lib/gear-ops-schema-status";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { resolveActorPersonId } from "@/lib/user-account";
 import {
@@ -124,6 +128,17 @@ export async function POST(
     );
   }
   const organizationId = scope.organizationId;
+
+  const schemaStatus = await getGearOpsSchemaStatus("reservation-creation");
+  if (!schemaStatus.schemaReady) {
+    return NextResponse.redirect(
+      buildErrorRedirectUrl(request.url, itemId, {
+        values,
+        error: buildGearOpsSchemaUnavailableMessage(schemaStatus, "Run database setup before creating reservations."),
+      }),
+      303,
+    );
+  }
 
   const parsed = gearReservationWorkflowSchema.safeParse(values);
   if (!parsed.success) {
