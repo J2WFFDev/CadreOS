@@ -160,19 +160,19 @@ Test from lowest-privilege and narrowest-context roles upward so access leaks an
 
 ## 9. Recommended Next Arcs
 
-1. **Arc: Role-based validation and UX hardening**  
+1. **Arc: Role-based validation and UX hardening**
    Unify persona acceptance criteria, landing-page behavior, and navigation exposure before expanding guardian, athlete, or mobile experiences.
 
-2. **Arc 19 completion / entry consolidation**  
+2. **Arc 19 completion / entry consolidation**
    Finish the unified operational-entry program so notes, tasks, decisions, feed, and future journaling stop straddling two competing models.
 
-3. **Arc: Mobile web shell and accessibility consistency**  
+3. **Arc: Mobile web shell and accessibility consistency**
    Implement the documented guided-mode shell, shared status patterns, and accessibility guardrails across Today, Events, Gear, People, and Tasks.
 
-4. **Arc 20R–20S focused GearOps follow-on**  
+4. **Arc 20R–20S focused GearOps follow-on**
    Run pilot instrumentation first, then add guarded import/export/label operations based on observed operator pain points.
 
-5. **Arc 21A bounded athlete journaling pilot**  
+5. **Arc 21A bounded athlete journaling pilot**
    After role-safe validation and entry-model stabilization, deliver the smallest useful journaling slice with explicit privacy and guardian visibility rules.
 
 ## Major Findings
