@@ -131,6 +131,7 @@ export type CreateInventoryKitInput = {
   name: string;
   description?: string | null;
   ownerPersonId?: string | null;
+  kitType?: import("@prisma/client").GearKitType;
 };
 
 /** Input for adding an item to a kit. */
@@ -138,7 +139,11 @@ export type AddItemToKitInput = {
   organizationId: string;
   kitId: string;
   gearItemId: string;
+  componentRole?: import("@prisma/client").GearKitComponentRole;
+  isRequired?: boolean;
   quantity?: number;
+  quantityExpected?: number;
+  sortOrder?: number;
   notes?: string | null;
 };
 
@@ -147,6 +152,96 @@ export type RemoveItemFromKitInput = {
   organizationId: string;
   kitId: string;
   gearItemId: string;
+};
+
+/** Input for updating an inventory kit. */
+export type UpdateInventoryKitInput = {
+  organizationId: string;
+  kitId: string;
+  name?: string;
+  description?: string | null;
+  ownerPersonId?: string | null;
+  kitType?: import("@prisma/client").GearKitType;
+  isActive?: boolean;
+};
+
+/** Input for kit checkout (full kit). */
+export type CheckOutKitInput = {
+  organizationId: string;
+  kitId: string;
+  actorPersonId: string;
+  custodyPersonId: string;
+  relatedEventId?: string | null;
+  notes?: string | null;
+  /** If true, only specific child items are checked out with the kit. */
+  isPartial?: boolean;
+  /** IDs of child gearItems to include when isPartial is true. */
+  partialChildGearItemIds?: string[];
+};
+
+/** Input for kit check-in (full kit return). */
+export type CheckInKitInput = {
+  organizationId: string;
+  kitId: string;
+  actorPersonId: string;
+  notes?: string | null;
+  /** If true, only specific child items are returned. */
+  isPartial?: boolean;
+  /** IDs of child gearItems being returned when isPartial is true. */
+  partialChildGearItemIds?: string[];
+};
+
+/** Input for assigning a kit to a person, team, or event. */
+export type AssignKitInput = {
+  organizationId: string;
+  kitId: string;
+  actorPersonId: string;
+  assignToPersonId?: string | null;
+  assignToTeamId?: string | null;
+  assignToEventId?: string | null;
+  notes?: string | null;
+};
+
+/** Input for logging a kit inspection. */
+export type LogKitInspectionInput = {
+  organizationId: string;
+  kitId: string;
+  inspectedByPersonId: string;
+  status: import("@prisma/client").GearKitInspectionStatus;
+  notes?: string | null;
+  /** JSON-serializable per-item condition observations. */
+  itemConditions?: Array<{
+    kitItemId: string;
+    gearItemId: string;
+    conditionStatus?: import("@prisma/client").GearConditionStatus | null;
+    notes?: string | null;
+  }>;
+  /** IDs of gearItems confirmed missing during inspection. */
+  missingItemIds?: string[];
+};
+
+/** Input for reserving/holding a kit. */
+export type ReserveKitInput = {
+  organizationId: string;
+  kitId: string;
+  actorPersonId: string;
+  relatedEventId?: string | null;
+  notes?: string | null;
+};
+
+/** Summary view for an inventory kit. */
+export type InventoryKitSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  kitType: import("@prisma/client").GearKitType;
+  isActive: boolean;
+  readinessLabel: import("@prisma/client").GearKitReadinessLabel;
+  custodyStatus: import("@prisma/client").GearKitCustodyStatus;
+  lastInspectionStatus: import("@prisma/client").GearKitInspectionStatus | null;
+  owner: { id: string; firstName: string; lastName: string } | null;
+  assignedTo: { id: string; firstName: string; lastName: string } | null;
+  itemCount: number;
 };
 
 // ── View/projection types ────────────────────────────────────────────────────
@@ -183,15 +278,7 @@ export type InventoryLocationSummary = {
   itemCount: number;
 };
 
-/** Summary view for an inventory kit. */
-export type InventoryKitSummary = {
-  id: string;
-  name: string;
-  description: string | null;
-  isActive: boolean;
-  owner: { id: string; firstName: string; lastName: string } | null;
-  itemCount: number;
-};
+// InventoryKitSummary now defined above with full kit fields.
 
 // ── Activity action constants ────────────────────────────────────────────────
 
@@ -201,8 +288,15 @@ export const INVENTORY_ACTIVITY_ACTIONS = {
   LOCATION_CREATED: "inventory.location.created",
   LOCATION_UPDATED: "inventory.location.updated",
   KIT_CREATED: "inventory.kit.created",
+  KIT_UPDATED: "inventory.kit.updated",
   KIT_ITEM_ADDED: "inventory.kit.item_added",
   KIT_ITEM_REMOVED: "inventory.kit.item_removed",
+  KIT_CHECKED_OUT: "inventory.kit.checked_out",
+  KIT_CHECKED_IN: "inventory.kit.checked_in",
+  KIT_ASSIGNED: "inventory.kit.assigned",
+  KIT_INSPECTION_LOGGED: "inventory.kit.inspection_logged",
+  KIT_RESERVED: "inventory.kit.reserved",
+  KIT_RESERVATION_RELEASED: "inventory.kit.reservation_released",
   READINESS_STATE_CHANGED: "inventory.readiness_state.changed",
   OWNERSHIP_TYPE_SET: "inventory.ownership_type.set",
   SCAN_EVENT_RECORDED: "inventory.scan_event.recorded",
