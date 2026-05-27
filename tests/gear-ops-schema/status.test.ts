@@ -144,3 +144,96 @@ test("schema unavailable message includes explicit missing tables and columns", 
     "Database schema is not available yet (tables: InventoryAudit | columns: GearItem.inspectionDueStatus). Run database setup before loading inventory audits.",
   );
 });
+
+test("item-list readiness is true when all required tables and columns exist", () => {
+  const requirements = getGearOpsSchemaRequirements("item-list");
+  const availableTables = requirements.map((requirement) => requirement.table);
+  const status = evaluateGearOpsSchemaStatus({
+    scope: "item-list",
+    availableTables,
+    availableColumnsByTable: buildAvailableColumns("item-list"),
+  });
+
+  assert.equal(status.schemaReady, true);
+  assert.deepEqual(status.missingTables, []);
+  assert.deepEqual(status.missingColumns, []);
+  assert.equal(status.setupRequired, false);
+  assert.deepEqual(status.pendingActions, []);
+});
+
+test("item-list readiness does not require InventoryMovement or InventoryScanEvent", () => {
+  const requirements = getGearOpsSchemaRequirements("item-list");
+  const requiredTables = requirements.map((r) => r.table);
+
+  assert.ok(!requiredTables.includes("InventoryMovement"), "item-list must not require InventoryMovement");
+  assert.ok(!requiredTables.includes("InventoryScanEvent"), "item-list must not require InventoryScanEvent");
+});
+
+test("item-list readiness reports missing GearItem table", () => {
+  const requirements = getGearOpsSchemaRequirements("item-list");
+  const availableTables = requirements.map((r) => r.table).filter((t) => t !== "GearItem");
+  const availableColumnsByTable = buildAvailableColumns("item-list");
+  availableColumnsByTable.delete("GearItem");
+
+  const status = evaluateGearOpsSchemaStatus({
+    scope: "item-list",
+    availableTables,
+    availableColumnsByTable,
+  });
+
+  assert.equal(status.schemaReady, false);
+  assert.ok(status.missingTables.includes("GearItem"));
+  assert.equal(status.setupRequired, true);
+});
+
+test("item-detail readiness is true when all required tables and columns exist", () => {
+  const requirements = getGearOpsSchemaRequirements("item-detail");
+  const availableTables = requirements.map((requirement) => requirement.table);
+  const status = evaluateGearOpsSchemaStatus({
+    scope: "item-detail",
+    availableTables,
+    availableColumnsByTable: buildAvailableColumns("item-detail"),
+  });
+
+  assert.equal(status.schemaReady, true);
+  assert.deepEqual(status.missingTables, []);
+  assert.deepEqual(status.missingColumns, []);
+  assert.equal(status.setupRequired, false);
+  assert.deepEqual(status.pendingActions, []);
+});
+
+test("item-detail readiness does not require InventoryMovement or InventoryScanEvent", () => {
+  const requirements = getGearOpsSchemaRequirements("item-detail");
+  const requiredTables = requirements.map((r) => r.table);
+
+  assert.ok(!requiredTables.includes("InventoryMovement"), "item-detail must not require InventoryMovement");
+  assert.ok(!requiredTables.includes("InventoryScanEvent"), "item-detail must not require InventoryScanEvent");
+});
+
+test("item-detail readiness reports missing InventoryLocation table", () => {
+  const requirements = getGearOpsSchemaRequirements("item-detail");
+  const availableTables = requirements.map((r) => r.table).filter((t) => t !== "InventoryLocation");
+  const availableColumnsByTable = buildAvailableColumns("item-detail");
+  availableColumnsByTable.delete("InventoryLocation");
+
+  const status = evaluateGearOpsSchemaStatus({
+    scope: "item-detail",
+    availableTables,
+    availableColumnsByTable,
+  });
+
+  assert.equal(status.schemaReady, false);
+  assert.ok(status.missingTables.includes("InventoryLocation"));
+  assert.equal(status.setupRequired, true);
+});
+
+test("item-detail readiness reports missing GearReservation but item-list does not", () => {
+  const listRequirements = getGearOpsSchemaRequirements("item-list");
+  const detailRequirements = getGearOpsSchemaRequirements("item-detail");
+
+  const listTables = listRequirements.map((r) => r.table);
+  const detailTables = detailRequirements.map((r) => r.table);
+
+  assert.ok(!listTables.includes("GearReservation"), "item-list must not require GearReservation");
+  assert.ok(detailTables.includes("GearReservation"), "item-detail must require GearReservation");
+});

@@ -24,6 +24,7 @@ import {
   GearReadinessChip,
 } from "@/components/gear-ops/status-badge";
 import { GearPendingSubjectCard } from "@/components/gear-ops/pending-subject-card";
+import { GearOpsSchemaWarning } from "@/components/gear-ops/schema-warning";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
 import {
@@ -31,6 +32,7 @@ import {
   formatGearOpsEnum,
 } from "@/lib/gear-ops";
 import { deriveAvailabilitySignal } from "@/lib/gear-ops-ui";
+import { getGearOpsSchemaStatus } from "@/lib/gear-ops-schema-status";
 import {
   deriveGearReservationEffectiveStatus,
   formatGearReservationEnum,
@@ -105,6 +107,22 @@ export default async function GearOpsItemDetailsPage({
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">{access.denialMessage}</p>
         </div>
+      </section>
+    );
+  }
+
+  const schemaStatus = await getGearOpsSchemaStatus("item-detail");
+  if (!schemaStatus.schemaReady) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Gear item</h2>
+        <GearOpsSubnav current="items" />
+        <GearOpsSchemaWarning
+          actionMessage="Run database setup before loading GearOps item details."
+          status={schemaStatus}
+          organizationId={scope.organizationId}
+          actorPersonId={scope.auth.personId}
+        />
       </section>
     );
   }
@@ -213,26 +231,6 @@ export default async function GearOpsItemDetailsPage({
                 program: { id: string; name: string } | null;
               }
             | null;
-        }>;
-        inventoryMovements: Array<{
-          id: string;
-          movementType: InventoryMovementType;
-          fromLocation: { id: string; name: string; locationCode: string | null } | null;
-          toLocation: { id: string; name: string; locationCode: string | null } | null;
-          actor: { id: string; firstName: string; lastName: string };
-          custodyPerson: { id: string; firstName: string; lastName: string } | null;
-          relatedRecordType: string | null;
-          notes: string | null;
-          occurredAt: Date;
-        }>;
-        scanEvents: Array<{
-          id: string;
-          scanContext: string;
-          result: string;
-          inventoryIdentifierType: string;
-          rawValue: string;
-          createdAt: Date;
-          actor: { id: string; firstName: string; lastName: string } | null;
         }>;
       }
     | null = null;
@@ -355,7 +353,43 @@ export default async function GearOpsItemDetailsPage({
           orderBy: [{ recordedAt: "desc" }, { createdAt: "desc" }],
           take: 12,
         },
-        inventoryMovements: {
+      },
+    });
+  } catch (error) {
+    queryFailed = true;
+    if (isSchemaUnavailableError(error)) {
+      queryErrorMessage = "Database schema is not available yet. Run database setup before loading GearOps item details.";
+    }
+  }
+
+  // Optional panels: InventoryMovement and InventoryScanEvent tables may not be migrated yet.
+  // Query them separately so a missing table does not block the core item detail page.
+  let inventoryMovements: Array<{
+    id: string;
+    movementType: InventoryMovementType;
+    fromLocation: { id: string; name: string; locationCode: string | null } | null;
+    toLocation: { id: string; name: string; locationCode: string | null } | null;
+    actor: { id: string; firstName: string; lastName: string };
+    custodyPerson: { id: string; firstName: string; lastName: string } | null;
+    relatedRecordType: string | null;
+    notes: string | null;
+    occurredAt: Date;
+  }> = [];
+  let scanEvents: Array<{
+    id: string;
+    scanContext: string;
+    result: string;
+    inventoryIdentifierType: string;
+    rawValue: string;
+    createdAt: Date;
+    actor: { id: string; firstName: string; lastName: string } | null;
+  }> = [];
+
+  if (item) {
+    try {
+      const [movements, scans] = await Promise.all([
+        db.inventoryMovement.findMany({
+          where: { gearItemId: item.id },
           select: {
             id: true,
             movementType: true,
@@ -369,8 +403,9 @@ export default async function GearOpsItemDetailsPage({
           },
           orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
           take: 20,
-        },
-        scanEvents: {
+        }),
+        db.inventoryScanEvent.findMany({
+          where: { gearItemId: item.id },
           select: {
             id: true,
             scanContext: true,
@@ -382,13 +417,12 @@ export default async function GearOpsItemDetailsPage({
           },
           orderBy: [{ createdAt: "desc" }],
           take: 10,
-        },
-      },
-    });
-  } catch (error) {
-    queryFailed = true;
-    if (isSchemaUnavailableError(error)) {
-      queryErrorMessage = "Database schema is not available yet. Run database setup before loading GearOps item details.";
+        }),
+      ]);
+      inventoryMovements = movements;
+      scanEvents = scans;
+    } catch {
+      // Tables not yet migrated — optional panels render as empty
     }
   }
 
@@ -1175,11 +1209,11 @@ export default async function GearOpsItemDetailsPage({
 
             <div id="scan-activity" className="space-y-3">
               <h3 className="text-lg font-medium">Recent scan activity</h3>
-              {item.scanEvents.length === 0 ? (
+              {scanEvents.length === 0 ? (
                 <EmptyState message="No scan activity is currently recorded for this item." />
               ) : (
                 <div className="space-y-2">
-                  {item.scanEvents.map((event) => {
+                  {scanEvents.map((event) => {
                     const eventContext = SCAN_CONTEXTS.includes(event.scanContext as ScanContext)
                       ? (event.scanContext as ScanContext)
                       : null;
@@ -1345,11 +1379,11 @@ export default async function GearOpsItemDetailsPage({
       </div>
       <div id="movement-history" className="space-y-3">
         <h3 className="text-lg font-medium">Inventory movement history</h3>
-        {item.inventoryMovements.length === 0 ? (
+        {inventoryMovements.length === 0 ? (
           <EmptyState message="No inventory movement history is currently recorded for this item." />
         ) : (
           <div className="space-y-2">
-            {item.inventoryMovements.map((movement) => (
+            {inventoryMovements.map((movement) => (
               <article key={movement.id} className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <p className="font-medium">{labelForMovementType(movement.movementType)}</p>
