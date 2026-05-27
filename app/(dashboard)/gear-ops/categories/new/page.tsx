@@ -25,7 +25,7 @@ import {
 } from "@/lib/gear-category-config";
 import { formatGearOpsEnum } from "@/lib/gear-ops";
 import { getGearOpsSchemaStatus } from "@/lib/gear-ops-schema-status";
-import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
+import { resolveGearOpsAdminAccess, resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -137,7 +137,11 @@ export default async function NewGearCategoryPage({
   }
 
   const schemaStatus = await getGearOpsSchemaStatus("category-creation");
-  const showSchemaDiagnostics = process.env.NODE_ENV !== "production";
+  const adminAccess = await resolveGearOpsAdminAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const showSchemaDiagnostics = process.env.NODE_ENV !== "production" || adminAccess.allowed;
 
   if (!schemaStatus.schemaReady) {
     return (
