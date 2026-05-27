@@ -36,6 +36,7 @@ import { z } from "zod";
 
 import { requireAuthContext } from "@/lib/auth";
 import { validateInventoryCodeValue } from "@/lib/inventory-scan";
+import { isRosterRoleType } from "@/lib/member-ops";
 import { PermissionDeniedError, requirePermission } from "@/lib/permissions";
 
 const MAX_NAME_LENGTH = 100;
@@ -154,6 +155,15 @@ export const memberMoveWorkflowSchema = z
       message: "Roster role must use an existing role value.",
     }),
   })
+  .superRefine((value, context) => {
+    if (!isRosterRoleType(value.rosterRole)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rosterRole"],
+        message: "Roster role must use an athlete, guardian, or coach roster role.",
+      });
+    }
+  })
   .transform((value) => ({
     sourceMembershipId: value.sourceMembershipId.length === 0 ? null : value.sourceMembershipId,
     programId: value.programId,
@@ -197,6 +207,14 @@ export const rosterMembershipWorkflowSchema = z.object({
   rosterRole: z.nativeEnum(RoleType, {
     message: "Roster role must use an existing role value.",
   }),
+}).superRefine((value, context) => {
+  if (!isRosterRoleType(value.rosterRole)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["rosterRole"],
+      message: "Roster role must use an athlete, guardian, or coach roster role.",
+    });
+  }
 });
 
 export const seasonWorkflowSchema = z

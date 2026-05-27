@@ -3,6 +3,7 @@ import { MemberLifecycleStatus } from "@prisma/client";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { FormActions } from "@/components/dashboard/form-actions";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { MEMBER_LIFECYCLE_STATUS_LABELS } from "@/lib/member-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -18,14 +19,6 @@ function readSearchParam(searchParams: SearchParams, key: string): string {
 
   return value ?? "";
 }
-
-const LIFECYCLE_STATUS_LABELS: Record<MemberLifecycleStatus, string> = {
-  [MemberLifecycleStatus.PROSPECT]: "Prospect (pending activation)",
-  [MemberLifecycleStatus.ACTIVE]: "Active",
-  [MemberLifecycleStatus.INACTIVE]: "Inactive",
-  [MemberLifecycleStatus.ARCHIVED]: "Archived",
-  [MemberLifecycleStatus.ALUMNI]: "Alumni",
-};
 
 export default async function NewPersonPage({
   searchParams,
@@ -135,7 +128,7 @@ export default async function NewPersonPage({
 
         <div className="space-y-1">
           <label htmlFor="lifecycleStatus" className="text-sm font-medium">
-            Member status
+            Member lifecycle status
           </label>
           <select
             id="lifecycleStatus"
@@ -145,7 +138,7 @@ export default async function NewPersonPage({
           >
             {Object.values(MemberLifecycleStatus).map((status) => (
               <option key={status} value={status}>
-                {LIFECYCLE_STATUS_LABELS[status]}
+                {MEMBER_LIFECYCLE_STATUS_LABELS[status]}
               </option>
             ))}
           </select>
@@ -153,7 +146,8 @@ export default async function NewPersonPage({
             <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "lifecycleStatusError")}</p>
           ) : null}
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Use &ldquo;Prospect&rdquo; to add a person who has not yet been fully activated. Use &ldquo;Active&rdquo; to join them directly.
+            This creates the person profile first. Member lifecycle status tracks organization participation, while
+            team and season memberships are added separately from the roster view.
           </p>
         </div>
 
