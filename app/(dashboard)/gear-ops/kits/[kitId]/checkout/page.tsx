@@ -41,8 +41,16 @@ export default async function KitCheckoutPage({
     );
   }
 
-  let kit: { id: string; name: string; custodyStatus: import("@prisma/client").GearKitCustodyStatus } | null =
-    null;
+  let kit: {
+    id: string;
+    name: string;
+    custodyStatus: import("@prisma/client").GearKitCustodyStatus;
+    items: Array<{
+      id: string;
+      isRequired: boolean;
+      gearItem: { id: string; name: string };
+    }>;
+  } | null = null;
   let people: Array<{ id: string; firstName: string; lastName: string }> = [];
   let errorMessage: string | null = null;
 
@@ -50,7 +58,20 @@ export default async function KitCheckoutPage({
     const [kitResult, peopleResult] = await Promise.all([
       db.inventoryKit.findFirst({
         where: { id: kitId, organizationId: scope.organizationId },
-        select: { id: true, name: true, custodyStatus: true },
+        select: {
+          id: true,
+          name: true,
+          custodyStatus: true,
+          items: {
+            where: { removedAt: null },
+            orderBy: [{ addedAt: "asc" }],
+            select: {
+              id: true,
+              isRequired: true,
+              gearItem: { select: { id: true, name: true } },
+            },
+          },
+        },
       }),
       db.person.findMany({
         where: {
@@ -134,6 +155,44 @@ export default async function KitCheckoutPage({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Kit items</p>
+            {kit.items.length === 0 ? (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">This kit currently has no active items.</p>
+            ) : (
+              <div className="space-y-2 rounded-md border p-3">
+                {kit.items.map((kitItem) => (
+                  <label key={kitItem.id} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-zinc-700 dark:text-zinc-200">
+                      {kitItem.gearItem.name}
+                      {kitItem.isRequired ? (
+                        <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">(required)</span>
+                      ) : (
+                        <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">(optional)</span>
+                      )}
+                    </span>
+                    <span>
+                      {kitItem.isRequired ? (
+                        <>
+                          <input type="hidden" name="childGearItemId" value={kitItem.gearItem.id} />
+                          <input type="checkbox" defaultChecked disabled aria-label={`${kitItem.gearItem.name} required`} />
+                        </>
+                      ) : (
+                        <input
+                          type="checkbox"
+                          name="childGearItemId"
+                          value={kitItem.gearItem.id}
+                          defaultChecked
+                          aria-label={`Include ${kitItem.gearItem.name}`}
+                        />
+                      )}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1">

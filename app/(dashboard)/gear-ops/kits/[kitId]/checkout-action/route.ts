@@ -33,6 +33,14 @@ export async function POST(
   const formData = await request.formData();
   const custodyPersonId = (formData.get("custodyPersonId") as string | null)?.trim() ?? "";
   const notes = (formData.get("notes") as string | null)?.trim() || null;
+  const childGearItemIds = Array.from(
+    new Set(
+      formData
+        .getAll("childGearItemId")
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean),
+    ),
+  );
 
   if (!custodyPersonId) {
     redirect(`/gear-ops/kits/${kitId}/checkout`);
@@ -44,6 +52,7 @@ export async function POST(
     actorPersonId: scope.auth.personId,
     custodyPersonId,
     notes,
+    partialChildGearItemIds: childGearItemIds,
   });
 
   redirect(`/gear-ops/kits/${kitId}`);

@@ -287,12 +287,23 @@ export default async function InventoryKitDetailPage({
           >
             Add item
           </Link>
-          <Link
-            href={`/gear-ops/kits/${kit.id}/checkout`}
-            className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-          >
-            Check out kit
-          </Link>
+          {kit.custodyStatus === "CHECKED_OUT" ? (
+            <form action={`/gear-ops/kits/${kit.id}/checkin`} method="POST">
+              <button
+                type="submit"
+                className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              >
+                Check in kit
+              </button>
+            </form>
+          ) : (
+            <Link
+              href={`/gear-ops/kits/${kit.id}/checkout`}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Check out kit
+            </Link>
+          )}
           <Link
             href={`/gear-ops/kits/${kit.id}/inspect`}
             className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
