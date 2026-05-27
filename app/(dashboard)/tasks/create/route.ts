@@ -10,6 +10,7 @@ import {
 } from "@/lib/operational-visibility";
 import { resolveFollowUpTaskCreatorPersonId } from "@/lib/follow-up-tasks";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
+import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   followUpTaskWorkflowSchema,
@@ -336,10 +337,21 @@ export async function POST(request: Request) {
         organizationId: organizationId,
         entryId: entry.id,
         actorPersonId: createdByPersonId,
-        action: "entry.created",
+        action: ENTRY_ACTIVITY_ACTIONS.ENTRY_CREATED,
         metadata: {
           sourceTaskId: createdTask.id,
           assignedToPersonId: parsed.data.assigneePersonId,
+        },
+      });
+      await writeEntryActivity({
+        organizationId: organizationId,
+        entryId: entry.id,
+        actorPersonId: createdByPersonId,
+        action: ENTRY_ACTIVITY_ACTIONS.ENTRY_ASSIGNED,
+        metadata: {
+          personId: parsed.data.assigneePersonId,
+          role: "OWNER",
+          sourceTaskId: createdTask.id,
         },
       });
       await writeFollowUpTaskEntryRuntimeRef({

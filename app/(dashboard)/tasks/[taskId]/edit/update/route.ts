@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { writeFollowUpTaskEntryRuntimeRef } from "@/lib/entry-runtime";
 import { upsertEntryFromTask, writeEntryActivity } from "@/lib/entries/service";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
+import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import {
   classifyFollowUpTaskOperationalVisibility,
   classifyObservationNoteOperationalVisibility,
@@ -150,7 +151,7 @@ export async function POST(
         id: taskId,
         organizationId: organizationId,
       },
-      select: { status: true },
+      select: { status: true, assigneePersonId: true },
     });
 
     const assignee = await db.person.findFirst({
@@ -363,13 +364,56 @@ export async function POST(
           organizationId: organizationId,
           entryId: entry.id,
           actorPersonId: scope.auth.personId,
-          action: existingTask?.status && existingTask.status !== parsed.data.status ? "entry.status_changed" : "entry.updated",
+          action:
+            existingTask?.status && existingTask.status !== parsed.data.status
+              ? ENTRY_ACTIVITY_ACTIONS.ENTRY_STATUS_CHANGED
+              : ENTRY_ACTIVITY_ACTIONS.ENTRY_UPDATED,
           metadata: {
             sourceTaskId: updatedTask.id,
+            fromStatus: existingTask?.status ?? null,
             changedStatus: parsed.data.status,
             assignedToPersonId: parsed.data.assigneePersonId,
           },
         });
+        if (existingTask && existingTask.assigneePersonId !== parsed.data.assigneePersonId) {
+          await writeEntryActivity({
+            organizationId: organizationId,
+            entryId: entry.id,
+            actorPersonId: scope.auth.personId,
+            action: ENTRY_ACTIVITY_ACTIONS.ENTRY_ASSIGNED,
+            metadata: {
+              sourceTaskId: updatedTask.id,
+              fromPersonId: existingTask.assigneePersonId,
+              personId: parsed.data.assigneePersonId,
+              role: "OWNER",
+            },
+          });
+          if (entry.type === "FOLLOW_UP") {
+            await writeEntryActivity({
+              organizationId: organizationId,
+              entryId: entry.id,
+              actorPersonId: scope.auth.personId,
+              action: ENTRY_ACTIVITY_ACTIONS.FOLLOW_UP_ASSIGNED,
+              metadata: {
+                sourceTaskId: updatedTask.id,
+                fromPersonId: existingTask.assigneePersonId,
+                personId: parsed.data.assigneePersonId,
+              },
+            });
+          }
+        }
+        if (existingTask?.status && existingTask.status !== parsed.data.status && parsed.data.status === TaskStatus.DONE && entry.type === "FOLLOW_UP") {
+          await writeEntryActivity({
+            organizationId: organizationId,
+            entryId: entry.id,
+            actorPersonId: scope.auth.personId,
+            action: ENTRY_ACTIVITY_ACTIONS.FOLLOW_UP_COMPLETED,
+            metadata: {
+              sourceTaskId: updatedTask.id,
+              completedAt: new Date().toISOString(),
+            },
+          });
+        }
         await writeFollowUpTaskEntryRuntimeRef({
           organizationId: organizationId,
           task: {

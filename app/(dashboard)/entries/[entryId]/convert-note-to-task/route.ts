@@ -82,7 +82,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     organizationId: organizationId,
     entryId: entry.id,
     actorPersonId: scope.auth.personId,
-    action: ENTRY_ACTIVITY_ACTIONS.NOTE_TO_TASK_CONVERTED,
+    action: ENTRY_ACTIVITY_ACTIONS.ENTRY_NOTE_TO_TASK_CONVERTED,
     metadata: { sourceTaskId: createdTask.id, selectedTextLength: selectedText.length },
   });
 

@@ -43,7 +43,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
   const entry = await db.entry.findFirst({
     where: { id: entryId, organizationId: organizationId, deletedAt: null },
-    select: { id: true, sourceTaskId: true, sourceNoteId: true },
+    select: { id: true, status: true, sourceTaskId: true, sourceNoteId: true },
   });
 
   if (!entry) {
@@ -87,8 +87,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     organizationId: organizationId,
     entryId: entry.id,
     actorPersonId: scope.auth.personId,
-    action: ENTRY_ACTIVITY_ACTIONS.UPDATED,
-    metadata: { changedType: type ?? null, changedStatus: status ?? null, changedPriority: priority ?? null },
+    action:
+      status && status !== entry.status
+        ? status === EntryStatus.DONE
+          ? ENTRY_ACTIVITY_ACTIONS.ENTRY_COMPLETED
+          : status === EntryStatus.ARCHIVED
+            ? ENTRY_ACTIVITY_ACTIONS.ENTRY_ARCHIVED
+            : ENTRY_ACTIVITY_ACTIONS.ENTRY_STATUS_CHANGED
+        : ENTRY_ACTIVITY_ACTIONS.ENTRY_UPDATED,
+    metadata: {
+      changedType: type ?? null,
+      fromStatus: status && status !== entry.status ? entry.status : null,
+      toStatus: status && status !== entry.status ? status : null,
+      changedPriority: priority ?? null,
+    },
   });
 
   return NextResponse.redirect(new URL(returnTo, request.url), 303);

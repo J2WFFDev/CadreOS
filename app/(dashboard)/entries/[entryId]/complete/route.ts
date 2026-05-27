@@ -34,7 +34,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     select: { id: true, type: true, sourceTaskId: true },
   });
 
-  if (!entry || entry.type !== EntryType.TASK) {
+  if (!entry || (entry.type !== EntryType.TASK && entry.type !== EntryType.FOLLOW_UP)) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
 
@@ -61,9 +61,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     organizationId: organizationId,
     entryId: entry.id,
     actorPersonId: scope.auth.personId,
-    action: ENTRY_ACTIVITY_ACTIONS.COMPLETED,
-    metadata: { completedAt: completedAt.toISOString() },
+    action: ENTRY_ACTIVITY_ACTIONS.ENTRY_COMPLETED,
+    metadata: { completedAt: completedAt.toISOString(), entryType: entry.type },
   });
+  if (entry.type === EntryType.FOLLOW_UP) {
+    await writeEntryActivity({
+      organizationId: organizationId,
+      entryId: entry.id,
+      actorPersonId: scope.auth.personId,
+      action: ENTRY_ACTIVITY_ACTIONS.FOLLOW_UP_COMPLETED,
+      metadata: { completedAt: completedAt.toISOString() },
+    });
+  }
 
   return NextResponse.redirect(new URL(returnTo, request.url), 303);
 }

@@ -430,10 +430,17 @@ export async function emitEntryActivityAwareness(input: {
   const metadataPersonId = typeof input.metadata?.personId === "string" ? input.metadata.personId : null;
   const metadataWorkflowRunId = typeof input.metadata?.workflowRunId === "string" ? input.metadata.workflowRunId : null;
 
-  if (input.action === "entry.assignment_added" || input.action === "entry.assignment_revoked") {
+  if (
+    input.action === "entry.assignment_added" ||
+    input.action === "entry.assignment_revoked" ||
+    input.action === "entry.follow_up_assigned"
+  ) {
     return persistAwarenessNotification({
       organizationId: input.organizationId,
-      eventType: input.action === "entry.assignment_added" ? AwarenessEventType.ENTRY_ASSIGNED : AwarenessEventType.ASSIGNMENT_UPDATED,
+      eventType:
+        input.action === "entry.assignment_added" || input.action === "entry.follow_up_assigned"
+          ? AwarenessEventType.ENTRY_ASSIGNED
+          : AwarenessEventType.ASSIGNMENT_UPDATED,
       category: "ASSIGNMENT",
       priority: entry.priority,
       aggregateKey: buildNotificationAggregateKey({ category: "ASSIGNMENT", subjectId: entry.id }),
@@ -455,7 +462,7 @@ export async function emitEntryActivityAwareness(input: {
     });
   }
 
-  if (input.action === "entry.created") {
+  if (input.action === "entry.created" || input.action === "entry.follow_up_created") {
     if (entry.type === "READINESS_ITEM" && isActiveNotificationEntryStatus(entry.status)) {
       return persistAwarenessNotification({
         organizationId: input.organizationId,
@@ -545,7 +552,14 @@ export async function emitEntryActivityAwareness(input: {
     });
   }
 
-  if (input.action === "entry.object_link_added" || input.action === "entry.object_link_removed" || input.action === "entry.graph_link_added" || input.action === "entry.graph_link_removed") {
+  if (
+    input.action === "entry.object_link_added" ||
+    input.action === "entry.object_link_removed" ||
+    input.action === "entry.graph_link_added" ||
+    input.action === "entry.graph_link_removed" ||
+    input.action === "entry.linked" ||
+    input.action === "entry.unlinked"
+  ) {
     return persistAwarenessNotification({
       organizationId: input.organizationId,
       eventType: AwarenessEventType.LINKED_OPERATIONAL_UPDATE,
@@ -570,7 +584,13 @@ export async function emitEntryActivityAwareness(input: {
     });
   }
 
-  if (input.action === "entry.status_changed" || input.action === "entry.task_completed" || input.action === "entry.completed") {
+  if (
+    input.action === "entry.status_changed" ||
+    input.action === "entry.task_completed" ||
+    input.action === "entry.completed" ||
+    input.action === "entry.follow_up_completed" ||
+    input.action === "entry.archived"
+  ) {
     if (entry.type === "READINESS_ITEM" && isActiveNotificationEntryStatus(entry.status)) {
       return persistAwarenessNotification({
         organizationId: input.organizationId,

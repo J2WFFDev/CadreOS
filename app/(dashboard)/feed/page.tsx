@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { aggregateOperationalFeed } from "@/lib/operational-feed";
 import { formatDueDate, isOverdueFeedEntry, labelForActivityAction, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
 import type { FeedActivityItem, FeedEntryItem } from "@/lib/operational-feed/types";
+import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -121,6 +122,18 @@ export default async function FeedPage() {
       <section className="space-y-4">
         <PageHeader title="Feed" description="Operational feed — today, assigned, upcoming, and recent activity." />
         <ErrorMessage message="No organization context is available yet." />
+      </section>
+    );
+  }
+  const entryAccess = await resolveEntryAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  if (entryAccess.level === "NONE") {
+    return (
+      <section className="space-y-4">
+        <PageHeader title="Feed" description="Operational feed — today, assigned, upcoming, and recent activity." />
+        <ErrorMessage message="You do not have permission to view entry activity in this organization." />
       </section>
     );
   }
