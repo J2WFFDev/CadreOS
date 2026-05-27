@@ -10,6 +10,8 @@
  */
 
 import { db } from "@/lib/db";
+import { GearCheckoutStatus, GearReservationStatus, InventoryMovementType } from "@prisma/client";
+import { findReservationToFulfill } from "@/lib/gear-reservations";
 import type {
   AddItemToKitInput,
   AssignKitInput,
@@ -388,6 +390,22 @@ export async function listInventoryKits(input: {
  * custody status to CHECKED_OUT — custody status remains AVAILABLE with
  * the partial event logged for visibility.
  */
+export function resolveKitChildSelection(allKitItemIds: string[], requestedItemIds?: string[] | null) {
+  if (requestedItemIds == null) {
+    return {
+      targetItemIds: allKitItemIds,
+      isPartial: false,
+    };
+  }
+
+  const targetItemIds = allKitItemIds.filter((itemId) => requestedItemIds.includes(itemId));
+
+  return {
+    targetItemIds,
+    isPartial: targetItemIds.length !== allKitItemIds.length,
+  };
+}
+
 export async function checkOutKit(input: CheckOutKitInput) {
   const kit = await db.inventoryKit.findFirst({
     where: { id: input.kitId, organizationId: input.organizationId },
@@ -403,33 +421,31 @@ export async function checkOutKit(input: CheckOutKitInput) {
 
   if (!kit) return null;
 
-  const targetItemIds =
-    input.isPartial && input.partialChildGearItemIds?.length
-      ? kit.items
-          .filter((i) => input.partialChildGearItemIds!.includes(i.gearItemId))
-          .map((i) => i.gearItemId)
-      : kit.items.map((i) => i.gearItemId);
+  const allKitItemIds = kit.items.map((i) => i.gearItemId);
+  const { targetItemIds, isPartial } = resolveKitChildSelection(allKitItemIds, input.partialChildGearItemIds);
+  const isPartialCheckout = input.isPartial ?? isPartial;
 
   const childItemIdsJson = JSON.stringify(targetItemIds);
 
   const result = await db.$transaction(async (tx) => {
+    const now = new Date();
     const custodyEvent = await tx.gearKitCustodyEvent.create({
       data: {
         organizationId: input.organizationId,
         kitId: input.kitId,
-        eventType: input.isPartial ? "PARTIAL_CHECKOUT" : "CHECKED_OUT",
+        eventType: isPartialCheckout ? "PARTIAL_CHECKOUT" : "CHECKED_OUT",
         actorPersonId: input.actorPersonId,
         custodyPersonId: input.custodyPersonId,
         relatedEventId: input.relatedEventId ?? null,
         notes: input.notes ?? null,
         childItemIdsJson,
-        isPartial: input.isPartial ?? false,
-        occurredAt: new Date(),
+        isPartial: isPartialCheckout,
+        occurredAt: now,
       },
       select: { id: true },
     });
 
-    if (!input.isPartial) {
+    if (!isPartialCheckout) {
       await tx.inventoryKit.update({
         where: { id: kit.id },
         data: {
@@ -437,6 +453,99 @@ export async function checkOutKit(input: CheckOutKitInput) {
           assignedToPersonId: input.custodyPersonId,
         },
       });
+    }
+
+    if (targetItemIds.length > 0) {
+      const existingOpenCheckouts = await tx.gearCheckout.findMany({
+        where: {
+          organizationId: input.organizationId,
+          gearItemId: { in: targetItemIds },
+          status: { in: [GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE] },
+        },
+        select: { gearItemId: true },
+      });
+      const existingOpenItemIdSet = new Set(existingOpenCheckouts.map((checkout) => checkout.gearItemId));
+      const checkoutItemIds = targetItemIds.filter((itemId) => !existingOpenItemIdSet.has(itemId));
+
+      if (checkoutItemIds.length > 0) {
+        await tx.gearCheckout.createMany({
+          data: checkoutItemIds.map((itemId) => ({
+            organizationId: input.organizationId,
+            gearItemId: itemId,
+            status: GearCheckoutStatus.OPEN,
+            checkedOutById: input.custodyPersonId,
+            issuedById: input.actorPersonId,
+            eventId: input.relatedEventId ?? null,
+            checkedOutAt: now,
+            purposeNotes: input.notes ?? null,
+          })),
+        });
+
+        const reservations = await tx.gearReservation.findMany({
+          where: {
+            organizationId: input.organizationId,
+            gearItemId: { in: checkoutItemIds },
+            status: {
+              in: [
+                GearReservationStatus.ACTIVE,
+                GearReservationStatus.PENDING_REVIEW,
+                GearReservationStatus.CONFLICT,
+              ],
+            },
+          },
+          select: {
+            id: true,
+            gearItemId: true,
+            mode: true,
+            status: true,
+            approvalStatus: true,
+            holdType: true,
+            purpose: true,
+            quantityRequested: true,
+            windowStartAt: true,
+            windowEndAt: true,
+            reservedForPersonId: true,
+            reservedForTeamId: true,
+            reservedForEventId: true,
+            programId: true,
+            conflictSummary: true,
+          },
+        });
+
+        for (const itemId of checkoutItemIds) {
+          const reservationToFulfill = findReservationToFulfill({
+            reservations: reservations.filter((reservation) => reservation.gearItemId === itemId),
+            personId: input.custodyPersonId,
+            eventId: input.relatedEventId ?? null,
+          });
+
+          if (!reservationToFulfill) {
+            continue;
+          }
+
+          await tx.gearReservation.update({
+            where: { id: reservationToFulfill.id },
+            data: {
+              status: GearReservationStatus.FULFILLED,
+              fulfilledAt: now,
+              releasedByPersonId: input.actorPersonId,
+            },
+          });
+
+          await tx.inventoryMovement.create({
+            data: {
+              organizationId: input.organizationId,
+              gearItemId: itemId,
+              movementType: InventoryMovementType.RESERVATION_RELEASED,
+              actorPersonId: input.actorPersonId,
+              relatedRecordType: "GEAR_RESERVATION",
+              relatedRecordId: reservationToFulfill.id,
+              notes: "Reservation fulfilled by kit checkout.",
+              occurredAt: now,
+            },
+          });
+        }
+      }
     }
 
     return custodyEvent;
@@ -465,35 +574,52 @@ export async function checkInKit(input: CheckInKitInput) {
 
   if (!kit) return null;
 
-  const targetItemIds =
-    input.isPartial && input.partialChildGearItemIds?.length
-      ? input.partialChildGearItemIds
-      : kit.items.map((i) => i.gearItemId);
+  const allKitItemIds = kit.items.map((i) => i.gearItemId);
+  const { targetItemIds, isPartial } = resolveKitChildSelection(allKitItemIds, input.partialChildGearItemIds);
+  const isPartialReturn = input.isPartial ?? isPartial;
 
   const childItemIdsJson = JSON.stringify(targetItemIds);
 
   return db.$transaction(async (tx) => {
+    const now = new Date();
     const custodyEvent = await tx.gearKitCustodyEvent.create({
       data: {
         organizationId: input.organizationId,
         kitId: input.kitId,
-        eventType: input.isPartial ? "PARTIAL_RETURN" : "CHECKED_IN",
+        eventType: isPartialReturn ? "PARTIAL_RETURN" : "CHECKED_IN",
         actorPersonId: input.actorPersonId,
         custodyPersonId: null,
         notes: input.notes ?? null,
         childItemIdsJson,
-        isPartial: input.isPartial ?? false,
-        occurredAt: new Date(),
+        isPartial: isPartialReturn,
+        occurredAt: now,
       },
       select: { id: true },
     });
 
-    if (!input.isPartial) {
+    if (!isPartialReturn) {
       await tx.inventoryKit.update({
         where: { id: kit.id },
         data: {
           custodyStatus: "AVAILABLE",
           assignedToPersonId: null,
+        },
+      });
+    }
+
+    if (targetItemIds.length > 0) {
+      await tx.gearCheckout.updateMany({
+        where: {
+          organizationId: input.organizationId,
+          gearItemId: { in: targetItemIds },
+          status: { in: [GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE] },
+        },
+        data: {
+          status: GearCheckoutStatus.RETURNED,
+          returnedAt: now,
+          returnedById: input.actorPersonId,
+          receivedById: input.actorPersonId,
+          returnNotes: input.notes ?? "Returned through kit check-in.",
         },
       });
     }
