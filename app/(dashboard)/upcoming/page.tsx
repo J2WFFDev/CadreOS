@@ -10,6 +10,11 @@ import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
 
+function formatAssigneeName(assignedTo: { firstName: string; lastName: string } | null): string {
+  if (!assignedTo) return "—";
+  return `${assignedTo.firstName} ${assignedTo.lastName}`.trim() || "—";
+}
+
 export default async function UpcomingPage() {
   const scope = await getOrganizationScope();
 
@@ -62,6 +67,7 @@ export default async function UpcomingPage() {
                 <th className="px-4 py-3 font-medium">Due</th>
                 <th className="px-4 py-3 font-medium">Priority</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Assignee</th>
               </tr>
             </thead>
             <tbody>
@@ -78,6 +84,7 @@ export default async function UpcomingPage() {
                   </td>
                   <td className="px-4 py-3">{labelForEntryPriority(entry.priority)}</td>
                   <td className="px-4 py-3">{labelForEntryStatus(entry.status)}</td>
+                  <td className="px-4 py-3 text-zinc-500">{formatAssigneeName(entry.assignedTo)}</td>
                 </tr>
               ))}
             </tbody>
@@ -87,3 +94,4 @@ export default async function UpcomingPage() {
     </section>
   );
 }
+

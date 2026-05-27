@@ -3,7 +3,7 @@ import Link from "next/link";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { queryTodayEntries } from "@/lib/operational-feed";
+import { queryAssignedEntries } from "@/lib/operational-feed";
 import { formatDueDate, isOverdueFeedEntry, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
 import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -15,14 +15,14 @@ function formatAssigneeName(assignedTo: { firstName: string; lastName: string } 
   return `${assignedTo.firstName} ${assignedTo.lastName}`.trim() || "—";
 }
 
-export default async function TodayPage() {
+export default async function AssignedPage() {
   const scope = await getOrganizationScope();
 
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Today" description="Focus on due and overdue work." />
-        <ErrorMessage message={scope.errorMessage ?? "Unable to load today view right now."} />
+        <PageHeader title="Assigned to Me" description="Work items assigned to you." />
+        <ErrorMessage message={scope.errorMessage ?? "Unable to load assigned items right now."} />
       </section>
     );
   }
@@ -30,41 +30,72 @@ export default async function TodayPage() {
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Today" description="Focus on due and overdue work." />
+        <PageHeader title="Assigned to Me" description="Work items assigned to you." />
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
   }
+
   const entryAccess = await resolveEntryAccess({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
   });
+
   if (entryAccess.level === "NONE") {
     return (
       <section className="space-y-4">
-        <PageHeader title="Today" description="Focus on due and overdue work." />
-        <ErrorMessage message="You do not have permission to view today work items in this organization." />
+        <PageHeader title="Assigned to Me" description="Work items assigned to you." />
+        <ErrorMessage message="You do not have permission to view assigned work in this organization." />
+      </section>
+    );
+  }
+
+  if (!scope.auth.personId) {
+    return (
+      <section className="space-y-4">
+        <PageHeader title="Assigned to Me" description="Work items assigned to you." />
+        <EmptyState
+          message="Your account is not linked to a person yet — assigned work cannot be shown."
+          actionHref="/account/link-person"
+          actionLabel="Link account"
+        />
       </section>
     );
   }
 
   const now = new Date();
-  const entries = await queryTodayEntries({ organizationId: scope.organizationId, actorPersonId: scope.auth.personId, now });
+  const entries = await queryAssignedEntries({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+    now,
+  });
 
   return (
     <section className="space-y-4">
       <PageHeader
-        title="Today"
-        description="Overdue and due-today operational items."
+        title="Assigned to Me"
+        description="Active work entries and follow-ups assigned to you."
         actions={
-          <Link href="/tasks/new?returnTo=%2Ftoday" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-            New task
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/today" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Today
+            </Link>
+            <Link href="/upcoming" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Upcoming
+            </Link>
+            <Link href="/tasks/new?returnTo=%2Fassigned" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+              New task
+            </Link>
+          </div>
         }
       />
 
       {entries.length === 0 ? (
-        <EmptyState message="Nothing is overdue or due today." actionHref="/tasks/new?returnTo=%2Ftoday" actionLabel="Create task" />
+        <EmptyState
+          message="No active items are assigned to you."
+          actionHref="/tasks/new?returnTo=%2Fassigned"
+          actionLabel="Create task"
+        />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
           <table className="min-w-full text-left text-sm">
@@ -75,7 +106,7 @@ export default async function TodayPage() {
                 <th className="px-4 py-3 font-medium">Due</th>
                 <th className="px-4 py-3 font-medium">Priority</th>
                 <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Assignee</th>
+                <th className="px-4 py-3 font-medium">Assigned to</th>
                 <th className="px-4 py-3 font-medium">Action</th>
               </tr>
             </thead>
@@ -92,7 +123,7 @@ export default async function TodayPage() {
                     </td>
                     <td className="px-4 py-3 text-zinc-500">{labelForEntryType(entry.type)}</td>
                     <td className={`px-4 py-3 ${overdue ? "text-red-700 dark:text-red-300" : ""}`}>
-                      {formattedDue ?? "No due date"}
+                      {formattedDue ?? "—"}
                       {overdue && <span className="ml-1.5 text-xs font-medium">overdue</span>}
                     </td>
                     <td className="px-4 py-3">{labelForEntryPriority(entry.priority)}</td>
@@ -100,7 +131,7 @@ export default async function TodayPage() {
                     <td className="px-4 py-3 text-zinc-500">{formatAssigneeName(entry.assignedTo)}</td>
                     <td className="px-4 py-3">
                       <form action={`/entries/${entry.id}/complete`} method="post">
-                        <input type="hidden" name="returnTo" value="/today" />
+                        <input type="hidden" name="returnTo" value="/assigned" />
                         <button type="submit" className="rounded-md border px-2 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
                           Complete
                         </button>
@@ -116,4 +147,3 @@ export default async function TodayPage() {
     </section>
   );
 }
-

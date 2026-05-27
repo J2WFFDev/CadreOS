@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { EntryType } from "@prisma/client";
+import { EntryPriority, EntryStatus, EntryType } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
+import { buildDueWindowWhere, buildEntryOrderBy, parseEntryListFilter } from "@/lib/operational-feed/filters";
+import { formatDueDate, isOverdueFeedEntry, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
 import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -16,6 +18,11 @@ function readParam(searchParams: SearchParams, key: string) {
   const value = searchParams[key];
   if (Array.isArray(value)) return value[0] ?? "";
   return value ?? "";
+}
+
+function formatAssigneeName(assignedTo: { firstName: string; lastName: string } | null): string {
+  if (!assignedTo) return "Unassigned";
+  return `${assignedTo.firstName} ${assignedTo.lastName}`.trim() || "Unassigned";
 }
 
 export default async function EntriesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -39,6 +46,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
       </section>
     );
   }
+
   const entryAccess = await resolveEntryAccess({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
@@ -53,19 +61,65 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
     );
   }
 
-  const typeParam = readParam(params, "type").toUpperCase();
-  const type = Object.values(EntryType).includes(typeParam as EntryType) ? (typeParam as EntryType) : undefined;
+  // Resolve "me" shorthand for assignee filter
+  const rawAssignee = readParam(params, "assigneePersonId");
+  const resolvedAssigneePersonId =
+    rawAssignee === "me" ? (scope.auth.personId ?? undefined) : rawAssignee || undefined;
+
+  const rawParams: Record<string, string> = {
+    type: readParam(params, "type"),
+    status: readParam(params, "status"),
+    priority: readParam(params, "priority"),
+    assigneePersonId: resolvedAssigneePersonId ?? "",
+    dueWindow: readParam(params, "dueWindow"),
+    sort: readParam(params, "sort"),
+  };
+
+  const filter = parseEntryListFilter(
+    rawParams,
+    Object.values(EntryType),
+    Object.values(EntryStatus),
+    Object.values(EntryPriority),
+  );
+
+  const now = new Date();
+  const dueWhere = buildDueWindowWhere(filter.dueWindow, now);
+  const orderBy = buildEntryOrderBy(filter.sort);
 
   const entries = await db.entry.findMany({
     where: {
       organizationId: scope.organizationId,
       deletedAt: null,
-      ...(type ? { type } : {}),
+      ...(filter.type ? { type: filter.type } : {}),
+      ...(filter.status ? { status: filter.status } : {}),
+      ...(filter.priority ? { priority: filter.priority } : {}),
+      ...(filter.assigneePersonId ? { assignedToPersonId: filter.assigneePersonId } : {}),
+      ...(dueWhere ?? {}),
     },
-    orderBy: [{ updatedAt: "desc" }],
-    select: { id: true, type: true, title: true, status: true, priority: true, dueDate: true, updatedAt: true },
+    orderBy,
+    select: {
+      id: true,
+      type: true,
+      title: true,
+      status: true,
+      priority: true,
+      dueDate: true,
+      dueTime: true,
+      updatedAt: true,
+      assignedTo: { select: { firstName: true, lastName: true } },
+    },
     take: 300,
   });
+
+  // Load person list for assignee filter UI
+  const people = await db.person.findMany({
+    where: { organizationId: scope.organizationId, lifecycleStatus: { not: "ARCHIVED" } },
+    orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+    select: { id: true, firstName: true, lastName: true },
+    take: 200,
+  });
+
+  const activeFilterCount = [filter.type, filter.status, filter.priority, filter.assigneePersonId, filter.dueWindow !== "all" ? filter.dueWindow : undefined].filter(Boolean).length;
 
   return (
     <section className="space-y-4">
@@ -77,6 +131,9 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
             <Link href="/entries/inbox" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
               Inbox
             </Link>
+            <Link href="/assigned" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Assigned to me
+            </Link>
             <Link href="/entries?quickCapture=1" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
               Quick capture
             </Link>
@@ -84,25 +141,104 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
         }
       />
 
+      {/* Filter panel */}
       <form className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <label htmlFor="type" className="text-sm font-medium">
-          Filter by type
-        </label>
-        <div className="mt-2 flex gap-2">
-          <select id="type" name="type" defaultValue={type ?? ""} className="rounded-md border px-3 py-2 text-sm">
-            <option value="">All types</option>
-            {Object.values(EntryType).map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className="rounded-md border px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {/* Type */}
+          <div className="space-y-1">
+            <label htmlFor="type" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              Type
+            </label>
+            <select id="type" name="type" defaultValue={filter.type ?? ""} className="w-full rounded-md border px-2 py-1.5 text-sm">
+              <option value="">All types</option>
+              {Object.values(EntryType).map((v) => (
+                <option key={v} value={v}>{labelForEntryType(v)}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status */}
+          <div className="space-y-1">
+            <label htmlFor="status" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              Status
+            </label>
+            <select id="status" name="status" defaultValue={filter.status ?? ""} className="w-full rounded-md border px-2 py-1.5 text-sm">
+              <option value="">Any status</option>
+              {Object.values(EntryStatus).map((v) => (
+                <option key={v} value={v}>{labelForEntryStatus(v)}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Priority */}
+          <div className="space-y-1">
+            <label htmlFor="priority" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              Priority
+            </label>
+            <select id="priority" name="priority" defaultValue={filter.priority ?? ""} className="w-full rounded-md border px-2 py-1.5 text-sm">
+              <option value="">Any priority</option>
+              {Object.values(EntryPriority).map((v) => (
+                <option key={v} value={v}>{labelForEntryPriority(v)}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Assignee */}
+          <div className="space-y-1">
+            <label htmlFor="assigneePersonId" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              Assignee
+            </label>
+            <select id="assigneePersonId" name="assigneePersonId" defaultValue={rawAssignee === "me" ? "me" : (filter.assigneePersonId ?? "")} className="w-full rounded-md border px-2 py-1.5 text-sm">
+              <option value="">Anyone</option>
+              {scope.auth.personId && <option value="me">Assigned to me</option>}
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {`${p.firstName} ${p.lastName}`.trim()}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Due window */}
+          <div className="space-y-1">
+            <label htmlFor="dueWindow" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              Due
+            </label>
+            <select id="dueWindow" name="dueWindow" defaultValue={filter.dueWindow} className="w-full rounded-md border px-2 py-1.5 text-sm">
+              <option value="all">Any date</option>
+              <option value="overdue">Overdue</option>
+              <option value="today">Due today</option>
+              <option value="upcoming">Upcoming (14 days)</option>
+              <option value="no_date">No due date</option>
+            </select>
+          </div>
+
+          {/* Sort */}
+          <div className="space-y-1">
+            <label htmlFor="sort" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              Sort
+            </label>
+            <select id="sort" name="sort" defaultValue={filter.sort} className="w-full rounded-md border px-2 py-1.5 text-sm">
+              <option value="updated_desc">Last updated</option>
+              <option value="due_asc">Due date ↑</option>
+              <option value="created_desc">Newest first</option>
+              <option value="priority_desc">Priority ↓</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
             Apply
           </button>
-          <Link href="/entries" className="rounded-md border px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-            Clear
-          </Link>
+          {activeFilterCount > 0 && (
+            <Link href="/entries" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Clear filters
+              <span className="ml-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-zinc-200 px-1 py-0.5 text-[10px] font-semibold text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200">
+                {activeFilterCount}
+              </span>
+            </Link>
+          )}
         </div>
       </form>
 
@@ -118,24 +254,33 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Priority</th>
                 <th className="px-4 py-3 font-medium">Due</th>
+                <th className="px-4 py-3 font-medium">Assignee</th>
                 <th className="px-4 py-3 font-medium">Updated</th>
               </tr>
             </thead>
             <tbody>
-              {entries.map((entry) => (
-                <tr key={entry.id} className="border-b last:border-b-0">
-                  <td className="px-4 py-3">
-                    <Link href={`/entries/${entry.id}`} className="underline">
-                      {entry.title}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">{entry.type}</td>
-                  <td className="px-4 py-3">{entry.status}</td>
-                  <td className="px-4 py-3">{entry.priority}</td>
-                  <td className="px-4 py-3">{entry.dueDate?.toISOString().slice(0, 10) ?? "—"}</td>
-                  <td className="px-4 py-3">{entry.updatedAt.toISOString().slice(0, 16).replace("T", " ")}</td>
-                </tr>
-              ))}
+              {entries.map((entry) => {
+                const overdue = isOverdueFeedEntry(entry.dueDate, now);
+                const formattedDue = formatDueDate(entry.dueDate, entry.dueTime);
+                return (
+                  <tr key={entry.id} className="border-b last:border-b-0">
+                    <td className="px-4 py-3">
+                      <Link href={`/entries/${entry.id}`} className="underline">
+                        {entry.title}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-zinc-500">{labelForEntryType(entry.type)}</td>
+                    <td className="px-4 py-3">{labelForEntryStatus(entry.status)}</td>
+                    <td className="px-4 py-3">{labelForEntryPriority(entry.priority)}</td>
+                    <td className={`px-4 py-3 ${overdue ? "text-red-700 dark:text-red-300" : ""}`}>
+                      {formattedDue ?? "—"}
+                      {overdue && <span className="ml-1.5 text-xs font-medium">overdue</span>}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-500">{formatAssigneeName(entry.assignedTo)}</td>
+                    <td className="px-4 py-3 text-zinc-500">{entry.updatedAt.toISOString().slice(0, 16).replace("T", " ")}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -143,3 +288,4 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
     </section>
   );
 }
+
