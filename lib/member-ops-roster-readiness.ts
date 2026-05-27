@@ -15,6 +15,10 @@ type MemberRosterReadinessInput = {
 
 export type MemberRosterReadinessState = {
   isAthlete: boolean;
+  onboardingIncomplete: boolean;
+  offboardingActionRecommended: boolean;
+  rolloverReady: boolean;
+  rolloverNeedsReview: boolean;
   missingGuardian: boolean;
   missingTeamAssignment: boolean;
   missingProgramAssignment: boolean;
@@ -37,17 +41,32 @@ export function deriveMemberRosterReadiness(
   const incompleteProfile = !input.hasProfileEmail || input.roleTypes.length === 0;
   const inactiveOrArchived = !isDefaultVisibleMemberLifecycleStatus(input.lifecycleStatus);
   const shouldEvaluateOperationalGaps = isDefaultVisibleMemberLifecycleStatus(input.lifecycleStatus);
+  const onboardingIncomplete =
+    shouldEvaluateOperationalGaps &&
+    (missingGuardian ||
+      missingTeamAssignment ||
+      missingProgramAssignment ||
+      missingSeasonAssignment ||
+      incompleteProfile);
+  const offboardingActionRecommended = !shouldEvaluateOperationalGaps && input.membershipCount > 0;
+  const rolloverReady = shouldEvaluateOperationalGaps && input.hasSeasonAssignment && !onboardingIncomplete;
+  const rolloverNeedsReview = shouldEvaluateOperationalGaps && !rolloverReady;
 
   const needsAttention =
-    (shouldEvaluateOperationalGaps &&
-      (missingGuardian ||
-        missingTeamAssignment ||
-        missingProgramAssignment ||
-        missingSeasonAssignment ||
-        incompleteProfile)) ||
+    onboardingIncomplete ||
+    offboardingActionRecommended ||
     inactiveOrArchived;
   const labels: string[] = [];
 
+  if (onboardingIncomplete) {
+    labels.push("Onboarding incomplete");
+  }
+  if (offboardingActionRecommended) {
+    labels.push("Offboarding review needed");
+  }
+  if (rolloverNeedsReview) {
+    labels.push("Rollover readiness review");
+  }
   if (missingGuardian) {
     labels.push("Missing guardian");
   }
@@ -69,6 +88,10 @@ export function deriveMemberRosterReadiness(
 
   return {
     isAthlete,
+    onboardingIncomplete,
+    offboardingActionRecommended,
+    rolloverReady,
+    rolloverNeedsReview,
     missingGuardian,
     missingTeamAssignment,
     missingProgramAssignment,

@@ -21,6 +21,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Arc 21D Season / Team Assignment Readiness](./ARC_21D_SEASON_TEAM_ASSIGNMENT_READINESS.md)
 - [Arc 21E Member Lifecycle Status](./ARC_21E_MEMBER_LIFECYCLE_STATUS.md)
 - [Arc 21F Roster Views, Filters, and Readiness Dashboard](./ARC_21F_ROSTER_VIEWS_FILTERS_AND_READINESS_DASHBOARD.md)
+- [Arc 21G Onboarding, Offboarding, and Season Rollover Readiness](./ARC_21G_ONBOARDING_OFFBOARDING_SEASON_ROLLOVER_READINESS.md)
 - [Phase 17A MemberOps / Roster Lifecycle Architecture and Boundaries](./PHASE_17A_ROSTER_MEMBER_LIFECYCLE_ARCHITECTURE_BOUNDARIES.md)
 - [Phase 17A Validation Checklist](./PHASE_17A_VALIDATION_CHECKLIST.md)
 - [Phase 17G Guardian Relationship Maintenance Workflow](./PHASE_17G_GUARDIAN_RELATIONSHIP_MAINTENANCE.md)
