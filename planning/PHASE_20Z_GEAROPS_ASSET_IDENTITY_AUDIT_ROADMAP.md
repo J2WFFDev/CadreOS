@@ -10,7 +10,7 @@
 ### 1. `assetId` field on `GearItem`
 - Added `assetId String?` to the `GearItem` Prisma model with org-scoped uniqueness (`@@unique([organizationId, assetId])`) and a covering index.
 - Auto-generated on item creation using the format `GO-{CATCODE}-{NNNN}` (e.g., `GO-RIFLE-0007`).
-- Admin override accepted on create or edit; must match `GO-[A-Z0-9]{1,8}-[A-Z0-9]{1,8}` or be left blank.
+- Admin override accepted on create or edit; must match `GO-[A-Z0-9]{1,6}-[A-Z0-9]{1,8}` or be left blank.
 - Generation logic lives in `lib/gear-asset-id.ts`.
 
 ### 2. Items list page

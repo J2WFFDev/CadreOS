@@ -195,6 +195,7 @@ export async function POST(
       }
     }
 
+    const suppliedAssetId = values.assetId.trim().toUpperCase();
     const updated = await db.gearItem.updateMany({
       where: {
         id: itemId,
@@ -207,7 +208,7 @@ export async function POST(
         programId: parsed.data.programId,
         // Only update assetId when the admin explicitly supplies one; leave existing value
         // unchanged if the field was submitted empty (empty string = no change).
-        ...(values.assetId.trim() ? { assetId: values.assetId.trim().toUpperCase() } : {}),
+        ...(suppliedAssetId ? { assetId: suppliedAssetId } : {}),
         sku: parsed.data.sku,
         serialNumber: parsed.data.serialNumber,
         barcodeValue: parsed.data.barcodeValue,

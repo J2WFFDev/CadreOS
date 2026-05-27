@@ -81,7 +81,8 @@ export async function generateAssetId(
     }
   }
 
-  // Fallback: use a random 4-digit number to guarantee uniqueness.
+  // Fallback: use a random 4-digit number (1000–9999) to guarantee uniqueness
+  // while keeping the suffix in the expected numeric format.
   const fallbackSuffix = String(Math.floor(9000 * Math.random()) + 1000);
   return `GO-${categoryCode}-${fallbackSuffix}`;
 }
@@ -92,7 +93,7 @@ export async function generateAssetId(
  *
  * Allowed format: GO-{1-6 uppercase alphanumeric chars}-{1-8 alphanumeric chars}
  * The category code segment is capped at 6 chars (matching deriveCategoryCode).
- * The suffix segment allows up to 8 chars to accommodate manual/legacy IDs.
+ * The suffix segment allows up to 8 alphanumeric chars to accommodate manual/legacy IDs.
  */
 export function validateAssetIdFormat(value: string): string | null {
   if (!value.trim()) {
@@ -100,7 +101,7 @@ export function validateAssetIdFormat(value: string): string | null {
   }
 
   if (!/^GO-[A-Z0-9]{1,6}-[A-Z0-9]{1,8}$/.test(value.trim())) {
-    return 'Asset ID must match the format GO-{CODE}-{NUMBER}, e.g. GO-RIFLE-0007. CODE is up to 6 alphanumeric characters.';
+    return 'Asset ID must match the format GO-{CODE}-{SUFFIX} where CODE is up to 6 alphanumeric characters and SUFFIX is up to 8 alphanumeric characters, e.g. GO-RIFLE-0007.';
   }
 
   return null;
