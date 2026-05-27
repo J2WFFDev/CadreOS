@@ -19,6 +19,7 @@
 import { NoteVisibility, RoleType, ScopeType } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { MEMBEROPS_STAFF_ROLE_TYPES } from "@/lib/member-ops";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -29,10 +30,7 @@ import { db } from "@/lib/db";
  * PARENT_GUARDIAN and ATHLETE are excluded — they have no staff capabilities.
  */
 const STAFF_ROLE_TYPES = new Set<RoleType>([
-  RoleType.ORGANIZATION_ADMIN,
-  RoleType.PROGRAM_DIRECTOR,
-  RoleType.COACH,
-  RoleType.ASSISTANT_COACH,
+  ...MEMBEROPS_STAFF_ROLE_TYPES,
 ]);
 
 // ---------------------------------------------------------------------------

@@ -31,6 +31,12 @@ import {
   deriveGuardianOperationalContext,
   formatGuardianOperationalIndicator,
 } from "@/lib/guardian-operational-context";
+import {
+  isRosterRoleType,
+  isTeamScopedRoleType,
+  MEMBEROPS_ROSTER_ROLE_TYPES,
+  MEMBEROPS_TEAM_ROLE_TYPES,
+} from "@/lib/member-ops";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { isUnresolvedTaskStatus } from "@/lib/follow-up-tasks";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -334,8 +340,8 @@ export default async function TeamDetailsPage({
     ? team.roster.filter((membership) => membership.season.id === selectedSeasonForView.id)
     : [];
   const roleFilterParam = readSearchParam(resolvedSearchParams, "roleFilter");
-  const roleFilter = roleFilterParam && Object.values(RoleType).includes(roleFilterParam as RoleType)
-    ? (roleFilterParam as RoleType)
+  const roleFilter = roleFilterParam && isRosterRoleType(roleFilterParam)
+    ? roleFilterParam
     : "ALL";
   const guardianFilterParam = readSearchParam(resolvedSearchParams, "guardianFilter");
   const guardianFilter =
@@ -418,11 +424,15 @@ export default async function TeamDetailsPage({
   const selectedRosterPersonId =
     readSearchParam(resolvedSearchParams, "rosterPersonId") || availablePeople[0]?.id || "";
   const selectedRosterRole =
-    readSearchParam(resolvedSearchParams, "rosterRole") || RoleType.ATHLETE;
+    isRosterRoleType(readSearchParam(resolvedSearchParams, "rosterRole"))
+      ? readSearchParam(resolvedSearchParams, "rosterRole")
+      : RoleType.ATHLETE;
   const selectedTeamRolePersonId =
     readSearchParam(resolvedSearchParams, "teamRolePersonId") || organizationPeople[0]?.id || "";
   const selectedTeamRoleType =
-    (readSearchParam(resolvedSearchParams, "teamRoleType") || RoleType.COACH) as RoleType;
+    isTeamScopedRoleType(readSearchParam(resolvedSearchParams, "teamRoleType"))
+      ? readSearchParam(resolvedSearchParams, "teamRoleType")
+      : RoleType.COACH;
   const teamOperationalHistory = await getOperationalHistory({
     organizationId: scope.organizationId,
     teamId: team.id,
@@ -898,7 +908,7 @@ export default async function TeamDetailsPage({
             >
               All roster roles
             </Link>
-            {Object.values(RoleType).map((roleType) => (
+            {MEMBEROPS_ROSTER_ROLE_TYPES.map((roleType) => (
               <Link
                 key={roleType}
                 href={buildTeamViewHref(team.id, {
@@ -1566,7 +1576,7 @@ export default async function TeamDetailsPage({
                 defaultValue={selectedRosterRole}
                 className="w-full rounded-md border px-3 py-2 text-sm"
               >
-                {Object.values(RoleType).map((roleType) => (
+                {MEMBEROPS_ROSTER_ROLE_TYPES.map((roleType) => (
                   <option key={roleType} value={roleType}>
                     {formatEnumLabel(roleType)}
                   </option>
@@ -1576,7 +1586,7 @@ export default async function TeamDetailsPage({
             </div>
 
             <button type="submit" className="rounded-md bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black">
-              Add member
+              Add membership
             </button>
           </form>
         )}
@@ -1657,10 +1667,10 @@ export default async function TeamDetailsPage({
               defaultValue={selectedTeamRoleType}
               className="w-full rounded-md border px-3 py-2 text-sm"
             >
-              {Object.values(RoleType).map((roleType) => (
-                <option key={roleType} value={roleType}>
-                  {formatEnumLabel(roleType)}
-                </option>
+                {MEMBEROPS_TEAM_ROLE_TYPES.map((roleType) => (
+                  <option key={roleType} value={roleType}>
+                    {formatEnumLabel(roleType)}
+                  </option>
               ))}
             </select>
             {teamRoleTypeError ? <p className="text-sm text-red-600">{teamRoleTypeError}</p> : null}

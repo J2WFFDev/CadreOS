@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
+import { isTeamScopedRoleType } from "@/lib/member-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
@@ -16,6 +17,14 @@ const teamRoleAssignmentSchema = z.object({
   roleType: z.nativeEnum(RoleType, {
     message: "Role type must use an existing role value.",
   }),
+}).superRefine((value, context) => {
+  if (!isTeamScopedRoleType(value.roleType)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["roleType"],
+      message: "Team roles must use athlete, guardian, or coach role types.",
+    });
+  }
 });
 
 function buildErrorRedirectUrl(

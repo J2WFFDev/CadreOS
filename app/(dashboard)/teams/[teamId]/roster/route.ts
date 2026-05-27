@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { isRosterRoleType } from "@/lib/member-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
@@ -59,7 +60,7 @@ export async function POST(
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, teamId, {
         values,
-        error: scope.errorMessage ?? "Unable to add roster member right now.",
+        error: scope.errorMessage ?? "Unable to add roster membership right now.",
       }),
       303,
     );
@@ -90,6 +91,19 @@ export async function POST(
           rosterRole: fieldErrors.rosterRole?.[0],
         },
         error: "Please correct the highlighted fields.",
+      }),
+      303,
+    );
+  }
+
+  if (!isRosterRoleType(parsed.data.rosterRole)) {
+    return NextResponse.redirect(
+      buildErrorRedirectUrl(request.url, teamId, {
+        values,
+        fieldErrors: {
+          rosterRole: "Select a valid roster role for this membership.",
+        },
+        error: "Roster role selection is invalid.",
       }),
       303,
     );
@@ -186,7 +200,7 @@ export async function POST(
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, teamId, {
           values,
-          error: `That person is already on this team's ${selectedSeason.name} roster.`,
+          error: `That person already has a ${selectedSeason.name} roster membership on this team.`,
         }),
         303,
       );
@@ -204,7 +218,7 @@ export async function POST(
 
     const successUrl = new URL(`/teams/${teamId}`, request.url);
     successUrl.searchParams.set("seasonId", selectedSeason.id);
-    successUrl.searchParams.set("rosterSuccess", "Member added to roster.");
+    successUrl.searchParams.set("rosterSuccess", "Roster membership added.");
 
     return NextResponse.redirect(successUrl, 303);
   } catch (error) {
@@ -224,8 +238,8 @@ export async function POST(
         error: isPermissionDeniedError(error)
           ? error.message
           : isSchemaUnavailableError(error)
-            ? "Database schema is not available yet. Run database setup before adding roster members."
-            : "Unable to add roster member right now. Please try again.",
+            ? "Database schema is not available yet. Run database setup before adding roster memberships."
+            : "Unable to add roster membership right now. Please try again.",
       }),
       303,
     );
