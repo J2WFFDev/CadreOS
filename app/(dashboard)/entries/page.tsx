@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
+import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,19 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
       <section className="space-y-4">
         <PageHeader title="All Entries" description="Unified notes, tasks, events, and decisions." />
         <ErrorMessage message="No organization context is available yet." />
+      </section>
+    );
+  }
+  const entryAccess = await resolveEntryAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+
+  if (entryAccess.level === "NONE") {
+    return (
+      <section className="space-y-4">
+        <PageHeader title="All Entries" description="Unified notes, tasks, events, and decisions." />
+        <ErrorMessage message="You do not have permission to view entries in this organization." />
       </section>
     );
   }

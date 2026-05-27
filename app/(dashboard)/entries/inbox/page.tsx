@@ -6,6 +6,7 @@ import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
 import { labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
+import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,19 @@ export default async function EntryInboxPage() {
       <section className="space-y-4">
         <PageHeader title="Entry Inbox" description="Unprocessed low-context captures queued for triage." />
         <ErrorMessage message="No organization context is available yet." />
+      </section>
+    );
+  }
+  const entryAccess = await resolveEntryAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+
+  if (entryAccess.level === "NONE") {
+    return (
+      <section className="space-y-4">
+        <PageHeader title="Entry Inbox" description="Unprocessed low-context captures queued for triage." />
+        <ErrorMessage message="You do not have permission to view the entry inbox in this organization." />
       </section>
     );
   }
