@@ -333,6 +333,28 @@ There are two related concepts:
 - Use category kit flag when category semantics are container-like.
 - Use inventory kits when you need reusable grouped item membership and quantity tracking.
 
+### Kit type selection guidance
+
+When creating an inventory kit, **Kit type** is primarily a descriptive classification for how staff think about, store, and use the grouped gear. In the current GearOps implementation, these types do **not** create different operational workflows by themselves; they help teams apply consistent naming and find the right grouped gear faster.
+
+| Kit type | Meaning | Choose this when |
+|---|---|---|
+| `Kit` | General-purpose grouped gear. | No more specific label fits. This is the default and safest choice. |
+| `Bundle` | Another grouped collection label; functionally the same as `Kit`. | Your team naturally uses “bundle” instead of “kit.” |
+| `Case` | Gear organized in a protective or rigid case. | The container format matters operationally, such as firearm cases or hard cases. |
+| `Bag` | Gear organized in a carry bag or soft container. | Staff think of it as a bag, such as a medical response bag or athlete gear bag. |
+| `Set` | A matched grouping of pieces that belong together. | The emphasis is on a complete set, such as pad sets or magazine sets. |
+| `Loadout` | Gear prepared for a role, person, mission, or event context. | The grouping represents what someone should take or deploy together. |
+| `Equipment Package` | A broader packaged grouping of gear. | You want a higher-level packaged collection, such as an event support package. |
+
+### Practical default
+
+If staff are unsure which type to choose:
+- use **Kit** as the default
+- use **Case** or **Bag** when the storage form matters
+- use **Set** when the grouped pieces are intended to stay matched
+- use **Loadout** when the group is assembled for a specific person, role, mission, or event
+
 ### Parent/child and history implications
 
 Kit membership is tracked through kit item entries; each item still keeps its own custody, maintenance, and lifecycle history.

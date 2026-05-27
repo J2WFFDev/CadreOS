@@ -33,6 +33,7 @@ GearOps is **not**:
 - **Gear category:** behavior/rule template for groups of items.
 - **Durable / Consumable:** durable tracks item lifecycle; consumable tracks quantity.
 - **Kit / bundle:** grouped assets managed together.
+- **Kit type:** a descriptive label for how a grouped collection is used or stored (for example kit, case, bag, set, or loadout).
 - **Custody:** who currently controls gear (checkout or assignment).
 - **Assignment:** longer-term responsibility context.
 - **Location:** cage, vault, room, field, trailer, etc.
@@ -88,5 +89,6 @@ See: [Mobile and Offline Behavior Guide](./mobile-offline-guide.md)
 - Event teams: [Event Gear Operations Guide](./event-gear-operations.md)
 - Admins (quick orientation): [Admin Configuration Overview](./admin-configuration-overview.md)
 - Admins (full reference): [Administrator Configuration Deep Guide (Arc 20P)](./admin-configuration-deep-guide.md)
+- Kit creation and type guidance: see **Kit and Bundle Configuration** in the [Administrator Configuration Deep Guide](./admin-configuration-deep-guide.md)
 - Reporting users: [Reporting and Dashboard Guide](./reporting-dashboard-guide.md)
 - Troubleshooting: [Troubleshooting Guide](./troubleshooting.md)
