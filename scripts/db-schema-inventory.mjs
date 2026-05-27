@@ -91,6 +91,17 @@ const PROTECTED_MIGRATION_MARKERS = [
     migration: "20260526152000_add_gearops_core_tables",
     requires: [{ table: "GearCategory" }, { table: "GearItem" }, { table: "GearAssignment" }, { table: "GearCheckout" }],
   },
+  {
+    migration: "20260527133000_add_gearcategory_configuration_columns",
+    requires: [
+      { table: "GearCategory", column: "templateSlug" },
+      { table: "GearCategory", column: "behaviorType" },
+      { table: "GearCategory", column: "custodyMode" },
+      { table: "GearCategory", column: "primaryIdentifierType" },
+      { table: "GearCategory", column: "reportGroup" },
+      { table: "GearCategory", column: "supportsEventDeployment" },
+    ],
+  },
 ];
 
 function parseArgs(argv) {
