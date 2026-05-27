@@ -200,6 +200,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Build Readiness Review](./BUILD_READINESS_REVIEW.md)
 - [Chat Transcript](./CHAT_TRANSCRIPT.md)
 - [**Product Decisions**](./PRODUCT_DECISIONS.md)
+- [**Implementation Inventory Report**](./IMPLEMENTATION_INVENTORY_REPORT.md)
 
 ## FieldOps MVP Phase Sequence (6A–6K)
 - [Phase 6A FieldOps Planning](./PHASE_6A_FIELDOPS_PLANNING.md)
