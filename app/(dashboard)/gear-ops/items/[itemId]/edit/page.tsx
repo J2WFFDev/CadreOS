@@ -14,14 +14,14 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-function readSearchParam(searchParams: SearchParams, key: string): string {
+function readSearchParam(searchParams: SearchParams, key: string): string | undefined {
   const value = searchParams[key];
 
   if (Array.isArray(value)) {
-    return value[0] ?? "";
+    return value[0];
   }
 
-  return value ?? "";
+  return value;
 }
 
 export default async function EditGearItemPage({
