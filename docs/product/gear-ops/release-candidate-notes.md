@@ -1,6 +1,6 @@
 # GearOps Release-Candidate Usage Notes
 
-Applies to GearOps stabilized through Arc 20A–20N.
+Applies to GearOps release-candidate scope delivered through Arc 20A–20Y, with Arc 20Z retrospective closeout.
 
 ## RC Coverage
 
@@ -34,7 +34,12 @@ Validated RC workflows include:
 - review low-stock and overdue exceptions at shift end
 - document damage/maintenance findings immediately on return
 
-## Arc 20P Forward Recommendations
+## Arc 20Z Closeout Reference
+
+- Arc 20 retrospective, capability inventory, known gaps, deferred scope confirmation, and next-path candidate planning:  
+  `planning/PHASE_20Z_GEAROPS_RELEASE_RETROSPECTIVE_AND_ROADMAP_RESET.md`
+
+## Arc 20P+ Forward Recommendations
 
 1. expand route/API integration tests for custody and event mutation paths
 2. complete guardian approval UX and approval audit capture

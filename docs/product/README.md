@@ -14,6 +14,7 @@
 - [Troubleshooting Guide](./gear-ops/troubleshooting.md)
 - [Known Limitations and Deferred Scope](./gear-ops/known-limitations-and-deferred-scope.md)
 - [Release-Candidate Usage Notes](./gear-ops/release-candidate-notes.md)
+- [Arc 20 Retrospective and Roadmap Reset (Arc 20Z)](../../planning/PHASE_20Z_GEAROPS_RELEASE_RETROSPECTIVE_AND_ROADMAP_RESET.md)
 
 ## Design System Readiness
 
