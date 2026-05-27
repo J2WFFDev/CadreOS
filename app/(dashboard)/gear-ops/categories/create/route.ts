@@ -213,10 +213,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const failureSchemaStatus = isSchemaUnavailableError(error)
-      ? await getGearOpsSchemaStatus("category-creation")
-      : null;
-    const categorySchemaMissing = Boolean(failureSchemaStatus && !failureSchemaStatus.schemaReady);
+    const categorySchemaMissing = isSchemaUnavailableError(error) && !schemaStatus.schemaReady;
 
     return NextResponse.redirect(
       buildErrorRedirectUrl(request.url, {
@@ -226,8 +223,8 @@ export async function POST(request: Request) {
           : categorySchemaMissing
             ? "Database schema is not available yet. Run database setup before creating gear categories."
             : "Unable to create gear category right now. Please try again.",
-        missingTables: categorySchemaMissing ? failureSchemaStatus?.missingTables : undefined,
-        missingColumns: categorySchemaMissing ? failureSchemaStatus?.missingColumns : undefined,
+        missingTables: categorySchemaMissing ? schemaStatus.missingTables : undefined,
+        missingColumns: categorySchemaMissing ? schemaStatus.missingColumns : undefined,
       }),
       303,
     );
