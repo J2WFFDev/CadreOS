@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-function readSearchParam(searchParams: SearchParams, key: string): string | undefined {
+export function readSearchParam(searchParams: SearchParams, key: string): string | undefined {
   const value = searchParams[key];
 
   if (Array.isArray(value)) {
