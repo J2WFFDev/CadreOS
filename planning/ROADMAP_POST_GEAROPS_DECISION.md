@@ -15,6 +15,18 @@ Select the next CadreOS build arc after GearOps MVP closeout by comparing three 
 
 This is a planning-only decision artifact. It does not add runtime scope or schema scope.
 
+## Roadmap Correction (Post Arc 21 Completion)
+
+Entry Completion work previously labeled in Arc 19 sub-phases is now tracked under **Arc 22**.
+
+- old 19C → Arc 22B (Quick Capture / Inbox)
+- old 19D → Arc 22C (Cross-Linking / Operational Graph)
+- old 19E → Arc 22D (Workflow Orchestration / Follow-Up Chaining)
+- old 19F → Arc 22E (Activity / Notification-Ready Integration)
+- old 19G → Arc 22G (Entry Closeout)
+
+Arc 22A now serves as the current inventory/stabilization/gap-planning entry point before Arc 22B implementation work.
+
 ---
 
 ## Current Product Maturity Snapshot
