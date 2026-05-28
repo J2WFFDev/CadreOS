@@ -150,7 +150,7 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
       { href: "/prompt-assignments", label: "Prompt Assignments" },
       { href: "/admin/roles", label: "Roles & Permissions" },
       { href: "/admin/settings", label: "Settings" },
-      { href: "/prompts", label: "Prompt Templates" },
+      { href: "/prompts", label: "Prompts / Templates" },
       { href: "/reports", label: "Global Reports" },
       { href: "/admin/audit", label: "Audit / History" },
     ],
