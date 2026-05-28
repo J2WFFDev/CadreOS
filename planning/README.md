@@ -2,6 +2,14 @@
 
 CadreOS is an **Athlete Program Operating System**.
 
+## Release 1 Arc Status
+
+| Arc | Domain | Status |
+|-----|--------|--------|
+| Arc 21 | MemberOps / Roster Lifecycle Completion | ✅ Complete |
+| Arc 22A–22G | Entry Completion (Operational Capture, Workflow, Feed, Assigned Work) | ✅ Complete |
+| **Arc 23** | **Journals & Habits** | 🔜 Next |
+
 ## Planning Documents
 - [**CadreOS \*Ops Domain Architecture** — Naming System, FieldOps vs ResourceOps, Platform Primitives](./CADRE_OPS_DOMAIN_ARCHITECTURE.md)
 - [Product Vision](./PRODUCT_VISION.md)
@@ -57,6 +65,11 @@ CadreOS is an **Athlete Program Operating System**.
 - [Arc 22D Entry Workflow Orchestration Validation Checklist](./ARC_22D_ENTRY_WORKFLOW_VALIDATION_CHECKLIST.md)
 - [Arc 22E Activity Feed and Notification-Ready Events](./ARC_22E_ACTIVITY_FEED_NOTIFICATION_READY_EVENTS.md)
 - [Arc 22E Entry Activity and Feed Validation Checklist](./ARC_22E_ENTRY_ACTIVITY_VALIDATION_CHECKLIST.md)
+- [Arc 22F Assigned Work, Filters, Today/Upcoming, and Role-Aware Views](./ARC_22F_ASSIGNED_WORK_FILTERS_VIEWS.md)
+- [Arc 22F Entry Views Manual QA Checklist](./ARC_22F_ENTRY_VIEWS_VALIDATION_CHECKLIST.md)
+- [Arc 22G Entry Closeout, Auth Audit, QA, Seed Data, and Documentation ✅ COMPLETE](./ARC_22G_ENTRY_CLOSEOUT_AUTH_AUDIT_QA_SEED_DATA.md)
+- [Arc 22G Entry Manual QA Checklist](./ARC_22G_ENTRY_QA_CHECKLIST.md)
+- **Arc 23 — Journals & Habits (next arc)**
 - [Arc 19A Unified Operational Entry Architecture (historical foundation)](./PHASE_19A_UNIFIED_OPERATIONAL_ENTRY_ARCHITECTURE.md)
 - [Arc 19B Unified Feed & Today View (historical foundation)](./PHASE_19B_UNIFIED_FEED_TODAY_VIEW.md)
 - [Arc 19C Quick Capture System (historical; remapped to Arc 22B)](./PHASE_19C_QUICK_CAPTURE_SYSTEM.md)
