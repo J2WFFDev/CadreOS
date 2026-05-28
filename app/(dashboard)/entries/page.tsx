@@ -77,7 +77,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
 
   const filter = parseEntryListFilter(
     rawParams,
-    Object.values(EntryType),
+    Object.values(EntryType).filter((entryType) => entryType !== EntryType.JOURNAL),
     Object.values(EntryStatus),
     Object.values(EntryPriority),
   );
@@ -90,6 +90,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
     where: {
       organizationId: scope.organizationId,
       deletedAt: null,
+      type: { not: EntryType.JOURNAL },
       ...(filter.type ? { type: filter.type } : {}),
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.priority ? { priority: filter.priority } : {}),
@@ -151,9 +152,11 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
             </label>
             <select id="type" name="type" defaultValue={filter.type ?? ""} className="w-full rounded-md border px-2 py-1.5 text-sm">
               <option value="">All types</option>
-              {Object.values(EntryType).map((v) => (
+              {Object.values(EntryType)
+                .filter((v) => v !== EntryType.JOURNAL)
+                .map((v) => (
                 <option key={v} value={v}>{labelForEntryType(v)}</option>
-              ))}
+                ))}
             </select>
           </div>
 
@@ -288,4 +291,3 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
     </section>
   );
 }
-

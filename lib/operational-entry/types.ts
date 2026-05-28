@@ -141,6 +141,10 @@ export const ENTRY_ACTIVITY_ACTIONS = {
   ENTRY_QUICK_ADD_NOTE: "entry.quick_add.note",
   ENTRY_QUICK_ADD_GENERIC: "entry.quick_add.generic",
   ENTRY_NOTE_TO_TASK_CONVERTED: "entry.note_to_task_converted",
+  JOURNAL_DRAFT_CREATED: "journal.draft_created",
+  JOURNAL_DRAFT_UPDATED: "journal.draft_updated",
+  JOURNAL_SUBMITTED: "journal.submitted",
+  JOURNAL_ARCHIVED: "journal.archived",
   // Backward-compatible aliases used by older route/service code.
   CREATED: "entry.created",
   UPDATED: "entry.updated",
@@ -159,6 +163,10 @@ export const ENTRY_ACTIVITY_ACTIONS = {
   QUICK_ADD_NOTE: "entry.quick_add.note",
   QUICK_ADD_GENERIC: "entry.quick_add.generic",
   NOTE_TO_TASK_CONVERTED: "entry.note_to_task_converted",
+  JOURNAL_DRAFT_CREATED_ALIAS: "journal.draft_created",
+  JOURNAL_DRAFT_UPDATED_ALIAS: "journal.draft_updated",
+  JOURNAL_SUBMITTED_ALIAS: "journal.submitted",
+  JOURNAL_ARCHIVED_ALIAS: "journal.archived",
 } as const;
 
 export type EntryActivityAction = (typeof ENTRY_ACTIVITY_ACTIONS)[keyof typeof ENTRY_ACTIVITY_ACTIONS];

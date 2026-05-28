@@ -43,10 +43,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
   const entry = await db.entry.findFirst({
     where: { id: entryId, organizationId: organizationId, deletedAt: null },
-    select: { id: true, status: true, sourceTaskId: true, sourceNoteId: true },
+    select: { id: true, type: true, status: true, sourceTaskId: true, sourceNoteId: true },
   });
 
-  if (!entry) {
+  if (!entry || entry.type === EntryType.JOURNAL) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
 

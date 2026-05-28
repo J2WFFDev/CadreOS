@@ -86,6 +86,10 @@ const ACTIVITY_ACTION_LABELS: Record<string, string> = {
   "workflow.run_completed": "Workflow completed",
   "workflow.run_cancelled": "Workflow cancelled",
   "workflow.chain_created": "Follow-up chain created",
+  "journal.draft_created": "Journal draft created",
+  "journal.draft_updated": "Journal draft updated",
+  "journal.submitted": "Journal submitted",
+  "journal.archived": "Journal archived",
 };
 
 export function labelForActivityAction(action: string): string {

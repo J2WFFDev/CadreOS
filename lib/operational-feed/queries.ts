@@ -7,9 +7,10 @@
  * exported for testing. Async DB functions are the runtime API.
  */
 
-import { EntryStatus, InboxItemStatus } from "@prisma/client";
+import { EntryStatus, EntryType, InboxItemStatus } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { deriveSafeJournalActivityText } from "@/lib/journals/policy";
 import { ACTIVE_FEED_STATUSES, ACTIVE_OPERATIONAL_TYPES, DEFAULT_UPCOMING_DAYS } from "./types";
 import type {
   FeedActivityItem,
@@ -109,6 +110,7 @@ export async function queryAssignedEntries(ctx: FeedQueryContext): Promise<FeedE
     where: {
       organizationId: ctx.organizationId,
       deletedAt: null,
+      type: { not: EntryType.JOURNAL },
       status: { in: [...ACTIVE_FEED_STATUSES] },
       OR: [
         { assignedToPersonId: ctx.actorPersonId },
@@ -152,6 +154,7 @@ export async function queryInboxEntries(ctx: FeedQueryContext): Promise<FeedEntr
       organizationId: ctx.organizationId,
       id: { in: entryIds },
       deletedAt: null,
+      type: { not: EntryType.JOURNAL },
       status: { in: [...ACTIVE_FEED_STATUSES] },
     },
     orderBy: [{ updatedAt: "desc" }],
@@ -204,7 +207,7 @@ export async function queryRecentActivity(
       action: true,
       actorPersonId: true,
       createdAt: true,
-      entry: { select: { title: true } },
+      entry: { select: { title: true, type: true } },
     },
     take: limit,
   });
@@ -212,11 +215,20 @@ export async function queryRecentActivity(
   return activities.map((a) => ({
     id: a.id,
     entryId: a.entryId,
-    entryTitle: a.entry.title,
+    entryTitle: sanitizeActivityEntryTitle(a.action, a.entry.type, a.entry.title),
+    entryType: a.entry.type,
     action: a.action,
     actorPersonId: a.actorPersonId,
     createdAt: a.createdAt,
   }));
+}
+
+export function sanitizeActivityEntryTitle(action: string, entryType: EntryType, entryTitle: string): string {
+  if (entryType === EntryType.JOURNAL) {
+    return deriveSafeJournalActivityText(action);
+  }
+
+  return entryTitle;
 }
 
 /**

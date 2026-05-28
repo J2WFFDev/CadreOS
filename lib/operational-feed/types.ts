@@ -47,6 +47,7 @@ export type FeedActivityItem = {
   id: string;
   entryId: string;
   entryTitle: string;
+  entryType: EntryType;
   action: string;
   actorPersonId: string | null;
   createdAt: Date;

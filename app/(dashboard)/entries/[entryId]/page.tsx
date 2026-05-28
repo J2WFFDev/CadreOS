@@ -186,6 +186,19 @@ export default async function EntryDetailPage({ params }: { params: Promise<{ en
     );
   }
 
+  if (entry.type === EntryType.JOURNAL) {
+    return (
+      <section className="space-y-4">
+        <BackLink href="/entries" label="All entries" />
+        <h2 className="text-2xl font-semibold tracking-tight">Journal entry</h2>
+        <ErrorMessage message="Journal entries are managed in the dedicated Journals workflow." />
+        <Link href={`/journals/${entry.id}`} className="inline-flex rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+          Open journal detail
+        </Link>
+      </section>
+    );
+  }
+
   const [relatedItems, objectLinkViews] = await Promise.all([
     listRelatedOperationalRecords({
       organizationId,
