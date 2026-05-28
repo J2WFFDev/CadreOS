@@ -54,8 +54,9 @@ export function NavSidebar({
               </p>
               <ul className="space-y-0.5 pl-3">
                 {group.items.map((item) => {
-                  const isActive = item.status === "active" && isNavSidebarLinkActive(pathname, item.href);
-                  const isDisabled = item.disabled || item.status !== "active";
+                  const isInteractive = item.status === "active" && item.disabled !== true;
+                  const isActive = isInteractive && isNavSidebarLinkActive(pathname, item.href);
+                  const isDisabled = !isInteractive;
                   const statusLabel = item.status === "planned" ? "Planned" : item.status === "disabled" ? "Disabled" : null;
                   const statusTitle = item.plannedReason ?? item.disabledReason ?? statusLabel ?? undefined;
 

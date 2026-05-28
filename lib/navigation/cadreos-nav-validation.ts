@@ -118,7 +118,8 @@ export function validateCadreosNavTaxonomy(groups: readonly CanonicalNavGroup[] 
     }
   }
 
-  for (const [role, expectedGroupKeys] of Object.entries(APPROVED_GROUP_VISIBILITY) as Array<[AppRole, readonly string[]]>) {
+  for (const role of Object.keys(APPROVED_GROUP_VISIBILITY) as AppRole[]) {
+    const expectedGroupKeys = APPROVED_GROUP_VISIBILITY[role];
     const actualGroupKeys = getNavSidebarGroupsForUser(buildRoleUser(role)).map((group) => group.key);
     if (JSON.stringify(actualGroupKeys) !== JSON.stringify(expectedGroupKeys)) {
       issues.push(`Role visibility mismatch for ${role}: expected [${formatList(expectedGroupKeys)}], received [${formatList(actualGroupKeys)}].`);
