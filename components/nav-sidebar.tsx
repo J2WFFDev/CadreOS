@@ -9,7 +9,10 @@ export function NavSidebar({ unreadNotificationCount = 0 }: { unreadNotification
   const pathname = usePathname();
 
   return (
-    <nav className="hidden w-52 shrink-0 border-r bg-white pt-4 dark:bg-zinc-900 md:block" aria-label="Sidebar">
+    <nav
+      className="hidden w-52 shrink-0 border-r bg-white pt-4 dark:bg-zinc-900 md:block"
+      aria-label="Dashboard navigation"
+    >
       <ul className="space-y-3 px-2">
         {NAV_SIDEBAR_GROUPS.map((group) => (
           <li key={group.label}>
