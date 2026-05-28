@@ -10,7 +10,7 @@ export function NavSidebar({ unreadNotificationCount = 0 }: { unreadNotification
 
   return (
     <nav
-      className="hidden w-52 shrink-0 border-r bg-white pt-4 dark:bg-zinc-900 md:block"
+      className="w-full shrink-0 border-b bg-white pt-4 dark:bg-zinc-900 md:w-52 md:border-b-0 md:border-r"
       aria-label="Dashboard navigation"
     >
       <ul className="space-y-3 px-2">
