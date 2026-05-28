@@ -5,12 +5,19 @@ export type NavSidebarLink = {
 
 export type NavSidebarGroup = {
   label: string;
+  /**
+   * Landing route for the module header. When present, the header renders as a clickable link.
+   * Should match one of the child `links` hrefs so that the parent active state is consistent
+   * with the child active state when on that route.
+   */
+  href?: string;
   links: readonly NavSidebarLink[];
 };
 
 export const NAV_SIDEBAR_GROUPS: readonly NavSidebarGroup[] = [
   {
     label: "Home",
+    href: "/dashboard",
     links: [
       { href: "/dashboard", label: "Dashboard" },
       { href: "/feed", label: "Feed" },
@@ -21,6 +28,8 @@ export const NAV_SIDEBAR_GROUPS: readonly NavSidebarGroup[] = [
   },
   {
     label: "MemberOps",
+    // TODO: Replace with /member-ops when a dedicated MemberOps landing page is created.
+    href: "/programs",
     links: [
       { href: "/programs", label: "Programs" },
       { href: "/people", label: "People" },
@@ -31,6 +40,8 @@ export const NAV_SIDEBAR_GROUPS: readonly NavSidebarGroup[] = [
   },
   {
     label: "EntryOps",
+    // TODO: Replace with /entry-ops when a dedicated EntryOps landing page is created.
+    href: "/entries",
     links: [
       { href: "/entries", label: "Entries" },
       { href: "/entries/inbox", label: "Inbox" },
@@ -40,6 +51,8 @@ export const NAV_SIDEBAR_GROUPS: readonly NavSidebarGroup[] = [
   },
   {
     label: "FieldOps / ResourceOps",
+    // TODO: Split into /field-ops and /resource-ops when ResourceOps becomes a standalone module.
+    href: "/field-ops",
     links: [
       { href: "/field-ops", label: "FieldOps" },
       { href: "/field-ops/facilities", label: "Facilities" },
@@ -50,6 +63,7 @@ export const NAV_SIDEBAR_GROUPS: readonly NavSidebarGroup[] = [
   },
   {
     label: "GearOps",
+    href: "/gear-ops",
     links: [
       { href: "/gear-ops", label: "GearOps" },
       { href: "/gear-ops/categories", label: "Categories" },
@@ -60,6 +74,8 @@ export const NAV_SIDEBAR_GROUPS: readonly NavSidebarGroup[] = [
   },
   {
     label: "AdminOps",
+    // TODO: Replace with /admin when a dedicated AdminOps landing page is created.
+    href: "/reports",
     links: [
       { href: "/reports", label: "Global Reports" },
       { href: "/account", label: "Account" },
@@ -75,4 +91,9 @@ export function isNavSidebarLinkActive(pathname: string, href: string): boolean 
     pathname === href ||
     (href !== "/dashboard" && pathname.startsWith(href + "/") && !(isEntriesRoot && isEntryInboxPath))
   );
+}
+
+/** Returns true when any child link in the group is active for the given pathname. */
+export function isNavSidebarGroupActive(pathname: string, group: NavSidebarGroup): boolean {
+  return group.links.some((link) => isNavSidebarLinkActive(pathname, link.href));
 }
