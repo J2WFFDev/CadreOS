@@ -1,9 +1,14 @@
 import {
   ApprovalStatus,
   BookingStatus,
+  EntryPriority,
+  EntryStatus,
+  EntryType,
+  EntryVisibility,
   EventStatus,
   EventType,
   FacilityStatus,
+  InboxItemStatus,
   PrecheckStatus,
   PrismaClient,
   RelationshipType,
@@ -417,6 +422,434 @@ async function main() {
       status: BookingStatus.REQUESTED,
       precheckStatus: PrecheckStatus.WARNING,
       approvalStatus: ApprovalStatus.PENDING,
+    },
+  });
+
+  // ── Arc 22G — Entry seed data ─────────────────────────────────────────────
+  //
+  // These records cover the operational Entry scenarios required for manual QA
+  // and automated regression tests.  All IDs are stable so upsert is safe to
+  // run multiple times.
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  const tomorrow = new Date(today);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+
+  const inSevenDays = new Date(today);
+  inSevenDays.setUTCDate(inSevenDays.getUTCDate() + 7);
+
+  const yesterday = new Date(today);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+
+  const twoDaysAgo = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  // Minimal inbox capture — NOTE with no due date and no context target.
+  // shouldRouteEntryToInbox() returns true for this shape.
+  const inboxEntry = await db.entry.upsert({
+    where: { id: "cadreos-entry-inbox-note" },
+    update: {
+      title: "Quick note from practice",
+      content: "Follow up on athlete conditioning status.",
+      type: EntryType.NOTE,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.MEDIUM,
+      visibility: EntryVisibility.STAFF_ONLY,
+      dueDate: null,
+    },
+    create: {
+      id: "cadreos-entry-inbox-note",
+      organizationId: organization.id,
+      title: "Quick note from practice",
+      content: "Follow up on athlete conditioning status.",
+      type: EntryType.NOTE,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.MEDIUM,
+      visibility: EntryVisibility.STAFF_ONLY,
+      createdByPersonId: teamCoach.id,
+    },
+  });
+
+  // InboxRoutingItem for the inbox entry.
+  await db.inboxRoutingItem.upsert({
+    where: { id: "cadreos-inbox-item-note" },
+    update: {
+      status: InboxItemStatus.OPEN,
+      priority: 20,
+    },
+    create: {
+      id: "cadreos-inbox-item-note",
+      organizationId: organization.id,
+      category: "entry",
+      subjectRefType: "ENTRY",
+      subjectRefId: inboxEntry.id,
+      status: InboxItemStatus.OPEN,
+      priority: 20,
+      createdByPersonId: teamCoach.id,
+    },
+  });
+
+  // Staff observation note.
+  await db.entry.upsert({
+    where: { id: "cadreos-entry-note-observation" },
+    update: {
+      title: "Athlete attendance concern — recurring absences",
+      content: "Three absences in the past two weeks. Spoke briefly with guardian at pickup.",
+      type: EntryType.NOTE,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.HIGH,
+      visibility: EntryVisibility.STAFF_ONLY,
+    },
+    create: {
+      id: "cadreos-entry-note-observation",
+      organizationId: organization.id,
+      title: "Athlete attendance concern — recurring absences",
+      content: "Three absences in the past two weeks. Spoke briefly with guardian at pickup.",
+      type: EntryType.NOTE,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.HIGH,
+      visibility: EntryVisibility.STAFF_ONLY,
+      createdByPersonId: teamCoach.id,
+    },
+  });
+
+  // Open task with no due date.
+  await db.entry.upsert({
+    where: { id: "cadreos-entry-task-open" },
+    update: {
+      title: "Review training plan for upcoming tournament",
+      type: EntryType.TASK,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.MEDIUM,
+      dueDate: null,
+    },
+    create: {
+      id: "cadreos-entry-task-open",
+      organizationId: organization.id,
+      title: "Review training plan for upcoming tournament",
+      type: EntryType.TASK,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.MEDIUM,
+      visibility: EntryVisibility.STAFF_ONLY,
+      createdByPersonId: teamCoach.id,
+      assignedToPersonId: teamCoach.id,
+    },
+  });
+
+  // Task due today — appears in Today view.
+  await db.entry.upsert({
+    where: { id: "cadreos-entry-task-today" },
+    update: {
+      title: "Submit end-of-week attendance report",
+      type: EntryType.TASK,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.HIGH,
+      dueDate: today,
+    },
+    create: {
+      id: "cadreos-entry-task-today",
+      organizationId: organization.id,
+      title: "Submit end-of-week attendance report",
+      type: EntryType.TASK,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.HIGH,
+      visibility: EntryVisibility.STAFF_ONLY,
+      dueDate: today,
+      createdByPersonId: teamCoach.id,
+      assignedToPersonId: teamCoach.id,
+    },
+  });
+
+  // Task due in 7 days — appears in Upcoming view.
+  await db.entry.upsert({
+    where: { id: "cadreos-entry-task-upcoming" },
+    update: {
+      title: "Prepare pre-season athlete readiness review",
+      type: EntryType.TASK,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.MEDIUM,
+      dueDate: inSevenDays,
+    },
+    create: {
+      id: "cadreos-entry-task-upcoming",
+      organizationId: organization.id,
+      title: "Prepare pre-season athlete readiness review",
+      type: EntryType.TASK,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.MEDIUM,
+      visibility: EntryVisibility.STAFF_ONLY,
+      dueDate: inSevenDays,
+      createdByPersonId: teamCoach.id,
+      assignedToPersonId: teamCoach.id,
+    },
+  });
+
+  // Overdue task — past due date, appears in Today view as overdue.
+  await db.entry.upsert({
+    where: { id: "cadreos-entry-task-overdue" },
+    update: {
+      title: "Update roster for season rollover",
+      type: EntryType.TASK,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.URGENT,
+      dueDate: yesterday,
+    },
+    create: {
+      id: "cadreos-entry-task-overdue",
+      organizationId: organization.id,
+      title: "Update roster for season rollover",
+      type: EntryType.TASK,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.URGENT,
+      visibility: EntryVisibility.STAFF_ONLY,
+      dueDate: yesterday,
+      createdByPersonId: teamCoach.id,
+      assignedToPersonId: teamCoach.id,
+    },
+  });
+
+  // Follow-up assigned to teamCoach — appears in Assigned to Me view.
+  await db.entry.upsert({
+    where: { id: "cadreos-entry-followup-assigned" },
+    update: {
+      title: "Follow up: Attendance concern — recurring absences",
+      content: "Confirm parent contact and document outcome.",
+      type: EntryType.FOLLOW_UP,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.HIGH,
+      dueDate: tomorrow,
+      assignedToPersonId: teamCoach.id,
+    },
+    create: {
+      id: "cadreos-entry-followup-assigned",
+      organizationId: organization.id,
+      title: "Follow up: Attendance concern — recurring absences",
+      content: "Confirm parent contact and document outcome.",
+      type: EntryType.FOLLOW_UP,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.HIGH,
+      visibility: EntryVisibility.STAFF_ONLY,
+      dueDate: tomorrow,
+      createdByPersonId: teamCoach.id,
+      assignedToPersonId: teamCoach.id,
+    },
+  });
+
+  // Completed follow-up — excluded from active views.
+  await db.entry.upsert({
+    where: { id: "cadreos-entry-followup-completed" },
+    update: {
+      title: "Follow up: Guardian contacted re absence",
+      type: EntryType.FOLLOW_UP,
+      status: EntryStatus.DONE,
+      taskCompleted: true,
+      completedAt: twoDaysAgo,
+    },
+    create: {
+      id: "cadreos-entry-followup-completed",
+      organizationId: organization.id,
+      title: "Follow up: Guardian contacted re absence",
+      type: EntryType.FOLLOW_UP,
+      status: EntryStatus.DONE,
+      priority: EntryPriority.MEDIUM,
+      visibility: EntryVisibility.STAFF_ONLY,
+      taskCompleted: true,
+      completedAt: twoDaysAgo,
+      createdByPersonId: teamCoach.id,
+      assignedToPersonId: teamCoach.id,
+    },
+  });
+
+  // Recorded decision.
+  await db.entry.upsert({
+    where: { id: "cadreos-entry-decision" },
+    update: {
+      title: "Decision: Move Monday practice to Tuesday for this week",
+      content: "Facility conflict on Monday. Notified team via usual channels.",
+      type: EntryType.DECISION,
+      status: EntryStatus.DONE,
+      priority: EntryPriority.MEDIUM,
+    },
+    create: {
+      id: "cadreos-entry-decision",
+      organizationId: organization.id,
+      title: "Decision: Move Monday practice to Tuesday for this week",
+      content: "Facility conflict on Monday. Notified team via usual channels.",
+      type: EntryType.DECISION,
+      status: EntryStatus.DONE,
+      priority: EntryPriority.MEDIUM,
+      visibility: EntryVisibility.STAFF_ONLY,
+      createdByPersonId: generalManager.id,
+    },
+  });
+
+  // Note linked to athlete via EntryObjectLink.
+  const linkedAthleteEntry = await db.entry.upsert({
+    where: { id: "cadreos-entry-linked-athlete" },
+    update: {
+      title: "Conditioning observation — athlete progress note",
+      content: "Showing improvement in sprint times over the last three sessions.",
+      type: EntryType.NOTE,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.LOW,
+    },
+    create: {
+      id: "cadreos-entry-linked-athlete",
+      organizationId: organization.id,
+      title: "Conditioning observation — athlete progress note",
+      content: "Showing improvement in sprint times over the last three sessions.",
+      type: EntryType.NOTE,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.LOW,
+      visibility: EntryVisibility.STAFF_ONLY,
+      createdByPersonId: teamCoach.id,
+    },
+  });
+
+  await db.entryObjectLink.upsert({
+    where: { id: "cadreos-eol-linked-athlete" },
+    update: {
+      targetType: "PERSON",
+      targetId: athlete.id,
+    },
+    create: {
+      id: "cadreos-eol-linked-athlete",
+      organizationId: organization.id,
+      entryId: linkedAthleteEntry.id,
+      targetType: "PERSON",
+      targetId: athlete.id,
+      createdByPersonId: teamCoach.id,
+    },
+  });
+
+  // Note linked to team via EntryObjectLink.
+  const linkedTeamEntry = await db.entry.upsert({
+    where: { id: "cadreos-entry-linked-team" },
+    update: {
+      title: "Team cohesion observation — end of season review",
+      content: "Overall morale is high. Key relationships between athletes improving.",
+      type: EntryType.NOTE,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.LOW,
+    },
+    create: {
+      id: "cadreos-entry-linked-team",
+      organizationId: organization.id,
+      title: "Team cohesion observation — end of season review",
+      content: "Overall morale is high. Key relationships between athletes improving.",
+      type: EntryType.NOTE,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.LOW,
+      visibility: EntryVisibility.STAFF_ONLY,
+      createdByPersonId: teamCoach.id,
+    },
+  });
+
+  await db.entryObjectLink.upsert({
+    where: { id: "cadreos-eol-linked-team" },
+    update: {
+      targetType: "TEAM",
+      targetId: team.id,
+    },
+    create: {
+      id: "cadreos-eol-linked-team",
+      organizationId: organization.id,
+      entryId: linkedTeamEntry.id,
+      targetType: "TEAM",
+      targetId: team.id,
+      createdByPersonId: teamCoach.id,
+    },
+  });
+
+  // Guardian-visible entry linked to athlete — visibility ORGANIZATION_SCOPED.
+  // Used to verify guardian read policy (currently guardian-visible entries are
+  // deferred; this record supports future testing when that policy is enabled).
+  const guardianVisibleEntry = await db.entry.upsert({
+    where: { id: "cadreos-entry-guardian-visible" },
+    update: {
+      title: "Athlete progress update — shared with family",
+      content: "Strong session today. Technique improvements noted.",
+      type: EntryType.NOTE,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.LOW,
+      visibility: EntryVisibility.ORGANIZATION_SCOPED,
+    },
+    create: {
+      id: "cadreos-entry-guardian-visible",
+      organizationId: organization.id,
+      title: "Athlete progress update — shared with family",
+      content: "Strong session today. Technique improvements noted.",
+      type: EntryType.NOTE,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.LOW,
+      visibility: EntryVisibility.ORGANIZATION_SCOPED,
+      createdByPersonId: teamCoach.id,
+    },
+  });
+
+  await db.entryObjectLink.upsert({
+    where: { id: "cadreos-eol-guardian-visible" },
+    update: {
+      targetType: "PERSON",
+      targetId: athlete.id,
+    },
+    create: {
+      id: "cadreos-eol-guardian-visible",
+      organizationId: organization.id,
+      entryId: guardianVisibleEntry.id,
+      targetType: "PERSON",
+      targetId: athlete.id,
+      createdByPersonId: teamCoach.id,
+    },
+  });
+
+  // Staff-only note — guardian must NOT see this entry.
+  await db.entry.upsert({
+    where: { id: "cadreos-entry-staff-only" },
+    update: {
+      title: "Confidential: Athlete welfare concern escalation",
+      content: "Internal staff note. Not for guardian visibility.",
+      type: EntryType.NOTE,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.URGENT,
+      visibility: EntryVisibility.STAFF_ONLY,
+    },
+    create: {
+      id: "cadreos-entry-staff-only",
+      organizationId: organization.id,
+      title: "Confidential: Athlete welfare concern escalation",
+      content: "Internal staff note. Not for guardian visibility.",
+      type: EntryType.NOTE,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority.URGENT,
+      visibility: EntryVisibility.STAFF_ONLY,
+      createdByPersonId: generalManager.id,
+    },
+  });
+
+  // Archived/completed entry — excluded from all active views.
+  await db.entry.upsert({
+    where: { id: "cadreos-entry-archived" },
+    update: {
+      title: "Pre-season equipment check task",
+      type: EntryType.TASK,
+      status: EntryStatus.ARCHIVED,
+      taskCompleted: true,
+      completedAt: thirtyDaysAgo,
+    },
+    create: {
+      id: "cadreos-entry-archived",
+      organizationId: organization.id,
+      title: "Pre-season equipment check task",
+      type: EntryType.TASK,
+      status: EntryStatus.ARCHIVED,
+      priority: EntryPriority.LOW,
+      visibility: EntryVisibility.STAFF_ONLY,
+      taskCompleted: true,
+      completedAt: thirtyDaysAgo,
+      createdByPersonId: teamCoach.id,
     },
   });
 }
