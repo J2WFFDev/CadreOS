@@ -3,9 +3,12 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
+import { FilterTabs } from "@/components/dashboard/filter-tabs";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import { canCreateHabit, canReadHabit, resolveHabitAccessContext } from "@/lib/habits/access";
-import { labelForHabitFrequency, labelForHabitStatus } from "@/lib/habits/policy";
+import { badgeVariantForHabitStatus, labelForHabitFrequency, labelForHabitStatus } from "@/lib/habits/policy";
+import { formatShortDateTime } from "@/lib/format-date";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { db } from "@/lib/db";
 
@@ -20,12 +23,6 @@ function normalizeStatusFilter(rawStatus: string | string[] | undefined): "activ
   if (value === "archived") return "archived";
   if (value === "all") return "all";
   return "active";
-}
-
-function badgeClasses(status: HabitStatus): string {
-  if (status === HabitStatus.ACTIVE) return "inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-300";
-  if (status === HabitStatus.PAUSED) return "inline-block rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
-  return "inline-block rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400";
 }
 
 export default async function HabitsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -91,11 +88,6 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
 
   const canCreate = canCreateHabit(accessContext);
 
-  const tabBase =
-    "rounded-md border px-3 py-1.5 text-sm";
-  const tabActive = `${tabBase} bg-zinc-100 dark:bg-zinc-800`;
-  const tabInactive = `${tabBase} hover:bg-zinc-50 dark:hover:bg-zinc-800`;
-
   return (
     <section className="space-y-4">
       <PageHeader
@@ -103,10 +95,15 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
         description="Track recurring behaviors, check-ins, and completion streaks."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Link href="/habits?status=active" aria-current={statusFilter === "active" ? "page" : undefined} className={statusFilter === "active" ? tabActive : tabInactive}>Active</Link>
-            <Link href="/habits?status=paused" aria-current={statusFilter === "paused" ? "page" : undefined} className={statusFilter === "paused" ? tabActive : tabInactive}>Paused</Link>
-            <Link href="/habits?status=archived" aria-current={statusFilter === "archived" ? "page" : undefined} className={statusFilter === "archived" ? tabActive : tabInactive}>Archived</Link>
-            <Link href="/habits?status=all" aria-current={statusFilter === "all" ? "page" : undefined} className={statusFilter === "all" ? tabActive : tabInactive}>All</Link>
+            <FilterTabs
+              tabs={[
+                { label: "Active", href: "/habits?status=active", value: "active" },
+                { label: "Paused", href: "/habits?status=paused", value: "paused" },
+                { label: "Archived", href: "/habits?status=archived", value: "archived" },
+                { label: "All", href: "/habits?status=all", value: "all" },
+              ]}
+              activeValue={statusFilter}
+            />
             {canCreate ? (
               <Link href="/habits/create" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
                 Create habit
@@ -155,9 +152,9 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
                     </td>
                     <td className="px-4 py-3">{habit._count.completions}</td>
                     <td className="px-4 py-3">
-                      <span className={badgeClasses(habit.status)}>{labelForHabitStatus(habit.status)}</span>
+                      <StatusBadge variant={badgeVariantForHabitStatus(habit.status)} label={labelForHabitStatus(habit.status)} />
                     </td>
-                    <td className="px-4 py-3 text-zinc-500">{habit.updatedAt.toISOString().slice(0, 16).replace("T", " ")}</td>
+                    <td className="px-4 py-3 text-zinc-500">{formatShortDateTime(habit.updatedAt)}</td>
                   </tr>
                 );
               })}
