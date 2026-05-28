@@ -64,6 +64,8 @@ jobs:
               .filter(Boolean)
               .map((label) => label.toLowerCase());
             const combinedText = [pullRequest?.title, commitMessage].filter(Boolean).join("\n");
+            const featurePrefixPattern = /(^|\n)feat(\([^)]+\))?:/i;
+            const featureWordPattern = /\bfeature\b/i;
 
             if (labels.some((label) => ["release:major", "semver:major", "major"].includes(label))) {
               bump = "major";
@@ -73,7 +75,7 @@ jobs:
               bump = "patch";
             } else if (/BREAKING CHANGE|!:/i.test(combinedText)) {
               bump = "major";
-            } else if (/(^|\s)feat(\(|:)|\bfeature\b/i.test(combinedText)) {
+            } else if (featurePrefixPattern.test(combinedText) || featureWordPattern.test(pullRequest?.title || "")) {
               bump = "minor";
             }
 
@@ -89,10 +91,20 @@ jobs:
         if: steps.release.outputs.skip != 'true'
         id: version
         run: |
+          # Execute inline Node.js to validate package.json semver and emit GitHub Actions outputs.
           node <<'NODE' >> "$GITHUB_OUTPUT"
           const fs = require("node:fs");
           const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-          const [major, minor, patch] = pkg.version.split("-")[0].split(".").map(Number);
+          const version = typeof pkg.version === "string" ? pkg.version : "";
+          const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/);
+          if (!match) {
+            throw new Error(`package.json version must be semver-like, received: ${version || "<missing>"}`);
+          }
+
+          const [, majorText, minorText, patchText] = match;
+          const major = Number(majorText);
+          const minor = Number(minorText);
+          const patch = Number(patchText);
           const bump = process.env.BUMP;
           let nextVersion = `${major}.${minor}.${patch + 1}`;
 

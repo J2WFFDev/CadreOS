@@ -7,8 +7,9 @@ import { resolveBuildMetadataLabel } from "../../components/build-metadata-badge
 
 const packageJson = JSON.parse(
   readFileSync(path.join(process.cwd(), "package.json"), "utf8"),
-) as { version: string };
-const packageVersion = packageJson.version.startsWith("v") ? packageJson.version : `v${packageJson.version}`;
+) as { version?: string };
+const packageVersionValue = packageJson.version ?? "0.0.0";
+const packageVersion = packageVersionValue.startsWith("v") ? packageVersionValue : `v${packageVersionValue}`;
 
 test("resolveBuildMetadataLabel uses preferred production format and shortens sha", () => {
   const label = resolveBuildMetadataLabel({

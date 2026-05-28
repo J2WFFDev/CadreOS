@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const APP_NAME = "CadreOS";
-const PACKAGE_VERSION = resolvePackageVersion();
+let cachedPackageVersion: string | undefined;
 
 function normalize(value: string | undefined) {
   return value?.trim() || "";
@@ -28,13 +28,17 @@ function formatEnvironmentLabel(value: string) {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
-function resolvePackageVersion() {
+function getPackageVersion() {
+  if (cachedPackageVersion !== undefined) return cachedPackageVersion;
+
   try {
     const packageJson = JSON.parse(readFileSync(path.join(process.cwd(), "package.json"), "utf8")) as { version?: string };
-    return packageJson.version;
+    cachedPackageVersion = packageJson.version ?? "";
   } catch {
-    return "";
+    cachedPackageVersion = "";
   }
+
+  return cachedPackageVersion;
 }
 
 function pickFirst(...values: Array<string | undefined>) {
@@ -52,7 +56,7 @@ export function resolveBuildMetadataLabel(env: BuildMetadataEnv = process.env) {
   const appEnvNormalized = appEnv.toLowerCase();
   const commitRef = normalize(env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF);
   const appVersion = normalizeVersion(
-    pickFirst(env.NEXT_PUBLIC_APP_VERSION, appEnvNormalized === "production" ? PACKAGE_VERSION : undefined),
+    pickFirst(env.NEXT_PUBLIC_APP_VERSION, appEnvNormalized === "production" ? getPackageVersion() : undefined),
   );
   const gitSha = normalizeSha(pickFirst(env.NEXT_PUBLIC_GIT_SHA, env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA));
   const buildTime = normalize(env.NEXT_PUBLIC_BUILD_TIME);
