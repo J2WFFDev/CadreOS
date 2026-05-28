@@ -149,6 +149,14 @@ export const ENTRY_ACTIVITY_ACTIONS = {
   JOURNAL_PROMPT_ASSIGNED: "journal.prompt_assigned",
   JOURNAL_PROMPT_RESPONSE_SUBMITTED: "journal.prompt_response_submitted",
   JOURNAL_PROMPT_ASSIGNMENT_CANCELLED: "journal.prompt_assignment_cancelled",
+  // Arc 23D: Habit activity actions
+  HABIT_CREATED: "habit.created",
+  HABIT_UPDATED: "habit.updated",
+  HABIT_ASSIGNED: "habit.assigned",
+  HABIT_ARCHIVED: "habit.archived",
+  HABIT_PAUSED: "habit.paused",
+  HABIT_RESUMED: "habit.resumed",
+  HABIT_CHECKED_IN: "habit.checked_in",
   // Backward-compatible aliases used by older route/service code.
   CREATED: "entry.created",
   UPDATED: "entry.updated",

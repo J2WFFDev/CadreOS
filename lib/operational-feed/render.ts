@@ -93,6 +93,14 @@ const ACTIVITY_ACTION_LABELS: Record<string, string> = {
   "journal.prompt_assigned": "Journal prompt assigned",
   "journal.prompt_response_submitted": "Journal prompt completed",
   "journal.prompt_assignment_cancelled": "Prompt assignment cancelled",
+  // Arc 23D: Habit activity actions
+  "habit.created": "Habit created",
+  "habit.updated": "Habit updated",
+  "habit.assigned": "Habit assigned",
+  "habit.archived": "Habit archived",
+  "habit.paused": "Habit paused",
+  "habit.resumed": "Habit resumed",
+  "habit.checked_in": "Habit check-in recorded",
 };
 
 export function labelForActivityAction(action: string): string {
