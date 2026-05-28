@@ -1,4 +1,8 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 const APP_NAME = "CadreOS";
+let cachedPackageVersion: string | undefined;
 
 function normalize(value: string | undefined) {
   return value?.trim() || "";
@@ -7,6 +11,35 @@ function normalize(value: string | undefined) {
 function normalizeSha(value: string | undefined) {
   if (!value) return "";
   return value.trim().slice(0, 7);
+}
+
+function normalizeVersion(value: string | undefined) {
+  const normalized = normalize(value);
+  if (!normalized) return "";
+  return normalized.startsWith("v") ? normalized : `v${normalized}`;
+}
+
+function formatEnvironmentLabel(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "production") return "Prod";
+  if (normalized === "preview") return "Preview";
+  if (normalized === "development" || normalized === "dev" || normalized === "local") return "Dev";
+  if (!normalized) return "Dev";
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function getPackageVersion() {
+  if (cachedPackageVersion !== undefined) return cachedPackageVersion;
+
+  try {
+    const packageJsonPath = path.resolve(process.cwd(), "package.json");
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: string };
+    cachedPackageVersion = packageJson.version ?? "";
+  } catch {
+    cachedPackageVersion = "";
+  }
+
+  return cachedPackageVersion;
 }
 
 function pickFirst(...values: Array<string | undefined>) {
@@ -20,17 +53,22 @@ function pickFirst(...values: Array<string | undefined>) {
 type BuildMetadataEnv = Record<string, string | undefined>;
 
 export function resolveBuildMetadataLabel(env: BuildMetadataEnv = process.env) {
-  const appVersion = normalize(env.NEXT_PUBLIC_APP_VERSION);
   const appEnv = pickFirst(env.NEXT_PUBLIC_APP_ENV, env.NEXT_PUBLIC_VERCEL_ENV) || "dev";
+  const appEnvNormalized = appEnv.toLowerCase();
+  const commitRef = normalize(env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF);
+  const appVersion = normalizeVersion(
+    pickFirst(env.NEXT_PUBLIC_APP_VERSION, appEnvNormalized === "production" ? getPackageVersion() : undefined),
+  );
   const gitSha = normalizeSha(pickFirst(env.NEXT_PUBLIC_GIT_SHA, env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA));
   const buildTime = normalize(env.NEXT_PUBLIC_BUILD_TIME);
-  const commitRef = normalize(env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF);
+  const scope = commitRef || (appEnvNormalized === "production" ? "main" : "");
+  const releaseContext = scope ? `${formatEnvironmentLabel(appEnv)}:${scope}` : "";
+  const primary = [releaseContext, appVersion].filter(Boolean).join(" ").trim();
+  const detail = gitSha || buildTime;
 
-  const primary = appVersion ? `${APP_NAME} ${appVersion}` : `${APP_NAME} ${appEnv}`;
-  const detailParts = [appVersion ? appEnv : "", commitRef, gitSha, buildTime].filter(Boolean);
-  const details = detailParts.length > 0 ? detailParts.join(" · ") : "local build";
-
-  return `${primary} · ${details}`;
+  if (primary && detail) return `${primary} · ${detail}`;
+  if (primary) return primary;
+  return `${APP_NAME} dev · local build`;
 }
 
 export function BuildMetadataBadge() {
