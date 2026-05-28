@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { writeEntryActivity } from "@/lib/entries/service";
 import { canCreateJournal, resolveJournalAccessContext } from "@/lib/journals/access";
+import { MAX_JOURNAL_TITLE_LENGTH } from "@/lib/journals/policy";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -43,7 +44,6 @@ export async function POST(request: Request) {
     where: {
       organizationId: scope.organizationId,
       personId: scope.auth.personId,
-      team: { archivedAt: null },
     },
     orderBy: { updatedAt: "desc" },
     select: { teamId: true },
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     data: {
       organizationId: scope.organizationId,
       type: EntryType.JOURNAL,
-      title: title.slice(0, 160),
+      title: title.slice(0, MAX_JOURNAL_TITLE_LENGTH),
       content,
       visibility,
       status: EntryStatus.OPEN,

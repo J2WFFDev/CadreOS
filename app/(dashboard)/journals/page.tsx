@@ -17,6 +17,7 @@ import { db } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
+const JOURNAL_LIST_LIMIT = 300;
 
 function normalizeStatusFilter(rawStatus: string | string[] | undefined): "active" | "archived" | "all" {
   const value = Array.isArray(rawStatus) ? rawStatus[0] : rawStatus;
@@ -70,7 +71,7 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
       team: { select: { name: true, programId: true } },
       createdBy: { select: { firstName: true, lastName: true } },
     },
-    take: 300,
+    take: JOURNAL_LIST_LIMIT,
   });
 
   const visibleJournals = journals.filter((journal) =>
@@ -94,13 +95,31 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
         description="Draft, submit, and archive sensitive journal entries with role-aware access."
         actions={
           <div className="flex items-center gap-2">
-            <Link href="/journals?status=active" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            <Link
+              href="/journals?status=active"
+              aria-current={statusFilter === "active" ? "page" : undefined}
+              className={`rounded-md border px-3 py-1.5 text-sm ${
+                statusFilter === "active" ? "bg-zinc-100 dark:bg-zinc-800" : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              }`}
+            >
               Active
             </Link>
-            <Link href="/journals?status=archived" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            <Link
+              href="/journals?status=archived"
+              aria-current={statusFilter === "archived" ? "page" : undefined}
+              className={`rounded-md border px-3 py-1.5 text-sm ${
+                statusFilter === "archived" ? "bg-zinc-100 dark:bg-zinc-800" : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              }`}
+            >
               Archived
             </Link>
-            <Link href="/journals?status=all" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            <Link
+              href="/journals?status=all"
+              aria-current={statusFilter === "all" ? "page" : undefined}
+              className={`rounded-md border px-3 py-1.5 text-sm ${
+                statusFilter === "all" ? "bg-zinc-100 dark:bg-zinc-800" : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              }`}
+            >
               All
             </Link>
             {canCreate ? (

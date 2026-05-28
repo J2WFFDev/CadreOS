@@ -1,4 +1,4 @@
-import { EntryType } from "@prisma/client";
+import { EntryStatus, EntryType } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
@@ -26,6 +26,10 @@ function formatPersonName(person: { firstName: string; lastName: string } | null
   if (!person) return "—";
   const fullName = `${person.firstName} ${person.lastName}`.trim();
   return fullName || "—";
+}
+
+function formatDateTimeUTC(value: Date): string {
+  return `${value.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
 export default async function JournalDetailPage({ params }: { params: Promise<{ entryId: string }> }) {
@@ -101,7 +105,7 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
 
   const isAuthor = scope.auth.personId === journal.createdByPersonId;
   const isAdmin = hasJournalAdminAccess(accessContext);
-  const canViewBody = isAuthor || isAdmin || journal.status === "DONE";
+  const canViewBody = isAuthor || isAdmin || journal.status === EntryStatus.DONE;
   const canEditDraft = canEditJournalDraft(accessContext, journal);
   const canSubmitDraft = canSubmitJournal(accessContext, journal);
   const canArchive = canArchiveJournal(accessContext, journal);
@@ -142,11 +146,11 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
           </div>
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Created</dt>
-            <dd>{journal.createdAt.toISOString().slice(0, 16).replace("T", " ")} UTC</dd>
+            <dd>{formatDateTimeUTC(journal.createdAt)}</dd>
           </div>
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Updated</dt>
-            <dd>{journal.updatedAt.toISOString().slice(0, 16).replace("T", " ")} UTC</dd>
+            <dd>{formatDateTimeUTC(journal.updatedAt)}</dd>
           </div>
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Last updated by</dt>

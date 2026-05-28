@@ -223,6 +223,11 @@ export async function queryRecentActivity(
   }));
 }
 
+/**
+ * Sanitizes activity title text for feed rendering.
+ * Journal entries are always replaced with safe generic labels so sensitive
+ * journal body/title content never leaks into broad activity surfaces.
+ */
 export function sanitizeActivityEntryTitle(action: string, entryType: EntryType, entryTitle: string): string {
   if (entryType === EntryType.JOURNAL) {
     return deriveSafeJournalActivityText(action);

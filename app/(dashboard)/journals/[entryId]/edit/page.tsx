@@ -5,7 +5,7 @@ import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { db } from "@/lib/db";
 import { canEditJournalDraft, resolveJournalAccessContext } from "@/lib/journals/access";
-import { hintForJournalVisibility, labelForJournalVisibility } from "@/lib/journals/policy";
+import { MAX_JOURNAL_TITLE_LENGTH, hintForJournalVisibility, labelForJournalVisibility } from "@/lib/journals/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -75,12 +75,19 @@ export default async function EditJournalDraftPage({ params }: { params: Promise
         </Link>
       </div>
 
-      <form action={`/journals/${journal.id}/edit`} method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
+      <form action={`/journals/${journal.id}/edit/update`} method="post" className="space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <div className="space-y-1">
           <label htmlFor="title" className="text-sm font-medium">
             Title
           </label>
-          <input id="title" name="title" defaultValue={journal.title} maxLength={160} required className="w-full rounded-md border px-3 py-2 text-sm" />
+          <input
+            id="title"
+            name="title"
+            defaultValue={journal.title}
+            maxLength={MAX_JOURNAL_TITLE_LENGTH}
+            required
+            className="w-full rounded-md border px-3 py-2 text-sm"
+          />
         </div>
 
         <div className="space-y-1">

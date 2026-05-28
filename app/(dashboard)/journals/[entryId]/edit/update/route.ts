@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { writeEntryActivity } from "@/lib/entries/service";
 import { canEditJournalDraft, resolveJournalAccessContext } from "@/lib/journals/access";
+import { MAX_JOURNAL_TITLE_LENGTH } from "@/lib/journals/policy";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -65,7 +66,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   await db.entry.update({
     where: { id: entryId },
     data: {
-      title: title.slice(0, 160),
+      title: title.slice(0, MAX_JOURNAL_TITLE_LENGTH),
       content,
       visibility,
       updatedByPersonId: scope.auth.personId,

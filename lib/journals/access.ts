@@ -89,7 +89,11 @@ function hasScopedAssignment(
       return Boolean(input.teamId && assignment.teamId && input.teamId === assignment.teamId);
     }
 
-    return Boolean(input.teamProgramId && assignment.programId && input.teamProgramId === assignment.programId);
+    if (assignment.scopeType === ScopeType.PROGRAM) {
+      return Boolean(input.teamProgramId && assignment.programId && input.teamProgramId === assignment.programId);
+    }
+
+    return false;
   });
 }
 

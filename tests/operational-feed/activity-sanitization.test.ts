@@ -15,4 +15,5 @@ test("sanitizeActivityEntryTitle strips journal titles in feed activity", () => 
     "Journal submitted",
   );
   assert.equal(sanitizeActivityEntryTitle("entry.updated", EntryType.JOURNAL, "Very private draft"), "Journal entry");
+  assert.equal(sanitizeActivityEntryTitle("unexpected.action", EntryType.JOURNAL, "Hidden"), "Journal entry");
 });

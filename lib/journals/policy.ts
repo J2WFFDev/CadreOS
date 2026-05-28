@@ -1,6 +1,7 @@
 import { EntryStatus, EntryVisibility } from "@prisma/client";
 
 export type JournalWorkflowStatus = "DRAFT" | "SUBMITTED" | "ARCHIVED";
+export const MAX_JOURNAL_TITLE_LENGTH = 160;
 
 export function mapEntryStatusToJournalWorkflowStatus(status: EntryStatus): JournalWorkflowStatus {
   if (status === EntryStatus.ARCHIVED) return "ARCHIVED";
