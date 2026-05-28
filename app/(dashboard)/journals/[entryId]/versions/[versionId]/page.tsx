@@ -36,11 +36,12 @@ export default async function JournalVersionDetailPage({
       </section>
     );
   }
+  const organizationId = scope.organizationId;
 
   const entry = await db.entry.findFirst({
     where: {
       id: entryId,
-      organizationId: scope.organizationId,
+      organizationId,
       type: EntryType.JOURNAL,
       deletedAt: null,
     },
@@ -65,7 +66,7 @@ export default async function JournalVersionDetailPage({
   }
 
   const accessContext = await resolveJournalAccessContext({
-    organizationId: scope.organizationId,
+    organizationId,
     actorPersonId: scope.auth.personId,
   });
 
@@ -100,7 +101,7 @@ export default async function JournalVersionDetailPage({
   const version = await db.journalVersion.findFirst({
     where: {
       id: versionId,
-      organizationId: scope.organizationId,
+      organizationId,
       entryId: entry.id,
     },
     select: {

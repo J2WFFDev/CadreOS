@@ -15,11 +15,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   if (!scope.databaseReady || !scope.organizationId || !scope.auth.personId) {
     return NextResponse.redirect(new URL("/journals", request.url), 303);
   }
+  const organizationId = scope.organizationId;
+  const actorPersonId = scope.auth.personId;
 
   const journal = await db.entry.findFirst({
     where: {
       id: entryId,
-      organizationId: scope.organizationId,
+      organizationId,
       type: EntryType.JOURNAL,
       deletedAt: null,
     },
@@ -42,8 +44,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   }
 
   const accessContext = await resolveJournalAccessContext({
-    organizationId: scope.organizationId,
-    actorPersonId: scope.auth.personId,
+    organizationId,
+    actorPersonId,
   });
 
   if (!canArchiveJournal(accessContext, journal)) {
@@ -56,7 +58,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       where: { id: entryId },
       data: {
         status: EntryStatus.ARCHIVED,
-        updatedByPersonId: scope.auth.personId,
+        updatedByPersonId: actorPersonId,
         version: { increment: 1 },
       },
       select: {
@@ -71,7 +73,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
     await tx.journalVersion.create({
       data: buildJournalVersionSnapshotCreateInput({
-        organizationId: scope.organizationId,
+        organizationId,
         entryId: updatedEntry.id,
         versionNumber: updatedEntry.version,
         changeType: JournalVersionChangeType.ARCHIVED,
@@ -81,16 +83,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         status: updatedEntry.status,
         fromStatus: journal.status,
         toStatus: EntryStatus.ARCHIVED,
-        capturedByPersonId: scope.auth.personId,
+        capturedByPersonId: actorPersonId,
         changeReason: "Journal archived.",
       }),
     });
   });
 
   await writeEntryActivity({
-    organizationId: scope.organizationId,
+    organizationId,
     entryId,
-    actorPersonId: scope.auth.personId,
+    actorPersonId,
     action: ENTRY_ACTIVITY_ACTIONS.JOURNAL_ARCHIVED,
     metadata: { archivedAt: archivedAt.toISOString() },
   });

@@ -22,10 +22,12 @@ export async function POST(request: Request) {
   if (!scope.databaseReady || !scope.organizationId || !scope.auth.personId) {
     return NextResponse.redirect(new URL("/journals", request.url), 303);
   }
+  const organizationId = scope.organizationId;
+  const actorPersonId = scope.auth.personId;
 
   const accessContext = await resolveJournalAccessContext({
-    organizationId: scope.organizationId,
-    actorPersonId: scope.auth.personId,
+    organizationId,
+    actorPersonId,
   });
 
   if (!canCreateJournal(accessContext)) {
@@ -46,7 +48,7 @@ export async function POST(request: Request) {
   // Validate prompt belongs to organization if provided
   if (journalPromptId) {
     const prompt = await db.journalPrompt.findFirst({
-      where: { id: journalPromptId, organizationId: scope.organizationId, active: true },
+      where: { id: journalPromptId, organizationId, active: true },
       select: { id: true },
     });
     if (!prompt) {
@@ -59,7 +61,7 @@ export async function POST(request: Request) {
     const assignment = await db.journalAssignment.findFirst({
       where: {
         id: journalAssignmentId,
-        organizationId: scope.organizationId,
+        organizationId,
         status: { in: [JournalAssignmentStatus.ACTIVE, JournalAssignmentStatus.PENDING] },
       },
       select: { id: true },
@@ -71,8 +73,8 @@ export async function POST(request: Request) {
 
   const primaryRosterMembership = await db.rosterMembership.findFirst({
     where: {
-      organizationId: scope.organizationId,
-      personId: scope.auth.personId,
+      organizationId,
+      personId: actorPersonId,
     },
     orderBy: { updatedAt: "desc" },
     select: { teamId: true },
@@ -83,15 +85,15 @@ export async function POST(request: Request) {
   const entry = await db.$transaction(async (tx) => {
     const createdEntry = await tx.entry.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId,
         type: EntryType.JOURNAL,
         title: trimmedTitle,
         content,
         visibility,
         status: EntryStatus.OPEN,
         priority: "MEDIUM",
-        createdByPersonId: scope.auth.personId,
-        updatedByPersonId: scope.auth.personId,
+        createdByPersonId: actorPersonId,
+        updatedByPersonId: actorPersonId,
         teamId: primaryRosterMembership?.teamId ?? null,
         journalPromptId,
         journalAssignmentId,
@@ -101,7 +103,7 @@ export async function POST(request: Request) {
 
     await tx.journalVersion.create({
       data: buildJournalVersionSnapshotCreateInput({
-        organizationId: scope.organizationId,
+        organizationId,
         entryId: createdEntry.id,
         versionNumber: createdEntry.version,
         changeType: JournalVersionChangeType.DRAFT_CREATED,
@@ -111,7 +113,7 @@ export async function POST(request: Request) {
         status: createdEntry.status,
         fromStatus: null,
         toStatus: EntryStatus.OPEN,
-        capturedByPersonId: scope.auth.personId,
+        capturedByPersonId: actorPersonId,
         changeReason: "Initial journal draft created.",
       }),
     });
@@ -120,9 +122,9 @@ export async function POST(request: Request) {
   });
 
   await writeEntryActivity({
-    organizationId: scope.organizationId,
+    organizationId,
     entryId: entry.id,
-    actorPersonId: scope.auth.personId,
+    actorPersonId,
     action: ENTRY_ACTIVITY_ACTIONS.JOURNAL_DRAFT_CREATED,
     // Never store journal body/title content in activity metadata.
     metadata: { visibility, hasPrompt: Boolean(journalPromptId) },

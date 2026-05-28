@@ -23,11 +23,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   if (!scope.databaseReady || !scope.organizationId || !scope.auth.personId) {
     return NextResponse.redirect(new URL("/journals", request.url), 303);
   }
+  const organizationId = scope.organizationId;
+  const actorPersonId = scope.auth.personId;
 
   const journal = await db.entry.findFirst({
     where: {
       id: entryId,
-      organizationId: scope.organizationId,
+      organizationId,
       type: EntryType.JOURNAL,
       deletedAt: null,
     },
@@ -50,8 +52,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   }
 
   const accessContext = await resolveJournalAccessContext({
-    organizationId: scope.organizationId,
-    actorPersonId: scope.auth.personId,
+    organizationId,
+    actorPersonId,
   });
 
   if (!canEditJournalDraft(accessContext, journal)) {
@@ -77,7 +79,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         title: trimmedTitle,
         content,
         visibility,
-        updatedByPersonId: scope.auth.personId,
+        updatedByPersonId: actorPersonId,
         version: { increment: 1 },
       },
       select: {
@@ -93,7 +95,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     if (didMeaningfulChange) {
       await tx.journalVersion.create({
         data: buildJournalVersionSnapshotCreateInput({
-          organizationId: scope.organizationId,
+          organizationId,
           entryId: updatedEntry.id,
           versionNumber: updatedEntry.version,
           changeType: JournalVersionChangeType.DRAFT_UPDATED,
@@ -103,7 +105,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
           status: updatedEntry.status,
           fromStatus: updatedEntry.status,
           toStatus: updatedEntry.status,
-          capturedByPersonId: scope.auth.personId,
+          capturedByPersonId: actorPersonId,
           changeReason: "Draft content or visibility updated.",
         }),
       });
@@ -111,9 +113,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   });
 
   await writeEntryActivity({
-    organizationId: scope.organizationId,
+    organizationId,
     entryId,
-    actorPersonId: scope.auth.personId,
+    actorPersonId,
     action: ENTRY_ACTIVITY_ACTIONS.JOURNAL_DRAFT_UPDATED,
     metadata: { visibility },
   });

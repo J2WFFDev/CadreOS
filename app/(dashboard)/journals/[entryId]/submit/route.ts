@@ -15,11 +15,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   if (!scope.databaseReady || !scope.organizationId || !scope.auth.personId) {
     return NextResponse.redirect(new URL("/journals", request.url), 303);
   }
+  const organizationId = scope.organizationId;
+  const actorPersonId = scope.auth.personId;
 
   const journal = await db.entry.findFirst({
     where: {
       id: entryId,
-      organizationId: scope.organizationId,
+      organizationId,
       type: EntryType.JOURNAL,
       deletedAt: null,
     },
@@ -43,8 +45,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   }
 
   const accessContext = await resolveJournalAccessContext({
-    organizationId: scope.organizationId,
-    actorPersonId: scope.auth.personId,
+    organizationId,
+    actorPersonId,
   });
 
   if (!canSubmitJournal(accessContext, journal)) {
@@ -58,7 +60,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       data: {
         status: EntryStatus.DONE,
         completedAt: submittedAt,
-        updatedByPersonId: scope.auth.personId,
+        updatedByPersonId: actorPersonId,
         version: { increment: 1 },
       },
       select: {
@@ -73,7 +75,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
     await tx.journalVersion.create({
       data: buildJournalVersionSnapshotCreateInput({
-        organizationId: scope.organizationId,
+        organizationId,
         entryId: updatedEntry.id,
         versionNumber: updatedEntry.version,
         changeType: JournalVersionChangeType.SUBMITTED,
@@ -83,7 +85,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         status: updatedEntry.status,
         fromStatus: journal.status,
         toStatus: EntryStatus.DONE,
-        capturedByPersonId: scope.auth.personId,
+        capturedByPersonId: actorPersonId,
         changeReason: "Journal finalized/submitted.",
       }),
     });
@@ -94,7 +96,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       await tx.journalAssignment.updateMany({
         where: {
           id: journal.journalAssignmentId,
-          organizationId: scope.organizationId,
+          organizationId,
           status: { in: [JournalAssignmentStatus.ACTIVE, JournalAssignmentStatus.PENDING] },
         },
         data: {
@@ -105,9 +107,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   });
 
   await writeEntryActivity({
-    organizationId: scope.organizationId,
+    organizationId,
     entryId,
-    actorPersonId: scope.auth.personId,
+    actorPersonId,
     action: ENTRY_ACTIVITY_ACTIONS.JOURNAL_SUBMITTED,
     // Never store journal body/title in activity metadata.
     metadata: {
