@@ -5,7 +5,11 @@ export type NavSidebarLink = {
 
 export type NavSidebarGroup = {
   label: string;
-  /** Landing route for the module header. Render as a clickable link when present. */
+  /**
+   * Landing route for the module header. When present, the header renders as a clickable link.
+   * Should match one of the child `links` hrefs so that the parent active state is consistent
+   * with the child active state when on that route.
+   */
   href?: string;
   links: readonly NavSidebarLink[];
 };

@@ -40,7 +40,7 @@ export function NavSidebar({ unreadNotificationCount = 0 }: { unreadNotification
                   const isActive = isNavSidebarLinkActive(pathname, link.href);
 
                   return (
-                    <li key={link.href + link.label}>
+                    <li key={`${link.href}::${link.label}`}>
                       <Link
                         href={link.href}
                         className={
