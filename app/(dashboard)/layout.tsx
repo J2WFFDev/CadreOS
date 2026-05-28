@@ -1,10 +1,13 @@
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
-import { NavSidebar } from "@/components/nav-sidebar";
+import { BuildMetadataBadge } from "@/components/build-metadata-badge";
+import { DevPersonaSwitcher } from "@/components/dev-persona-switcher";
 import { QuickCaptureLauncher } from "@/components/dashboard/quick-capture-launcher";
 import { GearOfflineProvider } from "@/components/gear-ops/offline-provider";
-import { BuildMetadataBadge } from "@/components/build-metadata-badge";
+import { NavSidebar } from "@/components/nav-sidebar";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { isDevPersonasEnabled } from "@/lib/auth/devPersonas";
 import { db } from "@/lib/db";
 import { countUnreadNotificationsForPerson } from "@/lib/notifications";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -15,6 +18,7 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const scope = await getOrganizationScope();
+  const currentUser = await getCurrentUser();
   const shouldShowLinkingBanner = scope.auth.unresolvedPersonLink;
   const assignees =
     scope.databaseReady && scope.organizationId
@@ -42,6 +46,9 @@ export default async function DashboardLayout({
           disabled={!scope.databaseReady || !scope.organizationId}
         />
         <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+          {isDevPersonasEnabled() ? (
+            <DevPersonaSwitcher currentPersonaId={currentUser?.isDevPersona ? currentUser.id : null} />
+          ) : null}
           <BuildMetadataBadge />
           <Link
             href="/account"
@@ -53,7 +60,7 @@ export default async function DashboardLayout({
         </div>
       </header>
       <div className="flex min-h-[calc(100vh-49px)]">
-        <NavSidebar unreadNotificationCount={unreadNotificationCount} />
+        <NavSidebar unreadNotificationCount={unreadNotificationCount} currentUser={currentUser} />
         <main className="flex-1 overflow-auto p-6">
           <div className="mx-auto w-full max-w-5xl space-y-4">
             {shouldShowLinkingBanner ? (
