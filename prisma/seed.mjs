@@ -443,6 +443,9 @@ async function main() {
   const yesterday = new Date(today);
   yesterday.setUTCDate(yesterday.getUTCDate() - 1);
 
+  const twoDaysAgo = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
   // Minimal inbox capture — NOTE with no due date and no context target.
   // shouldRouteEntryToInbox() returns true for this shape.
   const inboxEntry = await db.entry.upsert({
@@ -642,7 +645,7 @@ async function main() {
       type: EntryType.FOLLOW_UP,
       status: EntryStatus.DONE,
       taskCompleted: true,
-      completedAt: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000),
+      completedAt: twoDaysAgo,
     },
     create: {
       id: "cadreos-entry-followup-completed",
@@ -653,7 +656,7 @@ async function main() {
       priority: EntryPriority.MEDIUM,
       visibility: EntryVisibility.STAFF_ONLY,
       taskCompleted: true,
-      completedAt: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000),
+      completedAt: twoDaysAgo,
       createdByPersonId: teamCoach.id,
       assignedToPersonId: teamCoach.id,
     },
@@ -834,7 +837,7 @@ async function main() {
       type: EntryType.TASK,
       status: EntryStatus.ARCHIVED,
       taskCompleted: true,
-      completedAt: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000),
+      completedAt: thirtyDaysAgo,
     },
     create: {
       id: "cadreos-entry-archived",
@@ -845,7 +848,7 @@ async function main() {
       priority: EntryPriority.LOW,
       visibility: EntryVisibility.STAFF_ONLY,
       taskCompleted: true,
-      completedAt: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000),
+      completedAt: thirtyDaysAgo,
       createdByPersonId: teamCoach.id,
     },
   });
