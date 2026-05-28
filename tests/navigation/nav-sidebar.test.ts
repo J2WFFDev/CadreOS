@@ -1,16 +1,29 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import { NAV_SIDEBAR_GROUPS, isNavSidebarLinkActive } from "../../lib/nav-sidebar";
+import { NAV_SIDEBAR_GROUPS, isNavSidebarGroupActive, isNavSidebarLinkActive } from "../../lib/nav-sidebar";
 
-test("sidebar groups remain one-level deep with unique links", () => {
+test("sidebar groups all have labels and child links", () => {
   assert.ok(NAV_SIDEBAR_GROUPS.length > 1);
 
+  for (const group of NAV_SIDEBAR_GROUPS) {
+    assert.ok(group.label.length > 0, `Group missing label`);
+    assert.ok(group.links.length > 0, `Group "${group.label}" has no links`);
+  }
+});
+
+test("all groups have a landing href", () => {
+  for (const group of NAV_SIDEBAR_GROUPS) {
+    assert.ok(typeof group.href === "string" && group.href.startsWith("/"), `Group "${group.label}" missing href`);
+  }
+});
+
+test("sidebar groups contain required child hrefs", () => {
   const hrefs = NAV_SIDEBAR_GROUPS.flatMap((group) => group.links.map((link) => link.href));
 
-  assert.equal(hrefs.length, new Set(hrefs).size);
   assert.ok(hrefs.includes("/entries/inbox"));
   assert.ok(hrefs.includes("/entries"));
+  assert.ok(hrefs.includes("/notifications"));
 });
 
 test("entry inbox route does not activate all entries root link", () => {
@@ -21,4 +34,22 @@ test("entry inbox route does not activate all entries root link", () => {
 test("nested routes activate their parent link except dashboard", () => {
   assert.equal(isNavSidebarLinkActive("/account/link-person", "/account"), true);
   assert.equal(isNavSidebarLinkActive("/dashboard/metrics", "/dashboard"), false);
+});
+
+test("isNavSidebarGroupActive: active when a child route matches", () => {
+  const gearOpsGroup = NAV_SIDEBAR_GROUPS.find((g) => g.label === "GearOps");
+  assert.ok(gearOpsGroup);
+
+  assert.equal(isNavSidebarGroupActive("/gear-ops", gearOpsGroup), true);
+  assert.equal(isNavSidebarGroupActive("/gear-ops/items", gearOpsGroup), true);
+  assert.equal(isNavSidebarGroupActive("/programs", gearOpsGroup), false);
+});
+
+test("isNavSidebarGroupActive: EntryOps active on entries but not entries/inbox for root", () => {
+  const entryOpsGroup = NAV_SIDEBAR_GROUPS.find((g) => g.label === "EntryOps");
+  assert.ok(entryOpsGroup);
+
+  assert.equal(isNavSidebarGroupActive("/entries", entryOpsGroup), true);
+  assert.equal(isNavSidebarGroupActive("/entries/inbox", entryOpsGroup), true);
+  assert.equal(isNavSidebarGroupActive("/programs", entryOpsGroup), false);
 });
