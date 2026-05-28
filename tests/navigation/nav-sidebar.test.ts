@@ -24,6 +24,9 @@ test("sidebar groups contain required child hrefs", () => {
   assert.ok(hrefs.includes("/entries/inbox"));
   assert.ok(hrefs.includes("/entries"));
   assert.ok(hrefs.includes("/notifications"));
+  assert.ok(hrefs.includes("/decisions"));
+  assert.ok(hrefs.includes("/prompt-assignments"));
+  assert.equal(hrefs.includes("/account"), false);
 });
 
 test("entry inbox route does not activate all entries root link", () => {

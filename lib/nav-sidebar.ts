@@ -78,7 +78,8 @@ export const NAV_SIDEBAR_GROUPS: readonly NavSidebarGroup[] = [
     href: "/reports",
     links: [
       { href: "/reports", label: "Global Reports" },
-      { href: "/account", label: "Account" },
+      { href: "/decisions", label: "Decision Log" },
+      { href: "/prompt-assignments", label: "Prompt Assignments" },
     ],
   },
 ] as const;

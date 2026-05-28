@@ -13,7 +13,11 @@
   - `NEXT_PUBLIC_GIT_SHA`
   - `NEXT_PUBLIC_BUILD_TIME`
   - `NEXT_PUBLIC_APP_ENV`
-- Missing values safely fall back to a readable label (for example: `CadreOS dev · unknown build`).
+  - `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA`
+  - `NEXT_PUBLIC_VERCEL_ENV`
+  - `NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF`
+- Commit SHA values are shortened to 7 characters.
+- Missing values safely fall back to a readable label (for example: `CadreOS dev · local build`).
 
 ### Local development
 Set values in `.env.local` (or copy from `.env.example`):
@@ -37,7 +41,13 @@ env:
 ```
 
 ### Vercel
-Set the same `NEXT_PUBLIC_*` variables in **Project Settings → Environment Variables** for each environment (`Development`, `Preview`, `Production`) and redeploy.
+Vercel can provide commit/env metadata through:
+
+- `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA`
+- `NEXT_PUBLIC_VERCEL_ENV`
+- `NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF`
+
+The badge will use those when app-specific values are not present.
 
 ## Database migration workflows
 - Schema changes must be applied with Prisma migrations, not `prisma db push`.
