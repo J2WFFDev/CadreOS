@@ -1,4 +1,4 @@
-import { EntryStatus, EntryType } from "@prisma/client";
+import { EntryStatus, EntryType, JournalVersionChangeType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
@@ -6,6 +6,7 @@ import { writeEntryActivity } from "@/lib/entries/service";
 import { canArchiveJournal, resolveJournalAccessContext } from "@/lib/journals/access";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { buildJournalVersionSnapshotCreateInput } from "@/lib/journals/versioning";
 
 export async function POST(request: Request, { params }: { params: Promise<{ entryId: string }> }) {
   const { entryId } = await params;
@@ -25,6 +26,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     select: {
       id: true,
       type: true,
+      title: true,
+      content: true,
+      version: true,
       status: true,
       visibility: true,
       createdByPersonId: true,
@@ -47,13 +51,40 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   }
 
   const archivedAt = new Date();
-  await db.entry.update({
-    where: { id: entryId },
-    data: {
-      status: EntryStatus.ARCHIVED,
-      updatedByPersonId: scope.auth.personId,
-      version: { increment: 1 },
-    },
+  await db.$transaction(async (tx) => {
+    const updatedEntry = await tx.entry.update({
+      where: { id: entryId },
+      data: {
+        status: EntryStatus.ARCHIVED,
+        updatedByPersonId: scope.auth.personId,
+        version: { increment: 1 },
+      },
+      select: {
+        id: true,
+        version: true,
+        title: true,
+        content: true,
+        visibility: true,
+        status: true,
+      },
+    });
+
+    await tx.journalVersion.create({
+      data: buildJournalVersionSnapshotCreateInput({
+        organizationId: scope.organizationId,
+        entryId: updatedEntry.id,
+        versionNumber: updatedEntry.version,
+        changeType: JournalVersionChangeType.ARCHIVED,
+        title: updatedEntry.title,
+        content: updatedEntry.content,
+        visibility: updatedEntry.visibility,
+        status: updatedEntry.status,
+        fromStatus: journal.status,
+        toStatus: EntryStatus.ARCHIVED,
+        capturedByPersonId: scope.auth.personId,
+        changeReason: "Journal archived.",
+      }),
+    });
   });
 
   await writeEntryActivity({

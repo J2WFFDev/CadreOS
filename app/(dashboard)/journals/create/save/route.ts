@@ -1,10 +1,11 @@
-import { EntryStatus, EntryType, EntryVisibility, JournalAssignmentStatus } from "@prisma/client";
+import { EntryStatus, EntryType, EntryVisibility, JournalAssignmentStatus, JournalVersionChangeType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeEntryActivity } from "@/lib/entries/service";
 import { canCreateJournal, resolveJournalAccessContext } from "@/lib/journals/access";
 import { MAX_JOURNAL_TITLE_LENGTH } from "@/lib/journals/policy";
+import { buildJournalVersionSnapshotCreateInput } from "@/lib/journals/versioning";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -77,22 +78,45 @@ export async function POST(request: Request) {
     select: { teamId: true },
   });
 
-  const entry = await db.entry.create({
-    data: {
-      organizationId: scope.organizationId,
-      type: EntryType.JOURNAL,
-      title: title.slice(0, MAX_JOURNAL_TITLE_LENGTH),
-      content,
-      visibility,
-      status: EntryStatus.OPEN,
-      priority: "MEDIUM",
-      createdByPersonId: scope.auth.personId,
-      updatedByPersonId: scope.auth.personId,
-      teamId: primaryRosterMembership?.teamId ?? null,
-      journalPromptId,
-      journalAssignmentId,
-    },
-    select: { id: true },
+  const trimmedTitle = title.slice(0, MAX_JOURNAL_TITLE_LENGTH);
+
+  const entry = await db.$transaction(async (tx) => {
+    const createdEntry = await tx.entry.create({
+      data: {
+        organizationId: scope.organizationId,
+        type: EntryType.JOURNAL,
+        title: trimmedTitle,
+        content,
+        visibility,
+        status: EntryStatus.OPEN,
+        priority: "MEDIUM",
+        createdByPersonId: scope.auth.personId,
+        updatedByPersonId: scope.auth.personId,
+        teamId: primaryRosterMembership?.teamId ?? null,
+        journalPromptId,
+        journalAssignmentId,
+      },
+      select: { id: true, version: true, status: true, visibility: true, title: true, content: true },
+    });
+
+    await tx.journalVersion.create({
+      data: buildJournalVersionSnapshotCreateInput({
+        organizationId: scope.organizationId,
+        entryId: createdEntry.id,
+        versionNumber: createdEntry.version,
+        changeType: JournalVersionChangeType.DRAFT_CREATED,
+        title: createdEntry.title,
+        content: createdEntry.content,
+        visibility: createdEntry.visibility,
+        status: createdEntry.status,
+        fromStatus: null,
+        toStatus: EntryStatus.OPEN,
+        capturedByPersonId: scope.auth.personId,
+        changeReason: "Initial journal draft created.",
+      }),
+    });
+
+    return createdEntry;
   });
 
   await writeEntryActivity({

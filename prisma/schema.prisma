@@ -769,6 +769,7 @@ model Organization {
   entries                      Entry[]
   journalPrompts               JournalPrompt[]
   journalAssignments           JournalAssignment[]
+  journalVersions              JournalVersion[]
   // Arc 23D: Habit back-relations
   habits                       Habit[]
   entryLinks                   EntryLink[]
@@ -955,6 +956,7 @@ model Person {
   createdJournalPrompts                JournalPrompt[]               @relation("JournalPromptCreatedBy")
   givenJournalAssignments              JournalAssignment[]           @relation("JournalAssignmentBy")
   receivedJournalAssignments           JournalAssignment[]           @relation("JournalAssignmentToAthlete")
+  journalVersionSnapshots              JournalVersion[]              @relation("JournalVersionCapturedBy")
   // Arc 23D: Habit back-relations
   athleteHabits                        Habit[]                       @relation("HabitAthlete")
   createdHabits                        Habit[]                       @relation("HabitCreatedBy")
@@ -1136,6 +1138,7 @@ model Entry {
   notifications        Notification[]
   journalPrompt        JournalPrompt?       @relation("JournalPromptResponses", fields: [journalPromptId], references: [id], onDelete: SetNull)
   journalAssignment    JournalAssignment?   @relation("JournalAssignmentResponses", fields: [journalAssignmentId], references: [id], onDelete: SetNull)
+  journalVersions      JournalVersion[]
 
   @@index([organizationId, type, createdAt])
   @@index([organizationId, status, dueDate])
@@ -2605,6 +2608,13 @@ enum JournalAssignmentStatus {
   EXPIRED
 }
 
+enum JournalVersionChangeType {
+  DRAFT_CREATED
+  DRAFT_UPDATED
+  SUBMITTED
+  ARCHIVED
+}
+
 // Arc 23C: JournalPrompt — reusable prompt template for the prompt library.
 // Staff/coaches create prompts here; athletes or staff can assign them.
 model JournalPrompt {
@@ -2656,6 +2666,31 @@ model JournalAssignment {
   @@index([organizationId, assignedToTeamId, status])
   @@index([organizationId, assignedByPersonId])
   @@index([organizationId, status, dueAt])
+}
+
+model JournalVersion {
+  id                 String                   @id @default(cuid())
+  organizationId     String
+  entryId            String
+  versionNumber      Int
+  changeType         JournalVersionChangeType
+  titleSnapshot      String
+  contentSnapshot    String?
+  visibilityAtVersion EntryVisibility
+  statusAtVersion    EntryStatus
+  fromStatus         EntryStatus?
+  toStatus           EntryStatus
+  capturedByPersonId String?
+  capturedAt         DateTime                 @default(now())
+  changeReason       String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  entry        Entry        @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  capturedBy   Person?      @relation("JournalVersionCapturedBy", fields: [capturedByPersonId], references: [id], onDelete: SetNull)
+
+  @@unique([entryId, versionNumber])
+  @@index([organizationId, entryId, capturedAt])
+  @@index([organizationId, capturedByPersonId, capturedAt])
 }
 
 // ── Arc 23D: Habit Model, Recurrence, and Completion Tracking ────────────────
@@ -2736,4 +2771,3 @@ model HabitCompletion {
   @@index([habitId, completedOn])
   @@index([athletePersonId, completedOn])
 }
-

@@ -8,6 +8,7 @@ import {
   canCreateJournal,
   canEditJournalDraft,
   canReadJournalEntry,
+  canReadJournalVersionHistory,
   canSubmitJournal,
   hasJournalAdminAccess,
   type JournalAccessContext,
@@ -66,6 +67,7 @@ test("guardian can read linked submitted journal only when guardian visibility p
 
   assert.equal(canReadJournalEntry(context, submittedGuardianVisible), true);
   assert.equal(canReadJournalEntry(context, submittedPrivate), false);
+  assert.equal(canReadJournalVersionHistory(context, submittedGuardianVisible), false);
 });
 
 test("coach access requires submitted + team visibility + scoped assignment", () => {
@@ -98,6 +100,7 @@ test("coach access requires submitted + team visibility + scoped assignment", ()
   assert.equal(canReadJournalEntry(context, submittedScoped), true);
   assert.equal(canReadJournalEntry(context, draftScoped), false);
   assert.equal(canReadJournalEntry(context, submittedWrongTeam), false);
+  assert.equal(canReadJournalVersionHistory(context, submittedScoped), false);
 });
 
 test("admin override allows read and archive", () => {
@@ -121,6 +124,7 @@ test("admin override allows read and archive", () => {
   assert.equal(hasJournalAdminAccess(context), true);
   assert.equal(canReadJournalEntry(context, entry), true);
   assert.equal(canArchiveJournal(context, entry), true);
+  assert.equal(canReadJournalVersionHistory(context, entry), true);
 });
 
 test("journal creation requires athlete or admin context", () => {
@@ -133,4 +137,10 @@ test("journal creation requires athlete or admin context", () => {
 
   assert.equal(canCreateJournal(athleteContext), true);
   assert.equal(canCreateJournal(assistantCoachContext), false);
+});
+
+test("author can read own journal version history", () => {
+  const context = buildContext({ actorPersonId: "athlete-1" });
+  const entry = buildEntry({ createdByPersonId: "athlete-1", status: EntryStatus.DONE, visibility: EntryVisibility.ORGANIZATION_SCOPED });
+  assert.equal(canReadJournalVersionHistory(context, entry), true);
 });

@@ -1,4 +1,4 @@
-import { EntryStatus, EntryType, JournalAssignmentStatus } from "@prisma/client";
+import { EntryStatus, EntryType, JournalAssignmentStatus, JournalVersionChangeType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
@@ -6,6 +6,7 @@ import { writeEntryActivity } from "@/lib/entries/service";
 import { canSubmitJournal, resolveJournalAccessContext } from "@/lib/journals/access";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { buildJournalVersionSnapshotCreateInput } from "@/lib/journals/versioning";
 
 export async function POST(request: Request, { params }: { params: Promise<{ entryId: string }> }) {
   const { entryId } = await params;
@@ -25,6 +26,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     select: {
       id: true,
       type: true,
+      title: true,
+      content: true,
+      version: true,
       status: true,
       visibility: true,
       createdByPersonId: true,
@@ -48,30 +52,57 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   }
 
   const submittedAt = new Date();
-  await db.entry.update({
-    where: { id: entryId },
-    data: {
-      status: EntryStatus.DONE,
-      completedAt: submittedAt,
-      updatedByPersonId: scope.auth.personId,
-      version: { increment: 1 },
-    },
-  });
-
-  // Arc 23C: Mark linked assignment as COMPLETED when athlete submits their response.
-  // This tracks completion status without exposing journal body text.
-  if (journal.journalAssignmentId) {
-    await db.journalAssignment.updateMany({
-      where: {
-        id: journal.journalAssignmentId,
-        organizationId: scope.organizationId,
-        status: { in: [JournalAssignmentStatus.ACTIVE, JournalAssignmentStatus.PENDING] },
-      },
+  await db.$transaction(async (tx) => {
+    const updatedEntry = await tx.entry.update({
+      where: { id: entryId },
       data: {
-        status: JournalAssignmentStatus.COMPLETED,
+        status: EntryStatus.DONE,
+        completedAt: submittedAt,
+        updatedByPersonId: scope.auth.personId,
+        version: { increment: 1 },
+      },
+      select: {
+        id: true,
+        version: true,
+        title: true,
+        content: true,
+        visibility: true,
+        status: true,
       },
     });
-  }
+
+    await tx.journalVersion.create({
+      data: buildJournalVersionSnapshotCreateInput({
+        organizationId: scope.organizationId,
+        entryId: updatedEntry.id,
+        versionNumber: updatedEntry.version,
+        changeType: JournalVersionChangeType.SUBMITTED,
+        title: updatedEntry.title,
+        content: updatedEntry.content,
+        visibility: updatedEntry.visibility,
+        status: updatedEntry.status,
+        fromStatus: journal.status,
+        toStatus: EntryStatus.DONE,
+        capturedByPersonId: scope.auth.personId,
+        changeReason: "Journal finalized/submitted.",
+      }),
+    });
+
+    // Arc 23C: Mark linked assignment as COMPLETED when athlete submits their response.
+    // This tracks completion status without exposing journal body text.
+    if (journal.journalAssignmentId) {
+      await tx.journalAssignment.updateMany({
+        where: {
+          id: journal.journalAssignmentId,
+          organizationId: scope.organizationId,
+          status: { in: [JournalAssignmentStatus.ACTIVE, JournalAssignmentStatus.PENDING] },
+        },
+        data: {
+          status: JournalAssignmentStatus.COMPLETED,
+        },
+      });
+    }
+  });
 
   await writeEntryActivity({
     organizationId: scope.organizationId,
@@ -87,4 +118,3 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
   return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);
 }
-

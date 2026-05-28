@@ -152,3 +152,9 @@ export function canArchiveJournal(context: JournalAccessContext, entry: JournalA
   if (entry.createdByPersonId === context.actorPersonId) return true;
   return hasJournalAdminAccess(context);
 }
+
+export function canReadJournalVersionHistory(context: JournalAccessContext, entry: JournalAccessEntry): boolean {
+  if (!context.actorPersonId || entry.type !== EntryType.JOURNAL) return false;
+  if (entry.createdByPersonId === context.actorPersonId) return true;
+  return hasJournalAdminAccess(context);
+}

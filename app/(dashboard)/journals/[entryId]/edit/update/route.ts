@@ -1,10 +1,11 @@
-import { EntryType, EntryVisibility } from "@prisma/client";
+import { EntryType, EntryVisibility, JournalVersionChangeType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeEntryActivity } from "@/lib/entries/service";
 import { canEditJournalDraft, resolveJournalAccessContext } from "@/lib/journals/access";
 import { MAX_JOURNAL_TITLE_LENGTH } from "@/lib/journals/policy";
+import { buildJournalVersionSnapshotCreateInput } from "@/lib/journals/versioning";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -33,6 +34,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     select: {
       id: true,
       type: true,
+      title: true,
+      content: true,
+      version: true,
       status: true,
       visibility: true,
       createdByPersonId: true,
@@ -63,15 +67,47 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(new URL(`/journals/${entryId}/edit`, request.url), 303);
   }
 
-  await db.entry.update({
-    where: { id: entryId },
-    data: {
-      title: title.slice(0, MAX_JOURNAL_TITLE_LENGTH),
-      content,
-      visibility,
-      updatedByPersonId: scope.auth.personId,
-      version: { increment: 1 },
-    },
+  const trimmedTitle = title.slice(0, MAX_JOURNAL_TITLE_LENGTH);
+  const didMeaningfulChange = trimmedTitle !== journal.title || content !== (journal.content ?? "") || visibility !== journal.visibility;
+
+  await db.$transaction(async (tx) => {
+    const updatedEntry = await tx.entry.update({
+      where: { id: entryId },
+      data: {
+        title: trimmedTitle,
+        content,
+        visibility,
+        updatedByPersonId: scope.auth.personId,
+        version: { increment: 1 },
+      },
+      select: {
+        id: true,
+        version: true,
+        title: true,
+        content: true,
+        visibility: true,
+        status: true,
+      },
+    });
+
+    if (didMeaningfulChange) {
+      await tx.journalVersion.create({
+        data: buildJournalVersionSnapshotCreateInput({
+          organizationId: scope.organizationId,
+          entryId: updatedEntry.id,
+          versionNumber: updatedEntry.version,
+          changeType: JournalVersionChangeType.DRAFT_UPDATED,
+          title: updatedEntry.title,
+          content: updatedEntry.content,
+          visibility: updatedEntry.visibility,
+          status: updatedEntry.status,
+          fromStatus: updatedEntry.status,
+          toStatus: updatedEntry.status,
+          capturedByPersonId: scope.auth.personId,
+          changeReason: "Draft content or visibility updated.",
+        }),
+      });
+    }
   });
 
   await writeEntryActivity({

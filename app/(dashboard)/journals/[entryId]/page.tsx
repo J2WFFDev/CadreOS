@@ -8,6 +8,7 @@ import {
   canArchiveJournal,
   canEditJournalDraft,
   canReadJournalEntry,
+  canReadJournalVersionHistory,
   canSubmitJournal,
   hasJournalAdminAccess,
   resolveJournalAccessContext,
@@ -18,6 +19,7 @@ import {
   labelForJournalWorkflowStatus,
   mapEntryStatusToJournalWorkflowStatus,
 } from "@/lib/journals/policy";
+import { labelForJournalVersionChangeType } from "@/lib/journals/versioning";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -112,7 +114,28 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
   const canEditDraft = canEditJournalDraft(accessContext, journal);
   const canSubmitDraft = canSubmitJournal(accessContext, journal);
   const canArchive = canArchiveJournal(accessContext, journal);
+  const canViewVersionHistory = canReadJournalVersionHistory(accessContext, journal);
   const status = mapEntryStatusToJournalWorkflowStatus(journal.status);
+
+  const journalVersions = canViewVersionHistory
+    ? await db.journalVersion.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          entryId: journal.id,
+        },
+        orderBy: [{ versionNumber: "desc" }],
+        select: {
+          id: true,
+          versionNumber: true,
+          changeType: true,
+          statusAtVersion: true,
+          fromStatus: true,
+          toStatus: true,
+          capturedAt: true,
+          capturedBy: { select: { firstName: true, lastName: true } },
+        },
+      })
+    : [];
 
   return (
     <section className="space-y-4">
@@ -182,6 +205,37 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
             <dd>{journal.journalPromptId ? "Prompted" : "Freeform"}</dd>
           </div>
         </dl>
+      </section>
+
+      <section className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
+        <h3 className="font-semibold">Version history</h3>
+        {canViewVersionHistory ? (
+          journalVersions.length === 0 ? (
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No version history has been captured yet for this journal.</p>
+          ) : (
+            <ul className="mt-2 space-y-2">
+              {journalVersions.map((version) => (
+                <li key={version.id} className="rounded-md border px-3 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium">
+                      v{version.versionNumber} · {labelForJournalVersionChangeType(version.changeType)}
+                    </p>
+                    <Link href={`/journals/${journal.id}/versions/${version.id}`} className="text-xs underline">
+                      View snapshot
+                    </Link>
+                  </div>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                    {formatDateTimeUTC(version.capturedAt)} · {formatPersonName(version.capturedBy)} · {version.fromStatus ?? "—"} → {version.toStatus}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : (
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            Version history is intentionally restricted for this role. Journal body snapshots are not available in this view.
+          </p>
+        )}
       </section>
 
       <div className="flex flex-wrap gap-2">
