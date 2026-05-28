@@ -4,7 +4,11 @@ import { EntryType } from "@prisma/client";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import { db } from "@/lib/db";
+import { formatShortDateTime } from "@/lib/format-date";
+import { labelForEntryStatus } from "@/lib/operational-feed/render";
+import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +30,20 @@ export default async function DecisionsPage() {
       <section className="space-y-4">
         <PageHeader title="Decisions" description="Operational decision records and follow-through." />
         <ErrorMessage message="No organization context is available yet." />
+      </section>
+    );
+  }
+
+  const entryAccess = await resolveEntryAccess({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+
+  if (entryAccess.level === "NONE") {
+    return (
+      <section className="space-y-4">
+        <PageHeader title="Decisions" description="Operational decision records and follow-through." />
+        <ErrorMessage message="You do not have permission to view decision records in this organization." />
       </section>
     );
   }
@@ -63,8 +81,24 @@ export default async function DecisionsPage() {
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                 {entry.content?.slice(0, 260) ?? "No decision context recorded yet."}
               </p>
-              <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                Status: {entry.status} · Updated: {entry.updatedAt.toISOString().slice(0, 16).replace("T", " ")} UTC
+              <p className="mt-2 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                <StatusBadge
+                  variant={
+                    entry.status === "DONE"
+                      ? "done"
+                      : entry.status === "IN_PROGRESS"
+                        ? "in_progress"
+                        : entry.status === "OPEN"
+                          ? "open"
+                          : entry.status === "CANCELLED"
+                            ? "cancelled"
+                            : entry.status === "ARCHIVED"
+                              ? "archived"
+                              : "neutral"
+                  }
+                  label={labelForEntryStatus(entry.status)}
+                />
+                <span>Updated: {formatShortDateTime(entry.updatedAt)} UTC</span>
               </p>
             </article>
           ))}

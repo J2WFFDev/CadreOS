@@ -13,6 +13,7 @@ CadreOS is an **Athlete Program Operating System**.
 | **Arc 23C** | **Prompt Library and Prompt Assignment** | ✅ Complete |
 | **Arc 23D** | **Habit Model, Recurrence, and Completion Tracking** | ✅ Complete |
 | **Arc 23E** | **Guardian-Safe Visibility and Feed Integration** | ✅ Complete |
+| **Arc 23I** | **Entry System Consolidation & Operational Coherence** | ✅ Complete |
 | Arc 23F | Journal Version History and Trust/Audit Model | 🔜 Next |
 
 ## Planning Documents
@@ -86,6 +87,9 @@ CadreOS is an **Athlete Program Operating System**.
 - [Arc 23D Habit Manual QA Checklist](./ARC_23D_HABIT_QA_CHECKLIST.md)
 - [Arc 23E Guardian-Safe Visibility and Feed Integration ✅ COMPLETE](./ARC_23E_GUARDIAN_SAFE_VISIBILITY_AND_FEED_INTEGRATION.md)
 - [Arc 23E Visibility and Feed Manual QA Checklist](./ARC_23E_VISIBILITY_AND_FEED_QA_CHECKLIST.md)
+- [Arc 23I Entry System Consolidation Report ✅ COMPLETE](./ARC_23I_ENTRY_SYSTEM_CONSOLIDATION_REPORT.md)
+- [Arc 23I Manual QA Checklist](./ARC_23I_QA_CHECKLIST.md)
+- [Arc 23I Deferred Scope](./ARC_23I_DEFERRED_SCOPE.md)
 - [Arc 19A Unified Operational Entry Architecture (historical foundation)](./PHASE_19A_UNIFIED_OPERATIONAL_ENTRY_ARCHITECTURE.md)
 - [Arc 19B Unified Feed & Today View (historical foundation)](./PHASE_19B_UNIFIED_FEED_TODAY_VIEW.md)
 - [Arc 19C Quick Capture System (historical; remapped to Arc 22B)](./PHASE_19C_QUICK_CAPTURE_SYSTEM.md)

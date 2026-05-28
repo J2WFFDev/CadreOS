@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import {
   canArchiveHabit,
   canCheckInHabit,
@@ -15,6 +16,7 @@ import {
   resolveHabitAccessContext,
 } from "@/lib/habits/access";
 import {
+  badgeVariantForHabitStatus,
   computeCompletionCount,
   computeCurrentStreak,
   labelForHabitFrequency,
@@ -25,14 +27,6 @@ import { getOrganizationScope } from "@/lib/organization-context";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
-
-function badgeClasses(status: HabitStatus): string {
-  if (status === HabitStatus.ACTIVE)
-    return "inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-300";
-  if (status === HabitStatus.PAUSED)
-    return "inline-block rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
-  return "inline-block rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400";
-}
 
 export default async function HabitDetailPage({ params }: { params: Promise<{ habitId: string }> }) {
   const { habitId } = await params;
@@ -159,7 +153,7 @@ export default async function HabitDetailPage({ params }: { params: Promise<{ ha
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Status</dt>
-            <dd className="mt-1"><span className={badgeClasses(habit.status)}>{labelForHabitStatus(habit.status)}</span></dd>
+            <dd className="mt-1"><StatusBadge variant={badgeVariantForHabitStatus(habit.status)} label={labelForHabitStatus(habit.status)} /></dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Athlete</dt>
