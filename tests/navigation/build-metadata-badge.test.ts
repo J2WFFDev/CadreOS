@@ -1,9 +1,13 @@
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
 
-import packageJson from "../../package.json";
 import { resolveBuildMetadataLabel } from "../../components/build-metadata-badge";
 
+const packageJson = JSON.parse(
+  readFileSync(path.join(process.cwd(), "package.json"), "utf8"),
+) as { version: string };
 const packageVersion = packageJson.version.startsWith("v") ? packageJson.version : `v${packageJson.version}`;
 
 test("resolveBuildMetadataLabel uses preferred production format and shortens sha", () => {

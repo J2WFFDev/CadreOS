@@ -1,6 +1,8 @@
-import packageJson from "../package.json";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 const APP_NAME = "CadreOS";
+const PACKAGE_VERSION = resolvePackageVersion();
 
 function normalize(value: string | undefined) {
   return value?.trim() || "";
@@ -26,6 +28,15 @@ function formatEnvironmentLabel(value: string) {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
+function resolvePackageVersion() {
+  try {
+    const packageJson = JSON.parse(readFileSync(path.join(process.cwd(), "package.json"), "utf8")) as { version?: string };
+    return packageJson.version;
+  } catch {
+    return "";
+  }
+}
+
 function pickFirst(...values: Array<string | undefined>) {
   for (const value of values) {
     const normalized = normalize(value);
@@ -41,7 +52,7 @@ export function resolveBuildMetadataLabel(env: BuildMetadataEnv = process.env) {
   const appEnvNormalized = appEnv.toLowerCase();
   const commitRef = normalize(env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF);
   const appVersion = normalizeVersion(
-    pickFirst(env.NEXT_PUBLIC_APP_VERSION, appEnvNormalized === "production" ? packageJson.version : undefined),
+    pickFirst(env.NEXT_PUBLIC_APP_VERSION, appEnvNormalized === "production" ? PACKAGE_VERSION : undefined),
   );
   const gitSha = normalizeSha(pickFirst(env.NEXT_PUBLIC_GIT_SHA, env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA));
   const buildTime = normalize(env.NEXT_PUBLIC_BUILD_TIME);
