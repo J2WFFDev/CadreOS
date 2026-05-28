@@ -1,11 +1,18 @@
 import {
   GearCheckoutStatus,
+  InventoryMovementType,
   GearMaintenanceType,
   Prisma,
 } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { resolveActorRoleContext } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import {
+  applyGearCheckoutUpdateCustodyRestrictions,
+  buildGearCheckoutCustodyChangeSummary,
+  canEditGearCheckoutCustodyPeople,
+} from "@/lib/gear-checkout-custody";
 import {
   buildGearCheckoutReturnNotes,
   deriveGearItemCheckinUpdate,
@@ -120,6 +127,46 @@ export async function POST(
     );
   }
   const organizationId = scope.organizationId;
+
+  const actorRoleContext = await resolveActorRoleContext({
+    organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const canEditCustodyPeople = canEditGearCheckoutCustodyPeople({
+    isOrganizationAdmin: actorRoleContext.isOrganizationAdmin,
+  });
+
+  const existingCheckoutForRestrictions = await db.gearCheckout.findFirst({
+    where: {
+      id: checkoutId,
+      gearItemId: itemId,
+      organizationId: organizationId,
+    },
+    select: {
+      issuedById: true,
+      receivedById: true,
+    },
+  });
+
+  if (!existingCheckoutForRestrictions) {
+    return NextResponse.redirect(
+      buildErrorRedirectUrl(request.url, itemId, checkoutId, {
+        values,
+        error: "Checkout not found for this gear item in the selected organization.",
+      }),
+      303,
+    );
+  }
+
+  const restrictedCustodyValues = applyGearCheckoutUpdateCustodyRestrictions({
+    canEditCustodyPeople,
+    issuedById: values.issuedById,
+    receivedById: values.receivedById,
+    existingIssuedById: existingCheckoutForRestrictions.issuedById,
+    existingReceivedById: existingCheckoutForRestrictions.receivedById,
+  });
+  values.issuedById = restrictedCustodyValues.issuedById;
+  values.receivedById = restrictedCustodyValues.receivedById;
 
   const parsed = gearCheckoutWorkflowSchema.safeParse(values);
 
@@ -243,6 +290,9 @@ export async function POST(
         select: {
           id: true,
           status: true,
+          checkedOutById: true,
+          issuedById: true,
+          receivedById: true,
           conditionOnReturn: true,
           gearItem: {
             select: {
@@ -274,6 +324,35 @@ export async function POST(
           returnNotes: combinedReturnNotes,
         },
       });
+
+      const custodyChangeSummary = buildGearCheckoutCustodyChangeSummary({
+        previous: {
+          checkedOutById: existingCheckout.checkedOutById,
+          issuedById: existingCheckout.issuedById,
+          receivedById: existingCheckout.receivedById,
+        },
+        next: {
+          checkedOutById: parsed.data.checkedOutById,
+          issuedById: parsed.data.issuedById,
+          receivedById: parsed.data.receivedById,
+        },
+      });
+
+      if (custodyChangeSummary && scope.auth.personId) {
+        await tx.inventoryMovement.create({
+          data: {
+            organizationId: organizationId,
+            gearItemId: itemId,
+            movementType: InventoryMovementType.TRANSFERRED,
+            actorPersonId: scope.auth.personId,
+            custodyPersonId: parsed.data.checkedOutById,
+            relatedRecordType: "GEAR_CHECKOUT",
+            relatedRecordId: existingCheckout.id,
+            notes: custodyChangeSummary,
+            occurredAt: new Date(),
+          },
+        });
+      }
 
       const itemUpdate = deriveGearItemCheckinUpdate({
         checkoutStatus: parsed.data.status,

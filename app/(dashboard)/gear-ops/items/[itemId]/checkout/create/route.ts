@@ -2,9 +2,14 @@ import { GearReservationStatus, InventoryMovementType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import {
+  applyGearCheckoutCreateCustodyRestrictions,
+  canEditGearCheckoutCustodyPeople,
+} from "@/lib/gear-checkout-custody";
 import { buildGearCheckoutReturnNotes } from "@/lib/gear-checkout-usage";
 import { findReservationToFulfill } from "@/lib/gear-reservations";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { resolveActorRoleContext } from "@/lib/authorization";
 import {
   gearCheckoutWorkflowSchema,
   getStringField,
@@ -112,6 +117,22 @@ export async function POST(
     );
   }
   const organizationId = scope.organizationId;
+
+  const actorRoleContext = await resolveActorRoleContext({
+    organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const canEditCustodyPeople = canEditGearCheckoutCustodyPeople({
+    isOrganizationAdmin: actorRoleContext.isOrganizationAdmin,
+  });
+  const restrictedCustodyValues = applyGearCheckoutCreateCustodyRestrictions({
+    canEditCustodyPeople,
+    actorPersonId: scope.auth.personId,
+    issuedById: values.issuedById,
+    receivedById: values.receivedById,
+  });
+  values.issuedById = restrictedCustodyValues.issuedById;
+  values.receivedById = restrictedCustodyValues.receivedById;
 
   const parsed = gearCheckoutWorkflowSchema.safeParse(values);
 
