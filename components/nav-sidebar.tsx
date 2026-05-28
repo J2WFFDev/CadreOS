@@ -53,21 +53,27 @@ export function NavSidebar({
 
                   return (
                     <li key={`${link.href}::${link.label}`}>
-                      <Link
-                        href={link.href}
-                        className={
-                          isActive
-                            ? "flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
-                            : "flex items-center justify-between rounded-md px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-                        }
-                      >
-                        <span>{link.label}</span>
-                        {link.href === "/notifications" && unreadNotificationCount > 0 ? (
-                          <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-black px-1.5 py-0.5 text-[10px] font-semibold text-white dark:bg-white dark:text-black">
-                            {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
-                          </span>
-                        ) : null}
-                      </Link>
+                      {link.disabled ? (
+                        <span className="flex items-center rounded-md px-3 py-2 text-sm text-zinc-400 dark:text-zinc-600 cursor-not-allowed" title="Coming soon">
+                          <span>{link.label}</span>
+                        </span>
+                      ) : (
+                        <Link
+                          href={link.href}
+                          className={
+                            isActive
+                              ? "flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
+                              : "flex items-center justify-between rounded-md px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                          }
+                        >
+                          <span>{link.label}</span>
+                          {link.href === "/notifications" && unreadNotificationCount > 0 ? (
+                            <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-black px-1.5 py-0.5 text-[10px] font-semibold text-white dark:bg-white dark:text-black">
+                              {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                            </span>
+                          ) : null}
+                        </Link>
+                      )}
                     </li>
                   );
                 })}
