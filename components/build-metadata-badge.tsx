@@ -17,7 +17,9 @@ function pickFirst(...values: Array<string | undefined>) {
   return "";
 }
 
-export function resolveBuildMetadataLabel(env: NodeJS.ProcessEnv = process.env) {
+type BuildMetadataEnv = Record<string, string | undefined>;
+
+export function resolveBuildMetadataLabel(env: BuildMetadataEnv = process.env) {
   const appVersion = normalize(env.NEXT_PUBLIC_APP_VERSION);
   const appEnv = pickFirst(env.NEXT_PUBLIC_APP_ENV, env.NEXT_PUBLIC_VERCEL_ENV) || "dev";
   const gitSha = normalizeSha(pickFirst(env.NEXT_PUBLIC_GIT_SHA, env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA));
