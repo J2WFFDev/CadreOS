@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
+import { labelForPromptAssignmentReadiness } from "@/lib/journals-habits/readiness-ux";
 import { resolveJournalAccessContext } from "@/lib/journals/access";
 import {
   canAssignPrompt,
@@ -17,6 +18,7 @@ import { JournalAssignmentStatus, RoleType } from "@prisma/client";
 export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
+const DUE_SOON_WINDOW_DAYS = 3;
 
 function normalizeStatusFilter(
   rawValue: string | string[] | undefined,
@@ -25,6 +27,21 @@ function normalizeStatusFilter(
   if (value === "completed") return "completed";
   if (value === "all") return "all";
   return "open";
+}
+
+function normalizeDueFilter(
+  rawValue: string | string[] | undefined,
+): "all" | "overdue" | "due_soon" | "no_due" {
+  const value = Array.isArray(rawValue) ? rawValue[0] : rawValue;
+  if (value === "overdue") return "overdue";
+  if (value === "due_soon") return "due_soon";
+  if (value === "no_due") return "no_due";
+  return "all";
+}
+
+function normalizeSingle(raw: string | string[] | undefined): string | undefined {
+  if (Array.isArray(raw)) return raw[0];
+  return raw;
 }
 
 export default async function PromptAssignmentsPage({
@@ -66,7 +83,12 @@ export default async function PromptAssignmentsPage({
   }
 
   const statusFilter = normalizeStatusFilter(params.status);
+  const dueFilter = normalizeDueFilter(params.due);
+  const athleteFilter = normalizeSingle(params.athleteId);
+  const teamFilter = normalizeSingle(params.teamId);
+  const programFilter = normalizeSingle(params.programId);
   const now = new Date();
+  const dueSoonThreshold = new Date(now.getTime() + DUE_SOON_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
   const openStatuses = [JournalAssignmentStatus.ACTIVE, JournalAssignmentStatus.PENDING];
   const closedStatuses = [
@@ -117,7 +139,18 @@ export default async function PromptAssignmentsPage({
                 : []),
             ],
           }
-        : {}),
+        : {
+            ...(athleteFilter ? { assignedToAthletePersonId: athleteFilter } : {}),
+            ...(teamFilter ? { assignedToTeamId: teamFilter } : {}),
+            ...(programFilter ? { assignedToTeam: { programId: programFilter } } : {}),
+          }),
+      ...(dueFilter === "overdue"
+        ? { status: { in: openStatuses }, dueAt: { not: null, lt: now } }
+        : dueFilter === "due_soon"
+          ? { status: { in: openStatuses }, dueAt: { not: null, gte: now, lt: dueSoonThreshold } }
+          : dueFilter === "no_due"
+            ? { status: { in: openStatuses }, dueAt: null }
+            : {}),
     },
     orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
     select: {
@@ -128,12 +161,63 @@ export default async function PromptAssignmentsPage({
       createdAt: true,
       prompt: { select: { id: true, title: true, category: true } },
       assignedToAthlete: { select: { id: true, firstName: true, lastName: true } },
-      assignedToTeam: { select: { id: true, name: true } },
+      assignedToTeam: { select: { id: true, name: true, programId: true, program: { select: { name: true } } } },
       assignedBy: { select: { firstName: true, lastName: true } },
     },
     take: 300,
   });
 
+  const summaryCounts = assignments.reduce(
+    (acc, assignment) => {
+      const dueState = computeAssignmentDueState(assignment.status, assignment.dueAt, now);
+      if (isAssignmentOpen(assignment.status)) acc.open += 1;
+      if (!isAssignmentOpen(assignment.status)) acc.closed += 1;
+      if (dueState === "overdue") acc.overdue += 1;
+      if (dueState === "due_soon") acc.dueSoon += 1;
+      return acc;
+    },
+    { open: 0, closed: 0, overdue: 0, dueSoon: 0 },
+  );
+  const athleteOptions = Array.from(
+    new Map(
+      assignments
+        .filter((assignment) => Boolean(assignment.assignedToAthlete))
+        .map((assignment) => [
+          assignment.assignedToAthlete!.id,
+          {
+            id: assignment.assignedToAthlete!.id,
+            label:
+              `${assignment.assignedToAthlete!.firstName} ${assignment.assignedToAthlete!.lastName}`.trim() ||
+              "Unknown",
+          },
+        ]),
+    ).values(),
+  ).sort((a, b) => a.label.localeCompare(b.label));
+  const teamOptions = Array.from(
+    new Map(
+      assignments
+        .filter((assignment) => Boolean(assignment.assignedToTeam))
+        .map((assignment) => [
+          assignment.assignedToTeam!.id,
+          { id: assignment.assignedToTeam!.id, label: assignment.assignedToTeam!.name },
+        ]),
+    ).values(),
+  ).sort((a, b) => a.label.localeCompare(b.label));
+  const programOptions = Array.from(
+    new Map(
+      assignments
+        .filter((assignment) => Boolean(assignment.assignedToTeam?.programId))
+        .map((assignment) => [
+          assignment.assignedToTeam!.programId!,
+          {
+            id: assignment.assignedToTeam!.programId!,
+            label:
+              assignment.assignedToTeam!.program?.name ??
+              assignment.assignedToTeam!.programId!,
+          },
+        ]),
+    ).values(),
+  ).sort((a, b) => a.label.localeCompare(b.label));
 
   return (
     <section className="space-y-4">
@@ -169,6 +253,33 @@ export default async function PromptAssignmentsPage({
             >
               All
             </Link>
+            <Link
+              href={`/prompt-assignments?status=${statusFilter}&due=all`}
+              aria-current={dueFilter === "all" ? "page" : undefined}
+              className={`rounded-md border px-3 py-1.5 text-sm ${
+                dueFilter === "all" ? "bg-zinc-100 dark:bg-zinc-800" : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              }`}
+            >
+              All due states
+            </Link>
+            <Link
+              href={`/prompt-assignments?status=${statusFilter}&due=overdue`}
+              aria-current={dueFilter === "overdue" ? "page" : undefined}
+              className={`rounded-md border px-3 py-1.5 text-sm ${
+                dueFilter === "overdue" ? "bg-zinc-100 dark:bg-zinc-800" : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              }`}
+            >
+              Overdue
+            </Link>
+            <Link
+              href={`/prompt-assignments?status=${statusFilter}&due=due_soon`}
+              aria-current={dueFilter === "due_soon" ? "page" : undefined}
+              className={`rounded-md border px-3 py-1.5 text-sm ${
+                dueFilter === "due_soon" ? "bg-zinc-100 dark:bg-zinc-800" : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              }`}
+            >
+              Due soon
+            </Link>
             {isStaff ? (
               <Link
                 href="/prompts"
@@ -180,6 +291,71 @@ export default async function PromptAssignmentsPage({
           </div>
         }
       />
+      {isStaff ? (
+        <form className="grid gap-2 rounded-lg border bg-white p-3 text-sm dark:bg-zinc-900 md:grid-cols-4" method="get">
+          <input type="hidden" name="status" value={statusFilter} />
+          <input type="hidden" name="due" value={dueFilter} />
+          <label className="space-y-1">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">Athlete</span>
+            <select name="athleteId" defaultValue={athleteFilter ?? ""} className="w-full rounded-md border px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-800">
+              <option value="">All visible athletes</option>
+              {athleteOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">Team</span>
+            <select name="teamId" defaultValue={teamFilter ?? ""} className="w-full rounded-md border px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-800">
+              <option value="">All visible teams</option>
+              {teamOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">Program scope</span>
+            <select name="programId" defaultValue={programFilter ?? ""} className="w-full rounded-md border px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-800">
+              <option value="">All visible programs</option>
+              {programOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex items-end gap-2">
+            <button type="submit" className="rounded-md border px-3 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Apply
+            </button>
+            <Link href={`/prompt-assignments?status=${statusFilter}&due=${dueFilter}`} className="rounded-md border px-3 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Reset
+            </Link>
+          </div>
+        </form>
+      ) : null}
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Open assignments</p>
+          <p className="text-lg font-semibold">{summaryCounts.open}</p>
+        </div>
+        <div className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Closed assignments</p>
+          <p className="text-lg font-semibold">{summaryCounts.closed}</p>
+        </div>
+        <div className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Overdue</p>
+          <p className="text-lg font-semibold">{summaryCounts.overdue}</p>
+        </div>
+        <div className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Due soon</p>
+          <p className="text-lg font-semibold">{summaryCounts.dueSoon}</p>
+        </div>
+      </div>
 
       {assignments.length === 0 ? (
         <EmptyState
@@ -196,6 +372,7 @@ export default async function PromptAssignmentsPage({
                 <th className="px-4 py-3 font-medium">Assigned to</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Due</th>
+                <th className="px-4 py-3 font-medium">Readiness</th>
                 <th className="px-4 py-3 font-medium">Action</th>
               </tr>
             </thead>
@@ -222,9 +399,13 @@ export default async function PromptAssignmentsPage({
                 return (
                   <tr key={assignment.id} className="border-b last:border-b-0">
                     <td className="px-4 py-3">
-                      <Link href={`/prompts/${assignment.prompt.id}`} className="underline">
-                        {assignment.prompt.title}
-                      </Link>
+                      {isGuardian ? (
+                        <span>{assignment.prompt.title}</span>
+                      ) : (
+                        <Link href={`/prompts/${assignment.prompt.id}`} className="underline">
+                          {assignment.prompt.title}
+                        </Link>
+                      )}
                       {assignment.prompt.category ? (
                         <p className="text-xs text-zinc-500">{assignment.prompt.category}</p>
                       ) : null}
@@ -249,6 +430,11 @@ export default async function PromptAssignmentsPage({
                     </td>
                     <td className="px-4 py-3 text-zinc-500">
                       {assignment.dueAt ? assignment.dueAt.toISOString().slice(0, 10) : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                        {labelForPromptAssignmentReadiness(dueState)}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       {canRespond ? (

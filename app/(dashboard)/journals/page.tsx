@@ -26,6 +26,20 @@ function normalizeStatusFilter(rawStatus: string | string[] | undefined): "activ
   return "active";
 }
 
+function normalizeSingleValue(raw: string | string[] | undefined): string | undefined {
+  if (Array.isArray(raw)) return raw[0];
+  return raw;
+}
+
+function normalizeSourceFilter(
+  raw: string | string[] | undefined,
+): "all" | "prompted" | "freeform" {
+  const value = normalizeSingleValue(raw);
+  if (value === "prompted") return "prompted";
+  if (value === "freeform") return "freeform";
+  return "all";
+}
+
 export default async function JournalsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const scope = await getOrganizationScope();
   const params = await searchParams;
@@ -45,6 +59,10 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
   });
 
   const statusFilter = normalizeStatusFilter(params.status);
+  const sourceFilter = normalizeSourceFilter(params.source);
+  const createdByFilter = normalizeSingleValue(params.createdBy);
+  const teamIdFilter = normalizeSingleValue(params.teamId);
+  const programIdFilter = normalizeSingleValue(params.programId);
 
   const journals = await db.entry.findMany({
     where: {
@@ -56,6 +74,14 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
         : statusFilter === "archived"
           ? { status: EntryStatus.ARCHIVED }
           : {}),
+      ...(sourceFilter === "prompted"
+        ? { journalPromptId: { not: null } }
+        : sourceFilter === "freeform"
+          ? { journalPromptId: null }
+          : {}),
+      ...(createdByFilter ? { createdByPersonId: createdByFilter } : {}),
+      ...(teamIdFilter ? { teamId: teamIdFilter } : {}),
+      ...(programIdFilter ? { team: { programId: programIdFilter } } : {}),
     },
     orderBy: [{ updatedAt: "desc" }],
     select: {
@@ -68,8 +94,9 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
       updatedAt: true,
       createdByPersonId: true,
       teamId: true,
-      team: { select: { name: true, programId: true } },
+      team: { select: { name: true, programId: true, program: { select: { name: true } } } },
       createdBy: { select: { firstName: true, lastName: true } },
+      journalPromptId: true,
     },
     take: JOURNAL_LIST_LIMIT,
   });
@@ -87,6 +114,45 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
   );
 
   const canCreate = canCreateJournal(accessContext);
+  const visibleAuthorOptions = Array.from(
+    new Map(
+      visibleJournals.map((journal) => [
+        journal.createdByPersonId,
+        {
+          id: journal.createdByPersonId,
+          label: `${journal.createdBy.firstName} ${journal.createdBy.lastName}`.trim() || "Unknown",
+        },
+      ]),
+    ).values(),
+  ).sort((a, b) => a.label.localeCompare(b.label));
+  const visibleTeamOptions = Array.from(
+    new Map(
+      visibleJournals
+        .filter((journal) => Boolean(journal.teamId && journal.team?.name))
+        .map((journal) => [journal.teamId!, { id: journal.teamId!, label: journal.team!.name }]),
+    ).values(),
+  ).sort((a, b) => a.label.localeCompare(b.label));
+  const visibleProgramOptions = Array.from(
+    new Map(
+      visibleJournals
+        .filter((journal) => Boolean(journal.team?.programId))
+        .map((journal) => [
+          journal.team!.programId!,
+          { id: journal.team!.programId!, label: journal.team!.program?.name ?? journal.team!.programId! },
+        ]),
+    ).values(),
+  );
+  const summaryCounts = visibleJournals.reduce(
+    (acc, journal) => {
+      const status = mapEntryStatusToJournalWorkflowStatus(journal.status);
+      if (status === "DRAFT") acc.draft += 1;
+      if (status === "SUBMITTED") acc.submitted += 1;
+      if (status === "ARCHIVED") acc.archived += 1;
+      if (journal.journalPromptId) acc.prompted += 1;
+      return acc;
+    },
+    { draft: 0, submitted: 0, archived: 0, prompted: 0 },
+  );
 
   return (
     <section className="space-y-4">
@@ -122,6 +188,33 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
             >
               All
             </Link>
+            <Link
+              href={`/journals?status=${statusFilter}&source=all`}
+              aria-current={sourceFilter === "all" ? "page" : undefined}
+              className={`rounded-md border px-3 py-1.5 text-sm ${
+                sourceFilter === "all" ? "bg-zinc-100 dark:bg-zinc-800" : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              }`}
+            >
+              All sources
+            </Link>
+            <Link
+              href={`/journals?status=${statusFilter}&source=prompted`}
+              aria-current={sourceFilter === "prompted" ? "page" : undefined}
+              className={`rounded-md border px-3 py-1.5 text-sm ${
+                sourceFilter === "prompted" ? "bg-zinc-100 dark:bg-zinc-800" : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              }`}
+            >
+              Prompted
+            </Link>
+            <Link
+              href={`/journals?status=${statusFilter}&source=freeform`}
+              aria-current={sourceFilter === "freeform" ? "page" : undefined}
+              className={`rounded-md border px-3 py-1.5 text-sm ${
+                sourceFilter === "freeform" ? "bg-zinc-100 dark:bg-zinc-800" : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              }`}
+            >
+              Freeform
+            </Link>
             {canCreate ? (
               <Link href="/journals/create" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
                 Create journal
@@ -130,6 +223,69 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
           </div>
         }
       />
+      <form className="grid gap-2 rounded-lg border bg-white p-3 text-sm dark:bg-zinc-900 md:grid-cols-4" method="get">
+        <input type="hidden" name="status" value={statusFilter} />
+        <input type="hidden" name="source" value={sourceFilter} />
+        <label className="space-y-1">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Athlete</span>
+          <select name="createdBy" defaultValue={createdByFilter ?? ""} className="w-full rounded-md border px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-800">
+            <option value="">All visible athletes</option>
+            {visibleAuthorOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Team</span>
+          <select name="teamId" defaultValue={teamIdFilter ?? ""} className="w-full rounded-md border px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-800">
+            <option value="">All visible teams</option>
+            {visibleTeamOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Program scope</span>
+          <select name="programId" defaultValue={programIdFilter ?? ""} className="w-full rounded-md border px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-800">
+            <option value="">All visible programs</option>
+            {visibleProgramOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="flex items-end gap-2">
+          <button type="submit" className="rounded-md border px-3 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Apply
+          </button>
+          <Link href={`/journals?status=${statusFilter}&source=${sourceFilter}`} className="rounded-md border px-3 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Reset
+          </Link>
+        </div>
+      </form>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Draft</p>
+          <p className="text-lg font-semibold">{summaryCounts.draft}</p>
+        </div>
+        <div className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Submitted</p>
+          <p className="text-lg font-semibold">{summaryCounts.submitted}</p>
+        </div>
+        <div className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Archived</p>
+          <p className="text-lg font-semibold">{summaryCounts.archived}</p>
+        </div>
+        <div className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Prompted responses</p>
+          <p className="text-lg font-semibold">{summaryCounts.prompted}</p>
+        </div>
+      </div>
 
       {visibleJournals.length === 0 ? (
         <EmptyState
@@ -156,12 +312,21 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
                 return (
                   <tr key={journal.id} className="border-b last:border-b-0">
                     <td className="px-4 py-3">
+                      <p className="mb-1">
+                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                          {journal.journalPromptId ? "Prompted" : "Freeform"}
+                        </span>
+                      </p>
                       <Link href={`/journals/${journal.id}`} className="underline">
                         {journal.title}
                       </Link>
                       {journal.team?.name ? <p className="text-xs text-zinc-500">Team: {journal.team.name}</p> : null}
                     </td>
-                    <td className="px-4 py-3">{labelForJournalWorkflowStatus(status)}</td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                        {labelForJournalWorkflowStatus(status)}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">
                       <p>{labelForJournalVisibility(journal.visibility)}</p>
                       <p className="text-xs text-zinc-500">{hintForJournalVisibility(journal.visibility)}</p>

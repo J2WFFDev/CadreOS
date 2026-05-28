@@ -6,6 +6,7 @@ import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { canCreateHabit, canReadHabit, resolveHabitAccessContext } from "@/lib/habits/access";
 import { labelForHabitFrequency, labelForHabitStatus } from "@/lib/habits/policy";
+import { classifyHabitOperationalReadiness } from "@/lib/journals-habits/readiness-ux";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { db } from "@/lib/db";
 
@@ -28,6 +29,21 @@ function badgeClasses(status: HabitStatus): string {
   return "inline-block rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400";
 }
 
+function normalizeSingleValue(raw: string | string[] | undefined): string | undefined {
+  if (Array.isArray(raw)) return raw[0];
+  return raw;
+}
+
+function normalizeFrequencyFilter(
+  raw: string | string[] | undefined,
+): HabitFrequency | "ALL" {
+  const value = normalizeSingleValue(raw);
+  if (value === HabitFrequency.DAILY) return HabitFrequency.DAILY;
+  if (value === HabitFrequency.WEEKLY) return HabitFrequency.WEEKLY;
+  if (value === HabitFrequency.CUSTOM) return HabitFrequency.CUSTOM;
+  return "ALL";
+}
+
 export default async function HabitsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const scope = await getOrganizationScope();
   const params = await searchParams;
@@ -47,6 +63,10 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
   });
 
   const statusFilter = normalizeStatusFilter(params.status);
+  const athleteFilter = normalizeSingleValue(params.athlete);
+  const teamFilter = normalizeSingleValue(params.teamId);
+  const programFilter = normalizeSingleValue(params.programId);
+  const frequencyFilter = normalizeFrequencyFilter(params.frequency);
 
   const whereStatus =
     statusFilter === "active"
@@ -58,7 +78,22 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
           : {};
 
   const habits = await db.habit.findMany({
-    where: { organizationId: scope.organizationId, ...whereStatus },
+    where: {
+      organizationId: scope.organizationId,
+      ...whereStatus,
+      ...(athleteFilter ? { athletePersonId: athleteFilter } : {}),
+      ...(teamFilter ? { assignedToTeamId: teamFilter } : {}),
+      ...(programFilter ? { assignedToTeam: { programId: programFilter } } : {}),
+      ...(frequencyFilter !== "ALL"
+        ? {
+            schedules: {
+              some: {
+                frequency: frequencyFilter,
+              },
+            },
+          }
+        : {}),
+    },
     orderBy: [{ updatedAt: "desc" }],
     select: {
       id: true,
@@ -71,7 +106,7 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
       createdAt: true,
       updatedAt: true,
       athlete: { select: { firstName: true, lastName: true } },
-      assignedToTeam: { select: { name: true, programId: true } },
+      assignedToTeam: { select: { name: true, programId: true, program: { select: { name: true } } } },
       schedules: { select: { frequency: true }, take: 1, orderBy: { createdAt: "asc" } },
       _count: { select: { completions: true } },
     },
@@ -90,6 +125,47 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
   );
 
   const canCreate = canCreateHabit(accessContext);
+  const visibleAthleteOptions = Array.from(
+    new Map(
+      visibleHabits.map((habit) => [
+        habit.athletePersonId,
+        {
+          id: habit.athletePersonId,
+          label: `${habit.athlete.firstName} ${habit.athlete.lastName}`.trim() || "Unknown",
+        },
+      ]),
+    ).values(),
+  ).sort((a, b) => a.label.localeCompare(b.label));
+  const visibleTeamOptions = Array.from(
+    new Map(
+      visibleHabits
+        .filter((habit) => Boolean(habit.assignedToTeamId && habit.assignedToTeam?.name))
+        .map((habit) => [habit.assignedToTeamId!, { id: habit.assignedToTeamId!, label: habit.assignedToTeam!.name }]),
+    ).values(),
+  ).sort((a, b) => a.label.localeCompare(b.label));
+  const visibleProgramOptions = Array.from(
+    new Map(
+      visibleHabits
+        .filter((habit) => Boolean(habit.assignedToTeam?.programId))
+        .map((habit) => [
+          habit.assignedToTeam!.programId!,
+          {
+            id: habit.assignedToTeam!.programId!,
+            label: habit.assignedToTeam!.program?.name ?? habit.assignedToTeam!.programId!,
+          },
+        ]),
+    ).values(),
+  ).sort((a, b) => a.label.localeCompare(b.label));
+  const summaryCounts = visibleHabits.reduce(
+    (acc, habit) => {
+      if (habit.status === HabitStatus.ACTIVE) acc.active += 1;
+      if (habit.status === HabitStatus.PAUSED) acc.paused += 1;
+      if (habit.status === HabitStatus.ARCHIVED) acc.archived += 1;
+      acc.totalCheckins += habit._count.completions;
+      return acc;
+    },
+    { active: 0, paused: 0, archived: 0, totalCheckins: 0 },
+  );
 
   const tabBase =
     "rounded-md border px-3 py-1.5 text-sm";
@@ -115,6 +191,77 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
           </div>
         }
       />
+      <form className="grid gap-2 rounded-lg border bg-white p-3 text-sm dark:bg-zinc-900 md:grid-cols-5" method="get">
+        <input type="hidden" name="status" value={statusFilter} />
+        <label className="space-y-1">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Athlete</span>
+          <select name="athlete" defaultValue={athleteFilter ?? ""} className="w-full rounded-md border px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-800">
+            <option value="">All visible athletes</option>
+            {visibleAthleteOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Team</span>
+          <select name="teamId" defaultValue={teamFilter ?? ""} className="w-full rounded-md border px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-800">
+            <option value="">All visible teams</option>
+            {visibleTeamOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Program scope</span>
+          <select name="programId" defaultValue={programFilter ?? ""} className="w-full rounded-md border px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-800">
+            <option value="">All visible programs</option>
+            {visibleProgramOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Cadence</span>
+          <select name="frequency" defaultValue={frequencyFilter === "ALL" ? "" : frequencyFilter} className="w-full rounded-md border px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-800">
+            <option value="">All cadence types</option>
+            <option value={HabitFrequency.DAILY}>Daily</option>
+            <option value={HabitFrequency.WEEKLY}>Weekly</option>
+            <option value={HabitFrequency.CUSTOM}>Custom</option>
+          </select>
+        </label>
+        <div className="flex items-end gap-2">
+          <button type="submit" className="rounded-md border px-3 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Apply
+          </button>
+          <Link href={`/habits?status=${statusFilter}`} className="rounded-md border px-3 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Reset
+          </Link>
+        </div>
+      </form>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Active habits</p>
+          <p className="text-lg font-semibold">{summaryCounts.active}</p>
+        </div>
+        <div className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Paused habits</p>
+          <p className="text-lg font-semibold">{summaryCounts.paused}</p>
+        </div>
+        <div className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Archived habits</p>
+          <p className="text-lg font-semibold">{summaryCounts.archived}</p>
+        </div>
+        <div className="rounded-lg border bg-white p-3 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Total check-ins</p>
+          <p className="text-lg font-semibold">{summaryCounts.totalCheckins}</p>
+        </div>
+      </div>
 
       {visibleHabits.length === 0 ? (
         <EmptyState
@@ -131,6 +278,7 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
                 <th className="px-4 py-3 font-medium">Athlete</th>
                 <th className="px-4 py-3 font-medium">Cadence</th>
                 <th className="px-4 py-3 font-medium">Check-ins</th>
+                <th className="px-4 py-3 font-medium">Readiness</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Updated</th>
               </tr>
@@ -154,6 +302,11 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
                       {frequency ? labelForHabitFrequency(frequency) : <span className="text-zinc-400">—</span>}
                     </td>
                     <td className="px-4 py-3">{habit._count.completions}</td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                        {classifyHabitOperationalReadiness(habit.status, habit._count.completions)}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">
                       <span className={badgeClasses(habit.status)}>{labelForHabitStatus(habit.status)}</span>
                     </td>
