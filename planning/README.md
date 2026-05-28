@@ -12,7 +12,8 @@ CadreOS is an **Athlete Program Operating System**.
 | **Arc 23B** | **Journal Entry Type and Draft/Final Workflow** | ✅ Complete |
 | **Arc 23C** | **Prompt Library and Prompt Assignment** | ✅ Complete |
 | **Arc 23D** | **Habit Model, Recurrence, and Completion Tracking** | ✅ Complete |
-| Arc 23E | Guardian-Safe Visibility and Feed Integration | 🔜 Next |
+| **Arc 23E** | **Guardian-Safe Visibility and Feed Integration** | ✅ Complete |
+| Arc 23F | Journal Version History and Trust/Audit Model | 🔜 Next |
 
 ## Planning Documents
 - [**CadreOS \*Ops Domain Architecture** — Naming System, FieldOps vs ResourceOps, Platform Primitives](./CADRE_OPS_DOMAIN_ARCHITECTURE.md)
@@ -83,6 +84,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Arc 23C Prompt Library and Prompt Assignment](./ARC_23C_PROMPT_LIBRARY_AND_ASSIGNMENT.md)
 - [Arc 23D Habit Model, Recurrence, and Completion Tracking ✅ COMPLETE](./ARC_23D_HABIT_MODEL_RECURRENCE_COMPLETION.md)
 - [Arc 23D Habit Manual QA Checklist](./ARC_23D_HABIT_QA_CHECKLIST.md)
+- [Arc 23E Guardian-Safe Visibility and Feed Integration ✅ COMPLETE](./ARC_23E_GUARDIAN_SAFE_VISIBILITY_AND_FEED_INTEGRATION.md)
+- [Arc 23E Visibility and Feed Manual QA Checklist](./ARC_23E_VISIBILITY_AND_FEED_QA_CHECKLIST.md)
 - [Arc 19A Unified Operational Entry Architecture (historical foundation)](./PHASE_19A_UNIFIED_OPERATIONAL_ENTRY_ARCHITECTURE.md)
 - [Arc 19B Unified Feed & Today View (historical foundation)](./PHASE_19B_UNIFIED_FEED_TODAY_VIEW.md)
 - [Arc 19C Quick Capture System (historical; remapped to Arc 22B)](./PHASE_19C_QUICK_CAPTURE_SYSTEM.md)

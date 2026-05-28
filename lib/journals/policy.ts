@@ -38,5 +38,8 @@ export function deriveSafeJournalActivityText(action: string): string {
   if (action === "journal.draft_updated") return "Journal draft updated";
   if (action === "journal.submitted") return "Journal submitted";
   if (action === "journal.archived") return "Journal archived";
+  if (action === "journal.prompt_assigned") return "Journal prompt assigned";
+  if (action === "journal.prompt_response_submitted") return "Journal prompt completed";
+  if (action === "journal.prompt_assignment_cancelled") return "Prompt assignment cancelled";
   return "Journal entry";
 }
