@@ -6,28 +6,30 @@
 - All non-`main` branches are disabled for automatic Vercel deployments.
 - Copilot branches do not create Vercel previews because all non-`main` branches are disabled.
 
-## Build metadata badge
-- The dashboard header includes a compact build badge for screenshots in the top-right account area.
-- Production prefers the compact release format `Prod:main v1.4.2 · a1b2c3d`.
-- It reads only public environment variables:
-  - `NEXT_PUBLIC_APP_VERSION`
-  - `NEXT_PUBLIC_GIT_SHA`
-  - `NEXT_PUBLIC_BUILD_TIME`
+## Operational release ribbon
+- The dashboard header includes a compact operational release ribbon in the top-right app shell area.
+- Preferred format: `CadreOS Preview · Arc 21D · Build 21D.3 · a1b2c3d · Nav v2`.
+- It reads these public environment variables:
   - `NEXT_PUBLIC_APP_ENV`
-  - `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA`
-  - `NEXT_PUBLIC_VERCEL_ENV`
-  - `NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF`
+  - `NEXT_PUBLIC_RELEASE_ARC`
+  - `NEXT_PUBLIC_BUILD_ITERATION`
+  - `NEXT_PUBLIC_GIT_SHA`
+  - `NEXT_PUBLIC_NAV_VERSION`
 - Commit SHA values are shortened to 7 characters.
-- Missing values safely fall back to a readable label (for example: `CadreOS dev · local build`).
-  - Production falls back to the repository `package.json` version when `NEXT_PUBLIC_APP_VERSION` is not set.
+- Vercel fallback metadata is supported through:
+  - `NEXT_PUBLIC_VERCEL_ENV` or `VERCEL_ENV`
+  - `NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF` or `VERCEL_GIT_COMMIT_REF`
+  - `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA` or `VERCEL_GIT_COMMIT_SHA`
+- `CadreOS dev · local build` is only shown when no release metadata is present at all.
 
 ### Local development
 Set values in `.env.local` (or copy from `.env.example`):
 
 ```bash
-NEXT_PUBLIC_APP_VERSION=0.1.0-local
+NEXT_PUBLIC_RELEASE_ARC=21D
+NEXT_PUBLIC_BUILD_ITERATION=21D.3
 NEXT_PUBLIC_GIT_SHA=$(git rev-parse --short HEAD)
-NEXT_PUBLIC_BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+NEXT_PUBLIC_NAV_VERSION=2
 NEXT_PUBLIC_APP_ENV=local
 ```
 
@@ -36,8 +38,10 @@ Provide metadata in workflow `env` (job-level or step-level):
 
 ```yaml
 env:
-  NEXT_PUBLIC_APP_VERSION: v1.4.2
+  NEXT_PUBLIC_RELEASE_ARC: 21D
+  NEXT_PUBLIC_BUILD_ITERATION: 21D.3
   NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
+  NEXT_PUBLIC_NAV_VERSION: 2
   NEXT_PUBLIC_APP_ENV: production
   NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF: main
 ```
