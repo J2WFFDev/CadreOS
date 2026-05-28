@@ -128,12 +128,8 @@ test("computeCurrentStreak DAILY returns 0 for empty list", () => {
 });
 
 test("computeCurrentStreak DAILY returns 0 when most recent is older than yesterday", () => {
-  const now = new Date("2026-05-28T10:00:00.000Z");
-  // Mock today = May 28. Last completion = May 26 (two days ago).
-  const dates = [new Date("2026-05-26T00:00:00.000Z")];
-  // We can't control "today" in the pure function without a now param, so we
+  // We can't control "today" in the pure function without a now param, so
   // verify the streak is 0 if the last completion is far enough in the past.
-  // Use a date guaranteed to be in the past relative to any reasonable run date.
   const pastDates = [new Date("2020-01-01T00:00:00.000Z")];
   assert.equal(computeCurrentStreak(pastDates, HabitFrequency.DAILY), 0);
 });
