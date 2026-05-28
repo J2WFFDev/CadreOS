@@ -1,7 +1,7 @@
 const APP_NAME = "CadreOS";
 
-function normalizeEnv(value: string | undefined) {
-  return value?.trim() || "dev";
+function normalize(value: string | undefined) {
+  return value?.trim() || "";
 }
 
 function normalizeSha(value: string | undefined) {
@@ -9,21 +9,30 @@ function normalizeSha(value: string | undefined) {
   return value.trim().slice(0, 7);
 }
 
-function normalizeBuildTime(value: string | undefined) {
-  if (!value) return "";
-  return value.trim();
+function pickFirst(...values: Array<string | undefined>) {
+  for (const value of values) {
+    const normalized = normalize(value);
+    if (normalized) return normalized;
+  }
+  return "";
+}
+
+export function resolveBuildMetadataLabel(env: NodeJS.ProcessEnv = process.env) {
+  const appVersion = normalize(env.NEXT_PUBLIC_APP_VERSION);
+  const appEnv = pickFirst(env.NEXT_PUBLIC_APP_ENV, env.NEXT_PUBLIC_VERCEL_ENV) || "dev";
+  const gitSha = normalizeSha(pickFirst(env.NEXT_PUBLIC_GIT_SHA, env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA));
+  const buildTime = normalize(env.NEXT_PUBLIC_BUILD_TIME);
+  const commitRef = normalize(env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF);
+
+  const primary = appVersion ? `${APP_NAME} ${appVersion}` : `${APP_NAME} ${appEnv}`;
+  const detailParts = [appVersion ? appEnv : "", commitRef, gitSha, buildTime].filter(Boolean);
+  const details = detailParts.length > 0 ? detailParts.join(" · ") : "local build";
+
+  return `${primary} · ${details}`;
 }
 
 export function BuildMetadataBadge() {
-  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION?.trim() || "";
-  const appEnv = normalizeEnv(process.env.NEXT_PUBLIC_APP_ENV);
-  const gitSha = normalizeSha(process.env.NEXT_PUBLIC_GIT_SHA);
-  const buildTime = normalizeBuildTime(process.env.NEXT_PUBLIC_BUILD_TIME);
-
-  const primary = appVersion ? `${APP_NAME} ${appVersion}` : `${APP_NAME} ${appEnv}`;
-  const detailParts = [appVersion ? appEnv : "", gitSha, buildTime].filter(Boolean);
-  const details = detailParts.length > 0 ? detailParts.join(" · ") : "unknown build";
-  const label = `${primary} · ${details}`;
+  const label = resolveBuildMetadataLabel();
 
   return (
     <span
