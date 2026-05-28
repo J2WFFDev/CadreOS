@@ -26,7 +26,6 @@
 Set values in `.env.local` (or copy from `.env.example`):
 
 ```bash
-NEXT_PUBLIC_APP_VERSION=0.1.0-local
 NEXT_PUBLIC_RELEASE_ARC=21D
 NEXT_PUBLIC_BUILD_ITERATION=21D.3
 NEXT_PUBLIC_GIT_SHA=$(git rev-parse --short HEAD)
