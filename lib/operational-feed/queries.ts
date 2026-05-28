@@ -10,6 +10,7 @@
 import { EntryStatus, EntryType, InboxItemStatus } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { deriveSafeHabitActivityText } from "@/lib/habits/policy";
 import { deriveSafeJournalActivityText } from "@/lib/journals/policy";
 import { ACTIVE_FEED_STATUSES, ACTIVE_OPERATIONAL_TYPES, DEFAULT_UPCOMING_DAYS } from "./types";
 import type {
@@ -227,10 +228,16 @@ export async function queryRecentActivity(
  * Sanitizes activity title text for feed rendering.
  * Journal entries are always replaced with safe generic labels so sensitive
  * journal body/title content never leaks into broad activity surfaces.
+ * Habit entries are also sanitized as a defensive guard — habit titles should
+ * not appear as raw entry titles in the broad activity feed.
  */
 export function sanitizeActivityEntryTitle(action: string, entryType: EntryType, entryTitle: string): string {
   if (entryType === EntryType.JOURNAL) {
     return deriveSafeJournalActivityText(action);
+  }
+
+  if (entryType === EntryType.HABIT) {
+    return deriveSafeHabitActivityText(action);
   }
 
   return entryTitle;
