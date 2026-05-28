@@ -8,7 +8,8 @@ CadreOS is an **Athlete Program Operating System**.
 |-----|--------|--------|
 | Arc 21 | MemberOps / Roster Lifecycle Completion | ✅ Complete |
 | Arc 22A–22G | Entry Completion (Operational Capture, Workflow, Feed, Assigned Work) | ✅ Complete |
-| **Arc 23** | **Journals & Habits** | 🔜 Next |
+| **Arc 23A** | **Journals & Habits Inventory, Privacy Model, and Gap Plan** | ✅ Complete |
+| Arc 23B–23H | Journals & Habits Implementation | 🔜 Next |
 
 ## Planning Documents
 - [**CadreOS \*Ops Domain Architecture** — Naming System, FieldOps vs ResourceOps, Platform Primitives](./CADRE_OPS_DOMAIN_ARCHITECTURE.md)
@@ -69,7 +70,12 @@ CadreOS is an **Athlete Program Operating System**.
 - [Arc 22F Entry Views Manual QA Checklist](./ARC_22F_ENTRY_VIEWS_VALIDATION_CHECKLIST.md)
 - [Arc 22G Entry Closeout, Auth Audit, QA, Seed Data, and Documentation ✅ COMPLETE](./ARC_22G_ENTRY_CLOSEOUT_AUTH_AUDIT_QA_SEED_DATA.md)
 - [Arc 22G Entry Manual QA Checklist](./ARC_22G_ENTRY_QA_CHECKLIST.md)
-- **Arc 23 — Journals & Habits (next arc)**
+### Arc 23 — Journals & Habits
+
+- [Arc 23A Journals & Habits Inventory, Privacy Model, and Gap Plan](./ARC_23A_JOURNALS_HABITS_INVENTORY_PRIVACY_MODEL_AND_GAP_PLAN.md)
+- [Arc 23A Journals & Habits Inventory Report](./ARC_23A_JOURNALS_HABITS_INVENTORY_REPORT.md)
+- [Arc 23A Journals & Habits Manual QA Checklist Scaffold](./ARC_23A_JOURNALS_HABITS_QA_CHECKLIST.md)
+- **Arc 23B — Journal Entry Type and Draft/Final Workflow (next arc)**
 - [Arc 19A Unified Operational Entry Architecture (historical foundation)](./PHASE_19A_UNIFIED_OPERATIONAL_ENTRY_ARCHITECTURE.md)
 - [Arc 19B Unified Feed & Today View (historical foundation)](./PHASE_19B_UNIFIED_FEED_TODAY_VIEW.md)
 - [Arc 19C Quick Capture System (historical; remapped to Arc 22B)](./PHASE_19C_QUICK_CAPTURE_SYSTEM.md)
@@ -93,7 +99,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Arc 20V GearOps Offline Sync Phase 2 Design](./PHASE_20V_GEAROPS_OFFLINE_SYNC_PHASE_2_DESIGN.md)
 - [Arc 20W GearOps Native Mobile Readiness Plan](./PHASE_20W_GEAROPS_NATIVE_MOBILE_READINESS_PLAN.md)
 - [Arc 20Y GearOps Advanced Inspection and Recurring Maintenance Scheduling](./PHASE_20Y_GEAROPS_INSPECTION_MAINTENANCE_SCHEDULING.md)
-- [Phase 21A Athlete Journaling Capability Roadmap (Planning)](./PHASE_21A_ATHLETE_JOURNALING_CAPABILITY_ROADMAP.md)
+- [Phase 21A Athlete Journaling Capability Roadmap (Planning — superseded by Arc 23)](./PHASE_21A_ATHLETE_JOURNALING_CAPABILITY_ROADMAP.md)
 - [Phase 16B GearOps Prisma Schema and Data Model](./PHASE_16B_GEAROPS_PRISMA_SCHEMA.md)
 - [Phase 16B Validation Checklist](./PHASE_16B_VALIDATION_CHECKLIST.md)
 - [Phase 16C GearOps Catalog Read-Only Views](./PHASE_16C_GEAROPS_CATALOG_READ_ONLY_VIEWS.md)
