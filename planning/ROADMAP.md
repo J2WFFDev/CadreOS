@@ -4,6 +4,13 @@
 
 This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the next highest-value MVP slice.
 
+## Release 1 Arc Checkpoint (Current)
+
+- Arc 21: MemberOps / Roster Lifecycle Completion ✅
+- Arc 22A–22G: Entry Completion ✅
+- Arc 23A–23H: Journals & Habits foundation and closeout ✅
+- Next recommended arc: **Arc 23I — Entry + Journals/Habits Consolidation Validation**
+
 ### Phase 7A constraints (planning only)
 - No new runtime product features in this phase.
 - No Prisma schema changes in this phase.

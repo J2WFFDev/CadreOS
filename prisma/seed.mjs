@@ -8,7 +8,10 @@ import {
   EventStatus,
   EventType,
   FacilityStatus,
+  HabitFrequency,
+  HabitStatus,
   InboxItemStatus,
+  JournalAssignmentStatus,
   PrecheckStatus,
   PrismaClient,
   RelationshipType,
@@ -142,6 +145,21 @@ async function main() {
     },
   });
 
+  const teamTwo = await db.team.upsert({
+    where: {
+      programId_name: {
+        programId: program.id,
+        name: "Demo Team B",
+      },
+    },
+    update: {},
+    create: {
+      organizationId: organization.id,
+      programId: program.id,
+      name: "Demo Team B",
+    },
+  });
+
   const generalManager = await findOrCreatePerson({
     organizationId: organization.id,
     firstName: "Sonny",
@@ -184,6 +202,27 @@ async function main() {
     email: "morgan.guardian.demo@cadreos.local",
   });
 
+  const unrelatedGuardian = await findOrCreatePerson({
+    organizationId: organization.id,
+    firstName: "Riley",
+    lastName: "Unrelated",
+    email: "riley.unrelated.guardian@cadreos.local",
+  });
+
+  const scopedCoach = await findOrCreatePerson({
+    organizationId: organization.id,
+    firstName: "Shawn",
+    lastName: "Scopedcoach",
+    email: "shawn.scoped.coach@cadreos.local",
+  });
+
+  const scopedAthlete = await findOrCreatePerson({
+    organizationId: organization.id,
+    firstName: "Parker",
+    lastName: "Scopedathlete",
+    email: "parker.scoped.athlete@cadreos.local",
+  });
+
   const volunteer = await findOrCreatePerson({
     organizationId: organization.id,
     firstName: "Vicky",
@@ -196,6 +235,29 @@ async function main() {
     personId: generalManager.id,
     roleType: RoleType.ORGANIZATION_ADMIN,
     scopeType: ScopeType.ORGANIZATION,
+  });
+
+  await findOrCreateRoleAssignment({
+    organizationId: organization.id,
+    personId: unrelatedGuardian.id,
+    roleType: RoleType.PARENT_GUARDIAN,
+    scopeType: ScopeType.ORGANIZATION,
+  });
+
+  await findOrCreateRoleAssignment({
+    organizationId: organization.id,
+    personId: scopedCoach.id,
+    roleType: RoleType.COACH,
+    scopeType: ScopeType.TEAM,
+    teamId: teamTwo.id,
+  });
+
+  await findOrCreateRoleAssignment({
+    organizationId: organization.id,
+    personId: scopedAthlete.id,
+    roleType: RoleType.ATHLETE,
+    scopeType: ScopeType.TEAM,
+    teamId: teamTwo.id,
   });
 
   await findOrCreateRoleAssignment({
@@ -279,6 +341,26 @@ async function main() {
       teamId: team.id,
       seasonId: season.id,
       personId: athlete.id,
+      rosterRole: RoleType.ATHLETE,
+    },
+  });
+
+  await db.rosterMembership.upsert({
+    where: {
+      teamId_seasonId_personId: {
+        teamId: teamTwo.id,
+        seasonId: season.id,
+        personId: scopedAthlete.id,
+      },
+    },
+    update: {
+      rosterRole: RoleType.ATHLETE,
+    },
+    create: {
+      organizationId: organization.id,
+      teamId: teamTwo.id,
+      seasonId: season.id,
+      personId: scopedAthlete.id,
       rosterRole: RoleType.ATHLETE,
     },
   });
@@ -852,6 +934,501 @@ async function main() {
       createdByPersonId: teamCoach.id,
     },
   });
+
+  // ── Arc 23H — Journals & Habits seed data ──────────────────────────────────
+
+  const reflectivePrompt = await db.journalPrompt.upsert({
+    where: { id: "cadreos-jprompt-reflection" },
+    update: {
+      title: "Weekly reflection",
+      promptText: "What went well this week, and what should improve next week?",
+      category: "Reflection",
+      active: true,
+      archivedAt: null,
+      createdByPersonId: teamCoach.id,
+    },
+    create: {
+      id: "cadreos-jprompt-reflection",
+      organizationId: organization.id,
+      title: "Weekly reflection",
+      promptText: "What went well this week, and what should improve next week?",
+      category: "Reflection",
+      active: true,
+      createdByPersonId: teamCoach.id,
+    },
+  });
+
+  await db.journalAssignment.upsert({
+    where: { id: "cadreos-jassign-active-athlete" },
+    update: {
+      organizationId: organization.id,
+      promptId: reflectivePrompt.id,
+      assignedToAthletePersonId: athlete.id,
+      assignedToTeamId: null,
+      assignedByPersonId: teamCoach.id,
+      status: JournalAssignmentStatus.ACTIVE,
+      dueAt: tomorrow,
+      scheduledFor: today,
+    },
+    create: {
+      id: "cadreos-jassign-active-athlete",
+      organizationId: organization.id,
+      promptId: reflectivePrompt.id,
+      assignedToAthletePersonId: athlete.id,
+      assignedByPersonId: teamCoach.id,
+      status: JournalAssignmentStatus.ACTIVE,
+      dueAt: tomorrow,
+      scheduledFor: today,
+    },
+  });
+
+  const completedPromptAssignment = await db.journalAssignment.upsert({
+    where: { id: "cadreos-jassign-completed-athlete" },
+    update: {
+      organizationId: organization.id,
+      promptId: reflectivePrompt.id,
+      assignedToAthletePersonId: athlete.id,
+      assignedToTeamId: null,
+      assignedByPersonId: teamCoach.id,
+      status: JournalAssignmentStatus.COMPLETED,
+      dueAt: yesterday,
+      scheduledFor: twoDaysAgo,
+    },
+    create: {
+      id: "cadreos-jassign-completed-athlete",
+      organizationId: organization.id,
+      promptId: reflectivePrompt.id,
+      assignedToAthletePersonId: athlete.id,
+      assignedByPersonId: teamCoach.id,
+      status: JournalAssignmentStatus.COMPLETED,
+      dueAt: yesterday,
+      scheduledFor: twoDaysAgo,
+    },
+  });
+
+  await db.entry.upsert({
+    where: { id: "cadreos-journal-draft-athlete" },
+    update: {
+      organizationId: organization.id,
+      teamId: team.id,
+      type: EntryType.JOURNAL,
+      title: "Draft reflection",
+      content: "Private draft notes before submission.",
+      status: EntryStatus.OPEN,
+      visibility: EntryVisibility.STAFF_ONLY,
+      createdByPersonId: athlete.id,
+      updatedByPersonId: athlete.id,
+      journalPromptId: null,
+      journalAssignmentId: null,
+    },
+    create: {
+      id: "cadreos-journal-draft-athlete",
+      organizationId: organization.id,
+      teamId: team.id,
+      type: EntryType.JOURNAL,
+      title: "Draft reflection",
+      content: "Private draft notes before submission.",
+      status: EntryStatus.OPEN,
+      visibility: EntryVisibility.STAFF_ONLY,
+      createdByPersonId: athlete.id,
+      updatedByPersonId: athlete.id,
+    },
+  });
+
+  await db.entry.upsert({
+    where: { id: "cadreos-journal-submitted-athlete" },
+    update: {
+      organizationId: organization.id,
+      teamId: team.id,
+      type: EntryType.JOURNAL,
+      title: "Submitted weekly reflection",
+      content: "Submitted reflection content for guardian-visible summary validation.",
+      status: EntryStatus.DONE,
+      visibility: EntryVisibility.ORGANIZATION_SCOPED,
+      createdByPersonId: athlete.id,
+      updatedByPersonId: athlete.id,
+    },
+    create: {
+      id: "cadreos-journal-submitted-athlete",
+      organizationId: organization.id,
+      teamId: team.id,
+      type: EntryType.JOURNAL,
+      title: "Submitted weekly reflection",
+      content: "Submitted reflection content for guardian-visible summary validation.",
+      status: EntryStatus.DONE,
+      visibility: EntryVisibility.ORGANIZATION_SCOPED,
+      createdByPersonId: athlete.id,
+      updatedByPersonId: athlete.id,
+    },
+  });
+
+  await db.entry.upsert({
+    where: { id: "cadreos-journal-archived-athlete" },
+    update: {
+      organizationId: organization.id,
+      teamId: team.id,
+      type: EntryType.JOURNAL,
+      title: "Archived reflection",
+      content: "Archived journal snapshot for closeout QA.",
+      status: EntryStatus.ARCHIVED,
+      visibility: EntryVisibility.ORGANIZATION_SCOPED,
+      createdByPersonId: athlete.id,
+      updatedByPersonId: teamCoach.id,
+    },
+    create: {
+      id: "cadreos-journal-archived-athlete",
+      organizationId: organization.id,
+      teamId: team.id,
+      type: EntryType.JOURNAL,
+      title: "Archived reflection",
+      content: "Archived journal snapshot for closeout QA.",
+      status: EntryStatus.ARCHIVED,
+      visibility: EntryVisibility.ORGANIZATION_SCOPED,
+      createdByPersonId: athlete.id,
+      updatedByPersonId: teamCoach.id,
+    },
+  });
+
+  await db.entry.upsert({
+    where: { id: "cadreos-journal-prompt-response-athlete" },
+    update: {
+      organizationId: organization.id,
+      teamId: team.id,
+      type: EntryType.JOURNAL,
+      title: "Prompt response: Weekly reflection",
+      content: "Completed response for assigned prompt.",
+      status: EntryStatus.DONE,
+      visibility: EntryVisibility.ORGANIZATION_SCOPED,
+      createdByPersonId: athlete.id,
+      updatedByPersonId: athlete.id,
+      journalPromptId: reflectivePrompt.id,
+      journalAssignmentId: completedPromptAssignment.id,
+    },
+    create: {
+      id: "cadreos-journal-prompt-response-athlete",
+      organizationId: organization.id,
+      teamId: team.id,
+      type: EntryType.JOURNAL,
+      title: "Prompt response: Weekly reflection",
+      content: "Completed response for assigned prompt.",
+      status: EntryStatus.DONE,
+      visibility: EntryVisibility.ORGANIZATION_SCOPED,
+      createdByPersonId: athlete.id,
+      updatedByPersonId: athlete.id,
+      journalPromptId: reflectivePrompt.id,
+      journalAssignmentId: completedPromptAssignment.id,
+    },
+  });
+
+  await db.entry.upsert({
+    where: { id: "cadreos-journal-team2-submitted" },
+    update: {
+      organizationId: organization.id,
+      teamId: teamTwo.id,
+      type: EntryType.JOURNAL,
+      title: "Team B scoped journal",
+      content: "Submitted scoped journal for coach visibility testing.",
+      status: EntryStatus.DONE,
+      visibility: EntryVisibility.TEAM_STAFF,
+      createdByPersonId: scopedAthlete.id,
+      updatedByPersonId: scopedAthlete.id,
+    },
+    create: {
+      id: "cadreos-journal-team2-submitted",
+      organizationId: organization.id,
+      teamId: teamTwo.id,
+      type: EntryType.JOURNAL,
+      title: "Team B scoped journal",
+      content: "Submitted scoped journal for coach visibility testing.",
+      status: EntryStatus.DONE,
+      visibility: EntryVisibility.TEAM_STAFF,
+      createdByPersonId: scopedAthlete.id,
+      updatedByPersonId: scopedAthlete.id,
+    },
+  });
+
+  const activeHabit = await db.habit.upsert({
+    where: { id: "cadreos-habit-active-athlete" },
+    update: {
+      organizationId: organization.id,
+      title: "Morning mobility",
+      description: "Daily mobility warm-up.",
+      athletePersonId: athlete.id,
+      assignedToTeamId: team.id,
+      status: HabitStatus.ACTIVE,
+      createdByPersonId: teamCoach.id,
+      archivedAt: null,
+      pausedAt: null,
+    },
+    create: {
+      id: "cadreos-habit-active-athlete",
+      organizationId: organization.id,
+      title: "Morning mobility",
+      description: "Daily mobility warm-up.",
+      athletePersonId: athlete.id,
+      assignedToTeamId: team.id,
+      status: HabitStatus.ACTIVE,
+      createdByPersonId: teamCoach.id,
+    },
+  });
+
+  await db.habitSchedule.upsert({
+    where: { id: "cadreos-habitsched-active-daily" },
+    update: {
+      habitId: activeHabit.id,
+      frequency: HabitFrequency.DAILY,
+      daysOfWeek: null,
+      startDate: thirtyDaysAgo,
+      endDate: null,
+    },
+    create: {
+      id: "cadreos-habitsched-active-daily",
+      habitId: activeHabit.id,
+      frequency: HabitFrequency.DAILY,
+      startDate: thirtyDaysAgo,
+    },
+  });
+
+  await db.habitCompletion.upsert({
+    where: { id: "cadreos-habitcompletion-active-1" },
+    update: {
+      habitId: activeHabit.id,
+      athletePersonId: athlete.id,
+      completedOn: twoDaysAgo,
+      note: "Completed after training.",
+    },
+    create: {
+      id: "cadreos-habitcompletion-active-1",
+      habitId: activeHabit.id,
+      athletePersonId: athlete.id,
+      completedOn: twoDaysAgo,
+      note: "Completed after training.",
+    },
+  });
+
+  await db.habitCompletion.upsert({
+    where: { id: "cadreos-habitcompletion-active-2" },
+    update: {
+      habitId: activeHabit.id,
+      athletePersonId: athlete.id,
+      completedOn: yesterday,
+      note: "Completed before school.",
+    },
+    create: {
+      id: "cadreos-habitcompletion-active-2",
+      habitId: activeHabit.id,
+      athletePersonId: athlete.id,
+      completedOn: yesterday,
+      note: "Completed before school.",
+    },
+  });
+
+  await db.habitCompletion.upsert({
+    where: { id: "cadreos-habitcompletion-active-3" },
+    update: {
+      habitId: activeHabit.id,
+      athletePersonId: athlete.id,
+      completedOn: today,
+      note: "Completed during warm-up.",
+    },
+    create: {
+      id: "cadreos-habitcompletion-active-3",
+      habitId: activeHabit.id,
+      athletePersonId: athlete.id,
+      completedOn: today,
+      note: "Completed during warm-up.",
+    },
+  });
+
+  const pausedHabit = await db.habit.upsert({
+    where: { id: "cadreos-habit-paused-athlete" },
+    update: {
+      organizationId: organization.id,
+      title: "Evening breath work",
+      description: "Paused habit example.",
+      athletePersonId: athlete.id,
+      assignedToTeamId: team.id,
+      status: HabitStatus.PAUSED,
+      createdByPersonId: teamCoach.id,
+      pausedAt: yesterday,
+      archivedAt: null,
+    },
+    create: {
+      id: "cadreos-habit-paused-athlete",
+      organizationId: organization.id,
+      title: "Evening breath work",
+      description: "Paused habit example.",
+      athletePersonId: athlete.id,
+      assignedToTeamId: team.id,
+      status: HabitStatus.PAUSED,
+      createdByPersonId: teamCoach.id,
+      pausedAt: yesterday,
+    },
+  });
+
+  await db.habitSchedule.upsert({
+    where: { id: "cadreos-habitsched-paused-weekly" },
+    update: {
+      habitId: pausedHabit.id,
+      frequency: HabitFrequency.WEEKLY,
+      daysOfWeek: "[\"MON\",\"WED\",\"FRI\"]",
+      startDate: thirtyDaysAgo,
+      endDate: null,
+    },
+    create: {
+      id: "cadreos-habitsched-paused-weekly",
+      habitId: pausedHabit.id,
+      frequency: HabitFrequency.WEEKLY,
+      daysOfWeek: "[\"MON\",\"WED\",\"FRI\"]",
+      startDate: thirtyDaysAgo,
+    },
+  });
+
+  const archivedHabit = await db.habit.upsert({
+    where: { id: "cadreos-habit-archived-athlete" },
+    update: {
+      organizationId: organization.id,
+      title: "Hydration tracker (archived)",
+      description: "Archived habit example.",
+      athletePersonId: athlete.id,
+      assignedToTeamId: team.id,
+      status: HabitStatus.ARCHIVED,
+      createdByPersonId: teamCoach.id,
+      archivedAt: yesterday,
+    },
+    create: {
+      id: "cadreos-habit-archived-athlete",
+      organizationId: organization.id,
+      title: "Hydration tracker (archived)",
+      description: "Archived habit example.",
+      athletePersonId: athlete.id,
+      assignedToTeamId: team.id,
+      status: HabitStatus.ARCHIVED,
+      createdByPersonId: teamCoach.id,
+      archivedAt: yesterday,
+    },
+  });
+
+  await db.habitSchedule.upsert({
+    where: { id: "cadreos-habitsched-archived-custom" },
+    update: {
+      habitId: archivedHabit.id,
+      frequency: HabitFrequency.CUSTOM,
+      daysOfWeek: null,
+      startDate: thirtyDaysAgo,
+      endDate: yesterday,
+    },
+    create: {
+      id: "cadreos-habitsched-archived-custom",
+      habitId: archivedHabit.id,
+      frequency: HabitFrequency.CUSTOM,
+      startDate: thirtyDaysAgo,
+      endDate: yesterday,
+    },
+  });
+
+  const overdueHabit = await db.habit.upsert({
+    where: { id: "cadreos-habit-overdue-athlete" },
+    update: {
+      organizationId: organization.id,
+      title: "Weekly recovery review",
+      description: "Overdue cadence example for manual QA.",
+      athletePersonId: athlete.id,
+      assignedToTeamId: team.id,
+      status: HabitStatus.ACTIVE,
+      createdByPersonId: teamCoach.id,
+      archivedAt: null,
+      pausedAt: null,
+    },
+    create: {
+      id: "cadreos-habit-overdue-athlete",
+      organizationId: organization.id,
+      title: "Weekly recovery review",
+      description: "Overdue cadence example for manual QA.",
+      athletePersonId: athlete.id,
+      assignedToTeamId: team.id,
+      status: HabitStatus.ACTIVE,
+      createdByPersonId: teamCoach.id,
+    },
+  });
+
+  await db.habitSchedule.upsert({
+    where: { id: "cadreos-habitsched-overdue-weekly" },
+    update: {
+      habitId: overdueHabit.id,
+      frequency: HabitFrequency.WEEKLY,
+      daysOfWeek: "[\"MON\"]",
+      startDate: thirtyDaysAgo,
+      endDate: null,
+    },
+    create: {
+      id: "cadreos-habitsched-overdue-weekly",
+      habitId: overdueHabit.id,
+      frequency: HabitFrequency.WEEKLY,
+      daysOfWeek: "[\"MON\"]",
+      startDate: thirtyDaysAgo,
+    },
+  });
+
+  await db.habitCompletion.upsert({
+    where: { id: "cadreos-habitcompletion-overdue-lastweek" },
+    update: {
+      habitId: overdueHabit.id,
+      athletePersonId: athlete.id,
+      completedOn: new Date(today.getTime() - 8 * 24 * 60 * 60 * 1000),
+      note: null,
+    },
+    create: {
+      id: "cadreos-habitcompletion-overdue-lastweek",
+      habitId: overdueHabit.id,
+      athletePersonId: athlete.id,
+      completedOn: new Date(today.getTime() - 8 * 24 * 60 * 60 * 1000),
+      note: null,
+    },
+  });
+
+  const scopedTeamHabit = await db.habit.upsert({
+    where: { id: "cadreos-habit-team2-scoped" },
+    update: {
+      organizationId: organization.id,
+      title: "Team B mobility baseline",
+      description: "Coach-scoped athlete habit case.",
+      athletePersonId: scopedAthlete.id,
+      assignedToTeamId: teamTwo.id,
+      status: HabitStatus.ACTIVE,
+      createdByPersonId: scopedCoach.id,
+      archivedAt: null,
+      pausedAt: null,
+    },
+    create: {
+      id: "cadreos-habit-team2-scoped",
+      organizationId: organization.id,
+      title: "Team B mobility baseline",
+      description: "Coach-scoped athlete habit case.",
+      athletePersonId: scopedAthlete.id,
+      assignedToTeamId: teamTwo.id,
+      status: HabitStatus.ACTIVE,
+      createdByPersonId: scopedCoach.id,
+    },
+  });
+
+  await db.habitSchedule.upsert({
+    where: { id: "cadreos-habitsched-team2-daily" },
+    update: {
+      habitId: scopedTeamHabit.id,
+      frequency: HabitFrequency.DAILY,
+      daysOfWeek: null,
+      startDate: thirtyDaysAgo,
+      endDate: null,
+    },
+    create: {
+      id: "cadreos-habitsched-team2-daily",
+      habitId: scopedTeamHabit.id,
+      frequency: HabitFrequency.DAILY,
+      startDate: thirtyDaysAgo,
+    },
+  });
+
 }
 
 main()

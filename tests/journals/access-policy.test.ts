@@ -100,6 +100,21 @@ test("coach access requires submitted + team visibility + scoped assignment", ()
   assert.equal(canReadJournalEntry(context, submittedWrongTeam), false);
 });
 
+test("coach cannot read guardian-visible submitted journal without guardian relationship", () => {
+  const context = buildContext({
+    actorPersonId: "coach-1",
+    assignments: [{ roleType: RoleType.COACH, scopeType: ScopeType.TEAM, teamId: "team-1", programId: null }],
+  });
+
+  const guardianVisibleSubmitted = buildEntry({
+    createdByPersonId: "athlete-99",
+    status: EntryStatus.DONE,
+    visibility: EntryVisibility.ORGANIZATION_SCOPED,
+  });
+
+  assert.equal(canReadJournalEntry(context, guardianVisibleSubmitted), false);
+});
+
 test("admin override allows read and archive", () => {
   const context = buildContext({
     actorPersonId: "admin-1",
