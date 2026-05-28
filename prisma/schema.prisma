@@ -767,6 +767,8 @@ model Organization {
   eventGearRequirementTemplates EventGearRequirementTemplate[]
   gearOpsSettings              GearOpsOrganizationSettings?
   entries                      Entry[]
+  journalPrompts               JournalPrompt[]
+  journalAssignments           JournalAssignment[]
   entryLinks                   EntryLink[]
   entryActivities              EntryActivity[]
   entryObjectLinks             EntryObjectLink[]
@@ -826,6 +828,7 @@ model Team {
   gearReservations GearReservation[]
   assignedKits     InventoryKit[]    @relation("InventoryKitAssignedToTeam")
   entries          Entry[]
+  journalAssignments JournalAssignment[]
 
   @@unique([programId, name])
   @@index([organizationId, programId])
@@ -945,6 +948,9 @@ model Person {
   resolvedInventoryAuditDiscrepancies  InventoryAuditDiscrepancy[]   @relation("InventoryAuditDiscrepancyResolvedBy")
   expectedCustodyInventoryAuditResults InventoryAuditResult[]        @relation("InventoryAuditExpectedCustody")
   observedCustodyInventoryAuditResults InventoryAuditResult[]        @relation("InventoryAuditObservedCustody")
+  createdJournalPrompts                JournalPrompt[]               @relation("JournalPromptCreatedBy")
+  givenJournalAssignments              JournalAssignment[]           @relation("JournalAssignmentBy")
+  receivedJournalAssignments           JournalAssignment[]           @relation("JournalAssignmentToAthlete")
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
@@ -1095,6 +1101,9 @@ model Entry {
   noteChecklistJson  String?
   sourceTaskId       String?         @unique
   sourceNoteId       String?         @unique
+  // Arc 23C: optional linkage to prompt library and assignment
+  journalPromptId    String?
+  journalAssignmentId String?
 
   organization         Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   team                 Team?                @relation(fields: [teamId], references: [id], onDelete: SetNull)
@@ -1117,6 +1126,8 @@ model Entry {
   workflowStepEntry    WorkflowStepEntry?
   awarenessEvents      AwarenessEvent[]
   notifications        Notification[]
+  journalPrompt        JournalPrompt?       @relation("JournalPromptResponses", fields: [journalPromptId], references: [id], onDelete: SetNull)
+  journalAssignment    JournalAssignment?   @relation("JournalAssignmentResponses", fields: [journalAssignmentId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, type, createdAt])
   @@index([organizationId, status, dueDate])
@@ -1124,6 +1135,8 @@ model Entry {
   @@index([organizationId, createdByPersonId])
   @@index([organizationId, assignedToPersonId])
   @@index([organizationId, parentEntryId])
+  @@index([organizationId, journalPromptId])
+  @@index([organizationId, journalAssignmentId])
 }
 
 model EntryLink {
@@ -2572,4 +2585,67 @@ model InventoryAuditDiscrepancy {
   @@index([organizationId, discrepancyType, status])
   @@index([organizationId, gearItemId, status])
   @@index([organizationId, locationId, status])
+}
+
+// ── Arc 23C: Prompt Library and Prompt Assignment ────────────────────────────
+
+enum JournalAssignmentStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+// Arc 23C: JournalPrompt — reusable prompt template for the prompt library.
+// Staff/coaches create prompts here; athletes or staff can assign them.
+model JournalPrompt {
+  id                String    @id @default(cuid())
+  organizationId    String
+  title             String
+  promptText        String
+  category          String?
+  tags              String[]  @default([])
+  active            Boolean   @default(true)
+  createdByPersonId String
+  archivedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy    Person              @relation("JournalPromptCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  assignments  JournalAssignment[]
+  responses    Entry[]             @relation("JournalPromptResponses")
+
+  @@index([organizationId, active, createdAt])
+  @@index([organizationId, category])
+}
+
+// Arc 23C: JournalAssignment — staff/coach-assigned prompt with optional due window.
+// Can target a single athlete (assignedToAthletePersonId) or a team (assignedToTeamId).
+model JournalAssignment {
+  id                        String                  @id @default(cuid())
+  organizationId            String
+  promptId                  String
+  assignedToAthletePersonId String?
+  assignedToTeamId          String?
+  assignedByPersonId        String
+  scheduledFor              DateTime?
+  dueAt                     DateTime?
+  status                    JournalAssignmentStatus @default(ACTIVE)
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  prompt            JournalPrompt @relation(fields: [promptId], references: [id], onDelete: Restrict)
+  assignedToAthlete Person?       @relation("JournalAssignmentToAthlete", fields: [assignedToAthletePersonId], references: [id], onDelete: SetNull)
+  assignedToTeam    Team?         @relation(fields: [assignedToTeamId], references: [id], onDelete: SetNull)
+  assignedBy        Person        @relation("JournalAssignmentBy", fields: [assignedByPersonId], references: [id], onDelete: Restrict)
+  responses         Entry[]       @relation("JournalAssignmentResponses")
+
+  @@index([organizationId, promptId])
+  @@index([organizationId, assignedToAthletePersonId, status])
+  @@index([organizationId, assignedToTeamId, status])
+  @@index([organizationId, assignedByPersonId])
+  @@index([organizationId, status, dueAt])
 }

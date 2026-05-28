@@ -67,6 +67,9 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
       team: { select: { name: true, programId: true } },
       createdBy: { select: { firstName: true, lastName: true } },
       updatedBy: { select: { firstName: true, lastName: true } },
+      journalPromptId: true,
+      journalAssignmentId: true,
+      journalPrompt: { select: { id: true, title: true, category: true, promptText: true } },
     },
   });
 
@@ -124,6 +127,24 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
         </p>
       </div>
 
+      {journal.journalPrompt ? (
+        <article className="rounded-lg border bg-zinc-50 p-4 dark:bg-zinc-800">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold">Prompt response</h3>
+            <Link href={`/prompts/${journal.journalPrompt.id}`} className="text-xs underline text-zinc-500">
+              View prompt
+            </Link>
+          </div>
+          {journal.journalPrompt.category ? (
+            <p className="mt-0.5 text-xs text-zinc-500">{journal.journalPrompt.category}</p>
+          ) : null}
+          <p className="mt-2 text-sm font-medium">{journal.journalPrompt.title}</p>
+          <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-600 dark:text-zinc-400">
+            {journal.journalPrompt.promptText}
+          </p>
+        </article>
+      ) : null}
+
       <article className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-sm font-semibold">Journal body</h3>
         {canViewBody ? (
@@ -155,6 +176,10 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Last updated by</dt>
             <dd>{formatPersonName(journal.updatedBy)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Source</dt>
+            <dd>{journal.journalPromptId ? "Prompted" : "Freeform"}</dd>
           </div>
         </dl>
       </section>

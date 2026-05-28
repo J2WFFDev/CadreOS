@@ -145,6 +145,10 @@ export const ENTRY_ACTIVITY_ACTIONS = {
   JOURNAL_DRAFT_UPDATED: "journal.draft_updated",
   JOURNAL_SUBMITTED: "journal.submitted",
   JOURNAL_ARCHIVED: "journal.archived",
+  // Arc 23C: Prompt assignment activity actions
+  JOURNAL_PROMPT_ASSIGNED: "journal.prompt_assigned",
+  JOURNAL_PROMPT_RESPONSE_SUBMITTED: "journal.prompt_response_submitted",
+  JOURNAL_PROMPT_ASSIGNMENT_CANCELLED: "journal.prompt_assignment_cancelled",
   // Backward-compatible aliases used by older route/service code.
   CREATED: "entry.created",
   UPDATED: "entry.updated",

@@ -179,6 +179,76 @@ This is a manual QA checklist scaffold for Arc 23 test verification. Items are p
 
 ---
 
+## Arc 23C Prompt Library and Assignment — Implementation QA
+
+### Prompt Library Management
+
+- [ ] Admin/program director can navigate to `/prompts`
+- [ ] Prompt list shows active prompts by default; "Archived" tab shows archived prompts
+- [ ] Admin can create a prompt with title and promptText required
+- [ ] Category and tags are optional on create
+- [ ] Prompt appears in list immediately after creation
+- [ ] Admin can edit an existing prompt title, promptText, category, and tags
+- [ ] Edit preserves existing prompt assignments and status
+- [ ] Admin can archive a prompt (POST `/prompts/[promptId]/archive`)
+- [ ] Archived prompt no longer appears in the "Active" tab of the prompt library
+- [ ] Archived prompt no longer appears in the assign form's active prompt set
+- [ ] Archived prompt shows `active: false` and `archivedAt` timestamp on detail page
+- [ ] Coach cannot access prompt create/edit/archive routes (redirect or 403)
+- [ ] Athlete cannot access prompt create/edit/archive routes
+- [ ] Guardian cannot access the prompt library at all
+
+### Prompt Assignment
+
+- [ ] Coach/admin can navigate to `/prompts/[promptId]/assign`
+- [ ] Assign form shows only active athletes in the athlete dropdown
+- [ ] Assign form shows teams in the team dropdown
+- [ ] Coach can submit assignment with a due date
+- [ ] Assignment with `scheduledFor` in the future is created with status `PENDING`
+- [ ] Assignment without `scheduledFor` (or past date) is created with status `ACTIVE`
+- [ ] Assignment is visible on the prompt detail page assignment list
+- [ ] Assigning an archived prompt is rejected (error message shown)
+- [ ] Assigning to an athlete/team not in the org is rejected
+- [ ] Athlete cannot assign prompts
+
+### Athlete Prompt Response Flow
+
+- [ ] Athlete can navigate to `/prompt-assignments` to see their assignments
+- [ ] Assignments show status (Active, Pending, Completed, Cancelled), due date, overdue/due-soon color
+- [ ] "Respond" link appears for ACTIVE assignments only
+- [ ] "Respond" navigates to `/journals/create?promptId=X&assignmentId=Y`
+- [ ] Journal create page shows prompt text in a context box above the editor
+- [ ] Journal title is pre-filled with the prompt title
+- [ ] Athlete can modify the pre-filled title before saving
+- [ ] Saving creates an `Entry` with `journalPromptId` and `journalAssignmentId` set
+- [ ] Journal detail page shows the prompt context box (prompt title + text) for prompted entries
+- [ ] Journal detail page shows "Source: Prompted" in metadata
+- [ ] Submitting the journal (POST `/journals/[entryId]/submit`) sets assignment status to `COMPLETED`
+- [ ] Assignment status updates to Completed on the `/prompt-assignments` page
+- [ ] "Respond" link disappears or is disabled after completion
+
+### Privacy and Feed Safety
+
+- [ ] Prompt assignment list page (`/prompts/[promptId]/page.tsx`) shows only assignment metadata (athlete name, status, due date) — no journal body text
+- [ ] `EntryActivity` records for journal submission do not include journal body text
+- [ ] `metadataJson` on journal submitted activity contains only `{ submittedAt, hasPrompt: true }` — no title or body
+- [ ] Guardian can see assignment status for their linked athlete's prompt assignments
+- [ ] Guardian cannot see assignment details for unrelated athletes
+- [ ] Guardian cannot see journal response body text via prompt assignment views
+- [ ] Unlinked user cannot access another athlete's `/prompt-assignments` page entries
+
+### Role Boundaries
+
+- [ ] ORGANIZATION_ADMIN can manage prompts and view all assignments
+- [ ] PROGRAM_DIRECTOR can manage prompts and view all assignments
+- [ ] COACH can assign prompts but cannot create/edit/archive prompts
+- [ ] ASSISTANT_COACH can assign prompts but cannot manage the library
+- [ ] ATHLETE sees only their own assignments; cannot see other athletes' assignments
+- [ ] PARENT_GUARDIAN sees only assignments for linked athletes; no assignment body/response content
+- [ ] Unauthenticated user is redirected away from all prompt routes
+
+---
+
 ## Notes
 
 - This checklist is a **scaffold for future manual QA**. Items should be marked complete during QA execution in Arc 23B–23H.

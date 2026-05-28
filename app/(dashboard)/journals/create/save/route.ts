@@ -1,4 +1,4 @@
-import { EntryStatus, EntryType, EntryVisibility } from "@prisma/client";
+import { EntryStatus, EntryType, EntryVisibility, JournalAssignmentStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
@@ -35,9 +35,37 @@ export async function POST(request: Request) {
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
   const visibility = normalizeJournalVisibility(String(formData.get("visibility") ?? EntryVisibility.STAFF_ONLY));
+  const journalPromptId = String(formData.get("journalPromptId") ?? "").trim() || null;
+  const journalAssignmentId = String(formData.get("journalAssignmentId") ?? "").trim() || null;
 
   if (!title || !content) {
     return NextResponse.redirect(new URL("/journals/create", request.url), 303);
+  }
+
+  // Validate prompt belongs to organization if provided
+  if (journalPromptId) {
+    const prompt = await db.journalPrompt.findFirst({
+      where: { id: journalPromptId, organizationId: scope.organizationId, active: true },
+      select: { id: true },
+    });
+    if (!prompt) {
+      return NextResponse.redirect(new URL("/journals/create", request.url), 303);
+    }
+  }
+
+  // Validate assignment belongs to organization and is still open if provided
+  if (journalAssignmentId) {
+    const assignment = await db.journalAssignment.findFirst({
+      where: {
+        id: journalAssignmentId,
+        organizationId: scope.organizationId,
+        status: { in: [JournalAssignmentStatus.ACTIVE, JournalAssignmentStatus.PENDING] },
+      },
+      select: { id: true },
+    });
+    if (!assignment) {
+      return NextResponse.redirect(new URL("/journals/create", request.url), 303);
+    }
   }
 
   const primaryRosterMembership = await db.rosterMembership.findFirst({
@@ -61,6 +89,8 @@ export async function POST(request: Request) {
       createdByPersonId: scope.auth.personId,
       updatedByPersonId: scope.auth.personId,
       teamId: primaryRosterMembership?.teamId ?? null,
+      journalPromptId,
+      journalAssignmentId,
     },
     select: { id: true },
   });
@@ -70,7 +100,8 @@ export async function POST(request: Request) {
     entryId: entry.id,
     actorPersonId: scope.auth.personId,
     action: ENTRY_ACTIVITY_ACTIONS.JOURNAL_DRAFT_CREATED,
-    metadata: { visibility },
+    // Never store journal body/title content in activity metadata.
+    metadata: { visibility, hasPrompt: Boolean(journalPromptId) },
   });
 
   return NextResponse.redirect(new URL(`/journals/${entry.id}`, request.url), 303);

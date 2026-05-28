@@ -90,6 +90,9 @@ const ACTIVITY_ACTION_LABELS: Record<string, string> = {
   "journal.draft_updated": "Journal draft updated",
   "journal.submitted": "Journal submitted",
   "journal.archived": "Journal archived",
+  "journal.prompt_assigned": "Journal prompt assigned",
+  "journal.prompt_response_submitted": "Journal prompt completed",
+  "journal.prompt_assignment_cancelled": "Prompt assignment cancelled",
 };
 
 export function labelForActivityAction(action: string): string {
