@@ -6,6 +6,39 @@
 - All non-`main` branches are disabled for automatic Vercel deployments.
 - Copilot branches do not create Vercel previews because all non-`main` branches are disabled.
 
+## Build metadata badge
+- The dashboard header includes a compact build badge for screenshots in the top-right account area.
+- It reads only public environment variables:
+  - `NEXT_PUBLIC_APP_VERSION`
+  - `NEXT_PUBLIC_GIT_SHA`
+  - `NEXT_PUBLIC_BUILD_TIME`
+  - `NEXT_PUBLIC_APP_ENV`
+- Missing values safely fall back to a readable label (for example: `CadreOS dev · unknown build`).
+
+### Local development
+Set values in `.env.local` (or copy from `.env.example`):
+
+```bash
+NEXT_PUBLIC_APP_VERSION=0.1.0-local
+NEXT_PUBLIC_GIT_SHA=$(git rev-parse --short HEAD)
+NEXT_PUBLIC_BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+NEXT_PUBLIC_APP_ENV=local
+```
+
+### GitHub Actions
+Provide metadata in workflow `env` (job-level or step-level):
+
+```yaml
+env:
+  NEXT_PUBLIC_APP_VERSION: ${{ github.ref_name }}
+  NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
+  NEXT_PUBLIC_BUILD_TIME: ${{ github.run_started_at }}
+  NEXT_PUBLIC_APP_ENV: preview
+```
+
+### Vercel
+Set the same `NEXT_PUBLIC_*` variables in **Project Settings → Environment Variables** for each environment (`Development`, `Preview`, `Production`) and redeploy.
+
 ## Database migration workflows
 - Schema changes must be applied with Prisma migrations, not `prisma db push`.
 - Local schema changes should be created with:
