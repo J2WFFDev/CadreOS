@@ -1,4 +1,4 @@
-import { EntryStatus, EntryType } from "@prisma/client";
+import { EntryStatus, EntryType, JournalAssignmentStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
@@ -30,6 +30,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       createdByPersonId: true,
       teamId: true,
       team: { select: { programId: true } },
+      journalAssignmentId: true,
     },
   });
 
@@ -57,13 +58,33 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     },
   });
 
+  // Arc 23C: Mark linked assignment as COMPLETED when athlete submits their response.
+  // This tracks completion status without exposing journal body text.
+  if (journal.journalAssignmentId) {
+    await db.journalAssignment.updateMany({
+      where: {
+        id: journal.journalAssignmentId,
+        organizationId: scope.organizationId,
+        status: { in: [JournalAssignmentStatus.ACTIVE, JournalAssignmentStatus.PENDING] },
+      },
+      data: {
+        status: JournalAssignmentStatus.COMPLETED,
+      },
+    });
+  }
+
   await writeEntryActivity({
     organizationId: scope.organizationId,
     entryId,
     actorPersonId: scope.auth.personId,
     action: ENTRY_ACTIVITY_ACTIONS.JOURNAL_SUBMITTED,
-    metadata: { submittedAt: submittedAt.toISOString() },
+    // Never store journal body/title in activity metadata.
+    metadata: {
+      submittedAt: submittedAt.toISOString(),
+      hasPrompt: Boolean(journal.journalAssignmentId),
+    },
   });
 
   return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);
 }
+
