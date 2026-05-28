@@ -17,6 +17,7 @@ CadreOS is an **Athlete Program Operating System**.
 | Arc 23F | Journal Version History and Trust/Audit Model | 🔜 Next |
 
 ## Planning Documents
+- [Navigation Taxonomy](./NAVIGATION_TAXONOMY.md)
 - [**CadreOS \*Ops Domain Architecture** — Naming System, FieldOps vs ResourceOps, Platform Primitives](./CADRE_OPS_DOMAIN_ARCHITECTURE.md)
 - [Product Vision](./PRODUCT_VISION.md)
 - [PRD](./PRD.md)

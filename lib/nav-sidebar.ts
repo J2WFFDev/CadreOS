@@ -8,19 +8,28 @@ export type NavSidebarGroup = {
   links: readonly NavSidebarLink[];
 };
 
+// Navigation taxonomy alignment notes:
+// - MemberOps is the canonical roster/member domain name.
+// - Seasons stay nested within Program detail routes, so there is no standalone sidebar link.
+// - Membership Lifecycle, Entry labels/views, Entry Reports, and several AdminOps surfaces do not
+//   have dedicated routes yet; keep them documented in planning until purpose-built routes exist.
+// - Current /field-ops facilities/resources/bookings routes are ResourceOps-shaped infrastructure
+//   grouped under a temporary FieldOps / ResourceOps sidebar label to avoid breaking URLs.
 export const NAV_SIDEBAR_GROUPS: readonly NavSidebarGroup[] = [
   {
-    label: "Overview",
+    label: "Home",
     links: [
-      { href: "/dashboard", label: "Dashboard" },
+      { href: "/dashboard", label: "Home" },
       { href: "/feed", label: "Feed" },
       { href: "/assigned", label: "Assigned to Me" },
+      { href: "/today", label: "Today" },
+      { href: "/upcoming", label: "Upcoming" },
+      { href: "/events", label: "Events" },
       { href: "/notifications", label: "Notifications" },
-      { href: "/reports", label: "Reports" },
     ],
   },
   {
-    label: "Roster",
+    label: "MemberOps",
     links: [
       { href: "/people", label: "People" },
       { href: "/programs", label: "Programs" },
@@ -28,34 +37,34 @@ export const NAV_SIDEBAR_GROUPS: readonly NavSidebarGroup[] = [
     ],
   },
   {
-    label: "Schedule",
+    label: "EntryOps",
     links: [
-      { href: "/today", label: "Today" },
-      { href: "/upcoming", label: "Upcoming" },
-      { href: "/events", label: "Events" },
+      { href: "/entries", label: "Entries" },
+      { href: "/entries/inbox", label: "Inbox" },
     ],
   },
   {
-    label: "Operations",
+    label: "FieldOps / ResourceOps",
     links: [
       { href: "/field-ops", label: "FieldOps" },
-      { href: "/gear-ops", label: "GearOps" },
+      { href: "/field-ops/facilities", label: "Facilities" },
+      { href: "/field-ops/resources", label: "Resources" },
+      { href: "/field-ops/bookings", label: "Bookings" },
     ],
   },
   {
-    label: "Records",
+    label: "GearOps",
     links: [
-      { href: "/notes", label: "Notes" },
-      { href: "/tasks", label: "Tasks" },
-      { href: "/decisions", label: "Decisions" },
-      { href: "/journals", label: "Journals" },
-      { href: "/entries/inbox", label: "Entry Inbox" },
-      { href: "/entries", label: "All Entries" },
+      { href: "/gear-ops", label: "GearOps" },
+      { href: "/gear-ops/reports", label: "Reports" },
     ],
   },
   {
-    label: "Profile",
-    links: [{ href: "/account", label: "Account" }],
+    label: "AdminOps",
+    links: [
+      { href: "/prompts", label: "Prompts & Templates" },
+      { href: "/reports", label: "Global Reports" },
+    ],
   },
 ] as const;
 
