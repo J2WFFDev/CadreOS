@@ -37,6 +37,8 @@ export const APPROVED_GROUP_VISIBILITY: Record<AppRole, readonly string[]> = {
   LIMITED_VIEWER: ["HOME"],
 };
 
+const FORBIDDEN_GENERIC_HREFS = new Set<string>(["/reports"]);
+
 function buildRoleUser(role: AppRole): CurrentUser {
   return {
     id: `validation-${role.toLowerCase()}`,
@@ -99,8 +101,8 @@ export function validateCadreosNavTaxonomy(groups: readonly CanonicalNavGroup[] 
       issues.push(`Active nav item ${item.key} must not be disabled.`);
     }
 
-    if (item.href === "/reports") {
-      issues.push(`Nav item ${item.key} in ${groupKey} must not use the generic /reports route.`);
+    if (FORBIDDEN_GENERIC_HREFS.has(item.href)) {
+      issues.push(`Nav item ${item.key} in ${groupKey} must not use the generic ${item.href} route.`);
     }
 
     if (item.status === "active") {

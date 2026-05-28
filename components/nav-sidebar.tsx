@@ -10,6 +10,18 @@ import {
   isNavSidebarLinkActive,
 } from "@/lib/nav-sidebar";
 
+function renderNotificationBadge(href: string, unreadNotificationCount: number, className: string) {
+  if (href !== "/notifications" || unreadNotificationCount <= 0) {
+    return null;
+  }
+
+  return (
+    <span className={className}>
+      {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+    </span>
+  );
+}
+
 export function NavSidebar({
   unreadNotificationCount = 0,
   currentUser,
@@ -60,11 +72,11 @@ export function NavSidebar({
                               {statusLabel}
                             </span>
                           ) : null}
-                          {item.href === "/notifications" && unreadNotificationCount > 0 ? (
-                            <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-zinc-300 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
-                              {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
-                            </span>
-                          ) : null}
+                          {renderNotificationBadge(
+                            item.href,
+                            unreadNotificationCount,
+                            "ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-zinc-300 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200",
+                          )}
                         </span>
                       ) : (
                         <Link
@@ -76,11 +88,11 @@ export function NavSidebar({
                           }
                         >
                           <span>{item.label}</span>
-                          {item.href === "/notifications" && unreadNotificationCount > 0 ? (
-                            <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-black px-1.5 py-0.5 text-[10px] font-semibold text-white dark:bg-white dark:text-black">
-                              {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
-                            </span>
-                          ) : null}
+                          {renderNotificationBadge(
+                            item.href,
+                            unreadNotificationCount,
+                            "ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-black px-1.5 py-0.5 text-[10px] font-semibold text-white dark:bg-white dark:text-black",
+                          )}
                         </Link>
                       )}
                     </li>

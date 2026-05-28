@@ -42,6 +42,7 @@ function activeItem(input: Omit<CanonicalNavItem, "status" | "disabled">): Canon
   return {
     ...input,
     status: "active",
+    disabled: false,
   };
 }
 
