@@ -1,9 +1,14 @@
+import { canAccessModule, type ModuleKey } from "@/lib/auth/access-control";
+import type { CurrentUser } from "@/lib/auth/current-user-types";
+
 export type NavSidebarLink = {
   href: string;
   label: string;
 };
 
 export type NavSidebarGroup = {
+  key: string;
+  moduleKey: ModuleKey;
   label: string;
   /**
    * Landing route for the module header. When present, the header renders as a clickable link.
@@ -16,6 +21,8 @@ export type NavSidebarGroup = {
 
 export const NAV_SIDEBAR_GROUPS: readonly NavSidebarGroup[] = [
   {
+    key: "home",
+    moduleKey: "dashboard",
     label: "Home",
     href: "/dashboard",
     links: [
@@ -27,61 +34,81 @@ export const NAV_SIDEBAR_GROUPS: readonly NavSidebarGroup[] = [
     ],
   },
   {
+    key: "member-ops",
+    moduleKey: "memberOps",
     label: "MemberOps",
-    // TODO: Replace with /member-ops when a dedicated MemberOps landing page is created.
     href: "/programs",
     links: [
       { href: "/programs", label: "Programs" },
       { href: "/people", label: "People" },
       { href: "/teams", label: "Teams" },
-      // Temporary shared reports destination until MemberOps-specific reporting routes are split out.
       { href: "/reports", label: "Membership Lifecycle" },
     ],
   },
   {
-    label: "EntryOps",
-    // TODO: Replace with /entry-ops when a dedicated EntryOps landing page is created.
+    key: "entry",
+    moduleKey: "entry",
+    label: "Entry",
     href: "/entries",
     links: [
       { href: "/entries", label: "Entries" },
       { href: "/entries/inbox", label: "Inbox" },
-      // Temporary shared reports destination until EntryOps-specific reporting routes are split out.
       { href: "/reports", label: "Entry Reports" },
     ],
   },
   {
+    key: "journal",
+    moduleKey: "journal",
+    label: "Journal",
+    href: "/journals",
+    links: [
+      { href: "/journals", label: "Journals" },
+      { href: "/habits", label: "Habits" },
+      { href: "/tasks", label: "Tasks" },
+      { href: "/decisions", label: "Decisions" },
+    ],
+  },
+  {
+    key: "field-resource-ops",
+    moduleKey: "fieldOps",
     label: "FieldOps / ResourceOps",
-    // TODO: Split into /field-ops and /resource-ops when ResourceOps becomes a standalone module.
     href: "/field-ops",
     links: [
       { href: "/field-ops", label: "FieldOps" },
       { href: "/field-ops/facilities", label: "Facilities" },
       { href: "/field-ops/bookings", label: "Bookings" },
-      // Temporary shared reports destination until FieldOps/ResourceOps-specific reporting routes are split out.
+      { href: "/field-ops/resources", label: "ResourceOps" },
       { href: "/reports", label: "Reports" },
     ],
   },
   {
+    key: "gear-ops",
+    moduleKey: "gearOps",
     label: "GearOps",
     href: "/gear-ops",
     links: [
       { href: "/gear-ops", label: "GearOps" },
       { href: "/gear-ops/categories", label: "Categories" },
       { href: "/gear-ops/items", label: "Items" },
-      // Temporary shared reports destination until GearOps-specific reporting routes are split out.
+      { href: "/gear-ops/audits", label: "Audits" },
       { href: "/reports", label: "Reports" },
     ],
   },
   {
-    label: "AdminOps",
-    // TODO: Replace with /admin when a dedicated AdminOps landing page is created.
-    href: "/reports",
+    key: "admin",
+    moduleKey: "admin",
+    label: "Admin / Settings",
+    href: "/prompt-assignments",
     links: [
       { href: "/reports", label: "Global Reports" },
       { href: "/prompt-assignments", label: "Prompt Assignments" },
     ],
   },
 ] as const;
+
+export function getNavSidebarGroupsForUser(user: CurrentUser | null): readonly NavSidebarGroup[] {
+  return NAV_SIDEBAR_GROUPS.filter((group) => canAccessModule(user, group.moduleKey));
+}
 
 export function isNavSidebarLinkActive(pathname: string, href: string): boolean {
   const isEntriesRoot = href === "/entries";

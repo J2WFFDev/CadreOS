@@ -1,5 +1,8 @@
 import { OrgStatus, RoleType, ScopeType } from "@prisma/client";
 
+import { canPerformAction as canPerformActionForCurrentUser } from "@/lib/auth/access-control";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { isDevPersonasEnabled } from "@/lib/auth/devPersonas";
 import { db } from "@/lib/db";
 
 type SupportedAction =
@@ -464,6 +467,34 @@ function roleScopeMatches(
 }
 
 async function resolvePermissionDecision(input: PermissionCheckInput): Promise<PermissionDecision> {
+  if (isDevPersonasEnabled()) {
+    const currentUser = await getCurrentUser();
+
+    if (currentUser?.isDevPersona) {
+      if (!isSupportedAction(input.action)) {
+        return {
+          allowed: false,
+          reason: "UNSUPPORTED_ACTION",
+          message: "This action is not enabled in the current MVP authorization policy.",
+        };
+      }
+
+      if (!canPerformActionForCurrentUser(currentUser, input.action)) {
+        return {
+          allowed: false,
+          reason: "INSUFFICIENT_ROLE",
+          message: "The active dev persona is not allowed to perform this action.",
+        };
+      }
+
+      return {
+        allowed: true,
+        reason: "INSUFFICIENT_ROLE",
+        message: "",
+      };
+    }
+  }
+
   if (!input.actorUserId) {
     return {
       allowed: false,

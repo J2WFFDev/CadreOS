@@ -3,10 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { NAV_SIDEBAR_GROUPS, isNavSidebarGroupActive, isNavSidebarLinkActive } from "@/lib/nav-sidebar";
+import type { CurrentUser } from "@/lib/auth/current-user-types";
+import {
+  getNavSidebarGroupsForUser,
+  isNavSidebarGroupActive,
+  isNavSidebarLinkActive,
+} from "@/lib/nav-sidebar";
 
-export function NavSidebar({ unreadNotificationCount = 0 }: { unreadNotificationCount?: number }) {
+export function NavSidebar({
+  unreadNotificationCount = 0,
+  currentUser,
+}: {
+  unreadNotificationCount?: number;
+  currentUser: CurrentUser | null;
+}) {
   const pathname = usePathname();
+  const groups = getNavSidebarGroupsForUser(currentUser);
 
   return (
     <nav
@@ -14,11 +26,11 @@ export function NavSidebar({ unreadNotificationCount = 0 }: { unreadNotification
       aria-label="Dashboard navigation"
     >
       <ul className="space-y-3 px-2">
-        {NAV_SIDEBAR_GROUPS.map((group) => {
+        {groups.map((group) => {
           const isGroupActive = isNavSidebarGroupActive(pathname, group);
 
           return (
-            <li key={group.label}>
+            <li key={group.key}>
               {group.href ? (
                 <Link
                   href={group.href}

@@ -55,6 +55,15 @@ Vercel can provide commit/env metadata through:
 
 The badge will use those when app-specific values are not present.
 
+## Dev persona switcher (development only)
+- Enable in `.env.local`:
+  - `NEXT_PUBLIC_ENABLE_DEV_PERSONAS=true`
+  - `ENABLE_DEV_PERSONAS_IN_PRODUCTION=false`
+- Restart `npm run dev`, then use the **Dev Persona** control in the dashboard header.
+- Persona selection is stored in a cookie and applied across dashboard routes.
+- Use `docs/testing/role-navigation-tests.md` to run NAV-006 checks.
+- This is test tooling only and must not be treated as production authorization.
+
 ## Releases
 - `.github/workflows/release.yml` automatically bumps the repo version on every push to `main`, commits the new `package.json` / `package-lock.json` version, tags it as `vX.Y.Z`, and creates a GitHub release.
 - Preferred labels for merged PRs:
