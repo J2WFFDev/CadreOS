@@ -56,4 +56,3 @@ test("deriveSafeHabitActivityText never echoes raw user content", () => {
   assert.equal(deriveSafeHabitActivityText("habit.checked_in"), "Habit check-in recorded");
   assert.equal(deriveSafeHabitActivityText("unknown.private.action"), "Habit event");
 });
-

@@ -527,6 +527,8 @@ async function main() {
 
   const twoDaysAgo = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const weeklyDaysMonWedFri = JSON.stringify(["MON", "WED", "FRI"]);
+  const weeklyDaysMon = JSON.stringify(["MON"]);
 
   // Minimal inbox capture — NOTE with no due date and no context target.
   // shouldRouteEntryToInbox() returns true for this shape.
@@ -1271,7 +1273,7 @@ async function main() {
     update: {
       habitId: pausedHabit.id,
       frequency: HabitFrequency.WEEKLY,
-      daysOfWeek: "[\"MON\",\"WED\",\"FRI\"]",
+      daysOfWeek: weeklyDaysMonWedFri,
       startDate: thirtyDaysAgo,
       endDate: null,
     },
@@ -1279,7 +1281,7 @@ async function main() {
       id: "cadreos-habitsched-paused-weekly",
       habitId: pausedHabit.id,
       frequency: HabitFrequency.WEEKLY,
-      daysOfWeek: "[\"MON\",\"WED\",\"FRI\"]",
+      daysOfWeek: weeklyDaysMonWedFri,
       startDate: thirtyDaysAgo,
     },
   });
@@ -1357,7 +1359,7 @@ async function main() {
     update: {
       habitId: overdueHabit.id,
       frequency: HabitFrequency.WEEKLY,
-      daysOfWeek: "[\"MON\"]",
+      daysOfWeek: weeklyDaysMon,
       startDate: thirtyDaysAgo,
       endDate: null,
     },
@@ -1365,7 +1367,7 @@ async function main() {
       id: "cadreos-habitsched-overdue-weekly",
       habitId: overdueHabit.id,
       frequency: HabitFrequency.WEEKLY,
-      daysOfWeek: "[\"MON\"]",
+      daysOfWeek: weeklyDaysMon,
       startDate: thirtyDaysAgo,
     },
   });
