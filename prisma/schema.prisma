@@ -769,6 +769,8 @@ model Organization {
   entries                      Entry[]
   journalPrompts               JournalPrompt[]
   journalAssignments           JournalAssignment[]
+  // Arc 23D: Habit back-relations
+  habits                       Habit[]
   entryLinks                   EntryLink[]
   entryActivities              EntryActivity[]
   entryObjectLinks             EntryObjectLink[]
@@ -829,6 +831,8 @@ model Team {
   assignedKits     InventoryKit[]    @relation("InventoryKitAssignedToTeam")
   entries          Entry[]
   journalAssignments JournalAssignment[]
+  // Arc 23D: Habit back-relations
+  assignedHabits   Habit[]           @relation("HabitTeam")
 
   @@unique([programId, name])
   @@index([organizationId, programId])
@@ -951,6 +955,10 @@ model Person {
   createdJournalPrompts                JournalPrompt[]               @relation("JournalPromptCreatedBy")
   givenJournalAssignments              JournalAssignment[]           @relation("JournalAssignmentBy")
   receivedJournalAssignments           JournalAssignment[]           @relation("JournalAssignmentToAthlete")
+  // Arc 23D: Habit back-relations
+  athleteHabits                        Habit[]                       @relation("HabitAthlete")
+  createdHabits                        Habit[]                       @relation("HabitCreatedBy")
+  habitCompletions                     HabitCompletion[]             @relation("HabitCompletionAthlete")
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
@@ -2649,3 +2657,83 @@ model JournalAssignment {
   @@index([organizationId, assignedByPersonId])
   @@index([organizationId, status, dueAt])
 }
+
+// ── Arc 23D: Habit Model, Recurrence, and Completion Tracking ────────────────
+
+enum HabitFrequency {
+  DAILY
+  WEEKLY
+  CUSTOM
+}
+
+enum HabitStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+// Arc 23D: Habit — a recurring behavior or check-in target tracked over time.
+// May be self-defined by an athlete or assigned by staff/coach.
+model Habit {
+  id                String      @id @default(cuid())
+  organizationId    String
+  title             String
+  description       String?
+  athletePersonId   String
+  assignedToTeamId  String?
+  status            HabitStatus @default(ACTIVE)
+  createdByPersonId String
+  archivedAt        DateTime?
+  pausedAt          DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  athlete        Person            @relation("HabitAthlete", fields: [athletePersonId], references: [id], onDelete: Restrict)
+  assignedToTeam Team?             @relation("HabitTeam", fields: [assignedToTeamId], references: [id], onDelete: SetNull)
+  createdBy      Person            @relation("HabitCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  schedules      HabitSchedule[]
+  completions    HabitCompletion[]
+
+  @@index([organizationId, athletePersonId, status])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, assignedToTeamId])
+  @@index([organizationId, createdByPersonId])
+}
+
+// Arc 23D: HabitSchedule — recurrence/cadence definition for a Habit.
+// A Habit may have one or more schedule records (e.g. to represent schedule changes).
+model HabitSchedule {
+  id         String         @id @default(cuid())
+  habitId    String
+  frequency  HabitFrequency
+  daysOfWeek String?        // JSON array, e.g. ["MON","WED","FRI"], used for WEEKLY frequency
+  startDate  DateTime
+  endDate    DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@index([habitId])
+}
+
+// Arc 23D: HabitCompletion — a dated check-in record for a Habit.
+// Unique on (habitId, completedOn) to prevent duplicate same-day completions.
+// completedOn is stored as start-of-day UTC for consistent deduplication.
+model HabitCompletion {
+  id              String   @id @default(cuid())
+  habitId         String
+  athletePersonId String
+  completedOn     DateTime // normalized to start-of-day UTC
+  note            String?
+  createdAt       DateTime @default(now())
+
+  habit   Habit  @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  athlete Person @relation("HabitCompletionAthlete", fields: [athletePersonId], references: [id], onDelete: Restrict)
+
+  @@unique([habitId, completedOn])
+  @@index([habitId, completedOn])
+  @@index([athletePersonId, completedOn])
+}
+
