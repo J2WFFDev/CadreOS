@@ -7,6 +7,7 @@ import {
   buildGearCheckoutReturnNotes,
   buildGearCheckoutUsageHistoryLabel,
   deriveGearItemCheckinUpdate,
+  isMaintenanceConditionOnReturn,
   parseGearCheckoutReturnNotes,
 } from "../lib/gear-checkout-usage";
 
@@ -88,4 +89,11 @@ test("deriveGearItemCheckinUpdate returns no changes while checkout is still ope
   assert.equal(update.readinessState, undefined);
   assert.equal(update.lifecycleStatus, undefined);
   assert.equal(update.needsMaintenanceFollowUp, false);
+});
+
+test("isMaintenanceConditionOnReturn detects POOR and DAMAGED only", () => {
+  assert.equal(isMaintenanceConditionOnReturn(GearConditionStatus.POOR), true);
+  assert.equal(isMaintenanceConditionOnReturn(GearConditionStatus.DAMAGED), true);
+  assert.equal(isMaintenanceConditionOnReturn(GearConditionStatus.GOOD), false);
+  assert.equal(isMaintenanceConditionOnReturn(null), false);
 });

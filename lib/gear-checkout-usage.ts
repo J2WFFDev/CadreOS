@@ -52,6 +52,10 @@ export function buildGearCheckoutUsageHistoryLabel(usageLog: string | null | und
   return normalized.length > 0 ? `${USAGE_LOG_PREFIX} ${normalized}` : null;
 }
 
+export function isMaintenanceConditionOnReturn(conditionOnReturn: GearConditionStatus | null): boolean {
+  return conditionOnReturn === GearConditionStatus.POOR || conditionOnReturn === GearConditionStatus.DAMAGED;
+}
+
 export function deriveGearItemCheckinUpdate(input: {
   checkoutStatus: GearCheckoutStatus;
   conditionOnReturn: GearConditionStatus | null;
@@ -79,7 +83,7 @@ export function deriveGearItemCheckinUpdate(input: {
     updates.conditionStatus = input.conditionOnReturn;
   }
 
-  if (input.conditionOnReturn === GearConditionStatus.POOR || input.conditionOnReturn === GearConditionStatus.DAMAGED) {
+  if (isMaintenanceConditionOnReturn(input.conditionOnReturn)) {
     updates.readinessState = InventoryReadinessState.MAINTENANCE_REQUIRED;
     updates.lifecycleStatus = GearItemLifecycleStatus.MAINTENANCE;
     updates.needsMaintenanceFollowUp = true;

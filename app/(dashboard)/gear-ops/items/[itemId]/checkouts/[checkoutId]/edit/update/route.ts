@@ -1,6 +1,5 @@
 import {
   GearCheckoutStatus,
-  GearConditionStatus,
   GearMaintenanceType,
   Prisma,
 } from "@prisma/client";
@@ -10,6 +9,7 @@ import { db } from "@/lib/db";
 import {
   buildGearCheckoutReturnNotes,
   deriveGearItemCheckinUpdate,
+  isMaintenanceConditionOnReturn,
 } from "@/lib/gear-checkout-usage";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
@@ -228,6 +228,11 @@ export async function POST(
       }
     }
 
+    const combinedReturnNotes = buildGearCheckoutReturnNotes({
+      usageLog: parsed.data.usageLog,
+      returnNotes: parsed.data.returnNotes,
+    });
+
     const updated = await db.$transaction(async (tx) => {
       const existingCheckout = await tx.gearCheckout.findFirst({
         where: {
@@ -266,10 +271,7 @@ export async function POST(
           receivedById: parsed.data.receivedById,
           conditionOnReturn: parsed.data.conditionOnReturn,
           purposeNotes: parsed.data.purposeNotes,
-          returnNotes: buildGearCheckoutReturnNotes({
-            usageLog: parsed.data.usageLog,
-            returnNotes: parsed.data.returnNotes,
-          }),
+          returnNotes: combinedReturnNotes,
         },
       });
 
@@ -300,25 +302,32 @@ export async function POST(
         });
       }
 
-      const wasAlreadyMaintenanceFollowUp =
+      const wasAlreadyReturnedAsDamaged =
         existingCheckout.status === GearCheckoutStatus.RETURNED &&
-        (existingCheckout.conditionOnReturn === GearConditionStatus.POOR ||
-          existingCheckout.conditionOnReturn === GearConditionStatus.DAMAGED);
+        isMaintenanceConditionOnReturn(existingCheckout.conditionOnReturn);
 
-      if (itemUpdate.needsMaintenanceFollowUp && !wasAlreadyMaintenanceFollowUp) {
+      const maintenanceActorPersonId = parsed.data.receivedById ?? parsed.data.returnedById;
+      const maintenancePerformedAt = parsed.data.returnedAt;
+      const maintenanceConditionAfter = parsed.data.conditionOnReturn;
+
+      if (
+        itemUpdate.needsMaintenanceFollowUp &&
+        !wasAlreadyReturnedAsDamaged &&
+        maintenanceActorPersonId &&
+        maintenancePerformedAt &&
+        maintenanceConditionAfter
+      ) {
         await tx.gearMaintenanceLog.create({
           data: {
             organizationId: organizationId,
             gearItemId: itemId,
-            performedByPersonId: parsed.data.receivedById ?? parsed.data.issuedById,
+            performedByPersonId: maintenanceActorPersonId,
             maintenanceType: GearMaintenanceType.INSPECTION,
-            performedAt: parsed.data.returnedAt ?? new Date(),
+            performedAt: maintenancePerformedAt,
             conditionBefore: existingCheckout.gearItem.conditionStatus,
-            conditionAfter: parsed.data.conditionOnReturn,
+            conditionAfter: maintenanceConditionAfter,
             notes:
-              parsed.data.returnNotes ??
-              parsed.data.usageLog ??
-              "Flagged during check-in due to return condition.",
+              combinedReturnNotes ?? "Flagged during check-in due to return condition.",
           },
         });
       }
