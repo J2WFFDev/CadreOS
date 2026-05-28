@@ -58,10 +58,11 @@ The badge will use those when app-specific values are not present.
   - `release:minor`
   - `release:patch`
 - If no release label is present, the workflow falls back to:
-  - `major` for `BREAKING CHANGE` / `!:` markers
+  - `major` for `BREAKING CHANGE` / conventional-commit `type!:` markers
   - `minor` for `feat` / `feature`
   - `patch` otherwise
 - The release workflow skips its own `chore(release): vX.Y.Z` commits to avoid loops.
+- If `main` is branch-protected, allow GitHub Actions to push the automated `chore(release): vX.Y.Z` release commit and tag.
 
 ## Database migration workflows
 - Schema changes must be applied with Prisma migrations, not `prisma db push`.

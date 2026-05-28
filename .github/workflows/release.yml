@@ -36,7 +36,13 @@ jobs:
         with:
           script: |
             const { owner, repo } = context.repo;
-            const branch = context.ref.replace("refs/heads/", "");
+            if (!context.ref.startsWith("refs/heads/")) {
+              core.setOutput("skip", "true");
+              core.setOutput("reason", `Unsupported ref for release flow: ${context.ref}`);
+              return;
+            }
+
+            const branch = context.ref.replace(/^refs\/heads\//, "");
             const headCommit = await github.rest.repos.getBranch({ owner, repo, branch });
             const commitMessage = context.payload.head_commit?.message || "";
 
@@ -58,14 +64,15 @@ jobs:
               repo,
               commit_sha: context.sha,
             });
-            const pullRequest = associatedPulls.data.find((pr) => pr.merged_at) ?? associatedPulls.data[0];
-            const labels = (pullRequest?.labels ?? [])
+            const mergedPullRequest = associatedPulls.data.find((pr) => pr.merged_at);
+            const labels = (mergedPullRequest?.labels ?? [])
               .map((label) => (typeof label === "string" ? label : label.name))
               .filter(Boolean)
               .map((label) => label.toLowerCase());
-            const combinedText = [pullRequest?.title, commitMessage].filter(Boolean).join("\n");
+            const combinedText = [mergedPullRequest?.title, commitMessage].filter(Boolean).join("\n");
             const featurePrefixPattern = /(^|\n)feat(\([^)]+\))?:/i;
             const featureWordPattern = /\bfeature\b/i;
+            const breakingChangePattern = /BREAKING CHANGE|^[a-z]+(\([^)]+\))?!:/im;
 
             if (labels.some((label) => ["release:major", "semver:major", "major"].includes(label))) {
               bump = "major";
@@ -73,9 +80,9 @@ jobs:
               bump = "minor";
             } else if (labels.some((label) => ["release:patch", "semver:patch", "patch"].includes(label))) {
               bump = "patch";
-            } else if (/BREAKING CHANGE|!:/i.test(combinedText)) {
+            } else if (breakingChangePattern.test(combinedText)) {
               bump = "major";
-            } else if (featurePrefixPattern.test(combinedText) || featureWordPattern.test(pullRequest?.title || "")) {
+            } else if (featurePrefixPattern.test(combinedText) || featureWordPattern.test(mergedPullRequest?.title || "")) {
               bump = "minor";
             }
 

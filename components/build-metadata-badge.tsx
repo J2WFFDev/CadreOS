@@ -32,7 +32,8 @@ function getPackageVersion() {
   if (cachedPackageVersion !== undefined) return cachedPackageVersion;
 
   try {
-    const packageJson = JSON.parse(readFileSync(path.join(process.cwd(), "package.json"), "utf8")) as { version?: string };
+    const packageJsonPath = path.resolve(process.cwd(), "package.json");
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: string };
     cachedPackageVersion = packageJson.version ?? "";
   } catch {
     cachedPackageVersion = "";
