@@ -1,9 +1,12 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
+import packageJson from "../../package.json";
 import { resolveBuildMetadataLabel } from "../../components/build-metadata-badge";
 
-test("resolveBuildMetadataLabel uses explicit app metadata and shortens sha", () => {
+const packageVersion = packageJson.version.startsWith("v") ? packageJson.version : `v${packageJson.version}`;
+
+test("resolveBuildMetadataLabel uses preferred production format and shortens sha", () => {
   const label = resolveBuildMetadataLabel({
     NEXT_PUBLIC_APP_VERSION: "1.2.3",
     NEXT_PUBLIC_APP_ENV: "production",
@@ -12,17 +15,27 @@ test("resolveBuildMetadataLabel uses explicit app metadata and shortens sha", ()
     NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF: "main",
   });
 
-  assert.equal(label, "CadreOS 1.2.3 · production · main · abcdef1 · 2026-05-28T00:00:00Z");
+  assert.equal(label, "Prod:main v1.2.3 · abcdef1");
 });
 
-test("resolveBuildMetadataLabel falls back to Vercel metadata", () => {
+test("resolveBuildMetadataLabel falls back to package version on production", () => {
+  const label = resolveBuildMetadataLabel({
+    NEXT_PUBLIC_VERCEL_ENV: "production",
+    NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA: "1234567890abcdef",
+    NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF: "main",
+  });
+
+  assert.equal(label, `Prod:main ${packageVersion} · 1234567`);
+});
+
+test("resolveBuildMetadataLabel keeps preview builds readable", () => {
   const label = resolveBuildMetadataLabel({
     NEXT_PUBLIC_VERCEL_ENV: "preview",
     NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA: "1234567890abcdef",
     NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF: "feature/nav-fixes",
   });
 
-  assert.equal(label, "CadreOS preview · feature/nav-fixes · 1234567");
+  assert.equal(label, "Preview:feature/nav-fixes · 1234567");
 });
 
 test("resolveBuildMetadataLabel keeps local build fallback readable", () => {

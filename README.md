@@ -8,6 +8,7 @@
 
 ## Build metadata badge
 - The dashboard header includes a compact build badge for screenshots in the top-right account area.
+- Production prefers the compact release format `Prod:main v1.4.2 · a1b2c3d`.
 - It reads only public environment variables:
   - `NEXT_PUBLIC_APP_VERSION`
   - `NEXT_PUBLIC_GIT_SHA`
@@ -18,6 +19,7 @@
   - `NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF`
 - Commit SHA values are shortened to 7 characters.
 - Missing values safely fall back to a readable label (for example: `CadreOS dev · local build`).
+  - Production falls back to the repository `package.json` version when `NEXT_PUBLIC_APP_VERSION` is not set.
 
 ### Local development
 Set values in `.env.local` (or copy from `.env.example`):
@@ -34,10 +36,10 @@ Provide metadata in workflow `env` (job-level or step-level):
 
 ```yaml
 env:
-  NEXT_PUBLIC_APP_VERSION: ${{ github.ref_name }}
+  NEXT_PUBLIC_APP_VERSION: v1.4.2
   NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
-  NEXT_PUBLIC_BUILD_TIME: ${{ github.run_started_at }}
-  NEXT_PUBLIC_APP_ENV: preview
+  NEXT_PUBLIC_APP_ENV: production
+  NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF: main
 ```
 
 ### Vercel
@@ -48,6 +50,18 @@ Vercel can provide commit/env metadata through:
 - `NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF`
 
 The badge will use those when app-specific values are not present.
+
+## Releases
+- `.github/workflows/release.yml` automatically bumps the repo version on every push to `main`, commits the new `package.json` / `package-lock.json` version, tags it as `vX.Y.Z`, and creates a GitHub release.
+- Preferred labels for merged PRs:
+  - `release:major`
+  - `release:minor`
+  - `release:patch`
+- If no release label is present, the workflow falls back to:
+  - `major` for `BREAKING CHANGE` / `!:` markers
+  - `minor` for `feat` / `feature`
+  - `patch` otherwise
+- The release workflow skips its own `chore(release): vX.Y.Z` commits to avoid loops.
 
 ## Database migration workflows
 - Schema changes must be applied with Prisma migrations, not `prisma db push`.
