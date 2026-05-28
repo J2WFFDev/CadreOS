@@ -1,4 +1,4 @@
-import { EntryStatus, TaskStatus } from "@prisma/client";
+import { EntryStatus, EntryType, TaskStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
@@ -31,10 +31,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
   const entry = await db.entry.findFirst({
     where: { id: entryId, organizationId: organizationId, deletedAt: null },
-    select: { id: true, sourceTaskId: true },
+    select: { id: true, sourceTaskId: true, type: true },
   });
 
-  if (!entry) {
+  if (!entry || entry.type === EntryType.JOURNAL) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
 

@@ -13,6 +13,7 @@ import { getOrganizationScope } from "@/lib/organization-context";
 export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
+const NON_JOURNAL_ENTRY_TYPES = Object.values(EntryType).filter((entryType) => entryType !== EntryType.JOURNAL);
 
 function readParam(searchParams: SearchParams, key: string) {
   const value = searchParams[key];
@@ -77,7 +78,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
 
   const filter = parseEntryListFilter(
     rawParams,
-    Object.values(EntryType),
+    NON_JOURNAL_ENTRY_TYPES,
     Object.values(EntryStatus),
     Object.values(EntryPriority),
   );
@@ -90,6 +91,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
     where: {
       organizationId: scope.organizationId,
       deletedAt: null,
+      type: { in: NON_JOURNAL_ENTRY_TYPES },
       ...(filter.type ? { type: filter.type } : {}),
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.priority ? { priority: filter.priority } : {}),
@@ -151,7 +153,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
             </label>
             <select id="type" name="type" defaultValue={filter.type ?? ""} className="w-full rounded-md border px-2 py-1.5 text-sm">
               <option value="">All types</option>
-              {Object.values(EntryType).map((v) => (
+              {NON_JOURNAL_ENTRY_TYPES.map((v) => (
                 <option key={v} value={v}>{labelForEntryType(v)}</option>
               ))}
             </select>
@@ -288,4 +290,3 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
     </section>
   );
 }
-

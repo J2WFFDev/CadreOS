@@ -75,7 +75,8 @@ CadreOS is an **Athlete Program Operating System**.
 - [Arc 23A Journals & Habits Inventory, Privacy Model, and Gap Plan](./ARC_23A_JOURNALS_HABITS_INVENTORY_PRIVACY_MODEL_AND_GAP_PLAN.md)
 - [Arc 23A Journals & Habits Inventory Report](./ARC_23A_JOURNALS_HABITS_INVENTORY_REPORT.md)
 - [Arc 23A Journals & Habits Manual QA Checklist Scaffold](./ARC_23A_JOURNALS_HABITS_QA_CHECKLIST.md)
-- **Arc 23B — Journal Entry Type and Draft/Final Workflow (next arc)**
+- [Arc 23B Journal Entry Type and Draft/Final Workflow](./ARC_23B_JOURNAL_ENTRY_WORKFLOW.md)
+- [Arc 23B Journal Workflow Validation Checklist](./ARC_23B_JOURNAL_WORKFLOW_VALIDATION_CHECKLIST.md)
 - [Arc 19A Unified Operational Entry Architecture (historical foundation)](./PHASE_19A_UNIFIED_OPERATIONAL_ENTRY_ARCHITECTURE.md)
 - [Arc 19B Unified Feed & Today View (historical foundation)](./PHASE_19B_UNIFIED_FEED_TODAY_VIEW.md)
 - [Arc 19C Quick Capture System (historical; remapped to Arc 22B)](./PHASE_19C_QUICK_CAPTURE_SYSTEM.md)

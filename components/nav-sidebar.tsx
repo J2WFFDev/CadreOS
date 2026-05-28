@@ -20,6 +20,7 @@ const NAV_LINKS = [
   { href: "/notes", label: "Notes" },
   { href: "/tasks", label: "Tasks" },
   { href: "/decisions", label: "Decisions" },
+  { href: "/journals", label: "Journals" },
   { href: "/entries/inbox", label: "Entry Inbox" },
   { href: "/entries", label: "All Entries" },
   { href: "/account", label: "Account" },

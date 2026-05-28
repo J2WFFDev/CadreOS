@@ -96,7 +96,10 @@ function ActivityFeed({ items }: { items: FeedActivityItem[] }) {
           </span>
           <span className="font-medium text-zinc-700 dark:text-zinc-300">{labelForActivityAction(item.action)}</span>
           <span className="text-zinc-500">—</span>
-          <Link href={`/entries/${item.entryId}`} className="underline text-zinc-700 dark:text-zinc-300 truncate">
+          <Link
+            href={item.entryType === "JOURNAL" ? `/journals/${item.entryId}` : `/entries/${item.entryId}`}
+            className="underline text-zinc-700 dark:text-zinc-300 truncate"
+          >
             {item.entryTitle}
           </Link>
         </li>
