@@ -4,6 +4,7 @@ import Link from "next/link";
 import { NavSidebar } from "@/components/nav-sidebar";
 import { QuickCaptureLauncher } from "@/components/dashboard/quick-capture-launcher";
 import { GearOfflineProvider } from "@/components/gear-ops/offline-provider";
+import { BuildMetadataBadge } from "@/components/build-metadata-badge";
 import { db } from "@/lib/db";
 import { countUnreadNotificationsForPerson } from "@/lib/notifications";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -41,6 +42,7 @@ export default async function DashboardLayout({
           disabled={!scope.databaseReady || !scope.organizationId}
         />
         <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+          <BuildMetadataBadge />
           <Link
             href="/account"
             className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
