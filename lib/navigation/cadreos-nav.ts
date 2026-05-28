@@ -1,48 +1,27 @@
-/**
- * Canonical CadreOS navigation taxonomy.
- *
- * This is the single source of truth for navigation identity: labels, order,
- * grouping, and paths. Access-control metadata (allowedRoles) is co-located
- * here so it is easy to audit, but it must never change UX labels or reorder items.
- *
- * Rules:
- * - Labels and order in this file define what users see. Do not rename items in
- *   the access-control layer.
- * - To add role restrictions, only modify `allowedRoles` — never the label or path.
- * - Set `disabled: true` for planned routes that do not yet exist so that nav items
- *   remain visible without causing broken links.
- */
-
-import type { AppRole } from "@/lib/auth/current-user-types";
 import type { ModuleKey } from "@/lib/auth/access-control";
+import type { AppRole } from "@/lib/auth/current-user-types";
 
-export type CanonicalNavLink = {
-  href: string;
+export type NavItemStatus = "active" | "planned" | "disabled";
+
+export type CanonicalNavItem = {
+  key: string;
   label: string;
-  /**
-   * When true the route is planned but not yet implemented.
-   * The nav item renders in a muted/non-clickable state.
-   */
+  href: string;
+  moduleKey: ModuleKey;
+  allowedRoles?: readonly AppRole[];
+  status: NavItemStatus;
   disabled?: boolean;
+  plannedReason?: string;
+  disabledReason?: string;
 };
 
 export type CanonicalNavGroup = {
-  /** Stable machine key used for identity comparisons */
   key: string;
-  /** Module key for role-based module visibility */
-  moduleKey: ModuleKey;
-  /** User-facing group label. This is the UX label — do not change it via access control. */
   label: string;
-  /** Landing route for the module header */
-  href: string;
-  /** Ordered list of child navigation links */
-  links: readonly CanonicalNavLink[];
-  /** Roles allowed to see this module group */
   allowedRoles: readonly AppRole[];
+  items: readonly CanonicalNavItem[];
 };
 
-const STAFF_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH"];
-const COACH_PLUS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH"];
 const ALL_ROLES: readonly AppRole[] = [
   "ADMIN",
   "PROGRAM_MANAGER",
@@ -53,106 +32,271 @@ const ALL_ROLES: readonly AppRole[] = [
   "LIMITED_VIEWER",
 ];
 
+const MEMBEROPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH"];
+const ENTRYOPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "GUARDIAN", "ATHLETE"];
+const FIELDOPS_RESOURCEOPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH"];
+const GEAROPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "GUARDIAN", "ATHLETE"];
+const ADMIN_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER"];
+
+function activeItem(input: Omit<CanonicalNavItem, "status" | "disabled">): CanonicalNavItem {
+  return {
+    ...input,
+    status: "active",
+  };
+}
+
+function plannedItem(input: Omit<CanonicalNavItem, "status" | "disabled"> & { plannedReason?: string }): CanonicalNavItem {
+  return {
+    ...input,
+    status: "planned",
+    disabled: true,
+  };
+}
+
 /**
- * Ordered canonical navigation groups for CadreOS.
+ * Canonical CadreOS sidebar taxonomy.
  *
- * Do not reorder or rename items here as a side-effect of persona/auth work.
- * Access-control changes belong only in `allowedRoles`.
+ * This file is the source of truth for sidebar group labels, item labels,
+ * order, grouping, and canonical paths. Persona and auth work may only filter
+ * visibility from this structure; they must not rename, reorder, regroup, or
+ * remove items unless a future task explicitly changes the taxonomy.
  */
 export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
   {
-    key: "home",
-    moduleKey: "dashboard",
+    key: "HOME",
     label: "Home",
-    href: "/dashboard",
     allowedRoles: ALL_ROLES,
-    links: [
-      { href: "/dashboard", label: "Dashboard" },
-      { href: "/feed", label: "Feed" },
-      { href: "/today", label: "Today" },
-      { href: "/assigned", label: "Assigned to Me" },
-      { href: "/notifications", label: "Notifications" },
+    items: [
+      activeItem({
+        key: "PERSONAL_DASHBOARD",
+        label: "Personal Dashboard",
+        href: "/dashboard",
+        moduleKey: "dashboard",
+      }),
+      activeItem({
+        key: "FYP",
+        label: "FYP",
+        href: "/feed",
+        moduleKey: "dashboard",
+      }),
+      activeItem({
+        key: "NOTIFICATIONS",
+        label: "Notifications",
+        href: "/notifications",
+        moduleKey: "dashboard",
+      }),
     ],
   },
   {
-    key: "member-ops",
-    moduleKey: "memberOps",
+    key: "MEMBEROPS",
     label: "MemberOps",
-    href: "/programs",
-    allowedRoles: STAFF_ROLES,
-    links: [
-      { href: "/programs", label: "Programs" },
-      { href: "/people", label: "People" },
-      { href: "/teams", label: "Teams" },
-      { href: "/member-ops/reports", label: "Membership Lifecycle", disabled: true },
+    allowedRoles: MEMBEROPS_ROLES,
+    items: [
+      activeItem({
+        key: "PROGRAMS",
+        label: "Programs",
+        href: "/programs",
+        moduleKey: "memberOps",
+      }),
+      activeItem({
+        key: "PEOPLE",
+        label: "People",
+        href: "/people",
+        moduleKey: "memberOps",
+      }),
+      activeItem({
+        key: "TEAMS",
+        label: "Teams",
+        href: "/teams",
+        moduleKey: "memberOps",
+      }),
+      plannedItem({
+        key: "MEMBERSHIP_LIFECYCLE",
+        label: "Membership Lifecycle",
+        href: "/member-ops/lifecycle",
+        moduleKey: "memberOps",
+        plannedReason: "Dedicated membership lifecycle route is not implemented yet.",
+      }),
+      plannedItem({
+        key: "MEMBER_REPORTS",
+        label: "Member Reports",
+        href: "/member-ops/reports",
+        moduleKey: "memberOps",
+        plannedReason: "Dedicated member reports route is not implemented yet.",
+      }),
     ],
   },
   {
-    key: "entry",
-    moduleKey: "entry",
-    label: "Entry",
-    href: "/entries",
-    allowedRoles: STAFF_ROLES,
-    links: [
-      { href: "/entries", label: "Entries" },
-      { href: "/entries/inbox", label: "Inbox" },
-      { href: "/entries/reports", label: "Entry Reports", disabled: true },
+    key: "ENTRYOPS",
+    label: "EntryOps",
+    allowedRoles: ENTRYOPS_ROLES,
+    items: [
+      activeItem({
+        key: "ENTRY_ALL",
+        label: "All",
+        href: "/entries",
+        moduleKey: "entry",
+      }),
+      activeItem({
+        key: "ENTRY_INBOX",
+        label: "Inbox",
+        href: "/entries/inbox",
+        moduleKey: "entry",
+      }),
+      activeItem({
+        key: "ENTRY_TODAY",
+        label: "Today",
+        href: "/today",
+        moduleKey: "entry",
+      }),
+      plannedItem({
+        key: "ENTRY_LISTS",
+        label: "Lists",
+        href: "/lists",
+        moduleKey: "entry",
+        plannedReason: "Lists route is not implemented yet.",
+      }),
+      activeItem({
+        key: "ENTRY_HABITS",
+        label: "Habits",
+        href: "/habits",
+        moduleKey: "entry",
+      }),
     ],
   },
   {
-    key: "journal",
-    moduleKey: "journal",
-    label: "Journal",
-    href: "/journals",
-    allowedRoles: STAFF_ROLES,
-    links: [
-      { href: "/journals", label: "Journals" },
-      { href: "/habits", label: "Habits" },
-      { href: "/tasks", label: "Tasks" },
-      { href: "/decisions", label: "Decisions" },
-    ],
-  },
-  {
-    key: "field-resource-ops",
-    moduleKey: "fieldOps",
+    key: "FIELDOPS_RESOURCEOPS",
     label: "FieldOps / ResourceOps",
-    href: "/field-ops",
-    allowedRoles: COACH_PLUS_ROLES,
-    links: [
-      { href: "/field-ops", label: "FieldOps" },
-      { href: "/field-ops/facilities", label: "Facilities" },
-      { href: "/field-ops/bookings", label: "Bookings" },
-      { href: "/field-ops/resources", label: "ResourceOps" },
-      { href: "/field-ops/reports", label: "Reports", disabled: true },
+    allowedRoles: FIELDOPS_RESOURCEOPS_ROLES,
+    items: [
+      activeItem({
+        key: "FIELDOPS_DASHBOARD",
+        label: "FieldOps",
+        href: "/field-ops",
+        moduleKey: "fieldOps",
+      }),
+      activeItem({
+        key: "FIELDOPS_FACILITIES",
+        label: "Facilities",
+        href: "/field-ops/facilities",
+        moduleKey: "fieldOps",
+      }),
+      activeItem({
+        key: "FIELDOPS_BOOKINGS",
+        label: "Bookings",
+        href: "/field-ops/bookings",
+        moduleKey: "fieldOps",
+      }),
+      activeItem({
+        key: "RESOURCEOPS_RESOURCES",
+        label: "Resources",
+        href: "/field-ops/resources",
+        moduleKey: "resourceOps",
+      }),
+      plannedItem({
+        key: "RESOURCEOPS_REQUESTS",
+        label: "Resource Requests",
+        href: "/field-ops/resource-requests",
+        moduleKey: "resourceOps",
+        plannedReason: "Resource requests route is not implemented yet.",
+      }),
+      plannedItem({
+        key: "RESOURCEOPS_REPORTS",
+        label: "Resource Reports",
+        href: "/field-ops/reports",
+        moduleKey: "resourceOps",
+        plannedReason: "Resource reports route is not implemented yet.",
+      }),
     ],
   },
   {
-    key: "gear-ops",
-    moduleKey: "gearOps",
+    key: "GEAROPS",
     label: "GearOps",
-    href: "/gear-ops",
-    allowedRoles: COACH_PLUS_ROLES,
-    links: [
-      { href: "/gear-ops", label: "GearOps" },
-      { href: "/gear-ops/categories", label: "Categories" },
-      { href: "/gear-ops/items", label: "Items" },
-      { href: "/gear-ops/audits", label: "Audits" },
-      { href: "/gear-ops/reports", label: "Reports" },
+    allowedRoles: GEAROPS_ROLES,
+    items: [
+      activeItem({
+        key: "GEAR_DASHBOARD",
+        label: "Gear Dashboard",
+        href: "/gear-ops",
+        moduleKey: "gearOps",
+      }),
+      activeItem({
+        key: "GEAR_ITEMS",
+        label: "Items",
+        href: "/gear-ops/items",
+        moduleKey: "gearOps",
+      }),
+      plannedItem({
+        key: "GEAR_CHECKOUTS_ASSIGNMENTS",
+        label: "Checkouts / Assignments",
+        href: "/gear-ops/checkouts",
+        moduleKey: "gearOps",
+        plannedReason: "Combined checkouts and assignments route is not implemented yet.",
+      }),
+      plannedItem({
+        key: "GEAR_MAINTENANCE",
+        label: "Maintenance",
+        href: "/gear-ops/maintenance",
+        moduleKey: "gearOps",
+        plannedReason: "Maintenance list route is not implemented yet.",
+      }),
+      activeItem({
+        key: "GEAR_CATEGORIES",
+        label: "Categories",
+        href: "/gear-ops/categories",
+        moduleKey: "gearOps",
+      }),
+      activeItem({
+        key: "GEAR_AUDITS",
+        label: "Audits",
+        href: "/gear-ops/audits",
+        moduleKey: "gearOps",
+      }),
     ],
   },
   {
-    key: "admin",
-    moduleKey: "admin",
-    label: "Admin / Settings",
-    href: "/prompt-assignments",
-    allowedRoles: ["ADMIN", "PROGRAM_MANAGER"],
-    links: [
-      { href: "/prompt-assignments", label: "Prompt Assignments" },
-      { href: "/admin/roles", label: "Roles & Permissions" },
-      { href: "/admin/settings", label: "Settings" },
-      { href: "/prompts", label: "Prompts / Templates" },
-      { href: "/reports", label: "Global Reports" },
-      { href: "/admin/audit", label: "Audit / History" },
+    key: "ADMIN",
+    label: "Admin",
+    allowedRoles: ADMIN_ROLES,
+    items: [
+      plannedItem({
+        key: "GLOBAL_DASHBOARD",
+        label: "Global Dashboard",
+        href: "/admin/dashboard",
+        moduleKey: "admin",
+        plannedReason: "Global dashboard route is not implemented yet.",
+      }),
+      activeItem({
+        key: "ROLES_PERMISSIONS",
+        label: "Roles & Permissions",
+        href: "/admin/roles",
+        moduleKey: "admin",
+      }),
+      activeItem({
+        key: "ADMIN_SETTINGS",
+        label: "Settings",
+        href: "/admin/settings",
+        moduleKey: "admin",
+      }),
+      activeItem({
+        key: "PROMPTS_TEMPLATES",
+        label: "Prompts / Templates",
+        href: "/prompts",
+        moduleKey: "admin",
+      }),
+      plannedItem({
+        key: "GLOBAL_REPORTS",
+        label: "Global Reports",
+        href: "/admin/reports",
+        moduleKey: "admin",
+        plannedReason: "Global reports route is not implemented yet.",
+      }),
+      activeItem({
+        key: "AUDIT_HISTORY",
+        label: "Audit / History",
+        href: "/admin/audit",
+        moduleKey: "admin",
+      }),
     ],
   },
 ] as const;

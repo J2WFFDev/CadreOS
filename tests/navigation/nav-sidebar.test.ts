@@ -1,7 +1,14 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import type { CurrentUser } from "../../lib/auth/current-user-types";
+import type { AppRole, CurrentUser } from "../../lib/auth/current-user-types";
+import { CADREOS_NAV_GROUPS } from "../../lib/navigation/cadreos-nav";
+import {
+  APPROVED_CADREOS_GROUP_ITEMS,
+  APPROVED_CADREOS_GROUP_ORDER,
+  APPROVED_GROUP_VISIBILITY,
+  validateCadreosNavTaxonomy,
+} from "../../lib/navigation/cadreos-nav-validation";
 import {
   NAV_SIDEBAR_GROUPS,
   getNavSidebarGroupsForUser,
@@ -9,30 +16,49 @@ import {
   isNavSidebarLinkActive,
 } from "../../lib/nav-sidebar";
 
-test("sidebar groups all have labels and child links", () => {
+function buildUser(role: AppRole): CurrentUser {
+  return {
+    id: `dev-${role.toLowerCase()}`,
+    name: `Dev ${role}`,
+    roles: [role],
+    activeRole: role,
+    isDevPersona: true,
+  };
+}
+
+test("canonical sidebar taxonomy matches the approved v1 structure", () => {
+  assert.deepEqual(
+    CADREOS_NAV_GROUPS.map((group) => group.key),
+    APPROVED_CADREOS_GROUP_ORDER,
+  );
+
+  for (const group of CADREOS_NAV_GROUPS) {
+    assert.deepEqual(
+      group.items.map((item) => item.key),
+      APPROVED_CADREOS_GROUP_ITEMS[group.key as keyof typeof APPROVED_CADREOS_GROUP_ITEMS],
+    );
+  }
+
+  assert.deepEqual(validateCadreosNavTaxonomy(), []);
+});
+
+test("sidebar groups all have labels and ordered child items", () => {
   assert.ok(NAV_SIDEBAR_GROUPS.length > 1);
 
   for (const group of NAV_SIDEBAR_GROUPS) {
     assert.ok(group.label.length > 0, "Group missing label");
-    assert.ok(group.links.length > 0, `Group "${group.label}" has no links`);
+    assert.ok(group.items.length > 0, `Group "${group.label}" has no items`);
   }
 });
 
-test("all groups have a landing href", () => {
-  for (const group of NAV_SIDEBAR_GROUPS) {
-    assert.ok(typeof group.href === "string" && group.href.startsWith("/"), `Group "${group.label}" missing href`);
+test("planned items stay non-clickable and preserve their future routes", () => {
+  const plannedItems = NAV_SIDEBAR_GROUPS.flatMap((group) => group.items.filter((item) => item.status === "planned"));
+
+  assert.ok(plannedItems.length > 0);
+  for (const item of plannedItems) {
+    assert.equal(item.disabled, true);
+    assert.ok(item.href.startsWith("/"));
   }
-});
-
-test("sidebar groups contain required child hrefs", () => {
-  const hrefs = NAV_SIDEBAR_GROUPS.flatMap((group) => group.links.map((link) => link.href));
-
-  assert.ok(hrefs.includes("/entries/inbox"));
-  assert.ok(hrefs.includes("/entries"));
-  assert.ok(hrefs.includes("/notifications"));
-  assert.ok(hrefs.includes("/decisions"));
-  assert.ok(hrefs.includes("/prompt-assignments"));
-  assert.equal(hrefs.includes("/account"), false);
 });
 
 test("entry inbox route does not activate all entries root link", () => {
@@ -41,12 +67,12 @@ test("entry inbox route does not activate all entries root link", () => {
 });
 
 test("nested routes activate their parent link except dashboard", () => {
-  assert.equal(isNavSidebarLinkActive("/account/link-person", "/account"), true);
+  assert.equal(isNavSidebarLinkActive("/gear-ops/items/item-1", "/gear-ops/items"), true);
   assert.equal(isNavSidebarLinkActive("/dashboard/metrics", "/dashboard"), false);
 });
 
 test("isNavSidebarGroupActive: active when a child route matches", () => {
-  const gearOpsGroup = NAV_SIDEBAR_GROUPS.find((g) => g.label === "GearOps");
+  const gearOpsGroup = NAV_SIDEBAR_GROUPS.find((group) => group.key === "GEAROPS");
   assert.ok(gearOpsGroup);
 
   assert.equal(isNavSidebarGroupActive("/gear-ops", gearOpsGroup), true);
@@ -54,46 +80,27 @@ test("isNavSidebarGroupActive: active when a child route matches", () => {
   assert.equal(isNavSidebarGroupActive("/programs", gearOpsGroup), false);
 });
 
-test("isNavSidebarGroupActive: Entry active on entries but not programs", () => {
-  const entryGroup = NAV_SIDEBAR_GROUPS.find((g) => g.label === "Entry");
-  assert.ok(entryGroup);
-
-  assert.equal(isNavSidebarGroupActive("/entries", entryGroup), true);
-  assert.equal(isNavSidebarGroupActive("/entries/inbox", entryGroup), true);
-  assert.equal(isNavSidebarGroupActive("/programs", entryGroup), false);
+test("role-based group visibility matches the approved persona matrix", () => {
+  for (const [role, expectedGroupKeys] of Object.entries(APPROVED_GROUP_VISIBILITY) as Array<[AppRole, readonly string[]]>) {
+    assert.deepEqual(
+      getNavSidebarGroupsForUser(buildUser(role)).map((group) => group.key),
+      expectedGroupKeys,
+      `Unexpected group visibility for ${role}`,
+    );
+  }
 });
 
-test("limited viewer only gets dashboard/home links", () => {
-  const limitedViewer: CurrentUser = {
-    id: "dev-limited-viewer-001",
-    name: "Lena Limited",
-    roles: ["LIMITED_VIEWER"],
-    activeRole: "LIMITED_VIEWER",
-    isDevPersona: true,
-  };
-
-  const groups = getNavSidebarGroupsForUser(limitedViewer);
+test("limited viewer only sees the home group", () => {
+  const groups = getNavSidebarGroupsForUser(buildUser("LIMITED_VIEWER"));
 
   assert.equal(groups.length, 1);
-  assert.equal(groups[0]?.label, "Home");
+  assert.equal(groups[0]?.key, "HOME");
 });
 
-test("coach gets member, entry, journal, field/resource, and gear modules", () => {
-  const coach: CurrentUser = {
-    id: "dev-coach-001",
-    name: "Casey Coach",
-    roles: ["COACH"],
-    activeRole: "COACH",
-    isDevPersona: true,
-  };
-
-  const labels = getNavSidebarGroupsForUser(coach).map((group) => group.label);
-
-  assert.ok(labels.includes("Home"));
-  assert.ok(labels.includes("MemberOps"));
-  assert.ok(labels.includes("Entry"));
-  assert.ok(labels.includes("Journal"));
-  assert.ok(labels.includes("FieldOps / ResourceOps"));
-  assert.ok(labels.includes("GearOps"));
-  assert.equal(labels.includes("Admin / Settings"), false);
+test("guardian and athlete can see GearOps without admin navigation", () => {
+  for (const role of ["GUARDIAN", "ATHLETE"] as const) {
+    const keys = getNavSidebarGroupsForUser(buildUser(role)).map((group) => group.key);
+    assert.ok(keys.includes("GEAROPS"));
+    assert.equal(keys.includes("ADMIN"), false);
+  }
 });

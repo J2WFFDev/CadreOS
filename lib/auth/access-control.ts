@@ -154,6 +154,10 @@ export function canAccessModule(user: CurrentUser | null, moduleKey: ModuleKey):
   return hasRole(user, MODULE_ACCESS_MAP[moduleKey].allowedRoles);
 }
 
+export function canAccessNavItem(user: CurrentUser | null, allowedRoles: readonly AppRole[]): boolean {
+  return hasRole(user, allowedRoles);
+}
+
 export function canPerformAction(user: CurrentUser | null, actionKey: ActionKey): boolean {
   const allowedRoles = ACTION_ALLOWED_ROLES[actionKey] ?? [];
   return hasRole(user, allowedRoles);
