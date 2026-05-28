@@ -1,7 +1,16 @@
+import {
+  GearCheckoutStatus,
+  GearMaintenanceType,
+  Prisma,
+} from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { buildGearCheckoutReturnNotes } from "@/lib/gear-checkout-usage";
+import {
+  buildGearCheckoutReturnNotes,
+  deriveGearItemCheckinUpdate,
+  isMaintenanceConditionOnReturn,
+} from "@/lib/gear-checkout-usage";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   gearCheckoutWorkflowSchema,
@@ -219,32 +228,114 @@ export async function POST(
       }
     }
 
-    const updated = await db.gearCheckout.updateMany({
-      where: {
-        id: checkoutId,
-        gearItemId: itemId,
-        organizationId: organizationId,
-      },
-      data: {
-        status: parsed.data.status,
-        checkedOutById: parsed.data.checkedOutById,
-        issuedById: parsed.data.issuedById,
-        eventId: parsed.data.eventId,
-        checkedOutAt: parsed.data.checkedOutAt,
-        expectedReturnAt: parsed.data.expectedReturnAt,
-        returnedAt: parsed.data.returnedAt,
-        returnedById: parsed.data.returnedById,
-        receivedById: parsed.data.receivedById,
-        conditionOnReturn: parsed.data.conditionOnReturn,
-        purposeNotes: parsed.data.purposeNotes,
-        returnNotes: buildGearCheckoutReturnNotes({
-          usageLog: parsed.data.usageLog,
-          returnNotes: parsed.data.returnNotes,
-        }),
-      },
+    const combinedReturnNotes = buildGearCheckoutReturnNotes({
+      usageLog: parsed.data.usageLog,
+      returnNotes: parsed.data.returnNotes,
     });
 
-    if (updated.count === 0) {
+    const updated = await db.$transaction(async (tx) => {
+      const existingCheckout = await tx.gearCheckout.findFirst({
+        where: {
+          id: checkoutId,
+          gearItemId: itemId,
+          organizationId: organizationId,
+        },
+        select: {
+          id: true,
+          status: true,
+          conditionOnReturn: true,
+          gearItem: {
+            select: {
+              conditionStatus: true,
+              lifecycleStatus: true,
+            },
+          },
+        },
+      });
+
+      if (!existingCheckout) {
+        return { found: false };
+      }
+
+      await tx.gearCheckout.update({
+        where: { id: existingCheckout.id },
+        data: {
+          status: parsed.data.status,
+          checkedOutById: parsed.data.checkedOutById,
+          issuedById: parsed.data.issuedById,
+          eventId: parsed.data.eventId,
+          checkedOutAt: parsed.data.checkedOutAt,
+          expectedReturnAt: parsed.data.expectedReturnAt,
+          returnedAt: parsed.data.returnedAt,
+          returnedById: parsed.data.returnedById,
+          receivedById: parsed.data.receivedById,
+          conditionOnReturn: parsed.data.conditionOnReturn,
+          purposeNotes: parsed.data.purposeNotes,
+          returnNotes: combinedReturnNotes,
+        },
+      });
+
+      const itemUpdate = deriveGearItemCheckinUpdate({
+        checkoutStatus: parsed.data.status,
+        conditionOnReturn: parsed.data.conditionOnReturn,
+        currentLifecycleStatus: existingCheckout.gearItem.lifecycleStatus,
+      });
+
+      const gearItemData: Prisma.GearItemUpdateInput = {};
+
+      if (itemUpdate.conditionStatus) {
+        gearItemData.conditionStatus = itemUpdate.conditionStatus;
+      }
+
+      if (itemUpdate.readinessState) {
+        gearItemData.readinessState = itemUpdate.readinessState;
+      }
+
+      if (itemUpdate.lifecycleStatus) {
+        gearItemData.lifecycleStatus = itemUpdate.lifecycleStatus;
+      }
+
+      if (Object.keys(gearItemData).length > 0) {
+        await tx.gearItem.update({
+          where: { id: itemId },
+          data: gearItemData,
+        });
+      }
+
+      const wasAlreadyReturnedAsDamaged =
+        existingCheckout.status === GearCheckoutStatus.RETURNED &&
+        isMaintenanceConditionOnReturn(existingCheckout.conditionOnReturn);
+
+      const maintenanceActorPersonId = parsed.data.receivedById ?? parsed.data.returnedById;
+      const maintenancePerformedAt = parsed.data.returnedAt;
+      const maintenanceConditionAfter = parsed.data.conditionOnReturn;
+
+      if (
+        itemUpdate.needsMaintenanceFollowUp &&
+        !wasAlreadyReturnedAsDamaged &&
+        maintenanceActorPersonId &&
+        maintenancePerformedAt &&
+        maintenanceConditionAfter
+      ) {
+        await tx.gearMaintenanceLog.create({
+          data: {
+            organizationId: organizationId,
+            gearItemId: itemId,
+            performedByPersonId: maintenanceActorPersonId,
+            maintenanceType: GearMaintenanceType.INSPECTION,
+            performedAt: maintenancePerformedAt,
+            conditionBefore: existingCheckout.gearItem.conditionStatus,
+            conditionAfter: maintenanceConditionAfter,
+            notes:
+              combinedReturnNotes ?? "Flagged during check-in due to return condition.",
+          },
+        });
+      }
+
+      return { found: true };
+    });
+
+    if (!updated.found) {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, itemId, checkoutId, {
           values,

@@ -1,3 +1,10 @@
+import {
+  GearCheckoutStatus,
+  GearConditionStatus,
+  GearItemLifecycleStatus,
+  InventoryReadinessState,
+} from "@prisma/client";
+
 const USAGE_LOG_PREFIX = "Usage log:";
 
 export function buildGearCheckoutReturnNotes(input: {
@@ -43,4 +50,49 @@ export function parseGearCheckoutReturnNotes(returnNotes: string | null | undefi
 export function buildGearCheckoutUsageHistoryLabel(usageLog: string | null | undefined): string | null {
   const normalized = usageLog?.trim() ?? "";
   return normalized.length > 0 ? `${USAGE_LOG_PREFIX} ${normalized}` : null;
+}
+
+export function isMaintenanceConditionOnReturn(conditionOnReturn: GearConditionStatus | null): boolean {
+  return conditionOnReturn === GearConditionStatus.POOR || conditionOnReturn === GearConditionStatus.DAMAGED;
+}
+
+export function deriveGearItemCheckinUpdate(input: {
+  checkoutStatus: GearCheckoutStatus;
+  conditionOnReturn: GearConditionStatus | null;
+  currentLifecycleStatus: GearItemLifecycleStatus;
+}): {
+  conditionStatus?: GearConditionStatus;
+  readinessState?: InventoryReadinessState;
+  lifecycleStatus?: GearItemLifecycleStatus;
+  needsMaintenanceFollowUp: boolean;
+} {
+  if (input.checkoutStatus !== GearCheckoutStatus.RETURNED) {
+    return { needsMaintenanceFollowUp: false };
+  }
+
+  const updates: {
+    conditionStatus?: GearConditionStatus;
+    readinessState?: InventoryReadinessState;
+    lifecycleStatus?: GearItemLifecycleStatus;
+    needsMaintenanceFollowUp: boolean;
+  } = {
+    needsMaintenanceFollowUp: false,
+  };
+
+  if (input.conditionOnReturn) {
+    updates.conditionStatus = input.conditionOnReturn;
+  }
+
+  if (isMaintenanceConditionOnReturn(input.conditionOnReturn)) {
+    updates.readinessState = InventoryReadinessState.MAINTENANCE_REQUIRED;
+    updates.lifecycleStatus = GearItemLifecycleStatus.MAINTENANCE;
+    updates.needsMaintenanceFollowUp = true;
+    return updates;
+  }
+
+  if (input.currentLifecycleStatus === GearItemLifecycleStatus.CHECKED_OUT) {
+    updates.lifecycleStatus = GearItemLifecycleStatus.ACTIVE;
+  }
+
+  return updates;
 }
