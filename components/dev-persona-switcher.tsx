@@ -4,6 +4,8 @@ import { useTransition } from "react";
 
 import { DEV_PERSONA_COOKIE_NAME, DEV_PERSONAS } from "@/lib/auth/devPersonas";
 
+const PERSONA_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+
 export function DevPersonaSwitcher({ currentPersonaId }: { currentPersonaId?: string | null }) {
   const [isPending, startTransition] = useTransition();
 
@@ -19,8 +21,7 @@ export function DevPersonaSwitcher({ currentPersonaId }: { currentPersonaId?: st
           const nextValue = event.currentTarget.value;
 
           startTransition(() => {
-            const maxAge = 60 * 60 * 24 * 30;
-            document.cookie = `${DEV_PERSONA_COOKIE_NAME}=${encodeURIComponent(nextValue)}; path=/; max-age=${maxAge}; samesite=lax`;
+            document.cookie = `${DEV_PERSONA_COOKIE_NAME}=${encodeURIComponent(nextValue)}; path=/; max-age=${PERSONA_COOKIE_MAX_AGE_SECONDS}; samesite=strict`;
             window.location.reload();
           });
         }}

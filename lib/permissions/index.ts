@@ -67,6 +67,7 @@ type SupportedAction =
   | "workflow.delete";
 
 type PermissionReason =
+  | "ALLOWED"
   | "UNAUTHENTICATED"
   | "ORGANIZATION_UNAVAILABLE"
   | "ORGANIZATION_INACTIVE"
@@ -489,7 +490,7 @@ async function resolvePermissionDecision(input: PermissionCheckInput): Promise<P
 
       return {
         allowed: true,
-        reason: "INSUFFICIENT_ROLE",
+        reason: "ALLOWED",
         message: "",
       };
     }
@@ -616,7 +617,7 @@ async function resolvePermissionDecision(input: PermissionCheckInput): Promise<P
 
   return {
     allowed: true,
-    reason: "INSUFFICIENT_ROLE",
+    reason: "ALLOWED",
     message: "",
   };
 }
