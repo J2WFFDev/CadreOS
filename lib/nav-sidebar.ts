@@ -77,8 +77,11 @@ export const NAV_SIDEBAR_GROUPS: readonly NavSidebarGroup[] = [
     // TODO: Replace with /admin when a dedicated AdminOps landing page is created.
     href: "/reports",
     links: [
+      { href: "/admin/roles", label: "Roles & Permissions" },
+      { href: "/admin/settings", label: "Settings" },
+      { href: "/prompts", label: "Prompts / Templates" },
       { href: "/reports", label: "Global Reports" },
-      { href: "/prompt-assignments", label: "Prompt Assignments" },
+      { href: "/admin/audit", label: "Audit / History" },
     ],
   },
 ] as const;
