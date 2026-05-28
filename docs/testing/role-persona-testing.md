@@ -21,6 +21,25 @@ Guard behavior:
 - Production defaults to disabled
 - Production only enables if `ENABLE_DEV_PERSONAS_IN_PRODUCTION=true` is explicitly set
 
+### Enabling on a Vercel production deployment
+
+Both variables are required. A redeploy is needed after changing either one:
+
+```bash
+NEXT_PUBLIC_ENABLE_DEV_PERSONAS=true
+ENABLE_DEV_PERSONAS_IN_PRODUCTION=true
+```
+
+With only `NEXT_PUBLIC_ENABLE_DEV_PERSONAS=true` set, the switcher will not appear.
+The dashboard header will show a **Dev Persona: blocked** badge as a diagnostic indicator.
+Call `getDevPersonaFeatureStatus()` (from `lib/auth/devPersonas.ts`) to get a structured
+status object with `nextPublicEnabled`, `productionOverrideEnabled`, `nodeEnv`, `enabled`,
+and `reason` fields.
+
+> **Warning:** Only enable `ENABLE_DEV_PERSONAS_IN_PRODUCTION=true` while the app is private
+> or in a controlled testing deployment. This feature bypasses real Clerk authentication and
+> must never be left enabled on a public-facing production instance.
+
 ## How to switch personas
 
 1. Start the app in development mode.

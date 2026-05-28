@@ -100,18 +100,60 @@ export const DEV_PERSONAS: readonly DevPersona[] = [
   },
 ] as const;
 
+export type DevPersonaFeatureStatus = {
+  /** True when NEXT_PUBLIC_ENABLE_DEV_PERSONAS=true */
+  nextPublicEnabled: boolean;
+  /** True when ENABLE_DEV_PERSONAS_IN_PRODUCTION=true */
+  productionOverrideEnabled: boolean;
+  /** Value of NODE_ENV at runtime */
+  nodeEnv: string;
+  /** Whether the switcher is active for the current runtime */
+  enabled: boolean;
+  /**
+   * Human-readable reason for the current state. One of:
+   * - "enabled"
+   * - "NEXT_PUBLIC_ENABLE_DEV_PERSONAS is not true"
+   * - "production requires ENABLE_DEV_PERSONAS_IN_PRODUCTION=true"
+   */
+  reason: string;
+};
+
+export function getDevPersonaFeatureStatus(): DevPersonaFeatureStatus {
+  const nextPublicEnabled = process.env.NEXT_PUBLIC_ENABLE_DEV_PERSONAS === "true";
+  const productionOverrideEnabled = process.env.ENABLE_DEV_PERSONAS_IN_PRODUCTION === "true";
+  const nodeEnv = process.env.NODE_ENV ?? "development";
+
+  if (!nextPublicEnabled) {
+    return {
+      nextPublicEnabled,
+      productionOverrideEnabled,
+      nodeEnv,
+      enabled: false,
+      reason: "NEXT_PUBLIC_ENABLE_DEV_PERSONAS is not true",
+    };
+  }
+
+  if (nodeEnv === "production" && !productionOverrideEnabled) {
+    return {
+      nextPublicEnabled,
+      productionOverrideEnabled,
+      nodeEnv,
+      enabled: false,
+      reason: "production requires ENABLE_DEV_PERSONAS_IN_PRODUCTION=true",
+    };
+  }
+
+  return {
+    nextPublicEnabled,
+    productionOverrideEnabled,
+    nodeEnv,
+    enabled: true,
+    reason: "enabled",
+  };
+}
+
 export function isDevPersonasEnabled(): boolean {
-  if (process.env.NEXT_PUBLIC_ENABLE_DEV_PERSONAS !== "true") {
-    return false;
-  }
-
-  const allowInProduction = process.env.ENABLE_DEV_PERSONAS_IN_PRODUCTION === "true";
-
-  if (process.env.NODE_ENV === "production" && !allowInProduction) {
-    return false;
-  }
-
-  return true;
+  return getDevPersonaFeatureStatus().enabled;
 }
 
 export function getDevPersonaById(id: string | null | undefined): DevPersona | null {

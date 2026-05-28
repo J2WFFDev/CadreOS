@@ -64,6 +64,24 @@ The badge will use those when app-specific values are not present.
 - Use `docs/testing/role-navigation-tests.md` to run NAV-006 checks.
 - This is test tooling only and must not be treated as production authorization.
 
+### Showing the switcher on a Vercel production deployment
+
+Both environment variables are required and a redeploy is needed after changing either:
+
+```bash
+NEXT_PUBLIC_ENABLE_DEV_PERSONAS=true
+ENABLE_DEV_PERSONAS_IN_PRODUCTION=true
+```
+
+With only `NEXT_PUBLIC_ENABLE_DEV_PERSONAS=true` set in a production environment, the
+switcher will not appear. The header will instead display a **Dev Persona: blocked** badge
+as a diagnostic so it is easy to tell that the env var is present but the production guard
+is active. Check `getDevPersonaFeatureStatus()` for the specific reason string.
+
+> **Warning:** Only enable `ENABLE_DEV_PERSONAS_IN_PRODUCTION=true` while the app is private
+> or in a controlled testing deployment. This feature bypasses real Clerk authentication and
+> must never be left enabled on a public-facing production instance.
+
 ## Releases
 - `.github/workflows/release.yml` automatically bumps the repo version on every push to `main`, commits the new `package.json` / `package-lock.json` version, tags it as `vX.Y.Z`, and creates a GitHub release.
 - Preferred labels for merged PRs:
