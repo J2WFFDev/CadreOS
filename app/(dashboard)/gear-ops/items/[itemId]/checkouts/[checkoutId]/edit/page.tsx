@@ -4,7 +4,9 @@ import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { FormActions } from "@/components/dashboard/form-actions";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
+import { resolveActorRoleContext } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { canEditGearCheckoutCustodyPeople } from "@/lib/gear-checkout-custody";
 import { parseGearCheckoutReturnNotes } from "@/lib/gear-checkout-usage";
 import { formatGearOpsDateTime, formatGearOpsEnum } from "@/lib/gear-ops";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
@@ -72,6 +74,14 @@ export default async function EditGearCheckoutPage({
       </section>
     );
   }
+
+  const actorRoleContext = await resolveActorRoleContext({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const canEditCustodyPeople = canEditGearCheckoutCustodyPeople({
+    isOrganizationAdmin: actorRoleContext.isOrganizationAdmin,
+  });
 
   let item: { id: string; name: string } | null = null;
   let checkout: {
@@ -261,7 +271,13 @@ export default async function EditGearCheckoutPage({
             <label htmlFor="issuedById" className="text-sm font-medium">
               Issued by person
             </label>
-            <select id="issuedById" name="issuedById" defaultValue={issuedById} className="w-full rounded-md border px-3 py-2 text-sm">
+            <select
+              id="issuedById"
+              name="issuedById"
+              defaultValue={issuedById}
+              disabled={!canEditCustodyPeople}
+              className="w-full rounded-md border px-3 py-2 text-sm"
+            >
               <option value="">Select issuer</option>
               {people.map((person) => (
                 <option key={person.id} value={person.id}>
@@ -269,6 +285,12 @@ export default async function EditGearCheckoutPage({
                 </option>
               ))}
             </select>
+            {!canEditCustodyPeople ? <input type="hidden" name="issuedById" value={issuedById} /> : null}
+            {!canEditCustodyPeople ? (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Organization admins can reassign issuer attribution.
+              </p>
+            ) : null}
             {readSearchParam(resolvedSearchParams, "issuedByIdError") ? (
               <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "issuedByIdError")}</p>
             ) : null}
@@ -397,6 +419,7 @@ export default async function EditGearCheckoutPage({
               id="receivedById"
               name="receivedById"
               defaultValue={receivedById}
+              disabled={!canEditCustodyPeople}
               className="w-full rounded-md border px-3 py-2 text-sm"
             >
               <option value="">No receiving person</option>
@@ -406,6 +429,12 @@ export default async function EditGearCheckoutPage({
                 </option>
               ))}
             </select>
+            {!canEditCustodyPeople ? <input type="hidden" name="receivedById" value={receivedById} /> : null}
+            {!canEditCustodyPeople ? (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Organization admins can edit receiving attribution.
+              </p>
+            ) : null}
             {readSearchParam(resolvedSearchParams, "receivedByIdError") ? (
               <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "receivedByIdError")}</p>
             ) : null}
