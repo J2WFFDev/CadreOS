@@ -139,6 +139,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     await db.entry.update({
       where: { id: entry.id },
       data: updateData,
+      select: { id: true },
     });
 
     console.log("[entries.update] db.entry.update succeeded");
@@ -255,4 +256,3 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(url, 303);
   }
 }
-

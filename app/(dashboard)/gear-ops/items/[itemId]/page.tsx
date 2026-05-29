@@ -7,6 +7,7 @@ import {
   GearConditionStatus,
   GearInventoryType,
   GearItemLifecycleStatus,
+  Prisma,
   type GearMaintenanceType,
   type InventoryMovementType,
   type InventoryReadinessState,
@@ -212,6 +213,88 @@ export default async function GearOpsItemDetailsPage({
     | null = null;
   let queryFailed = false;
   let queryErrorMessage = "Unable to load GearOps item details right now. Please try again later.";
+  let assetIdUnavailable = false;
+  const gearItemDetailSelect = Prisma.validator<Prisma.GearItemSelect>()({
+    id: true,
+    name: true,
+    inventoryType: true,
+    lifecycleStatus: true,
+    conditionStatus: true,
+    readinessState: true,
+    ownershipType: true,
+    barcodeValue: true,
+    sku: true,
+    serialNumber: true,
+    quantityOnHand: true,
+    quantityMin: true,
+    notes: true,
+    location: { select: { id: true, name: true, locationCode: true } },
+    category: { select: { id: true, name: true, inventoryType: true } },
+    program: { select: { id: true, name: true } },
+    assignments: {
+      select: {
+        id: true,
+        status: true,
+        assignedAt: true,
+        expectedReturnAt: true,
+        returnedAt: true,
+        notes: true,
+        assignedBy: { select: { id: true, firstName: true, lastName: true } },
+        assignedTo: { select: { id: true, firstName: true, lastName: true } },
+        assignedTeam: { select: { id: true, name: true, program: { select: { id: true, name: true } } } },
+        assignedEvent: { select: { id: true, title: true, program: { select: { id: true, name: true } } } },
+      },
+      orderBy: [{ assignedAt: "desc" }, { createdAt: "desc" }],
+      take: 8,
+    },
+    checkouts: {
+      select: {
+        id: true,
+        status: true,
+        checkedOutAt: true,
+        expectedReturnAt: true,
+        returnedAt: true,
+        purposeNotes: true,
+        returnNotes: true,
+        conditionOnReturn: true,
+        checkedOutBy: { select: { id: true, firstName: true, lastName: true } },
+        issuedBy: { select: { id: true, firstName: true, lastName: true } },
+        returnedBy: { select: { id: true, firstName: true, lastName: true } },
+        receivedBy: { select: { id: true, firstName: true, lastName: true } },
+        event: { select: { id: true, title: true, team: { select: { id: true, name: true } }, program: { select: { id: true, name: true } } } },
+      },
+      orderBy: [{ checkedOutAt: "desc" }, { createdAt: "desc" }],
+      take: 8,
+    },
+    maintenanceLogs: {
+      select: {
+        id: true,
+        maintenanceType: true,
+        performedAt: true,
+        createdAt: true,
+        conditionBefore: true,
+        conditionAfter: true,
+        notes: true,
+        performedBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: [{ performedAt: "desc" }, { createdAt: "desc" }],
+      take: 12,
+    },
+    consumableTransactions: {
+      select: {
+        id: true,
+        transactionType: true,
+        quantityDelta: true,
+        recordedAt: true,
+        createdAt: true,
+        notes: true,
+        recordedBy: { select: { id: true, firstName: true, lastName: true } },
+        event: { select: { id: true, title: true, team: { select: { id: true, name: true } }, program: { select: { id: true, name: true } } } },
+      },
+      orderBy: [{ recordedAt: "desc" }, { createdAt: "desc" }],
+      take: 12,
+    },
+  });
 
   try {
     item = await db.gearItem.findFirst({
@@ -220,90 +303,40 @@ export default async function GearOpsItemDetailsPage({
         AND: [access.where],
       },
       select: {
-        id: true,
-        name: true,
         assetId: true,
-        inventoryType: true,
-        lifecycleStatus: true,
-        conditionStatus: true,
-        readinessState: true,
-        ownershipType: true,
-        barcodeValue: true,
-        sku: true,
-        serialNumber: true,
-        quantityOnHand: true,
-        quantityMin: true,
-        notes: true,
-        location: { select: { id: true, name: true, locationCode: true } },
-        category: { select: { id: true, name: true, inventoryType: true } },
-        program: { select: { id: true, name: true } },
-        assignments: {
-          select: {
-            id: true,
-            status: true,
-            assignedAt: true,
-            expectedReturnAt: true,
-            returnedAt: true,
-            notes: true,
-            assignedBy: { select: { id: true, firstName: true, lastName: true } },
-            assignedTo: { select: { id: true, firstName: true, lastName: true } },
-            assignedTeam: { select: { id: true, name: true, program: { select: { id: true, name: true } } } },
-            assignedEvent: { select: { id: true, title: true, program: { select: { id: true, name: true } } } },
-          },
-          orderBy: [{ assignedAt: "desc" }, { createdAt: "desc" }],
-          take: 8,
-        },
-        checkouts: {
-          select: {
-            id: true,
-            status: true,
-            checkedOutAt: true,
-            expectedReturnAt: true,
-            returnedAt: true,
-            purposeNotes: true,
-            returnNotes: true,
-            conditionOnReturn: true,
-            checkedOutBy: { select: { id: true, firstName: true, lastName: true } },
-            issuedBy: { select: { id: true, firstName: true, lastName: true } },
-            returnedBy: { select: { id: true, firstName: true, lastName: true } },
-            receivedBy: { select: { id: true, firstName: true, lastName: true } },
-            event: { select: { id: true, title: true, team: { select: { id: true, name: true } }, program: { select: { id: true, name: true } } } },
-          },
-          orderBy: [{ checkedOutAt: "desc" }, { createdAt: "desc" }],
-          take: 8,
-        },
-        maintenanceLogs: {
-          select: {
-            id: true,
-            maintenanceType: true,
-            performedAt: true,
-            createdAt: true,
-            conditionBefore: true,
-            conditionAfter: true,
-            notes: true,
-            performedBy: { select: { id: true, firstName: true, lastName: true } },
-          },
-          orderBy: [{ performedAt: "desc" }, { createdAt: "desc" }],
-          take: 12,
-        },
-        consumableTransactions: {
-          select: {
-            id: true,
-            transactionType: true,
-            quantityDelta: true,
-            recordedAt: true,
-            createdAt: true,
-            notes: true,
-            recordedBy: { select: { id: true, firstName: true, lastName: true } },
-            event: { select: { id: true, title: true, team: { select: { id: true, name: true } }, program: { select: { id: true, name: true } } } },
-          },
-          orderBy: [{ recordedAt: "desc" }, { createdAt: "desc" }],
-          take: 12,
-        },
+        ...gearItemDetailSelect,
       },
     });
   } catch (error) {
     queryFailed = true;
+    const isMissingAssetIdColumn =
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2022" &&
+      (error.meta as Record<string, unknown> | undefined)?.column === "GearItem.assetId";
+    if (isSchemaUnavailableError(error) && isMissingAssetIdColumn) {
+      assetIdUnavailable = true;
+      try {
+        const fallbackItem = await db.gearItem.findFirst({
+          where: {
+            id: itemId,
+            AND: [access.where],
+          },
+          select: gearItemDetailSelect,
+        });
+        if (fallbackItem) {
+          item = { ...fallbackItem, assetId: null };
+          queryFailed = false;
+        }
+      } catch (fallbackError) {
+        console.error("[gear-ops.items.detail.page] Fallback item detail query failed", {
+          organizationId: scope.organizationId,
+          actorPersonId: scope.auth.personId,
+          schemaDetail: describeSchemaUnavailableError(fallbackError),
+          moduleQuery: "gearItem.findFirst.fallbackWithoutAssetId",
+          error: fallbackError,
+        });
+      }
+    }
     if (isSchemaUnavailableError(error)) {
       const detail = describeSchemaUnavailableError(error);
       queryErrorMessage = detail
@@ -927,6 +960,12 @@ export default async function GearOpsItemDetailsPage({
       <div className="space-y-3">
         <BackLink href="/gear-ops/items" label="Items" />
         <GearOpsSubnav current="items" />
+        {assetIdUnavailable ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+            Asset ID display is temporarily unavailable until the <code>GearItem.assetId</code> column is present in the
+            active database schema.
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-1">

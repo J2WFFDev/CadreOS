@@ -103,6 +103,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         ...(scope.auth.personId ? { updatedByPersonId: scope.auth.personId } : {}),
         version: { increment: 1 },
       },
+      select: { id: true },
     });
 
     console.log("[entries.complete] db.entry.update succeeded");
@@ -178,4 +179,3 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(url, 303);
   }
 }
-
