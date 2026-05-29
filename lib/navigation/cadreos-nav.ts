@@ -34,6 +34,7 @@ const ALL_ROLES: readonly AppRole[] = [
 
 const MEMBEROPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH"];
 const ENTRYOPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "GUARDIAN", "ATHLETE"];
+const PROMPT_LIBRARY_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "ATHLETE"];
 const FIELDOPS_RESOURCEOPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH"];
 const GEAROPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "GUARDIAN", "ATHLETE"];
 const ADMIN_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER"];
@@ -163,6 +164,27 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
         href: "/habits",
         moduleKey: "entry",
       }),
+      activeItem({
+        key: "ENTRY_JOURNALS",
+        label: "Journals",
+        href: "/journals",
+        moduleKey: "journal",
+        allowedRoles: ENTRYOPS_ROLES,
+      }),
+      activeItem({
+        key: "ENTRY_PROMPTS",
+        label: "Prompt Library",
+        href: "/prompts",
+        moduleKey: "journal",
+        allowedRoles: PROMPT_LIBRARY_ROLES,
+      }),
+      activeItem({
+        key: "ENTRY_PROMPT_ASSIGNMENTS",
+        label: "Prompt Assignments",
+        href: "/prompt-assignments",
+        moduleKey: "journal",
+        allowedRoles: ENTRYOPS_ROLES,
+      }),
     ],
   },
   {
@@ -277,12 +299,6 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
         key: "ADMIN_SETTINGS",
         label: "Settings",
         href: "/admin/settings",
-        moduleKey: "admin",
-      }),
-      activeItem({
-        key: "PROMPTS_TEMPLATES",
-        label: "Prompts / Templates",
-        href: "/prompts",
         moduleKey: "admin",
       }),
       plannedItem({
