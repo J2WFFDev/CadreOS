@@ -115,14 +115,13 @@ export default async function GearOpsItemsPage({
   const queryText = readSearchParams(resolvedSearchParams, "q")[0]?.trim() ?? "";
 
   const hasFilters = inventoryTypeFilter.length > 0 || lifecycleStatusFilter.length > 0 || conditionStatusFilter.length > 0;
-
-  const itemWhere: Prisma.GearItemWhereInput = {
+  const buildItemWhere = (includeAssetId: boolean): Prisma.GearItemWhereInput => ({
     ...access.where,
     ...(queryText.length > 0
       ? {
           OR: [
             { name: { contains: queryText, mode: "insensitive" } },
-            { assetId: { contains: queryText, mode: "insensitive" } },
+            ...(includeAssetId ? [{ assetId: { contains: queryText, mode: "insensitive" } }] : []),
             { barcodeValue: { equals: queryText, mode: "insensitive" } },
             { serialNumber: { equals: queryText, mode: "insensitive" } },
             { sku: { equals: queryText, mode: "insensitive" } },
@@ -132,7 +131,7 @@ export default async function GearOpsItemsPage({
     ...(inventoryTypeFilter.length > 0 ? { inventoryType: { in: inventoryTypeFilter } } : {}),
     ...(lifecycleStatusFilter.length > 0 ? { lifecycleStatus: { in: lifecycleStatusFilter } } : {}),
     ...(conditionStatusFilter.length > 0 ? { conditionStatus: { in: conditionStatusFilter } } : {}),
-  };
+  });
 
   let items:
     | Array<{
@@ -171,10 +170,11 @@ export default async function GearOpsItemsPage({
       }>
     | null = null;
   let queryErrorMessage = "Unable to load GearOps items right now. Please try again later.";
+  let assetIdUnavailable = false;
 
   try {
     items = await db.gearItem.findMany({
-      where: itemWhere,
+      where: buildItemWhere(true),
       select: {
         id: true,
         name: true,
@@ -223,8 +223,70 @@ export default async function GearOpsItemsPage({
       orderBy: [{ name: "asc" }, { createdAt: "asc" }],
     });
   } catch (error) {
+    const detail = describeSchemaUnavailableError(error);
+    if (isSchemaUnavailableError(error) && detail?.includes('column "GearItem.assetId" is missing')) {
+      assetIdUnavailable = true;
+      try {
+        const fallbackItems = await db.gearItem.findMany({
+          where: buildItemWhere(false),
+          select: {
+            id: true,
+            name: true,
+            inventoryType: true,
+            lifecycleStatus: true,
+            conditionStatus: true,
+            quantityOnHand: true,
+            quantityMin: true,
+            category: { select: { id: true, name: true, inventoryType: true } },
+            program: { select: { id: true, name: true } },
+            assignments: {
+              where: { status: { in: [GearAssignmentStatus.ACTIVE, GearAssignmentStatus.PENDING, GearAssignmentStatus.OVERDUE] } },
+              select: {
+                status: true,
+                assignedAt: true,
+                assignedTo: { select: { id: true, firstName: true, lastName: true } },
+                assignedTeam: { select: { id: true, name: true } },
+                assignedEvent: { select: { id: true, title: true } },
+              },
+              orderBy: [{ assignedAt: "desc" }, { createdAt: "desc" }],
+              take: 1,
+            },
+            checkouts: {
+              where: { status: { in: [GearCheckoutStatus.OPEN, GearCheckoutStatus.OVERDUE] } },
+              select: {
+                status: true,
+                checkedOutAt: true,
+                checkedOutBy: { select: { id: true, firstName: true, lastName: true } },
+                event: { select: { id: true, title: true } },
+              },
+              orderBy: [{ checkedOutAt: "desc" }, { createdAt: "desc" }],
+              take: 1,
+            },
+            maintenanceLogs: {
+              select: { maintenanceType: true, performedAt: true },
+              orderBy: [{ performedAt: "desc" }, { createdAt: "desc" }],
+              take: 1,
+            },
+            consumableTransactions: {
+              select: { transactionType: true, recordedAt: true, quantityDelta: true },
+              orderBy: [{ recordedAt: "desc" }, { createdAt: "desc" }],
+              take: 1,
+            },
+          },
+          orderBy: [{ name: "asc" }, { createdAt: "asc" }],
+        });
+        items = fallbackItems.map((item) => ({ ...item, assetId: null }));
+      } catch (fallbackError) {
+        console.error("[gear-ops.items.page] Fallback item list query failed", {
+          organizationId: scope.organizationId,
+          actorPersonId: scope.auth.personId,
+          schemaDetail: describeSchemaUnavailableError(fallbackError),
+          moduleQuery: "gearItem.findMany.fallbackWithoutAssetId",
+          error: fallbackError,
+        });
+      }
+    }
     if (isSchemaUnavailableError(error)) {
-      const detail = describeSchemaUnavailableError(error);
       queryErrorMessage = detail
         ? `GearOps items query dependency is missing (${detail}) while running gearItem.findMany.`
         : "Database schema is not available yet. Run database setup before loading GearOps items.";
@@ -251,6 +313,11 @@ export default async function GearOpsItemsPage({
     <section className="space-y-4">
       <PageHeader title="GearOps items" description="Inventory item catalog with assignment, custody, and maintenance context." />
       <GearOpsSubnav current="items" />
+      {assetIdUnavailable ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+          Asset ID display/search is temporarily unavailable until the <code>GearItem.assetId</code> column is present in the active database schema.
+        </div>
+      ) : null}
 
       {/* Top action row */}
       <div className="flex flex-wrap items-center justify-between gap-2">

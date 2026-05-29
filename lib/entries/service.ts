@@ -90,6 +90,7 @@ export async function upsertEntryFromTask(input: {
     title: string;
     description: string | null;
     status: TaskStatus;
+    priority?: EntryPriority;
     assigneePersonId: string;
     createdByPersonId: string;
     dueAt: Date | null;
@@ -108,7 +109,7 @@ export async function upsertEntryFromTask(input: {
       assignedToPersonId: input.task.assigneePersonId,
       visibility: EntryVisibility.STAFF_ONLY,
       status: projection.status,
-      priority: EntryPriority.MEDIUM,
+      priority: input.task.priority ?? EntryPriority.MEDIUM,
       dueDate: projection.dueDate,
       dueTime: projection.dueTime,
       timezone: "UTC",
@@ -121,6 +122,7 @@ export async function upsertEntryFromTask(input: {
       content: input.task.description,
       assignedToPersonId: input.task.assigneePersonId,
       status: projection.status,
+      ...(input.task.priority ? { priority: input.task.priority } : {}),
       dueDate: projection.dueDate,
       dueTime: projection.dueTime,
       taskCompleted: projection.taskCompleted,

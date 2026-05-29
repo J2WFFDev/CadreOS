@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TaskStatus } from "@prisma/client";
+import { EntryPriority, TaskStatus } from "@prisma/client";
 
 import { canReadStaffOnlyContent, resolveActorRoleContext } from "@/lib/authorization";
 import { db } from "@/lib/db";
@@ -88,6 +88,7 @@ export default async function EditTaskPage({
         dueAt: Date | null;
         sourceNoteId: string | null;
         sourceEventId: string | null;
+        entry: { priority: EntryPriority } | null;
       }
     | null = null;
   let people: Array<{ id: string; firstName: string; lastName: string }> = [];
@@ -112,6 +113,7 @@ export default async function EditTaskPage({
           dueAt: true,
           sourceNoteId: true,
           sourceEventId: true,
+          entry: { select: { priority: true } },
         },
       }),
       db.person.findMany({
@@ -171,6 +173,9 @@ export default async function EditTaskPage({
   const assigneePersonId = hasSearchParam(resolvedSearchParams, "assigneePersonId")
     ? readSearchParam(resolvedSearchParams, "assigneePersonId")
     : task.assigneePersonId;
+  const priority = hasSearchParam(resolvedSearchParams, "priority")
+    ? readSearchParam(resolvedSearchParams, "priority")
+    : task.entry?.priority ?? EntryPriority.MEDIUM;
   const dueAt = hasSearchParam(resolvedSearchParams, "dueAt")
     ? readSearchParam(resolvedSearchParams, "dueAt")
     : formatDateTimeInputValue(task.dueAt);
@@ -241,6 +246,22 @@ export default async function EditTaskPage({
             </select>
             {hasSearchParam(resolvedSearchParams, "statusError") ? (
               <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "statusError")}</p>
+            ) : null}
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="priority" className="text-sm font-medium">
+              Priority
+            </label>
+            <select id="priority" name="priority" defaultValue={priority} className="w-full rounded-md border px-3 py-2 text-sm">
+              {Object.values(EntryPriority).map((value) => (
+                <option key={value} value={value}>
+                  {value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase())}
+                </option>
+              ))}
+            </select>
+            {hasSearchParam(resolvedSearchParams, "priorityError") ? (
+              <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "priorityError")}</p>
             ) : null}
           </div>
 

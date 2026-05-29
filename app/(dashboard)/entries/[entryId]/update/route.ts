@@ -94,10 +94,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       }
     }
 
-    if (entry.sourceNoteId && content.length > 0) {
+    if (entry.sourceNoteId && (content.length > 0 || title.length > 0)) {
+      const body = content.length > 0 ? content : title;
       const noteUpdate = await db.observationNote.updateMany({
         where: { id: entry.sourceNoteId, organizationId: organizationId },
-        data: { body: content },
+        data: { body },
       });
       if (noteUpdate.count === 0) {
         console.warn("[entries.update] Linked note was not found while syncing content", {
