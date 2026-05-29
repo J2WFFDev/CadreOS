@@ -54,7 +54,21 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
     | Awaited<ReturnType<typeof resolveHabitAccessContext>>
     | null = null;
   let habits:
-    | Awaited<ReturnType<typeof db.habit.findMany>>
+    | Array<{
+        id: string;
+        title: string;
+        description: string | null;
+        status: HabitStatus;
+        athletePersonId: string;
+        assignedToTeamId: string | null;
+        createdByPersonId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        athlete: { firstName: string; lastName: string };
+        assignedToTeam: { name: string; programId: string } | null;
+        schedules: Array<{ frequency: HabitFrequency }>;
+        _count: { completions: number };
+      }>
     | null = null;
   let loadErrorMessage: string | null = null;
 

@@ -45,7 +45,19 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
     | Awaited<ReturnType<typeof resolveJournalAccessContext>>
     | null = null;
   let journals:
-    | Awaited<ReturnType<typeof db.entry.findMany>>
+    | Array<{
+        id: string;
+        type: EntryType;
+        title: string;
+        status: EntryStatus;
+        visibility: "STAFF_ONLY" | "TEAM_STAFF" | "ORGANIZATION_SCOPED";
+        createdAt: Date;
+        updatedAt: Date;
+        createdByPersonId: string;
+        teamId: string | null;
+        team: { name: string; programId: string } | null;
+        createdBy: { firstName: string; lastName: string };
+      }>
     | null = null;
   let loadErrorMessage: string | null = null;
 

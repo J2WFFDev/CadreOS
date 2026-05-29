@@ -636,6 +636,8 @@ export function evaluateGearOpsSchemaStatus(input: GearOpsSchemaEvaluationInput)
     pendingActions: buildGearOpsPendingActions({ missingTables, missingColumns }),
     setupRequired: missingTables.length > 0 || missingColumns.length > 0,
     scope: input.scope,
+    failedQuery: null,
+    failureReason: null,
   };
 }
 
