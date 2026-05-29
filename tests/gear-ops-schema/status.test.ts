@@ -227,7 +227,7 @@ test("item-detail readiness reports missing InventoryLocation table", () => {
   assert.equal(status.setupRequired, true);
 });
 
-test("item-detail readiness reports missing GearReservation but item-list does not", () => {
+test("item-detail readiness does not require GearReservation table", () => {
   const listRequirements = getGearOpsSchemaRequirements("item-list");
   const detailRequirements = getGearOpsSchemaRequirements("item-detail");
 
@@ -235,7 +235,7 @@ test("item-detail readiness reports missing GearReservation but item-list does n
   const detailTables = detailRequirements.map((r) => r.table);
 
   assert.ok(!listTables.includes("GearReservation"), "item-list must not require GearReservation");
-  assert.ok(detailTables.includes("GearReservation"), "item-detail must require GearReservation");
+  assert.ok(!detailTables.includes("GearReservation"), "item-detail must not require GearReservation");
 });
 
 test("reservation-creation readiness is true when all required tables and columns exist", () => {

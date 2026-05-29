@@ -54,7 +54,7 @@ import {
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { resolveMobileInventoryActions } from "@/lib/rapid-inventory-ops";
-import { formatDateTimeInputValue, isSchemaUnavailableError } from "@/lib/workflows";
+import { describeSchemaUnavailableError, formatDateTimeInputValue, isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -181,32 +181,6 @@ export default async function GearOpsItemDetailsPage({
               }
             | null;
         }>;
-        reservations: Array<{
-          id: string;
-          gearItemId: string;
-          mode: GearReservationMode;
-          status: GearReservationStatus;
-          approvalStatus: import("@prisma/client").ApprovalStatus;
-          holdType: import("@prisma/client").GearHoldType | null;
-          purpose: import("@prisma/client").GearReservationPurpose;
-          quantityRequested: number;
-          windowStartAt: Date;
-          windowEndAt: Date;
-          reservedForPersonId: string | null;
-          reservedForTeamId: string | null;
-          reservedForEventId: string | null;
-          programId: string | null;
-          notes: string | null;
-          releaseReason: string | null;
-          conflictSummary: string | null;
-          releasedAt: Date | null;
-          fulfilledAt: Date | null;
-          requestedBy: { id: string; firstName: string; lastName: string };
-          reservedFor: { id: string; firstName: string; lastName: string } | null;
-          reservedTeam: { id: string; name: string } | null;
-          reservedEvent: { id: string; title: string } | null;
-          program: { id: string; name: string } | null;
-        }>;
         maintenanceLogs: Array<{
           id: string;
           maintenanceType: GearMaintenanceType;
@@ -298,36 +272,6 @@ export default async function GearOpsItemDetailsPage({
           orderBy: [{ checkedOutAt: "desc" }, { createdAt: "desc" }],
           take: 8,
         },
-        reservations: {
-          select: {
-            id: true,
-            gearItemId: true,
-            mode: true,
-            status: true,
-            approvalStatus: true,
-            holdType: true,
-            purpose: true,
-            quantityRequested: true,
-            windowStartAt: true,
-            windowEndAt: true,
-            reservedForPersonId: true,
-            reservedForTeamId: true,
-            reservedForEventId: true,
-            programId: true,
-            notes: true,
-            releaseReason: true,
-            conflictSummary: true,
-            releasedAt: true,
-            fulfilledAt: true,
-            requestedBy: { select: { id: true, firstName: true, lastName: true } },
-            reservedFor: { select: { id: true, firstName: true, lastName: true } },
-            reservedTeam: { select: { id: true, name: true } },
-            reservedEvent: { select: { id: true, title: true } },
-            program: { select: { id: true, name: true } },
-          },
-          orderBy: [{ windowStartAt: "desc" }, { createdAt: "desc" }],
-          take: 12,
-        },
         maintenanceLogs: {
           select: {
             id: true,
@@ -361,9 +305,46 @@ export default async function GearOpsItemDetailsPage({
   } catch (error) {
     queryFailed = true;
     if (isSchemaUnavailableError(error)) {
-      queryErrorMessage = "Database schema is not available yet. Run database setup before loading GearOps item details.";
+      const detail = describeSchemaUnavailableError(error);
+      queryErrorMessage = detail
+        ? `GearOps item detail query dependency is missing (${detail}) while running gearItem.findFirst.`
+        : "Database schema is not available yet. Run database setup before loading GearOps item details.";
     }
+    console.error("[gear-ops.items.detail.page] Failed to load item detail", {
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+      schemaDetail: describeSchemaUnavailableError(error),
+      moduleQuery: "gearItem.findFirst",
+      error,
+    });
   }
+
+  let reservations: Array<{
+    id: string;
+    gearItemId: string;
+    mode: GearReservationMode;
+    status: GearReservationStatus;
+    approvalStatus: import("@prisma/client").ApprovalStatus;
+    holdType: import("@prisma/client").GearHoldType | null;
+    purpose: import("@prisma/client").GearReservationPurpose;
+    quantityRequested: number;
+    windowStartAt: Date;
+    windowEndAt: Date;
+    reservedForPersonId: string | null;
+    reservedForTeamId: string | null;
+    reservedForEventId: string | null;
+    programId: string | null;
+    notes: string | null;
+    releaseReason: string | null;
+    conflictSummary: string | null;
+    releasedAt: Date | null;
+    fulfilledAt: Date | null;
+    requestedBy: { id: string; firstName: string; lastName: string };
+    reservedFor: { id: string; firstName: string; lastName: string } | null;
+    reservedTeam: { id: string; name: string } | null;
+    reservedEvent: { id: string; title: string } | null;
+    program: { id: string; name: string } | null;
+  }> = [];
 
   // Optional panels: InventoryMovement and InventoryScanEvent tables may not be migrated yet.
   // Query them separately so a missing table does not block the core item detail page.
@@ -389,6 +370,52 @@ export default async function GearOpsItemDetailsPage({
   }> = [];
 
   if (item) {
+    try {
+      reservations = await db.gearReservation.findMany({
+        where: {
+          gearItemId: item.id,
+          organizationId: scope.organizationId,
+        },
+        select: {
+          id: true,
+          gearItemId: true,
+          mode: true,
+          status: true,
+          approvalStatus: true,
+          holdType: true,
+          purpose: true,
+          quantityRequested: true,
+          windowStartAt: true,
+          windowEndAt: true,
+          reservedForPersonId: true,
+          reservedForTeamId: true,
+          reservedForEventId: true,
+          programId: true,
+          notes: true,
+          releaseReason: true,
+          conflictSummary: true,
+          releasedAt: true,
+          fulfilledAt: true,
+          requestedBy: { select: { id: true, firstName: true, lastName: true } },
+          reservedFor: { select: { id: true, firstName: true, lastName: true } },
+          reservedTeam: { select: { id: true, name: true } },
+          reservedEvent: { select: { id: true, title: true } },
+          program: { select: { id: true, name: true } },
+        },
+        orderBy: [{ windowStartAt: "desc" }, { createdAt: "desc" }],
+        take: 12,
+      });
+    } catch (error) {
+      console.error("[gear-ops.items.detail.page] Failed to load reservations panel", {
+        organizationId: scope.organizationId,
+        actorPersonId: scope.auth.personId,
+        itemId: item.id,
+        schemaDetail: describeSchemaUnavailableError(error),
+        moduleQuery: "gearReservation.findMany",
+        error,
+      });
+    }
+
     try {
       const [movements, scans] = await Promise.all([
         db.inventoryMovement.findMany({
@@ -466,13 +493,13 @@ export default async function GearOpsItemDetailsPage({
     GearReservationStatus.FULFILLED,
     GearReservationStatus.EXPIRED,
   ]);
-  const currentReservations = gearItem.reservations.filter(
+  const currentReservations = reservations.filter(
     (reservation) => !terminalReservationStatuses.has(deriveGearReservationEffectiveStatus(reservation)),
   );
-  const reservationHistory = gearItem.reservations.filter((reservation) =>
+  const reservationHistory = reservations.filter((reservation) =>
     terminalReservationStatuses.has(deriveGearReservationEffectiveStatus(reservation)),
   );
-  const reservationSummary = summarizeGearReservations(gearItem.reservations);
+  const reservationSummary = summarizeGearReservations(reservations);
   const recentMaintenanceLogs = gearItem.maintenanceLogs.slice(0, 3);
   const maintenanceHistory = gearItem.maintenanceLogs.slice(3);
   const recentConsumableTransactions = gearItem.consumableTransactions.slice(0, 3);
@@ -680,7 +707,7 @@ export default async function GearOpsItemDetailsPage({
     return "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200";
   }
 
-  function renderReservationCard(reservation: (typeof gearItem.reservations)[number]) {
+  function renderReservationCard(reservation: (typeof reservations)[number]) {
     const effectiveStatus = deriveGearReservationEffectiveStatus(reservation);
     const checkoutHref = `/gear-ops/items/${gearItem.id}/checkout?status=OPEN&checkedOutAt=${encodeURIComponent(
     rapidNowInputValue,
@@ -1169,7 +1196,7 @@ export default async function GearOpsItemDetailsPage({
             New reservation / hold
           </Link>
         </div>
-        {item.reservations.length === 0 ? (
+        {reservations.length === 0 ? (
           <EmptyState message="No reservation or hold history is currently visible for this item." />
         ) : (
           <div className="space-y-4">

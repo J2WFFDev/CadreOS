@@ -458,7 +458,6 @@ const ITEM_DETAIL_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
   [{ table: "InventoryLocation", columns: INVENTORY_LOCATION_MINIMAL_COLUMNS }],
   [{ table: "GearAssignment", columns: GEAR_ASSIGNMENT_DETAIL_COLUMNS }],
   [{ table: "GearCheckout", columns: GEAR_CHECKOUT_DETAIL_COLUMNS }],
-  [{ table: "GearReservation", columns: GEAR_RESERVATION_DETAIL_COLUMNS }],
   [{ table: "GearMaintenanceLog", columns: GEAR_MAINTENANCE_LOG_DETAIL_COLUMNS }],
   [{ table: "ConsumableTransaction", columns: CONSUMABLE_TRANSACTION_DETAIL_COLUMNS }],
 );
