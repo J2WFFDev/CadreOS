@@ -8,12 +8,15 @@
 
 ## Operational release ribbon
 - The dashboard header includes a compact operational release ribbon in the top-right app shell area.
-- Preferred format: `CadreOS Preview · Arc 21D · Build 21D.3 · a1b2c3d · Nav v2`.
+- Preferred format: `CadreOS Prod · Ref main · a1b2c3d · Tag v1.2.3 · Release v1.2.3 · Arc 21D · Build 21D.3 · Nav v2`.
 - It reads these public environment variables:
   - `NEXT_PUBLIC_APP_ENV`
+  - `NEXT_PUBLIC_RELEASE_REF`
+  - `NEXT_PUBLIC_GIT_SHA`
+  - `NEXT_PUBLIC_RELEASE_TAG`
+  - `NEXT_PUBLIC_RELEASE_VERSION`
   - `NEXT_PUBLIC_RELEASE_ARC`
   - `NEXT_PUBLIC_BUILD_ITERATION`
-  - `NEXT_PUBLIC_GIT_SHA`
   - `NEXT_PUBLIC_NAV_VERSION`
 - Commit SHA values are shortened to 7 characters.
 - Vercel fallback metadata is supported through:
@@ -38,12 +41,14 @@ Provide metadata in workflow `env` (job-level or step-level):
 
 ```yaml
 env:
+  NEXT_PUBLIC_RELEASE_REF: ${{ github.ref_name }}
+  NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
+  NEXT_PUBLIC_RELEASE_TAG: v1.2.3
+  NEXT_PUBLIC_RELEASE_VERSION: 1.2.3
   NEXT_PUBLIC_RELEASE_ARC: 21D
   NEXT_PUBLIC_BUILD_ITERATION: 21D.3
-  NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
   NEXT_PUBLIC_NAV_VERSION: 2
   NEXT_PUBLIC_APP_ENV: production
-  NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF: main
 ```
 
 ### Vercel
@@ -83,7 +88,8 @@ is active. Check `getDevPersonaFeatureStatus()` for the specific reason string.
 > must never be left enabled on a public-facing production instance.
 
 ## Releases
-- `.github/workflows/release.yml` automatically bumps the repo version on every push to `main`, commits the new `package.json` / `package-lock.json` version, tags it as `vX.Y.Z`, and creates a GitHub release.
+- `.github/workflows/release.yml` runs on every push to `main`, computes the next semver from the latest existing `vX.Y.Z` tag plus merged PR labels/commit context, creates a new `vX.Y.Z` tag on that exact merge commit, and creates a GitHub release from that tag.
+- The release workflow does **not** run `npm version`, does **not** modify `package.json`/`package-lock.json`, and does **not** push a `chore(release)` commit back to `main`.
 - Preferred labels for merged PRs:
   - `release:major`
   - `release:minor`
@@ -92,8 +98,7 @@ is active. Check `getDevPersonaFeatureStatus()` for the specific reason string.
   - `major` for `BREAKING CHANGE` / conventional-commit `type!:` markers
   - `minor` for `feat` / `feature`
   - `patch` otherwise
-- The release workflow skips its own `chore(release): vX.Y.Z` commits to avoid loops.
-- If `main` is branch-protected, allow GitHub Actions to push the automated `chore(release): vX.Y.Z` release commit and tag.
+- Release identity is tag-based (`vX.Y.Z`) and should be surfaced in runtime metadata with commit ref + commit SHA for production troubleshooting.
 
 ## Database migration workflows
 - Schema changes must be applied with Prisma migrations, not `prisma db push`.
