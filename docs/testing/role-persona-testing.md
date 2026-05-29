@@ -2,138 +2,79 @@
 
 ## Purpose
 
-This document describes the dev-only role/persona testing approach for CadreOS.
-It enables developers and QA to exercise role-specific experiences without replacing
-Clerk authentication or bypassing server-side permission checks.
+CadreOS supports a dev-only persona override so developers can test role-based navigation and app-level access quickly without creating or switching Clerk accounts.
 
----
+Clerk remains the production authentication source. This feature is only for local/dev and explicitly guarded.
 
-## Design Constraints
+## Enable dev personas
 
-1. **No bypass of server-side checks.** Persona testing works by seeding real
-   `UserAccount`, `Person`, and `RoleAssignment` rows. Permission helpers always
-   run against real database state. There is no mock injection into `requirePermission()`.
-
-2. **Production disabled.** Both feature flags are blocked in production environments
-   (see the guard in `lib/auth/index.ts`).
-
-3. **Clerk stays active.** Persona testing does not replace Clerk. It provides seeded
-   users that can be signed into via Clerk test credentials.
-
-4. **No passwords stored.** Seeded personas use Clerk-managed test accounts, not
-   local credentials.
-
----
-
-## Environment Variables
-
-Add to `.env.local` for local development only. **Never set these in production.**
+Set these values in `.env.local`:
 
 ```bash
-# Enables persona seed validation and debug endpoints (dev only)
-ENABLE_TEST_PERSONAS=true
-
-# Logs role resolution decisions to console in server components and route handlers (dev only)
-ENABLE_ROLE_DEBUG=true
+NEXT_PUBLIC_ENABLE_DEV_PERSONAS=true
+ENABLE_DEV_PERSONAS_IN_PRODUCTION=false
 ```
 
-Both variables are read via `isTestPersonasEnabled()` and `isRoleDebugEnabled()` in
-`lib/auth/index.ts`. When `NODE_ENV=production`, both functions return `false` regardless
-of the variable value.
+Guard behavior:
 
----
+- `NEXT_PUBLIC_ENABLE_DEV_PERSONAS` must be `true`
+- Production defaults to disabled
+- Production only enables if `ENABLE_DEV_PERSONAS_IN_PRODUCTION=true` is explicitly set
 
-## Persona Definitions
+### Enabling on a Vercel production deployment
 
-Each persona maps to a seeded `Person` + `RoleAssignment` set. Seed these via the
-existing Prisma seed script (`prisma/seed.ts`) under a `seedTestPersonas()` block.
-
-| Persona key | RoleType | ScopeType | Description |
-|---|---|---|---|
-| `org-admin` | `ORGANIZATION_ADMIN` | `ORGANIZATION` | Full access across all modules |
-| `program-director` | `PROGRAM_DIRECTOR` | `PROGRAM` | Program-scoped staff access |
-| `head-coach` | `COACH` | `TEAM` | Team-scoped; can create events, notes, tasks |
-| `assistant-coach` | `ASSISTANT_COACH` | `TEAM` | Limited: attendance, notes, tasks |
-| `guardian` | `PARENT_GUARDIAN` | — | No write access; read path deferred |
-| `athlete` | `ATHLETE` | — | No access beyond own profile (deferred) |
-
----
-
-## Usage Pattern
-
-### Step 1 — Seed test personas
-
-Run the seed script with the `TEST_PERSONAS` flag (when it is implemented):
+Both variables are required. A redeploy is needed after changing either one:
 
 ```bash
-SEED_TEST_PERSONAS=true npx tsx prisma/seed.ts
+NEXT_PUBLIC_ENABLE_DEV_PERSONAS=true
+ENABLE_DEV_PERSONAS_IN_PRODUCTION=true
 ```
 
-This creates `Person` rows and `RoleAssignment` rows for each persona.
-Clerk test user accounts (from Clerk's test environment) are linked via `UserAccount.clerkUserId`.
+With only `NEXT_PUBLIC_ENABLE_DEV_PERSONAS=true` set, the switcher will not appear.
+The dashboard header will show a **Dev Persona: blocked** badge as a diagnostic indicator.
+Call `getDevPersonaFeatureStatus()` (from `lib/auth/devPersonas.ts`) to get a structured
+status object with `nextPublicEnabled`, `productionOverrideEnabled`, `nodeEnv`, `enabled`,
+and `reason` fields.
 
-### Step 2 — Sign in as a test persona
+> **Warning:** Only enable `ENABLE_DEV_PERSONAS_IN_PRODUCTION=true` while the app is private
+> or in a controlled testing deployment. This feature bypasses real Clerk authentication and
+> must never be left enabled on a public-facing production instance.
 
-Use the Clerk test credentials for each persona. The `UserAccount` upsert in
-`getOrganizationScope()` will link the Clerk session to the seeded `Person`
-automatically on first sign-in.
+## How to switch personas
 
-### Step 3 — Enable debug output
+1. Start the app in development mode.
+2. Sign in normally with Clerk (or use your current local auth flow).
+3. In the dashboard header, open **Dev Persona**.
+4. Pick one persona:
+   - Admin
+   - Program Manager
+   - Coach
+   - Assistant Coach
+   - Guardian
+   - Athlete
+   - Limited Viewer
+5. The selection is stored in a cookie and applied on refresh.
 
-With `ENABLE_ROLE_DEBUG=true`, server-component and route handler logs will include
-role resolution decisions. Look for `[role-debug]` prefixed log lines.
+## Current user resolution order
 
----
+`getCurrentUser()` resolves in this order:
 
-## Role Debug Output
+1. Selected dev persona (when dev personas are enabled)
+2. Clerk-authenticated user mapped into normalized `CurrentUser`
+3. `null` when unauthenticated
 
-When `ENABLE_ROLE_DEBUG=true` is active, `getCurrentCadreUser()` emits a structured
-console log on each call:
+## Authorization scope
 
-```
-[role-debug] getCurrentCadreUser {
-  clerkUserId: "user_abc123",
-  userAccountId: "cma...",
-  personId: "cmb...",
-  organizationId: "cmc...",
-  isLinked: true
-}
-```
+This feature is for app-level role simulation and fast QA.
 
-This is server-side only and never reaches the browser.
+- Navigation visibility uses normalized role checks.
+- Key dashboard modules use server layout guards to block direct URL access.
+- Existing Clerk-based auth and server permission checks still run when dev personas are disabled.
 
----
+## NAV-006
 
-## What is not bypassed
+Run `docs/testing/role-navigation-tests.md` for the NAV-006 role navigation matrix.
 
-Even with test personas active, the following always run against real DB state:
+## Security warning
 
-- `requirePermission()` in `lib/permissions/index.ts`
-- `resolveActorRoleContext()` in `lib/authorization/index.ts`
-- All domain-specific authorization helpers (entry, workflow, guardian, gear)
-- Organization isolation via `organizationId` filters
-
-Persona testing validates that the **full permission stack** works correctly for each role,
-not a mocked or simplified version.
-
----
-
-## Extending Personas
-
-To add a new persona:
-
-1. Add an entry to the `TEST_PERSONAS` constant in `prisma/seed.ts`.
-2. Assign a Clerk test user `userId` to the persona.
-3. Re-run the seed script.
-
-No code changes to `lib/auth/index.ts` are needed unless you want to add new
-module-specific `canAccessModule()` checks for the role.
-
----
-
-## Gaps and Next Steps
-
-- [ ] Implement `seedTestPersonas()` in `prisma/seed.ts`
-- [ ] Assign Clerk test user IDs to each persona (requires Clerk dev environment setup)
-- [ ] Add a dev-only `/api/debug/role-context` endpoint gated by `ENABLE_ROLE_DEBUG`
-- [ ] Guard all persona seed paths behind `NODE_ENV !== 'production'`
+Dev personas are not a production authorization mechanism. Keep production disabled by default and do not treat persona selection as a replacement for real server-side authorization.

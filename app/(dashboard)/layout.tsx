@@ -1,10 +1,13 @@
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
-import { NavSidebar } from "@/components/nav-sidebar";
+import { BuildMetadataBadge } from "@/components/build-metadata-badge";
+import { DevPersonaSwitcher } from "@/components/dev-persona-switcher";
 import { QuickCaptureLauncher } from "@/components/dashboard/quick-capture-launcher";
 import { GearOfflineProvider } from "@/components/gear-ops/offline-provider";
-import { BuildMetadataBadge } from "@/components/build-metadata-badge";
+import { NavSidebar } from "@/components/nav-sidebar";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { getDevPersonaById, getDevPersonaFeatureStatus } from "@/lib/auth/devPersonas";
 import { db } from "@/lib/db";
 import { countUnreadNotificationsForPerson } from "@/lib/notifications";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -15,6 +18,8 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const scope = await getOrganizationScope();
+  const currentUser = await getCurrentUser();
+  const devFeatureStatus = getDevPersonaFeatureStatus();
   const shouldShowLinkingBanner = scope.auth.unresolvedPersonLink;
   const assignees =
     scope.databaseReady && scope.organizationId
@@ -30,6 +35,17 @@ export default async function DashboardLayout({
       ? await countUnreadNotificationsForPerson(scope.organizationId, scope.auth.personId)
       : 0;
 
+  const activePersona =
+    devFeatureStatus.enabled && currentUser?.isDevPersona
+      ? getDevPersonaById(currentUser.id)
+      : null;
+
+  // Show a diagnostic when NEXT_PUBLIC_ENABLE_DEV_PERSONAS is set but the
+  // switcher is blocked by the production guard. This helps diagnose Vercel
+  // preview deployments where NODE_ENV=production and only one env var is set.
+  const showBlockedDiagnostic =
+    devFeatureStatus.nextPublicEnabled && !devFeatureStatus.enabled;
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-3 dark:bg-zinc-900">
@@ -42,6 +58,22 @@ export default async function DashboardLayout({
           disabled={!scope.databaseReady || !scope.organizationId}
         />
         <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+          {devFeatureStatus.enabled ? (
+            <DevPersonaSwitcher currentPersonaId={currentUser?.isDevPersona ? currentUser.id : null} />
+          ) : null}
+          {activePersona ? (
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+              Dev Persona: {activePersona.label}
+            </span>
+          ) : null}
+          {showBlockedDiagnostic ? (
+            <span
+              className="rounded border border-orange-300 bg-orange-50 px-2 py-0.5 text-xs text-orange-700 dark:border-orange-700 dark:bg-orange-950/40 dark:text-orange-300"
+              title={`Dev Persona switcher blocked: ${devFeatureStatus.reason}`}
+            >
+              Dev Persona: blocked
+            </span>
+          ) : null}
           <BuildMetadataBadge />
           <Link
             href="/account"
@@ -53,7 +85,7 @@ export default async function DashboardLayout({
         </div>
       </header>
       <div className="flex min-h-[calc(100vh-49px)] flex-col md:flex-row">
-        <NavSidebar unreadNotificationCount={unreadNotificationCount} />
+        <NavSidebar unreadNotificationCount={unreadNotificationCount} currentUser={currentUser} />
         <main className="flex-1 overflow-auto p-4 md:p-6">
           <div className="mx-auto w-full max-w-5xl space-y-4">
             {shouldShowLinkingBanner ? (
