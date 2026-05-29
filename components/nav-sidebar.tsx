@@ -55,7 +55,13 @@ export function NavSidebar({
           onClick={() => setMobileOpen((open) => !open)}
         >
           <span className="flex items-center gap-2">
-            <span aria-hidden="true">☰</span>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              className="h-4 w-4 fill-current"
+            >
+              <path d="M3 5.75A.75.75 0 0 1 3.75 5h12.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 5.75Zm0 4.25a.75.75 0 0 1 .75-.75h12.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 10Zm0 4.25a.75.75 0 0 1 .75-.75h12.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 14.25Z" />
+            </svg>
             <span>{activeItemLabel}</span>
           </span>
           <span className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
