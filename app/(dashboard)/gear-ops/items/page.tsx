@@ -4,7 +4,7 @@ import {
   GearConditionStatus,
   GearInventoryType,
   GearItemLifecycleStatus,
-  type Prisma,
+  Prisma,
 } from "@prisma/client";
 import Link from "next/link";
 
@@ -227,7 +227,11 @@ export default async function GearOpsItemsPage({
     });
   } catch (error) {
     const detail = describeSchemaUnavailableError(error);
-    if (isSchemaUnavailableError(error) && detail?.includes('column "GearItem.assetId" is missing')) {
+    const isMissingAssetIdColumn =
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2022" &&
+      (error.meta as Record<string, unknown> | undefined)?.column === "GearItem.assetId";
+    if (isSchemaUnavailableError(error) && isMissingAssetIdColumn) {
       assetIdUnavailable = true;
       try {
         const fallbackItems = await db.gearItem.findMany({
