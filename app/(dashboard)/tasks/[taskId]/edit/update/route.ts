@@ -1,4 +1,4 @@
-import { NoteVisibility, TaskStatus, Prisma } from "@prisma/client";
+import { EntryPriority, NoteVisibility, TaskStatus, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
@@ -24,6 +24,7 @@ function buildErrorRedirectUrl(requestUrl: string, taskId: string, input: {
     title: string;
     description: string;
     status: string;
+    priority: string;
     assigneePersonId: string;
     dueAt: string;
     sourceNoteId: string;
@@ -31,7 +32,7 @@ function buildErrorRedirectUrl(requestUrl: string, taskId: string, input: {
     returnTo: string;
   };
   fieldErrors?: Partial<
-    Record<"title" | "description" | "status" | "assigneePersonId" | "dueAt" | "sourceNoteId" | "sourceEventId", string>
+    Record<"title" | "description" | "status" | "priority" | "assigneePersonId" | "dueAt" | "sourceNoteId" | "sourceEventId", string>
   >;
   error?: string;
 }) {
@@ -40,6 +41,7 @@ function buildErrorRedirectUrl(requestUrl: string, taskId: string, input: {
   url.searchParams.set("title", input.values.title);
   url.searchParams.set("description", input.values.description);
   url.searchParams.set("status", input.values.status);
+  url.searchParams.set("priority", input.values.priority);
   url.searchParams.set("assigneePersonId", input.values.assigneePersonId);
   url.searchParams.set("dueAt", input.values.dueAt);
   url.searchParams.set("sourceNoteId", input.values.sourceNoteId);
@@ -54,6 +56,9 @@ function buildErrorRedirectUrl(requestUrl: string, taskId: string, input: {
   }
   if (input.fieldErrors?.status) {
     url.searchParams.set("statusError", input.fieldErrors.status);
+  }
+  if (input.fieldErrors?.priority) {
+    url.searchParams.set("priorityError", input.fieldErrors.priority);
   }
   if (input.fieldErrors?.assigneePersonId) {
     url.searchParams.set("assigneePersonIdError", input.fieldErrors.assigneePersonId);
@@ -86,6 +91,7 @@ export async function POST(
     title: getStringField(formData, "title"),
     description: getStringField(formData, "description"),
     status: getStringField(formData, "status") || TaskStatus.OPEN,
+    priority: getStringField(formData, "priority"),
     assigneePersonId: getStringField(formData, "assigneePersonId"),
     dueAt: getStringField(formData, "dueAt"),
     sourceNoteId: getStringField(formData, "sourceNoteId"),
@@ -115,6 +121,23 @@ export async function POST(
   const organizationId = scope.organizationId;
 
   const parsed = followUpTaskWorkflowSchema.safeParse(values);
+  const rawPriority = values.priority.trim().toUpperCase();
+  const priority = rawPriority.length === 0
+    ? undefined
+    : Object.values(EntryPriority).includes(rawPriority as EntryPriority)
+      ? (rawPriority as EntryPriority)
+      : null;
+
+  if (priority === null) {
+    return NextResponse.redirect(
+      buildErrorRedirectUrl(request.url, taskId, {
+        values,
+        fieldErrors: { priority: "Priority must use a valid value." },
+        error: "Please correct the highlighted fields.",
+      }),
+      303,
+    );
+  }
 
   if (!parsed.success) {
     const fieldErrors = parsed.error.flatten().fieldErrors;
@@ -355,6 +378,7 @@ export async function POST(
             title: parsed.data.title,
             description: parsed.data.description,
             status: parsed.data.status,
+            priority,
             assigneePersonId: parsed.data.assigneePersonId,
             createdByPersonId: updatedTask.createdByPersonId,
             dueAt: parsed.data.dueAt,
@@ -372,6 +396,7 @@ export async function POST(
             sourceTaskId: updatedTask.id,
             fromStatus: existingTask?.status ?? null,
             changedStatus: parsed.data.status,
+            changedPriority: priority ?? null,
             assignedToPersonId: parsed.data.assigneePersonId,
           },
         });

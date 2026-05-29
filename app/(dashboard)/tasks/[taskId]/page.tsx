@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { NoteVisibility, RoleType } from "@prisma/client";
+import { EntryPriority, NoteVisibility, RoleType, TaskStatus } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { getInternalCommunicationEventClassification } from "@/lib/communication-classification";
@@ -22,7 +22,7 @@ import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-a
 import { appendReturnToParam, resolveSafeReturnPath } from "@/lib/navigation-context";
 import { classifyFollowUpTaskOperationalVisibility } from "@/lib/operational-visibility";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { isSchemaUnavailableError } from "@/lib/workflows";
+import { formatDateTimeInputValue, isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -122,6 +122,7 @@ export default async function TaskDetailPage({
         sourceInboxItem: { id: string; category: string; status: string } | null;
         entry: {
           id: string;
+          priority: EntryPriority;
           parentEntryId: string | null;
           parentEntry: { id: string; title: string; deletedAt: Date | null } | null;
         } | null;
@@ -185,6 +186,7 @@ export default async function TaskDetailPage({
          entry: {
            select: {
              id: true,
+             priority: true,
              parentEntryId: true,
              parentEntry: { select: { id: true, title: true, deletedAt: true } },
            },
@@ -390,6 +392,10 @@ export default async function TaskDetailPage({
             </dd>
           </div>
           <div>
+            <dt className="font-medium">Priority</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{formatEnumLabel(task.entry?.priority ?? EntryPriority.MEDIUM)}</dd>
+          </div>
+          <div>
             <dt className="font-medium">Due date</dt>
             <dd className={isOverdue ? "text-red-700 dark:text-red-300" : "text-zinc-600 dark:text-zinc-400"}>
               {formatDateTime(task.dueAt)}
@@ -399,6 +405,75 @@ export default async function TaskDetailPage({
                 </span>
               ) : null}
             </dd>
+          </div>
+
+          <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+            <h3 className="text-lg font-semibold">Task actions</h3>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <form action={`/tasks/${task.id}/edit/update`} method="post">
+                <input type="hidden" name="title" value={task.title} />
+                <input type="hidden" name="description" value={task.description ?? ""} />
+                <input type="hidden" name="status" value={TaskStatus.DONE} />
+                <input type="hidden" name="priority" value={task.entry?.priority ?? EntryPriority.MEDIUM} />
+                <input type="hidden" name="assigneePersonId" value={task.assignee.id} />
+                <input type="hidden" name="dueAt" value={formatDateTimeInputValue(task.dueAt)} />
+                <input type="hidden" name="sourceNoteId" value={task.sourceNote?.id ?? ""} />
+                <input type="hidden" name="sourceEventId" value={task.sourceEvent?.id ?? ""} />
+                <input type="hidden" name="returnTo" value={`/tasks/${task.id}?returnTo=${encodeURIComponent(returnTo)}`} />
+                <button
+                  type="submit"
+                  className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                >
+                  Complete task
+                </button>
+              </form>
+            </div>
+            <form action={`/tasks/${task.id}/edit/update`} method="post" className="mt-4 space-y-3">
+              <input type="hidden" name="title" value={task.title} />
+              <input type="hidden" name="description" value={task.description ?? ""} />
+              <input type="hidden" name="status" value={task.status} />
+              <input type="hidden" name="assigneePersonId" value={task.assignee.id} />
+              <input type="hidden" name="sourceNoteId" value={task.sourceNote?.id ?? ""} />
+              <input type="hidden" name="sourceEventId" value={task.sourceEvent?.id ?? ""} />
+              <input type="hidden" name="returnTo" value={`/tasks/${task.id}?returnTo=${encodeURIComponent(returnTo)}`} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label htmlFor="quickPriority" className="text-sm font-medium">
+                    Priority
+                  </label>
+                  <select
+                    id="quickPriority"
+                    name="priority"
+                    defaultValue={task.entry?.priority ?? EntryPriority.MEDIUM}
+                    className="w-full rounded-md border px-3 py-2 text-sm"
+                  >
+                    {Object.values(EntryPriority).map((value) => (
+                      <option key={value} value={value}>
+                        {formatEnumLabel(value)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="quickDueAt" className="text-sm font-medium">
+                    Due date
+                  </label>
+                  <input
+                    id="quickDueAt"
+                    name="dueAt"
+                    type="datetime-local"
+                    defaultValue={formatDateTimeInputValue(task.dueAt)}
+                    className="w-full rounded-md border px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black"
+              >
+                Save task details
+              </button>
+            </form>
           </div>
           <div>
             <dt className="font-medium">Assignee</dt>
