@@ -7,6 +7,7 @@ import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { requirePermission } from "@/lib/permissions";
+import { describeSchemaUnavailableError } from "@/lib/workflows";
 
 export async function POST(request: Request, { params }: { params: Promise<{ entryId: string }> }) {
   const { entryId } = await params;
@@ -38,39 +39,63 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
 
-  const completedAt = new Date();
-  const completionUpdate = deriveTaskCompletionUpdate(completedAt);
-  await db.entry.update({
-    where: { id: entry.id },
-    data: {
-      status: completionUpdate.status,
-      taskCompleted: completionUpdate.taskCompleted,
-      completedAt: completionUpdate.completedAt,
-      version: { increment: 1 },
-    },
-  });
-
-  if (entry.sourceTaskId) {
-    await db.followUpTask.update({
-      where: { id: entry.sourceTaskId },
-      data: { status: TaskStatus.DONE },
+  try {
+    const completedAt = new Date();
+    const completionUpdate = deriveTaskCompletionUpdate(completedAt);
+    await db.entry.update({
+      where: { id: entry.id },
+      data: {
+        status: completionUpdate.status,
+        taskCompleted: completionUpdate.taskCompleted,
+        completedAt: completionUpdate.completedAt,
+        version: { increment: 1 },
+      },
     });
-  }
 
-  await writeEntryActivity({
-    organizationId: organizationId,
-    entryId: entry.id,
-    actorPersonId: scope.auth.personId,
-    action: ENTRY_ACTIVITY_ACTIONS.ENTRY_COMPLETED,
-    metadata: { completedAt: completedAt.toISOString(), entryType: entry.type },
-  });
-  if (entry.type === EntryType.FOLLOW_UP) {
-    await writeEntryActivity({
-      organizationId: organizationId,
-      entryId: entry.id,
-      actorPersonId: scope.auth.personId,
-      action: ENTRY_ACTIVITY_ACTIONS.FOLLOW_UP_COMPLETED,
-      metadata: { completedAt: completedAt.toISOString() },
+    if (entry.sourceTaskId) {
+      const taskUpdate = await db.followUpTask.updateMany({
+        where: { id: entry.sourceTaskId, organizationId: organizationId },
+        data: { status: TaskStatus.DONE },
+      });
+      if (taskUpdate.count === 0) {
+        console.warn("[entries.complete] Linked follow-up task was not found while syncing completion", {
+          organizationId,
+          entryId: entry.id,
+          sourceTaskId: entry.sourceTaskId,
+        });
+      }
+    }
+
+    try {
+      await writeEntryActivity({
+        organizationId: organizationId,
+        entryId: entry.id,
+        actorPersonId: scope.auth.personId,
+        action: ENTRY_ACTIVITY_ACTIONS.ENTRY_COMPLETED,
+        metadata: { completedAt: completedAt.toISOString(), entryType: entry.type },
+      });
+      if (entry.type === EntryType.FOLLOW_UP) {
+        await writeEntryActivity({
+          organizationId: organizationId,
+          entryId: entry.id,
+          actorPersonId: scope.auth.personId,
+          action: ENTRY_ACTIVITY_ACTIONS.FOLLOW_UP_COMPLETED,
+          metadata: { completedAt: completedAt.toISOString() },
+        });
+      }
+    } catch (error) {
+      console.error("[entries.complete] Activity write failed", {
+        organizationId,
+        entryId: entry.id,
+        error,
+      });
+    }
+  } catch (error) {
+    console.error("[entries.complete] Failed to complete task entry", {
+      organizationId,
+      entryId,
+      schemaDetail: describeSchemaUnavailableError(error),
+      error,
     });
   }
 

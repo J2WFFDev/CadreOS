@@ -73,6 +73,8 @@ export default async function GearOpsAdminSchemaDiagnosticsPage() {
               <th className="px-3 py-2 font-medium">Missing tables</th>
               <th className="px-3 py-2 font-medium">Missing columns</th>
               <th className="px-3 py-2 font-medium">Pending actions</th>
+              <th className="px-3 py-2 font-medium">Failed query</th>
+              <th className="px-3 py-2 font-medium">Failure reason</th>
               <th className="px-3 py-2 font-medium">Checked at</th>
             </tr>
           </thead>
@@ -113,6 +115,12 @@ export default async function GearOpsAdminSchemaDiagnosticsPage() {
                       ))}
                     </ul>
                   )}
+                </td>
+                <td className="px-3 py-2 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                  {result.failedQuery ?? <span className="text-zinc-400">—</span>}
+                </td>
+                <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
+                  {result.failureReason ?? <span className="text-zinc-400">—</span>}
                 </td>
                 <td className="px-3 py-2 text-zinc-500 whitespace-nowrap">{result.checkedAt}</td>
               </tr>
