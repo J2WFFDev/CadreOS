@@ -68,6 +68,9 @@ test("entry inbox route does not activate all entries root link", () => {
 
 test("nested routes activate their parent link except dashboard", () => {
   assert.equal(isNavSidebarLinkActive("/gear-ops/items/item-1", "/gear-ops/items"), true);
+  assert.equal(isNavSidebarLinkActive("/journals/entry-1", "/journals"), true);
+  assert.equal(isNavSidebarLinkActive("/prompts/prompt-1", "/prompts"), true);
+  assert.equal(isNavSidebarLinkActive("/prompt-assignments/assignment-1", "/prompt-assignments"), true);
   assert.equal(isNavSidebarLinkActive("/dashboard/metrics", "/dashboard"), false);
 });
 
