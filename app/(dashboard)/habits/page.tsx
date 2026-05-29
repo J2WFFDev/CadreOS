@@ -11,6 +11,7 @@ import { badgeVariantForHabitStatus, labelForHabitFrequency, labelForHabitStatus
 import { formatShortDateTime } from "@/lib/format-date";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { db } from "@/lib/db";
+import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -38,11 +39,6 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
     );
   }
 
-  const accessContext = await resolveHabitAccessContext({
-    organizationId: scope.organizationId,
-    actorPersonId: scope.auth.personId,
-  });
-
   const statusFilter = normalizeStatusFilter(params.status);
 
   const whereStatus =
@@ -54,26 +50,75 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
           ? { status: HabitStatus.ARCHIVED }
           : {};
 
-  const habits = await db.habit.findMany({
-    where: { organizationId: scope.organizationId, ...whereStatus },
-    orderBy: [{ updatedAt: "desc" }],
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      status: true,
-      athletePersonId: true,
-      assignedToTeamId: true,
-      createdByPersonId: true,
-      createdAt: true,
-      updatedAt: true,
-      athlete: { select: { firstName: true, lastName: true } },
-      assignedToTeam: { select: { name: true, programId: true } },
-      schedules: { select: { frequency: true }, take: 1, orderBy: { createdAt: "asc" } },
-      _count: { select: { completions: true } },
-    },
-    take: HABIT_LIST_LIMIT,
-  });
+  let accessContext:
+    | Awaited<ReturnType<typeof resolveHabitAccessContext>>
+    | null = null;
+  let habits:
+    | Array<{
+        id: string;
+        title: string;
+        description: string | null;
+        status: HabitStatus;
+        athletePersonId: string;
+        assignedToTeamId: string | null;
+        createdByPersonId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        athlete: { firstName: string; lastName: string };
+        assignedToTeam: { name: string; programId: string } | null;
+        schedules: Array<{ frequency: HabitFrequency }>;
+        _count: { completions: number };
+      }>
+    | null = null;
+  let loadErrorMessage: string | null = null;
+
+  try {
+    accessContext = await resolveHabitAccessContext({
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+    });
+
+    habits = await db.habit.findMany({
+      where: { organizationId: scope.organizationId, ...whereStatus },
+      orderBy: [{ updatedAt: "desc" }],
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        status: true,
+        athletePersonId: true,
+        assignedToTeamId: true,
+        createdByPersonId: true,
+        createdAt: true,
+        updatedAt: true,
+        athlete: { select: { firstName: true, lastName: true } },
+        assignedToTeam: { select: { name: true, programId: true } },
+        schedules: { select: { frequency: true }, take: 1, orderBy: { createdAt: "asc" } },
+        _count: { select: { completions: true } },
+      },
+      take: HABIT_LIST_LIMIT,
+    });
+  } catch (error) {
+    const detail = describeSchemaUnavailableError(error);
+    loadErrorMessage = isSchemaUnavailableError(error)
+      ? `Habits are currently unavailable because ${detail ?? "required habit tables/columns are missing"}.`
+      : "Unable to load habits right now.";
+    console.error("[habits.page] Failed to load habits", {
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+      schemaDetail: detail,
+      error,
+    });
+  }
+
+  if (!accessContext || !habits) {
+    return (
+      <section className="space-y-4">
+        <PageHeader title="Habits" description="Track recurring behaviors and check-in history." />
+        <ErrorMessage message={loadErrorMessage ?? "Unable to load habits right now."} />
+      </section>
+    );
+  }
 
   const visibleHabits = habits.filter((h) =>
     canReadHabit(accessContext, {

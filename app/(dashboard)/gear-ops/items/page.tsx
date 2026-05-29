@@ -26,7 +26,7 @@ import {
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { deriveAvailabilitySignal } from "@/lib/gear-ops-ui";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { isSchemaUnavailableError } from "@/lib/workflows";
+import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -224,8 +224,18 @@ export default async function GearOpsItemsPage({
     });
   } catch (error) {
     if (isSchemaUnavailableError(error)) {
-      queryErrorMessage = "Database schema is not available yet. Run database setup before loading GearOps items.";
+      const detail = describeSchemaUnavailableError(error);
+      queryErrorMessage = detail
+        ? `GearOps items query dependency is missing (${detail}) while running gearItem.findMany.`
+        : "Database schema is not available yet. Run database setup before loading GearOps items.";
     }
+    console.error("[gear-ops.items.page] Failed to load item list", {
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+      schemaDetail: describeSchemaUnavailableError(error),
+      moduleQuery: "gearItem.findMany",
+      error,
+    });
   }
 
   if (!items) {

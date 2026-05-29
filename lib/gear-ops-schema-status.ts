@@ -31,6 +31,8 @@ export type GearOpsSchemaStatus = {
   pendingActions: string[];
   setupRequired: boolean;
   scope: GearOpsSchemaScope;
+  failedQuery: string | null;
+  failureReason: string | null;
 };
 
 type GearOpsSchemaEvaluationInput = {
@@ -544,7 +546,20 @@ function getStatusShell(scope: GearOpsSchemaScope, checkedAt: string): Omit<Gear
     pendingActions: [],
     setupRequired: false,
     scope,
+    failedQuery: null,
+    failureReason: null,
   };
+}
+
+function describeSchemaProbeError(error: unknown): string {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    const detail = error.message.split("\n").at(0)?.trim();
+    return detail || `Prisma error ${error.code}`;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return "Unknown schema probe failure";
 }
 
 export const GEAR_OPS_ALL_SCOPES: GearOpsSchemaScope[] = Object.keys(
@@ -621,6 +636,8 @@ export function evaluateGearOpsSchemaStatus(input: GearOpsSchemaEvaluationInput)
     pendingActions: buildGearOpsPendingActions({ missingTables, missingColumns }),
     setupRequired: missingTables.length > 0 || missingColumns.length > 0,
     scope: input.scope,
+    failedQuery: null,
+    failureReason: null,
   };
 }
 
@@ -631,12 +648,14 @@ export async function getGearOpsSchemaStatus(scope: GearOpsSchemaScope = "core")
 
   try {
     await db.$queryRaw`SELECT 1`;
-  } catch {
+  } catch (error) {
     return {
       connected: false,
       schemaReady: false,
       ...statusShell,
       setupRequired: true,
+      failedQuery: "SELECT 1",
+      failureReason: describeSchemaProbeError(error),
     };
   }
 
@@ -655,11 +674,11 @@ export async function getGearOpsSchemaStatus(scope: GearOpsSchemaScope = "core")
       const tableNameSql = tablesToCheck.map((requirement) => Prisma.sql`${requirement.table}`);
       const columnRows = await db.$queryRaw<Array<{ table_name: string; column_name: string }>>(
         Prisma.sql`
-          SELECT table_name, column_name
-          FROM information_schema.columns
-          WHERE table_schema = 'public'
-            AND table_name IN (${Prisma.join(tableNameSql)})
-        `,
+            SELECT table_name, column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name IN (${Prisma.join(tableNameSql)})
+          `,
       );
 
       for (const row of columnRows) {
@@ -681,12 +700,14 @@ export async function getGearOpsSchemaStatus(scope: GearOpsSchemaScope = "core")
       databaseProvider: statusShell.databaseProvider,
       ...evaluated,
     };
-  } catch {
+  } catch (error) {
     return {
       connected: true,
       schemaReady: false,
       ...statusShell,
       setupRequired: true,
+      failedQuery: "pg_catalog.pg_tables / information_schema.columns schema probe",
+      failureReason: describeSchemaProbeError(error),
     };
   }
 }

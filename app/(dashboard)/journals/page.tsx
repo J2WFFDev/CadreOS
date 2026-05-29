@@ -13,6 +13,7 @@ import {
 } from "@/lib/journals/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { db } from "@/lib/db";
+import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -39,40 +40,81 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
     );
   }
 
-  const accessContext = await resolveJournalAccessContext({
-    organizationId: scope.organizationId,
-    actorPersonId: scope.auth.personId,
-  });
-
   const statusFilter = normalizeStatusFilter(params.status);
+  let accessContext:
+    | Awaited<ReturnType<typeof resolveJournalAccessContext>>
+    | null = null;
+  let journals:
+    | Array<{
+        id: string;
+        type: EntryType;
+        title: string;
+        status: EntryStatus;
+        visibility: "STAFF_ONLY" | "TEAM_STAFF" | "ORGANIZATION_SCOPED";
+        createdAt: Date;
+        updatedAt: Date;
+        createdByPersonId: string;
+        teamId: string | null;
+        team: { name: string; programId: string } | null;
+        createdBy: { firstName: string; lastName: string };
+      }>
+    | null = null;
+  let loadErrorMessage: string | null = null;
 
-  const journals = await db.entry.findMany({
-    where: {
+  try {
+    accessContext = await resolveJournalAccessContext({
       organizationId: scope.organizationId,
-      type: EntryType.JOURNAL,
-      deletedAt: null,
-      ...(statusFilter === "active"
-        ? { status: { not: EntryStatus.ARCHIVED } }
-        : statusFilter === "archived"
-          ? { status: EntryStatus.ARCHIVED }
-          : {}),
-    },
-    orderBy: [{ updatedAt: "desc" }],
-    select: {
-      id: true,
-      type: true,
-      title: true,
-      status: true,
-      visibility: true,
-      createdAt: true,
-      updatedAt: true,
-      createdByPersonId: true,
-      teamId: true,
-      team: { select: { name: true, programId: true } },
-      createdBy: { select: { firstName: true, lastName: true } },
-    },
-    take: JOURNAL_LIST_LIMIT,
-  });
+      actorPersonId: scope.auth.personId,
+    });
+
+    journals = await db.entry.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        type: EntryType.JOURNAL,
+        deletedAt: null,
+        ...(statusFilter === "active"
+          ? { status: { not: EntryStatus.ARCHIVED } }
+          : statusFilter === "archived"
+            ? { status: EntryStatus.ARCHIVED }
+            : {}),
+      },
+      orderBy: [{ updatedAt: "desc" }],
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        status: true,
+        visibility: true,
+        createdAt: true,
+        updatedAt: true,
+        createdByPersonId: true,
+        teamId: true,
+        team: { select: { name: true, programId: true } },
+        createdBy: { select: { firstName: true, lastName: true } },
+      },
+      take: JOURNAL_LIST_LIMIT,
+    });
+  } catch (error) {
+    const detail = describeSchemaUnavailableError(error);
+    loadErrorMessage = isSchemaUnavailableError(error)
+      ? `Journals are currently unavailable because ${detail ?? "required journal tables/columns are missing"}.`
+      : "Unable to load journals right now.";
+    console.error("[journals.page] Failed to load journals", {
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+      schemaDetail: detail,
+      error,
+    });
+  }
+
+  if (!accessContext || !journals) {
+    return (
+      <section className="space-y-4">
+        <PageHeader title="Journals" description="Draft, submit, and archive sensitive journal entries." />
+        <ErrorMessage message={loadErrorMessage ?? "Unable to load journals right now."} />
+      </section>
+    );
+  }
 
   const visibleJournals = journals.filter((journal) =>
     canReadJournalEntry(accessContext, {

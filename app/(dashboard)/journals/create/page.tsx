@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { canCreateJournal, resolveJournalAccessContext } from "@/lib/journals/access";
 import { MAX_JOURNAL_TITLE_LENGTH, hintForJournalVisibility, labelForJournalVisibility } from "@/lib/journals/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -42,28 +43,57 @@ export default async function CreateJournalPage({ searchParams }: { searchParams
   // Optional prompt/assignment context from query params
   const promptIdParam = Array.isArray(params.promptId) ? params.promptId[0] : params.promptId;
   const assignmentIdParam = Array.isArray(params.assignmentId) ? params.assignmentId[0] : params.assignmentId;
+  const routeErrorParam = Array.isArray(params.error) ? params.error[0] : params.error;
 
-  // Load prompt context if provided — never expose body text from other journals
-  const promptContext =
-    promptIdParam && scope.organizationId
-      ? await db.journalPrompt.findFirst({
-          where: { id: promptIdParam, organizationId: scope.organizationId, active: true },
-          select: { id: true, title: true, promptText: true, category: true },
-        })
-      : null;
+  let promptContext:
+    | {
+        id: string;
+        title: string;
+        promptText: string;
+        category: string | null;
+      }
+    | null = null;
+  let assignmentContext:
+    | {
+        id: string;
+        status: string;
+        dueAt: Date | null;
+      }
+    | null = null;
+  let queryErrorMessage: string | null = routeErrorParam ?? null;
 
-  // Validate the assignment belongs to this organization if provided
-  const assignmentContext =
-    assignmentIdParam && scope.organizationId
-      ? await db.journalAssignment.findFirst({
-          where: {
-            id: assignmentIdParam,
-            organizationId: scope.organizationId,
-            promptId: promptContext?.id ?? "",
-          },
-          select: { id: true, status: true, dueAt: true },
-        })
-      : null;
+  try {
+    promptContext =
+      promptIdParam && scope.organizationId
+        ? await db.journalPrompt.findFirst({
+            where: { id: promptIdParam, organizationId: scope.organizationId, active: true },
+            select: { id: true, title: true, promptText: true, category: true },
+          })
+        : null;
+
+    assignmentContext =
+      assignmentIdParam && scope.organizationId
+        ? await db.journalAssignment.findFirst({
+            where: {
+              id: assignmentIdParam,
+              organizationId: scope.organizationId,
+              promptId: promptContext?.id ?? "",
+            },
+            select: { id: true, status: true, dueAt: true },
+          })
+        : null;
+  } catch (error) {
+    const detail = describeSchemaUnavailableError(error);
+    queryErrorMessage = isSchemaUnavailableError(error)
+      ? `Journal setup is currently unavailable because ${detail ?? "required journal tables/columns are missing"}.`
+      : "Unable to load journal creation context right now.";
+    console.error("[journals.create.page] Failed to load journal prompt/assignment context", {
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+      schemaDetail: detail,
+      error,
+    });
+  }
 
   const hasPromptContext = Boolean(promptContext);
 
@@ -82,6 +112,8 @@ export default async function CreateJournalPage({ searchParams }: { searchParams
           </Link>
         }
       />
+
+      {queryErrorMessage ? <ErrorMessage message={queryErrorMessage} /> : null}
 
       {promptContext ? (
         <article className="rounded-lg border bg-zinc-50 p-4 dark:bg-zinc-800">
@@ -152,4 +184,3 @@ export default async function CreateJournalPage({ searchParams }: { searchParams
     </section>
   );
 }
-
