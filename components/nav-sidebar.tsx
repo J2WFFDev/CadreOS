@@ -10,6 +10,18 @@ import {
   isNavSidebarLinkActive,
 } from "@/lib/nav-sidebar";
 
+function renderNotificationBadge(href: string, unreadNotificationCount: number, className: string) {
+  if (href !== "/notifications" || unreadNotificationCount <= 0) {
+    return null;
+  }
+
+  return (
+    <span className={className}>
+      {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+    </span>
+  );
+}
+
 export function NavSidebar({
   unreadNotificationCount = 0,
   currentUser,
@@ -31,47 +43,57 @@ export function NavSidebar({
 
           return (
             <li key={group.key}>
-              {group.href ? (
-                <Link
-                  href={group.href}
-                  className={
-                    isGroupActive
-                      ? "mb-1 block rounded-md bg-zinc-100 px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
-                      : "mb-1 block rounded-md px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-                  }
-                >
-                  {group.label}
-                </Link>
-              ) : (
-                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-                  {group.label}
-                </p>
-              )}
+              <p
+                className={
+                  isGroupActive
+                    ? "mb-1 rounded-md bg-zinc-100 px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
+                    : "px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500"
+                }
+              >
+                {group.label}
+              </p>
               <ul className="space-y-0.5 pl-3">
-                {group.links.map((link) => {
-                  const isActive = isNavSidebarLinkActive(pathname, link.href);
+                {group.items.map((item) => {
+                  const isInteractive = item.status === "active" && item.disabled !== true;
+                  const isActive = isInteractive && isNavSidebarLinkActive(pathname, item.href);
+                  const isDisabled = !isInteractive;
+                  const statusLabel = item.status === "planned" ? "Planned" : item.status === "disabled" ? "Disabled" : null;
+                  const statusTitle = item.plannedReason ?? item.disabledReason ?? statusLabel ?? undefined;
 
                   return (
-                    <li key={`${link.href}::${link.label}`}>
-                      {link.disabled ? (
-                        <span className="flex items-center rounded-md px-3 py-2 text-sm text-zinc-400 dark:text-zinc-600 cursor-not-allowed" title="Coming soon">
-                          <span>{link.label}</span>
+                    <li key={item.key}>
+                      {isDisabled ? (
+                        <span
+                          className="flex cursor-not-allowed items-center justify-between rounded-md px-3 py-2 text-sm text-zinc-400 dark:text-zinc-600"
+                          title={statusTitle}
+                        >
+                          <span>{item.label}</span>
+                          {statusLabel ? (
+                            <span className="ml-2 rounded-full border border-zinc-300 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400 dark:border-zinc-700 dark:text-zinc-500">
+                              {statusLabel}
+                            </span>
+                          ) : null}
+                          {renderNotificationBadge(
+                            item.href,
+                            unreadNotificationCount,
+                            "ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-zinc-300 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200",
+                          )}
                         </span>
                       ) : (
                         <Link
-                          href={link.href}
+                          href={item.href}
                           className={
                             isActive
-                              ? "flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
+                              ? "flex items-center justify-between rounded-md bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
                               : "flex items-center justify-between rounded-md px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
                           }
                         >
-                          <span>{link.label}</span>
-                          {link.href === "/notifications" && unreadNotificationCount > 0 ? (
-                            <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-black px-1.5 py-0.5 text-[10px] font-semibold text-white dark:bg-white dark:text-black">
-                              {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
-                            </span>
-                          ) : null}
+                          <span>{item.label}</span>
+                          {renderNotificationBadge(
+                            item.href,
+                            unreadNotificationCount,
+                            "ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-black px-1.5 py-0.5 text-[10px] font-semibold text-white dark:bg-white dark:text-black",
+                          )}
                         </Link>
                       )}
                     </li>

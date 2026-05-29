@@ -22,6 +22,10 @@ export type ModuleAccessDefinition = {
 
 const STAFF_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH"];
 const COACH_PLUS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH"];
+const MEMBEROPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH"];
+const ENTRYOPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "GUARDIAN", "ATHLETE"];
+const FIELDOPS_RESOURCEOPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH"];
+const GEAROPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "GUARDIAN", "ATHLETE"];
 
 export const MODULE_ACCESS_MAP: Record<ModuleKey, ModuleAccessDefinition> = {
   dashboard: {
@@ -34,13 +38,13 @@ export const MODULE_ACCESS_MAP: Record<ModuleKey, ModuleAccessDefinition> = {
     key: "memberOps",
     label: "MemberOps",
     path: "/programs",
-    allowedRoles: STAFF_ROLES,
+    allowedRoles: MEMBEROPS_ROLES,
   },
   entry: {
     key: "entry",
-    label: "Entry",
+    label: "EntryOps",
     path: "/entries",
-    allowedRoles: STAFF_ROLES,
+    allowedRoles: ENTRYOPS_ROLES,
   },
   journal: {
     key: "journal",
@@ -52,19 +56,19 @@ export const MODULE_ACCESS_MAP: Record<ModuleKey, ModuleAccessDefinition> = {
     key: "gearOps",
     label: "GearOps",
     path: "/gear-ops",
-    allowedRoles: COACH_PLUS_ROLES,
+    allowedRoles: GEAROPS_ROLES,
   },
   fieldOps: {
     key: "fieldOps",
     label: "FieldOps",
     path: "/field-ops",
-    allowedRoles: COACH_PLUS_ROLES,
+    allowedRoles: FIELDOPS_RESOURCEOPS_ROLES,
   },
   resourceOps: {
     key: "resourceOps",
     label: "ResourceOps",
     path: "/field-ops/resources",
-    allowedRoles: ["ADMIN", "PROGRAM_MANAGER"],
+    allowedRoles: FIELDOPS_RESOURCEOPS_ROLES,
   },
   admin: {
     key: "admin",
@@ -152,6 +156,10 @@ function hasRole(user: CurrentUser | null, allowedRoles: readonly AppRole[]): bo
 
 export function canAccessModule(user: CurrentUser | null, moduleKey: ModuleKey): boolean {
   return hasRole(user, MODULE_ACCESS_MAP[moduleKey].allowedRoles);
+}
+
+export function canAccessNavItem(user: CurrentUser | null, allowedRoles: readonly AppRole[]): boolean {
+  return hasRole(user, allowedRoles);
 }
 
 export function canPerformAction(user: CurrentUser | null, actionKey: ActionKey): boolean {
