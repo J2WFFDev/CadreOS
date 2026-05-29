@@ -79,8 +79,19 @@ function summarizeEntryActivityMetadata(metadataJson: string | null) {
   }
 }
 
-export default async function EntryDetailPage({ params }: { params: Promise<{ entryId: string }> }) {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+export default async function EntryDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ entryId: string }>;
+  searchParams: Promise<SearchParams>;
+}) {
   const { entryId } = await params;
+  const resolvedSearchParams = await searchParams;
+  const routeError = Array.isArray(resolvedSearchParams.error) ? resolvedSearchParams.error[0] : resolvedSearchParams.error;
+  const savedParam = Array.isArray(resolvedSearchParams.saved) ? resolvedSearchParams.saved[0] : resolvedSearchParams.saved;
   const scope = await getOrganizationScope();
 
   if (!scope.databaseReady) {
@@ -283,6 +294,17 @@ export default async function EntryDetailPage({ params }: { params: Promise<{ en
           Type: {entry.type} · Status: {entry.status} · Priority: {entry.priority}
         </p>
       </div>
+
+      {routeError ? (
+        <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+          {routeError}
+        </div>
+      ) : null}
+      {savedParam && !routeError ? (
+        <div className="rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-300">
+          Entry saved successfully.
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-4">
