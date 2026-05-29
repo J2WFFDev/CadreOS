@@ -28,13 +28,7 @@ function normalizeSha(value: string) {
   return normalized ? normalized.slice(0, 7) : "";
 }
 
-function normalizeNavVersion(value: string) {
-  const normalized = normalize(value);
-  if (!normalized) return "";
-  return normalized.toLowerCase().startsWith("v") ? normalized : `v${normalized}`;
-}
-
-function normalizeReleaseVersion(value: string) {
+function normalizeVersion(value: string) {
   const normalized = normalize(value);
   if (!normalized) return "";
   return normalized.toLowerCase().startsWith("v") ? normalized : `v${normalized}`;
@@ -66,7 +60,7 @@ function formatReleaseTag(value: string) {
 }
 
 function formatReleaseVersion(value: string) {
-  const normalized = normalizeReleaseVersion(value);
+  const normalized = normalizeVersion(value);
   return normalized ? `Release ${normalized}` : "";
 }
 
@@ -96,7 +90,7 @@ export function resolveBuildMetadataLabel(env: BuildInfoEnv = process.env) {
     formatReleaseVersion(releaseVersion),
     formatReleaseArc(releaseArc),
     formatBuildIteration(buildIteration),
-    navVersion ? `Nav ${normalizeNavVersion(navVersion)}` : "",
+    navVersion ? `Nav ${normalizeVersion(navVersion)}` : "",
     // TODO: Add feature-state maturity + feature flags segment from release controls.
     // TODO: Add migration status segment from deployment readiness metadata.
     // TODO: Add schema version segment from database schema metadata.
