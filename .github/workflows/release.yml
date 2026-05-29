@@ -98,14 +98,20 @@ jobs:
         if: steps.release.outputs.skip != 'true'
         id: version
         run: |
-          # Execute inline Node.js to validate package.json semver and emit GitHub Actions outputs.
+          latest_tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)"
+          if [ -n "$latest_tag" ]; then
+            base_version="${latest_tag#v}"
+          else
+            base_version="0.0.0"
+          fi
+          export BASE_VERSION="$base_version"
+
+          # Execute inline Node.js to compute semver bump from latest release tag.
           node <<'NODE' >> "$GITHUB_OUTPUT"
-          const fs = require("node:fs");
-          const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-          const version = typeof pkg.version === "string" ? pkg.version : "";
-          const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/);
+          const version = process.env.BASE_VERSION || "";
+          const match = version.match(/^(\d+)\.(\d+)\.(\d+)$/);
           if (!match) {
-            throw new Error(`package.json version must be semver-like, received: ${version || "<missing>"}`);
+            throw new Error(`Latest tag version must be semver-like, received: ${version || "<missing>"}`);
           }
 
           const [, majorText, minorText, patchText] = match;
@@ -123,25 +129,35 @@ jobs:
 
           console.log(`version=${nextVersion}`);
           console.log(`tag=v${nextVersion}`);
+          console.log(`base_version=${version}`);
           NODE
         env:
           BUMP: ${{ steps.release.outputs.bump }}
 
-      - name: Update package versions
+      - name: Create and push release tag
         if: steps.release.outputs.skip != 'true'
-        run: npm version "${NEXT_VERSION}" --no-git-tag-version
-        env:
-          NEXT_VERSION: ${{ steps.version.outputs.version }}
-
-      - name: Commit and tag release
-        if: steps.release.outputs.skip != 'true'
+        id: tag
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          git commit -m "chore(release): ${NEXT_TAG}"
-          git tag "${NEXT_TAG}"
-          git push origin HEAD:main --follow-tags
+          git fetch --tags --force
+          if git ls-remote --exit-code --tags origin "refs/tags/${NEXT_TAG}" >/dev/null; then
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git tag "${NEXT_TAG}" "${GITHUB_SHA}"
+          if git push origin "refs/tags/${NEXT_TAG}"; then
+            echo "created=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${NEXT_TAG}" >/dev/null; then
+            if git rev-parse -q --verify "refs/tags/${NEXT_TAG}" >/dev/null; then
+              git tag -d "${NEXT_TAG}" || true
+            fi
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          exit 1
         env:
           NEXT_TAG: ${{ steps.version.outputs.tag }}
 
@@ -155,12 +171,29 @@ jobs:
         with:
           script: |
             const { owner, repo } = context.repo;
+            let releaseExists = false;
+            try {
+              await github.rest.repos.getReleaseByTag({
+                owner,
+                repo,
+                tag: process.env.NEXT_TAG,
+              });
+              releaseExists = true;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+
+            if (releaseExists) {
+              core.info(`Release for ${process.env.NEXT_TAG} already exists. Skipping createRelease.`);
+              return;
+            }
+
             await github.rest.repos.createRelease({
               owner,
               repo,
               tag_name: process.env.NEXT_TAG,
               name: process.env.NEXT_TAG,
-              target_commitish: "main",
+              target_commitish: context.sha,
               generate_release_notes: true,
               body: process.env.RELEASE_LABELS
                 ? `Automated ${process.env.NEXT_VERSION} release.\n\nRelease labels: ${process.env.RELEASE_LABELS}`

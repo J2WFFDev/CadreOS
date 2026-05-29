@@ -28,7 +28,7 @@ function normalizeSha(value: string) {
   return normalized ? normalized.slice(0, 7) : "";
 }
 
-function normalizeNavVersion(value: string) {
+function normalizeVersion(value: string) {
   const normalized = normalize(value);
   if (!normalized) return "";
   return normalized.toLowerCase().startsWith("v") ? normalized : `v${normalized}`;
@@ -46,27 +46,51 @@ function formatBuildIteration(value: string) {
   return normalized.toLowerCase().startsWith("build ") ? normalized : `Build ${normalized}`;
 }
 
+function formatCommitRef(value: string) {
+  const normalized = normalize(value);
+  if (!normalized) return "";
+  return normalized.toLowerCase().startsWith("ref ") ? normalized : `Ref ${normalized}`;
+}
+
+function formatReleaseTag(value: string) {
+  const normalized = normalize(value);
+  if (!normalized) return "";
+  const tag = normalized.toLowerCase().startsWith("v") ? normalized : `v${normalized}`;
+  return `Tag ${tag}`;
+}
+
+function formatReleaseVersion(value: string) {
+  const normalized = normalizeVersion(value);
+  return normalized ? `Release ${normalized}` : "";
+}
+
 export function resolveBuildMetadataLabel(env: BuildInfoEnv = process.env) {
   const appEnv = pickFirst(env.NEXT_PUBLIC_APP_ENV, env.NEXT_PUBLIC_VERCEL_ENV, env.VERCEL_ENV);
-  const releaseArc = pickFirst(
-    env.NEXT_PUBLIC_RELEASE_ARC,
+  const releaseArc = pickFirst(env.NEXT_PUBLIC_RELEASE_ARC);
+  const commitRef = pickFirst(
+    env.NEXT_PUBLIC_RELEASE_REF,
     env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF,
     env.VERCEL_GIT_COMMIT_REF,
   );
   const buildIteration = pickFirst(env.NEXT_PUBLIC_BUILD_ITERATION);
   const gitSha = pickFirst(env.NEXT_PUBLIC_GIT_SHA, env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA, env.VERCEL_GIT_COMMIT_SHA);
+  const releaseTag = pickFirst(env.NEXT_PUBLIC_RELEASE_TAG, env.RELEASE_TAG);
+  const releaseVersion = pickFirst(env.NEXT_PUBLIC_RELEASE_VERSION, env.RELEASE_VERSION);
   const navVersion = pickFirst(env.NEXT_PUBLIC_NAV_VERSION);
 
-  const hasMetadata = Boolean(appEnv || releaseArc || buildIteration || gitSha || navVersion);
+  const hasMetadata = Boolean(appEnv || releaseArc || commitRef || buildIteration || gitSha || releaseTag || releaseVersion || navVersion);
   if (!hasMetadata) return `${APP_NAME} dev · local build`;
 
   const environmentLabel = normalizeEnvironment(appEnv || "dev") || "Dev";
   const parts = [
     `${APP_NAME} ${environmentLabel}`,
+    formatCommitRef(commitRef),
+    normalizeSha(gitSha),
+    formatReleaseTag(releaseTag),
+    formatReleaseVersion(releaseVersion),
     formatReleaseArc(releaseArc),
     formatBuildIteration(buildIteration),
-    normalizeSha(gitSha),
-    navVersion ? `Nav ${normalizeNavVersion(navVersion)}` : "",
+    navVersion ? `Nav ${normalizeVersion(navVersion)}` : "",
     // TODO: Add feature-state maturity + feature flags segment from release controls.
     // TODO: Add migration status segment from deployment readiness metadata.
     // TODO: Add schema version segment from database schema metadata.
