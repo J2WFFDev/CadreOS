@@ -84,9 +84,9 @@ export default async function DashboardLayout({
           <UserButton />
         </div>
       </header>
-      <div className="flex min-h-[calc(100vh-49px)]">
+      <div className="flex min-h-[calc(100vh-49px)] flex-col md:flex-row">
         <NavSidebar unreadNotificationCount={unreadNotificationCount} currentUser={currentUser} />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-4 md:p-6">
           <div className="mx-auto w-full max-w-5xl space-y-4">
             {shouldShowLinkingBanner ? (
               <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
