@@ -1,6 +1,8 @@
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
 
+export const dynamic = "force-dynamic";
+
 export default function PromptAliasPage() {
   return (
     <section className="space-y-4">

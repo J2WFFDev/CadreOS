@@ -13,11 +13,27 @@ import {
 } from "@/lib/journals/prompt-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
-import { JournalAssignmentStatus, RoleType } from "@prisma/client";
+import { JournalAssignmentStatus, Prisma, RoleType } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
+
+const assignmentSelect = Prisma.validator<Prisma.JournalAssignmentSelect>()({
+  id: true,
+  status: true,
+  dueAt: true,
+  scheduledFor: true,
+  createdAt: true,
+  prompt: { select: { id: true, title: true, category: true } },
+  assignedToAthlete: { select: { id: true, firstName: true, lastName: true } },
+  assignedToTeam: { select: { id: true, name: true } },
+  assignedBy: { select: { firstName: true, lastName: true } },
+});
+
+type PromptAssignmentRow = Prisma.JournalAssignmentGetPayload<{
+  select: typeof assignmentSelect;
+}>;
 
 function normalizeStatusFilter(
   rawValue: string | string[] | undefined,
@@ -49,10 +65,9 @@ export default async function PromptAssignmentsPage({
   let isStaff = false;
   let isAthlete = false;
   let isGuardian = false;
+  let noAccess = false;
   let athleteTeamIds: string[] = [];
-  let assignments:
-    | Awaited<ReturnType<typeof db.journalAssignment.findMany>>
-    | null = null;
+  let assignments: PromptAssignmentRow[] | null = null;
   let loadErrorMessage: string | null = null;
   const statusFilter = normalizeStatusFilter(params.status);
   const now = new Date();
@@ -68,14 +83,7 @@ export default async function PromptAssignmentsPage({
     isAthlete = accessContext.assignments.some((a) => a.roleType === RoleType.ATHLETE);
     isGuardian = accessContext.assignments.some((a) => a.roleType === RoleType.PARENT_GUARDIAN);
 
-    if (!isStaff && !isAthlete && !isGuardian) {
-      return (
-        <section className="space-y-4">
-          <PageHeader title="Prompt Assignments" description="View and respond to assigned journal prompts." />
-          <ErrorMessage message="You do not have permission to view prompt assignments." />
-        </section>
-      );
-    }
+    noAccess = !isStaff && !isAthlete && !isGuardian;
 
     const openStatuses = [JournalAssignmentStatus.ACTIVE, JournalAssignmentStatus.PENDING];
     const closedStatuses = [
@@ -85,74 +93,75 @@ export default async function PromptAssignmentsPage({
     ];
 
     // Build where clause depending on role
-    athleteTeamIds = isAthlete
-      ? (
-          await db.rosterMembership.findMany({
-            where: {
-              organizationId: scope.organizationId,
-              personId: scope.auth.personId ?? "",
-            },
-            select: { teamId: true },
-          })
-        ).map((r) => r.teamId)
-      : [];
+    if (!noAccess) {
+      athleteTeamIds = isAthlete
+        ? (
+            await db.rosterMembership.findMany({
+              where: {
+                organizationId: scope.organizationId,
+                personId: scope.auth.personId ?? "",
+              },
+              select: { teamId: true },
+            })
+          ).map((r) => r.teamId)
+        : [];
 
-    // Guardian-linked athlete IDs
-    const guardianAthleteIds = Array.from(accessContext.linkedGuardianAthleteIds);
+      // Guardian-linked athlete IDs
+      const guardianAthleteIds = Array.from(accessContext.linkedGuardianAthleteIds);
 
-    assignments = await db.journalAssignment.findMany({
-      where: {
-        organizationId: scope.organizationId,
-        ...(statusFilter === "open"
-          ? { status: { in: openStatuses } }
-          : statusFilter === "completed"
-            ? { status: { in: closedStatuses } }
+      assignments = await db.journalAssignment.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          ...(statusFilter === "open"
+            ? { status: { in: openStatuses } }
+            : statusFilter === "completed"
+              ? { status: { in: closedStatuses } }
+              : {}),
+          // Scope to actor's accessible assignments
+          ...(!isStaff
+            ? {
+                OR: [
+                  // Direct athlete assignment
+                  ...(scope.auth.personId && isAthlete
+                    ? [{ assignedToAthletePersonId: scope.auth.personId }]
+                    : []),
+                  // Team assignment matching athlete's teams
+                  ...(athleteTeamIds.length > 0
+                    ? [{ assignedToTeamId: { in: athleteTeamIds } }]
+                    : []),
+                  // Guardian: see assignments for linked athletes
+                  ...(guardianAthleteIds.length > 0
+                    ? [{ assignedToAthletePersonId: { in: guardianAthleteIds } }]
+                    : []),
+                ],
+              }
             : {}),
-        // Scope to actor's accessible assignments
-        ...(!isStaff
-          ? {
-              OR: [
-                // Direct athlete assignment
-                ...(scope.auth.personId && isAthlete
-                  ? [{ assignedToAthletePersonId: scope.auth.personId }]
-                  : []),
-                // Team assignment matching athlete's teams
-                ...(athleteTeamIds.length > 0
-                  ? [{ assignedToTeamId: { in: athleteTeamIds } }]
-                  : []),
-                // Guardian: see assignments for linked athletes
-                ...(guardianAthleteIds.length > 0
-                  ? [{ assignedToAthletePersonId: { in: guardianAthleteIds } }]
-                  : []),
-              ],
-            }
-          : {}),
-      },
-      orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
-      select: {
-        id: true,
-        status: true,
-        dueAt: true,
-        scheduledFor: true,
-        createdAt: true,
-        prompt: { select: { id: true, title: true, category: true } },
-        assignedToAthlete: { select: { id: true, firstName: true, lastName: true } },
-        assignedToTeam: { select: { id: true, name: true } },
-        assignedBy: { select: { firstName: true, lastName: true } },
-      },
-      take: 300,
-    });
+        },
+        orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
+        select: assignmentSelect,
+        take: 300,
+      });
+    }
   } catch (error) {
     const detail = describeSchemaUnavailableError(error);
     loadErrorMessage = isSchemaUnavailableError(error)
-      ? `Prompt assignments are planned for a future EntryOps workflow and are currently unavailable because ${detail ?? "required prompt assignment tables/columns are missing"}.`
-      : "Prompt assignments are planned for a future EntryOps workflow and are not available yet.";
+      ? `Prompt assignments are currently unavailable because setup is incomplete${detail ? ` (${detail})` : ""}.`
+      : "Unable to load prompt assignments right now.";
     console.error("[prompt-assignments.page] Failed to load prompt assignments", {
       organizationId: scope.organizationId,
       actorPersonId: scope.auth.personId,
       schemaDetail: detail,
       error,
     });
+  }
+
+  if (noAccess) {
+    return (
+      <section className="space-y-4">
+        <PageHeader title="Prompt Assignments" description="View and respond to assigned journal prompts." />
+        <ErrorMessage message="You do not have permission to view prompt assignments." />
+      </section>
+    );
   }
 
   if (!accessContext || !assignments) {
