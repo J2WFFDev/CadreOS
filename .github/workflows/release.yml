@@ -139,22 +139,25 @@ jobs:
         id: tag
         run: |
           git fetch --tags --force
-          if git rev-parse -q --verify "refs/tags/${NEXT_TAG}" >/dev/null; then
+          if git ls-remote --exit-code --tags origin "refs/tags/${NEXT_TAG}" >/dev/null; then
             echo "created=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          if ! git tag "${NEXT_TAG}" "${GITHUB_SHA}"; then
-            if git rev-parse -q --verify "refs/tags/${NEXT_TAG}" >/dev/null; then
-              echo "created=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            echo "Failed to create ${NEXT_TAG}" >&2
-            exit 1
+          git tag "${NEXT_TAG}" "${GITHUB_SHA}"
+          if git push origin "refs/tags/${NEXT_TAG}"; then
+            echo "created=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
-          git push origin "refs/tags/${NEXT_TAG}"
-          echo "created=true" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/${NEXT_TAG}" >/dev/null; then
+            if git rev-parse -q --verify "refs/tags/${NEXT_TAG}" >/dev/null; then
+              git tag -d "${NEXT_TAG}" || true
+            fi
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          exit 1
         env:
           NEXT_TAG: ${{ steps.version.outputs.tag }}
 
