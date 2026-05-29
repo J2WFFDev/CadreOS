@@ -115,23 +115,26 @@ export default async function GearOpsItemsPage({
   const queryText = readSearchParams(resolvedSearchParams, "q")[0]?.trim() ?? "";
 
   const hasFilters = inventoryTypeFilter.length > 0 || lifecycleStatusFilter.length > 0 || conditionStatusFilter.length > 0;
-  const buildItemWhere = (includeAssetId: boolean): Prisma.GearItemWhereInput => ({
+  const buildItemWhere = (includeAssetId: boolean): Prisma.GearItemWhereInput => {
+    const searchFilters: Prisma.GearItemWhereInput[] = [];
+    if (queryText.length > 0) {
+      searchFilters.push({ name: { contains: queryText, mode: "insensitive" } });
+      if (includeAssetId) {
+        searchFilters.push({ assetId: { contains: queryText, mode: "insensitive" } });
+      }
+      searchFilters.push({ barcodeValue: { equals: queryText, mode: "insensitive" } });
+      searchFilters.push({ serialNumber: { equals: queryText, mode: "insensitive" } });
+      searchFilters.push({ sku: { equals: queryText, mode: "insensitive" } });
+    }
+
+    return {
     ...access.where,
-    ...(queryText.length > 0
-      ? {
-          OR: [
-            { name: { contains: queryText, mode: "insensitive" } },
-            ...(includeAssetId ? [{ assetId: { contains: queryText, mode: "insensitive" } }] : []),
-            { barcodeValue: { equals: queryText, mode: "insensitive" } },
-            { serialNumber: { equals: queryText, mode: "insensitive" } },
-            { sku: { equals: queryText, mode: "insensitive" } },
-          ],
-        }
-      : {}),
+    ...(searchFilters.length > 0 ? { OR: searchFilters } : {}),
     ...(inventoryTypeFilter.length > 0 ? { inventoryType: { in: inventoryTypeFilter } } : {}),
     ...(lifecycleStatusFilter.length > 0 ? { lifecycleStatus: { in: lifecycleStatusFilter } } : {}),
     ...(conditionStatusFilter.length > 0 ? { conditionStatus: { in: conditionStatusFilter } } : {}),
-  });
+    };
+  };
 
   let items:
     | Array<{
