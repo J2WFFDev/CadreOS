@@ -1,5 +1,17 @@
-import { redirect } from "next/navigation";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader } from "@/components/dashboard/page-header";
+
+export const dynamic = "force-dynamic";
 
 export default function PromptAliasPage() {
-  redirect("/prompts");
+  return (
+    <section className="space-y-4">
+      <PageHeader title="Journal Prompt" description="Guided journal prompt workflows." />
+      <EmptyState
+        message="Journal prompts are not implemented yet."
+        actionHref="/entries"
+        actionLabel="Back to EntryOps"
+      />
+    </section>
+  );
 }
