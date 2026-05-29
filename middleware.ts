@@ -8,6 +8,7 @@ const isDashboardRoute = createRouteMatcher([
   "/events(.*)",
   "/notes(.*)",
   "/tasks(.*)",
+  "/entries(.*)",
   "/account(.*)",
 ]);
 

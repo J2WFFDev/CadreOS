@@ -1,4 +1,5 @@
 import { EntryPriority, EntryStatus, EntryType } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
@@ -10,18 +11,49 @@ import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/
 
 export async function POST(request: Request, { params }: { params: Promise<{ entryId: string }> }) {
   const { entryId } = await params;
+  console.log("[entries.update] POST received", { entryId });
+
   const scope = await getOrganizationScope();
   const formData = await request.formData();
   const returnTo = resolveSafeReturnPath(String(formData.get("returnTo") ?? ""), `/entries/${entryId}`);
 
+  console.log("[entries.update] scope resolved", {
+    databaseReady: scope.databaseReady,
+    organizationId: scope.organizationId,
+    personId: scope.auth.personId,
+    clerkUserId: scope.auth.clerkUserId,
+    unresolvedPersonLink: scope.auth.unresolvedPersonLink,
+    errorMessage: scope.errorMessage ?? null,
+  });
+
   if (!scope.databaseReady || !scope.organizationId) {
-    return NextResponse.redirect(new URL(returnTo, request.url), 303);
+    console.warn("[entries.update] Aborting: database not ready or no organizationId", {
+      databaseReady: scope.databaseReady,
+      organizationId: scope.organizationId,
+      errorMessage: scope.errorMessage ?? null,
+    });
+    const url = new URL(returnTo, request.url);
+    url.searchParams.set("error", scope.errorMessage ?? "Database is not available.");
+    return NextResponse.redirect(url, 303);
   }
   const organizationId = scope.organizationId;
 
   const canEdit = await canWriteEntries({ organizationId, actorPersonId: scope.auth.personId });
+  console.log("[entries.update] canWriteEntries result", {
+    canEdit,
+    organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+
   if (!canEdit) {
-    return NextResponse.redirect(new URL(returnTo, request.url), 303);
+    console.warn("[entries.update] Aborting: actor does not have write permission", {
+      organizationId,
+      actorPersonId: scope.auth.personId,
+      unresolvedPersonLink: scope.auth.unresolvedPersonLink,
+    });
+    const url = new URL(returnTo, request.url);
+    url.searchParams.set("error", "You do not have permission to edit entries.");
+    return NextResponse.redirect(url, 303);
   }
 
   const title = String(formData.get("title") ?? "").trim();
@@ -37,6 +69,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   const priority = Object.values(EntryPriority).includes(priorityValue as EntryPriority)
     ? (priorityValue as EntryPriority)
     : undefined;
+
+  console.log("[entries.update] form fields parsed", {
+    title: title || "(empty)",
+    contentLength: content.length,
+    type,
+    status,
+    priority,
+    hasDueAtField,
+    dueAtRaw: dueAtRaw || "(empty)",
+  });
 
   // Parse dueAt only when the field was submitted (TASK entries include it; NOTE entries do not).
   let dueDateUpdate: { dueDate: Date | null; dueTime: string | null } | undefined;
@@ -56,29 +98,59 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       select: { id: true, type: true, status: true, sourceTaskId: true, sourceNoteId: true },
     });
 
+    console.log("[entries.update] entry lookup result", {
+      found: Boolean(entry),
+      entryType: entry?.type ?? null,
+      entryStatus: entry?.status ?? null,
+      sourceTaskId: entry?.sourceTaskId ?? null,
+      sourceNoteId: entry?.sourceNoteId ?? null,
+    });
+
     if (!entry || entry.type === EntryType.JOURNAL) {
-      return NextResponse.redirect(new URL(returnTo, request.url), 303);
+      console.warn("[entries.update] Aborting: entry not found or is a JOURNAL type", {
+        entryId,
+        organizationId,
+        found: Boolean(entry),
+        entryType: entry?.type ?? null,
+      });
+      const url = new URL(returnTo, request.url);
+      url.searchParams.set("error", !entry ? "Entry not found." : "Journal entries cannot be edited here.");
+      return NextResponse.redirect(url, 303);
     }
+
+    const updateData = {
+      ...(title ? { title } : {}),
+      ...(content.length > 0 ? { content } : {}),
+      ...(type ? { type } : {}),
+      ...(status
+        ? { status, taskCompleted: status === EntryStatus.DONE, completedAt: status === EntryStatus.DONE ? new Date() : null }
+        : {}),
+      ...(priority ? { priority } : {}),
+      ...(dueDateUpdate !== undefined ? dueDateUpdate : {}),
+      ...(scope.auth.personId ? { updatedByPersonId: scope.auth.personId } : {}),
+      version: { increment: 1 },
+    };
+
+    console.log("[entries.update] attempting db.entry.update", {
+      entryId: entry.id,
+      updateFields: Object.keys(updateData).filter((k) => k !== "version"),
+    });
 
     await db.entry.update({
       where: { id: entry.id },
-      data: {
-        ...(title ? { title } : {}),
-        ...(content.length > 0 ? { content } : {}),
-        ...(type ? { type } : {}),
-        ...(status
-          ? { status, taskCompleted: status === EntryStatus.DONE, completedAt: status === EntryStatus.DONE ? new Date() : null }
-          : {}),
-        ...(priority ? { priority } : {}),
-        ...(dueDateUpdate !== undefined ? dueDateUpdate : {}),
-        version: { increment: 1 },
-      },
+      data: updateData,
     });
+
+    console.log("[entries.update] db.entry.update succeeded");
 
     if (entry.sourceTaskId && status) {
       const taskStatusUpdate = await db.followUpTask.updateMany({
         where: { id: entry.sourceTaskId, organizationId: organizationId },
         data: { status: mapEntryStatusToTaskStatus(status) },
+      });
+      console.log("[entries.update] linked task status sync", {
+        sourceTaskId: entry.sourceTaskId,
+        count: taskStatusUpdate.count,
       });
       if (taskStatusUpdate.count === 0) {
         console.warn("[entries.update] Linked follow-up task was not found while syncing status", {
@@ -93,6 +165,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       const taskContentUpdate = await db.followUpTask.updateMany({
         where: { id: entry.sourceTaskId, organizationId: organizationId },
         data: { title, ...(content.length > 0 ? { description: content } : {}) },
+      });
+      console.log("[entries.update] linked task title/content sync", {
+        sourceTaskId: entry.sourceTaskId,
+        count: taskContentUpdate.count,
       });
       if (taskContentUpdate.count === 0) {
         console.warn("[entries.update] Linked follow-up task was not found while syncing title/content", {
@@ -109,6 +185,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         where: { id: entry.sourceNoteId, organizationId: organizationId },
         data: { body },
       });
+      console.log("[entries.update] linked note content sync", {
+        sourceNoteId: entry.sourceNoteId,
+        count: noteUpdate.count,
+      });
       if (noteUpdate.count === 0) {
         console.warn("[entries.update] Linked note was not found while syncing content", {
           organizationId,
@@ -119,18 +199,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     }
 
     try {
+      const activityAction =
+        status && status !== entry.status
+          ? status === EntryStatus.DONE
+            ? ENTRY_ACTIVITY_ACTIONS.ENTRY_COMPLETED
+            : status === EntryStatus.ARCHIVED
+              ? ENTRY_ACTIVITY_ACTIONS.ENTRY_ARCHIVED
+              : ENTRY_ACTIVITY_ACTIONS.ENTRY_STATUS_CHANGED
+          : ENTRY_ACTIVITY_ACTIONS.ENTRY_UPDATED;
+
+      console.log("[entries.update] writing activity record", { action: activityAction });
+
       await writeEntryActivity({
         organizationId: organizationId,
         entryId: entry.id,
         actorPersonId: scope.auth.personId,
-        action:
-          status && status !== entry.status
-            ? status === EntryStatus.DONE
-              ? ENTRY_ACTIVITY_ACTIONS.ENTRY_COMPLETED
-              : status === EntryStatus.ARCHIVED
-                ? ENTRY_ACTIVITY_ACTIONS.ENTRY_ARCHIVED
-                : ENTRY_ACTIVITY_ACTIONS.ENTRY_STATUS_CHANGED
-            : ENTRY_ACTIVITY_ACTIONS.ENTRY_UPDATED,
+        action: activityAction,
         metadata: {
           changedType: type ?? null,
           fromStatus: status && status !== entry.status ? entry.status : null,
@@ -138,13 +222,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
           changedPriority: priority ?? null,
         },
       });
+
+      console.log("[entries.update] activity record written");
     } catch (error) {
-      console.error("[entries.update] Activity write failed", {
+      console.error("[entries.update] Activity write failed (non-fatal)", {
         organizationId,
         entryId: entry.id,
         error,
       });
     }
+
+    revalidatePath(`/entries/${entryId}`);
+    console.log("[entries.update] revalidatePath called, redirecting to", returnTo);
+
+    const successUrl = new URL(returnTo, request.url);
+    successUrl.searchParams.set("saved", "1");
+    return NextResponse.redirect(successUrl, 303);
   } catch (error) {
     console.error("[entries.update] Failed to update entry", {
       organizationId,
@@ -152,15 +245,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       schemaDetail: describeSchemaUnavailableError(error),
       error,
     });
+    const url = new URL(returnTo, request.url);
     if (isSchemaUnavailableError(error)) {
       const schemaDetail = describeSchemaUnavailableError(error);
-      const url = new URL(returnTo, request.url);
-      if (schemaDetail) {
-        url.searchParams.set("error", `Entry update schema dependency unavailable: ${schemaDetail}.`);
-      }
-      return NextResponse.redirect(url, 303);
+      url.searchParams.set("error", `Entry update schema dependency unavailable: ${schemaDetail ?? "unknown"}.`);
+    } else {
+      url.searchParams.set("error", "Entry save failed. Check server logs for details.");
     }
+    return NextResponse.redirect(url, 303);
   }
-
-  return NextResponse.redirect(new URL(returnTo, request.url), 303);
 }
+
