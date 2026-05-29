@@ -525,6 +525,24 @@ export default async function EntryDetailPage({ params }: { params: Promise<{ en
                   </select>
                 </div>
               </div>
+              {entry.type === EntryType.TASK || entry.type === EntryType.FOLLOW_UP ? (
+                <div className="space-y-1">
+                  <label htmlFor="dueAt" className="text-sm font-medium">
+                    Due date
+                  </label>
+                  <input
+                    id="dueAt"
+                    name="dueAt"
+                    type="datetime-local"
+                    defaultValue={
+                      entry.dueDate
+                        ? `${entry.dueDate.toISOString().slice(0, 10)}T${entry.dueTime ?? "00:00"}`
+                        : ""
+                    }
+                    className="w-full rounded-md border px-3 py-2 text-sm sm:w-64"
+                  />
+                </div>
+              ) : null}
               <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
                 Save entry
               </button>
