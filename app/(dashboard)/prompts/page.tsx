@@ -7,10 +7,24 @@ import { db } from "@/lib/db";
 import { resolveJournalAccessContext } from "@/lib/journals/access";
 import { canManagePromptLibrary, canReadPromptLibrary } from "@/lib/journals/prompt-access";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
+const promptSelect = Prisma.validator<Prisma.JournalPromptSelect>()({
+  id: true,
+  title: true,
+  category: true,
+  tags: true,
+  active: true,
+  archivedAt: true,
+  createdAt: true,
+  createdBy: { select: { firstName: true, lastName: true } },
+  _count: { select: { assignments: true } },
+});
+type PromptListRow = Prisma.JournalPromptGetPayload<{ select: typeof promptSelect }>;
 
 function normalizeActiveFilter(rawValue: string | string[] | undefined): "active" | "archived" | "all" {
   const value = Array.isArray(rawValue) ? rawValue[0] : rawValue;
@@ -48,26 +62,45 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
 
   const canManage = canManagePromptLibrary(accessContext);
   const activeFilter = normalizeActiveFilter(params.active);
+  let loadErrorMessage: string | null = null;
+  let prompts: PromptListRow[] | null = null;
 
-  const prompts = await db.journalPrompt.findMany({
-    where: {
+  try {
+    prompts = await db.journalPrompt.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        ...(activeFilter === "active" ? { active: true } : activeFilter === "archived" ? { active: false } : {}),
+      },
+      orderBy: [{ active: "desc" }, { updatedAt: "desc" }],
+      select: promptSelect,
+      take: 300,
+    });
+  } catch (error) {
+    const detail = describeSchemaUnavailableError(error);
+    const detailSuffix = detail ? ` (${detail})` : "";
+    loadErrorMessage = isSchemaUnavailableError(error)
+      ? `Journal prompts are currently unavailable because setup is incomplete${detailSuffix}.`
+      : "Unable to load journal prompts right now.";
+    console.error("[prompts.page] Failed to load prompts", {
       organizationId: scope.organizationId,
-      ...(activeFilter === "active" ? { active: true } : activeFilter === "archived" ? { active: false } : {}),
-    },
-    orderBy: [{ active: "desc" }, { updatedAt: "desc" }],
-    select: {
-      id: true,
-      title: true,
-      category: true,
-      tags: true,
-      active: true,
-      archivedAt: true,
-      createdAt: true,
-      createdBy: { select: { firstName: true, lastName: true } },
-      _count: { select: { assignments: true } },
-    },
-    take: 300,
-  });
+      actorPersonId: scope.auth.personId,
+      schemaDetail: detail,
+      error,
+    });
+  }
+
+  if (!prompts) {
+    return (
+      <section className="space-y-4">
+        <PageHeader title="Prompt Library" description="Manage reusable journal prompts." />
+        <EmptyState
+          message={loadErrorMessage ?? "Journal prompts are planned for a future EntryOps workflow."}
+          actionHref="/entries"
+          actionLabel="Back to EntryOps"
+        />
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-4">
