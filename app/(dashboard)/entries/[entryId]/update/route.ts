@@ -3,10 +3,9 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { mapEntryStatusToTaskStatus, writeEntryActivity } from "@/lib/entries/service";
-import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
+import { ENTRY_ACTIVITY_ACTIONS, canWriteEntries } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { requirePermission } from "@/lib/permissions";
 import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
 
 export async function POST(request: Request, { params }: { params: Promise<{ entryId: string }> }) {
@@ -20,13 +19,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   }
   const organizationId = scope.organizationId;
 
-  try {
-    await requirePermission({
-      actorUserId: scope.auth.clerkUserId,
-      organizationId: organizationId,
-      action: "entry.update",
-    });
-  } catch {
+  const canEdit = await canWriteEntries({ organizationId, actorPersonId: scope.auth.personId });
+  if (!canEdit) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
 
@@ -35,12 +29,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   const typeValue = String(formData.get("type") ?? "").trim().toUpperCase();
   const statusValue = String(formData.get("status") ?? "").trim().toUpperCase();
   const priorityValue = String(formData.get("priority") ?? "").trim().toUpperCase();
+  const dueAtRaw = String(formData.get("dueAt") ?? "").trim();
+  const hasDueAtField = formData.has("dueAt");
 
   const type = Object.values(EntryType).includes(typeValue as EntryType) ? (typeValue as EntryType) : undefined;
   const status = Object.values(EntryStatus).includes(statusValue as EntryStatus) ? (statusValue as EntryStatus) : undefined;
   const priority = Object.values(EntryPriority).includes(priorityValue as EntryPriority)
     ? (priorityValue as EntryPriority)
     : undefined;
+
+  // Parse dueAt only when the field was submitted (TASK entries include it; NOTE entries do not).
+  let dueDateUpdate: { dueDate: Date | null; dueTime: string | null } | undefined;
+  if (hasDueAtField) {
+    if (dueAtRaw.length >= 10) {
+      const dateStr = dueAtRaw.slice(0, 10);
+      const timeStr = dueAtRaw.length >= 16 ? dueAtRaw.slice(11, 16) : null;
+      dueDateUpdate = { dueDate: new Date(`${dateStr}T00:00:00.000Z`), dueTime: timeStr };
+    } else {
+      dueDateUpdate = { dueDate: null, dueTime: null };
+    }
+  }
 
   try {
     const entry = await db.entry.findFirst({
@@ -62,6 +70,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
           ? { status, taskCompleted: status === EntryStatus.DONE, completedAt: status === EntryStatus.DONE ? new Date() : null }
           : {}),
         ...(priority ? { priority } : {}),
+        ...(dueDateUpdate !== undefined ? dueDateUpdate : {}),
         version: { increment: 1 },
       },
     });

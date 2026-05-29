@@ -3,10 +3,9 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { deriveTaskCompletionUpdate, writeEntryActivity } from "@/lib/entries/service";
-import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
+import { ENTRY_ACTIVITY_ACTIONS, canWriteEntries } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { requirePermission } from "@/lib/permissions";
 import { describeSchemaUnavailableError } from "@/lib/workflows";
 
 export async function POST(request: Request, { params }: { params: Promise<{ entryId: string }> }) {
@@ -20,13 +19,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   }
   const organizationId = scope.organizationId;
 
-  try {
-    await requirePermission({
-      actorUserId: scope.auth.clerkUserId,
-      organizationId: organizationId,
-      action: "entry.update",
-    });
-  } catch {
+  const canEdit = await canWriteEntries({ organizationId, actorPersonId: scope.auth.personId });
+  if (!canEdit) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
 
