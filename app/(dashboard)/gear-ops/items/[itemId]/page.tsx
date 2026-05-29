@@ -214,7 +214,7 @@ export default async function GearOpsItemDetailsPage({
   let queryFailed = false;
   let queryErrorMessage = "Unable to load GearOps item details right now. Please try again later.";
   let assetIdUnavailable = false;
-  const gearItemDetailSelect = {
+  const gearItemDetailSelect = Prisma.validator<Prisma.GearItemSelect>()({
     id: true,
     name: true,
     inventoryType: true,
@@ -294,7 +294,7 @@ export default async function GearOpsItemDetailsPage({
       orderBy: [{ recordedAt: "desc" }, { createdAt: "desc" }],
       take: 12,
     },
-  } as const;
+  });
 
   try {
     item = await db.gearItem.findFirst({
