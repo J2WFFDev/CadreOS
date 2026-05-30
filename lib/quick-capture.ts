@@ -9,30 +9,15 @@ export const QUICK_CAPTURE_PRESETS = {
     entryType: "NOTE",
     defaultTags: [],
   },
-  QUICK_OBSERVATION: {
-    label: "Quick Observation",
-    entryType: "OBSERVATION",
-    defaultTags: ["observation"],
+  QUICK_EVENT: {
+    label: "Quick Event",
+    entryType: "EVENT",
+    defaultTags: [],
   },
-  QUICK_FOLLOW_UP: {
-    label: "Quick Follow-Up",
-    entryType: "FOLLOW_UP",
-    defaultTags: ["follow-up"],
-  },
-  QUICK_READINESS_ITEM: {
-    label: "Quick Readiness Item",
-    entryType: "READINESS_ITEM",
-    defaultTags: ["readiness"],
-  },
-  QUICK_GEAR_ISSUE: {
-    label: "Quick Gear Issue",
-    entryType: "OBSERVATION",
-    defaultTags: ["gear-issue"],
-  },
-  QUICK_ATTENDANCE_NOTE: {
-    label: "Quick Attendance Note",
-    entryType: "OBSERVATION",
-    defaultTags: ["attendance-note"],
+  QUICK_DECISION: {
+    label: "Quick Decision",
+    entryType: "DECISION",
+    defaultTags: ["decision"],
   },
 } as const;
 
