@@ -9,10 +9,10 @@ test("decision detail config uses decision-specific labels and date field", () =
   const config = getEntryDetailConfig(EntryType.DECISION);
 
   assert.equal(config.titleLabel, "Decision statement");
-  assert.equal(config.contentLabel, "Context / rationale");
+  assert.equal(config.contentLabel, "Context / Rationale");
   assert.equal(config.statusLabel, "Decision status");
   assert.equal(config.metadataDateLabel, "Effective date");
-  assert.equal(config.dateFieldLabel, "Effective / decision date");
+  assert.equal(config.dateFieldLabel, "Effective / Decision Date");
   assert.match(config.guidance ?? "", /decision statement/i);
 });
 

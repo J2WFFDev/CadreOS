@@ -29,15 +29,15 @@ const DEFAULT_ENTRY_DETAIL_CONFIG: EntryDetailConfig = {
 export function getEntryDetailConfig(type: EntryType): EntryDetailConfig {
   if (type === EntryType.DECISION) {
     return {
-      summaryHeading: "Decision overview",
+      summaryHeading: "Decision Overview",
       emptySummary: "No decision context or rationale recorded yet.",
       titleLabel: "Decision statement",
-      contentLabel: "Context / rationale",
+      contentLabel: "Context / Rationale",
       contentHint: "Record the context, rationale, and decision notes here.",
       statusLabel: "Decision status",
       priorityLabel: "Priority",
       metadataDateLabel: "Effective date",
-      dateFieldLabel: "Effective / decision date",
+      dateFieldLabel: "Effective / Decision Date",
       guidance: "Capture the decision statement, context, rationale, status, and any linked scope on this entry.",
     };
   }
