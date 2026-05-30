@@ -192,16 +192,28 @@ function withUnavailableDecisionPayload(entry: EntryBaseWithListIdRecord): Entry
   };
 }
 
-function buildFallbackEntrySelect(hasListSchemaIssue: boolean) {
+function buildFallbackEntrySelect(hasListSchemaIssue: boolean, hasDecisionSchemaIssue: boolean) {
+  const shouldIncludeListId = !hasListSchemaIssue;
+
+  // When either schema dependency is unavailable, always use the base projection
+  // (which intentionally excludes typePayloads) and only include listId when safe.
+  if (hasListSchemaIssue || hasDecisionSchemaIssue) {
+    return {
+      ...entryBaseSelect.select,
+      ...(shouldIncludeListId ? { listId: true } : {}),
+    };
+  }
+
   return {
     ...entryBaseSelect.select,
-    ...(hasListSchemaIssue ? {} : { listId: true }),
+    listId: true,
   };
 }
 
 function normalizeFallbackEntryRecord(
   entry: EntryBaseRecord | EntryBaseWithListIdRecord | null,
   hasListSchemaIssue: boolean,
+  hasDecisionSchemaIssue: boolean,
 ): EntryDetailRecord | null {
   if (!entry) {
     return null;
@@ -211,7 +223,11 @@ function normalizeFallbackEntryRecord(
     return withUnavailableList(entry as EntryBaseRecord);
   }
 
-  return withUnavailableDecisionPayload(entry as EntryBaseWithListIdRecord);
+  if (hasDecisionSchemaIssue) {
+    return withUnavailableDecisionPayload(entry as EntryBaseWithListIdRecord);
+  }
+
+  return entry as EntryDetailRecord;
 }
 
 async function fetchEntryDetailRecord(
@@ -244,15 +260,18 @@ async function fetchEntryDetailRecord(
       logEntryTypePayloadSchemaIssue("entries.detail.fetch-entry", error, { organizationId, entryId });
     }
 
+    const hasListSchemaIssue = Boolean(listSchemaIssue);
+    const hasDecisionSchemaIssue = Boolean(decisionSchemaIssue);
+
     const entry = await db.entry.findFirst({
       where: { id: entryId, organizationId, deletedAt: null },
-      select: buildFallbackEntrySelect(Boolean(listSchemaIssue)),
+      select: buildFallbackEntrySelect(hasListSchemaIssue, hasDecisionSchemaIssue),
     });
 
     return {
-      entry: normalizeFallbackEntryRecord(entry, Boolean(listSchemaIssue)),
-      listAssignmentUnavailable: Boolean(listSchemaIssue),
-      decisionPayloadUnavailable: Boolean(decisionSchemaIssue),
+      entry: normalizeFallbackEntryRecord(entry, hasListSchemaIssue, hasDecisionSchemaIssue),
+      listAssignmentUnavailable: hasListSchemaIssue,
+      decisionPayloadUnavailable: hasDecisionSchemaIssue,
     };
   }
 }
