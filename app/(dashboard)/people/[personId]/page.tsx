@@ -667,7 +667,7 @@ export default async function PersonDetailsPage({
   return (
     <section className="space-y-6">
       <div className="space-y-1">
-        <BackLink href="/people" label="People" />
+        <BackLink href="/people" label="Members" />
         <h2 className="text-2xl font-semibold tracking-tight">
           {person.firstName} {person.lastName}
         </h2>

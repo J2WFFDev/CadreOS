@@ -1110,15 +1110,15 @@ export default async function ProgramDetailsPage({
           Unique roster members in selected season: {selectedSeasonRosterPersonIds.size}.
         </p>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Lifecycle mix: Active {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ACTIVE]} · Pending{" "}
+          Lifecycle mix: Active {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ACTIVE]} · Prospect{" "}
           {selectedSeasonLifecycleCounts[MemberLifecycleStatus.PROSPECT]} · Inactive{" "}
           {selectedSeasonLifecycleCounts[MemberLifecycleStatus.INACTIVE]} · Archived{" "}
-          {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ARCHIVED]} · Graduated{" "}
+          {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ARCHIVED]} · Alumni{" "}
           {selectedSeasonLifecycleCounts[MemberLifecycleStatus.ALUMNI]}.
         </p>
         {!selectedLifecycleStatus && !includesAllLifecycleStatuses ? (
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Default roster filter is Active + Pending. Use Participation status to include inactive, archived, or graduated rows.
+            Default roster filter is Active + Prospect. Use Participation status to include inactive, archived, or alumni rows.
           </p>
         ) : null}
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -1132,7 +1132,7 @@ export default async function ProgramDetailsPage({
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
           <Link href="/people" className="rounded-full border px-2 py-1">
-            People lifecycle and guardian context
+            Members lifecycle and guardian context
           </Link>
           <Link href="/teams?readiness=needs_attention" className="rounded-full border px-2 py-1">
             Team readiness lane
@@ -1193,7 +1193,7 @@ export default async function ProgramDetailsPage({
                 defaultValue={includesAllLifecycleStatuses ? "all" : selectedLifecycleStatus}
                 className="w-full rounded-md border px-2 py-1 text-sm"
               >
-                <option value="">Default operational view (Active + Pending)</option>
+                <option value="">Active + Prospect only</option>
                 <option value="all">All statuses</option>
                 {Object.values(MemberLifecycleStatus).map((status) => (
                   <option key={status} value={status}>

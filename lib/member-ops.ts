@@ -1,11 +1,11 @@
 import { MemberLifecycleStatus, RoleType } from "@prisma/client";
 
 export const MEMBER_LIFECYCLE_STATUS_LABELS: Record<MemberLifecycleStatus, string> = {
-  [MemberLifecycleStatus.PROSPECT]: "Pending",
+  [MemberLifecycleStatus.PROSPECT]: "Prospect",
   [MemberLifecycleStatus.ACTIVE]: "Active",
   [MemberLifecycleStatus.INACTIVE]: "Inactive",
   [MemberLifecycleStatus.ARCHIVED]: "Archived",
-  [MemberLifecycleStatus.ALUMNI]: "Graduated",
+  [MemberLifecycleStatus.ALUMNI]: "Alumni",
 };
 
 export const MEMBER_LIFECYCLE_DEFAULT_VISIBLE_STATUSES = [

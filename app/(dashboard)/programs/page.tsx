@@ -221,7 +221,7 @@ export default async function ProgramsPage() {
                 Team readiness lane
               </Link>
               <Link href="/people" className="rounded-full border px-2 py-1">
-                People lifecycle and guardian context
+                Members lifecycle and guardian context
               </Link>
             </div>
           </div>
