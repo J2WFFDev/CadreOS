@@ -76,7 +76,7 @@ export default async function CreateListPage({ searchParams }: { searchParams: P
 
       {errorMsg ? <ErrorMessage message={errorMsg} /> : null}
 
-      <form action="/lists/create" method="post" className="max-w-lg space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
+      <form action="/lists/actions/create" method="post" className="max-w-lg space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <div className="space-y-1">
           <label htmlFor="name" className="text-sm font-medium">
             List name <span className="text-red-500">*</span>

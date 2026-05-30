@@ -81,7 +81,7 @@ export default async function UpdateListPage({
       {errorMsg ? <ErrorMessage message={errorMsg} /> : null}
 
       <form
-        action={`/lists/${list.id}/update`}
+        action={`/lists/${list.id}/actions/update`}
         method="post"
         className="max-w-lg space-y-4 rounded-lg border bg-white p-4 dark:bg-zinc-900"
       >
