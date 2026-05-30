@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import test from "node:test";
 
 import {
+  DEFAULT_EVENT_TIMEZONE,
   createEmptyEventEntryPayload,
   parseEventEntryPayload,
   serializeEventEntryPayload,
@@ -47,6 +48,24 @@ test("parseEventEntryPayload normalizes supported scope and recurrence fields", 
   assert.equal(payload.recurrence.endCondition, "AFTER_OCCURRENCES");
   assert.equal(payload.recurrence.endDate, "2026-09-01");
   assert.equal(payload.recurrence.occurrenceCount, 8);
+});
+
+test("parseEventEntryPayload falls back to default timezone and normalizes recurrence end fields", () => {
+  const payload = parseEventEntryPayload(
+    JSON.stringify({
+      timezone: "not-a-timezone",
+      recurrence: {
+        endCondition: "never",
+        endDate: "2026-09-01",
+        occurrenceCount: "8",
+      },
+    }),
+  );
+
+  assert.equal(payload.timezone, DEFAULT_EVENT_TIMEZONE);
+  assert.equal(payload.recurrence.endCondition, "NEVER");
+  assert.equal(payload.recurrence.endDate, null);
+  assert.equal(payload.recurrence.occurrenceCount, null);
 });
 
 test("serializeEventEntryPayload emits stable shape", () => {

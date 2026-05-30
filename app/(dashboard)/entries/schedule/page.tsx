@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
-import { parseEventEntryPayload } from "@/lib/entries/event-payload";
+import { DEFAULT_EVENT_TIMEZONE, parseEventEntryPayload } from "@/lib/entries/event-payload";
 import { formatEnumLabel } from "@/lib/follow-up-tasks";
 import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -250,7 +250,7 @@ export default async function EntryEventSchedulePage({ searchParams }: { searchP
                   <td className="px-4 py-3 text-zinc-600">{formatEnumLabel(payload.eventType)}</td>
                   <td className="px-4 py-3">{formatDateTimeLocal(payload.startDateTimeLocal)}</td>
                   <td className="px-4 py-3">{formatDateTimeLocal(payload.endDateTimeLocal)}</td>
-                  <td className="px-4 py-3 text-zinc-600">{payload.timezone || "UTC"}</td>
+                  <td className="px-4 py-3 text-zinc-600">{payload.timezone || DEFAULT_EVENT_TIMEZONE}</td>
                   <td className="px-4 py-3 text-zinc-600">{payload.location || "—"}</td>
                   <td className="px-4 py-3 text-zinc-600">{formatEnumLabel(payload.calendarScope)}</td>
                   <td className="px-4 py-3 text-zinc-600">{recurrenceLabel(payload)}</td>

@@ -11,6 +11,7 @@ import {
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
+import { EventEntryMetadataFields } from "@/components/dashboard/event-entry-metadata-fields";
 import { db } from "@/lib/db";
 import { getEntryDetailConfig } from "@/lib/entries/detail-config";
 import {
@@ -20,10 +21,8 @@ import {
   parseDecisionEntryPayload,
 } from "@/lib/entries/decision-payload";
 import {
-  EVENT_CALENDAR_SCOPE_VALUES,
-  EVENT_RECURRENCE_END_VALUES,
-  EVENT_RECURRENCE_FREQUENCY_VALUES,
-  EVENT_TYPE_VALUES,
+  DEFAULT_EVENT_TIMEZONE,
+  normalizeEventTimezone,
   parseEventEntryPayload,
 } from "@/lib/entries/event-payload";
 import { fetchListsForActor, labelForEntryListScope } from "@/lib/entries/lists";
@@ -478,8 +477,11 @@ export default async function EntryDetailPage({
   const defaultDecisionDetails = hasStoredDecisionPayload
     ? storedDecisionPayload.decisionDetails
     : (entry.content ?? "");
-  const showEventProgramSelector = storedEventPayload.calendarScope === "PROGRAM";
-  const showEventTeamSelector = storedEventPayload.calendarScope === "TEAM";
+  const resolvedEventTimezone =
+    normalizeEventTimezone(storedEventPayload.timezone) ??
+    normalizeEventTimezone(entry.timezone) ??
+    DEFAULT_EVENT_TIMEZONE;
+  const eventPayloadForForm = { ...storedEventPayload, timezone: resolvedEventTimezone };
 
   return (
     <section className="space-y-6">
@@ -854,215 +856,12 @@ export default async function EntryDetailPage({
                 </div>
               ) : null}
               {entry.type === EntryType.EVENT ? (
-                <fieldset className="space-y-3 rounded-md border p-3">
-                  <legend className="px-1 text-sm font-semibold">Event metadata</legend>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <label htmlFor="eventType" className="text-sm font-medium">
-                        Event type
-                      </label>
-                      <select id="eventType" name="eventType" defaultValue={storedEventPayload.eventType} className="w-full rounded-md border px-3 py-2 text-sm">
-                        {EVENT_TYPE_VALUES.map((value) => (
-                          <option key={value} value={value}>
-                            {formatEnumLabel(value)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label htmlFor="eventTimezone" className="text-sm font-medium">
-                        Timezone
-                      </label>
-                      <input
-                        id="eventTimezone"
-                        name="eventTimezone"
-                        defaultValue={storedEventPayload.timezone}
-                        placeholder="UTC"
-                        className="w-full rounded-md border px-3 py-2 text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <label htmlFor="eventStartDateTime" className="text-sm font-medium">
-                        Start date/time
-                      </label>
-                      <input
-                        id="eventStartDateTime"
-                        name="eventStartDateTime"
-                        type="datetime-local"
-                        defaultValue={storedEventPayload.startDateTimeLocal ?? ""}
-                        className="w-full rounded-md border px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label htmlFor="eventEndDateTime" className="text-sm font-medium">
-                        End date/time
-                      </label>
-                      <input
-                        id="eventEndDateTime"
-                        name="eventEndDateTime"
-                        type="datetime-local"
-                        defaultValue={storedEventPayload.endDateTimeLocal ?? ""}
-                        className="w-full rounded-md border px-3 py-2 text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label htmlFor="eventLocation" className="text-sm font-medium">
-                      Location
-                    </label>
-                    <input
-                      id="eventLocation"
-                      name="eventLocation"
-                      defaultValue={storedEventPayload.location}
-                      className="w-full rounded-md border px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label htmlFor="eventCalendarScope" className="text-sm font-medium">
-                      Calendar scope
-                    </label>
-                    <select
-                      id="eventCalendarScope"
-                      name="eventCalendarScope"
-                      defaultValue={storedEventPayload.calendarScope}
-                      className="w-full rounded-md border px-3 py-2 text-sm sm:w-80"
-                    >
-                      {EVENT_CALENDAR_SCOPE_VALUES.map((value) => (
-                        <option key={value} value={value}>
-                          {formatEnumLabel(value)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {showEventProgramSelector ? (
-                    <div className="space-y-1">
-                      <label htmlFor="eventProgramId" className="text-sm font-medium">
-                        Program
-                      </label>
-                      <select
-                        id="eventProgramId"
-                        name="eventProgramId"
-                        defaultValue={storedEventPayload.programId ?? ""}
-                        className="w-full rounded-md border px-3 py-2 text-sm sm:w-96"
-                      >
-                        <option value="">— Select program —</option>
-                        {programs.map((program) => (
-                          <option key={program.id} value={program.id}>
-                            {program.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : null}
-                  {showEventTeamSelector ? (
-                    <div className="space-y-1">
-                      <label htmlFor="eventTeamId" className="text-sm font-medium">
-                        Team
-                      </label>
-                      <select id="eventTeamId" name="eventTeamId" defaultValue={storedEventPayload.teamId ?? ""} className="w-full rounded-md border px-3 py-2 text-sm sm:w-96">
-                        <option value="">— Select team —</option>
-                        {teams.map((team) => (
-                          <option key={team.id} value={team.id}>
-                            {team.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : null}
-                  <fieldset className="space-y-3 rounded-md border p-3">
-                    <legend className="px-1 text-sm font-semibold">Recurrence</legend>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <label htmlFor="eventRecurrenceFrequency" className="text-sm font-medium">
-                          Repeat
-                        </label>
-                        <select
-                          id="eventRecurrenceFrequency"
-                          name="eventRecurrenceFrequency"
-                          defaultValue={storedEventPayload.recurrence.frequency}
-                          className="w-full rounded-md border px-3 py-2 text-sm"
-                        >
-                          {EVENT_RECURRENCE_FREQUENCY_VALUES.map((value) => (
-                            <option key={value} value={value}>
-                              {value === "NONE" ? "Does not repeat" : formatEnumLabel(value)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label htmlFor="eventRecurrenceInterval" className="text-sm font-medium">
-                          Interval
-                        </label>
-                        <input
-                          id="eventRecurrenceInterval"
-                          name="eventRecurrenceInterval"
-                          type="number"
-                          min={1}
-                          defaultValue={storedEventPayload.recurrence.interval?.toString() ?? ""}
-                          className="w-full rounded-md border px-3 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label htmlFor="eventRecurrenceCustomRule" className="text-sm font-medium">
-                        Custom/simple rule
-                      </label>
-                      <input
-                        id="eventRecurrenceCustomRule"
-                        name="eventRecurrenceCustomRule"
-                        defaultValue={storedEventPayload.recurrence.customRule}
-                        placeholder="Optional simple recurrence note"
-                        className="w-full rounded-md border px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="space-y-1">
-                        <label htmlFor="eventRecurrenceEndCondition" className="text-sm font-medium">
-                          Recurrence end
-                        </label>
-                        <select
-                          id="eventRecurrenceEndCondition"
-                          name="eventRecurrenceEndCondition"
-                          defaultValue={storedEventPayload.recurrence.endCondition}
-                          className="w-full rounded-md border px-3 py-2 text-sm"
-                        >
-                          {EVENT_RECURRENCE_END_VALUES.map((value) => (
-                            <option key={value} value={value}>
-                              {value === "ON_DATE" ? "On date" : value === "AFTER_OCCURRENCES" ? "After N occurrences" : "Never"}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label htmlFor="eventRecurrenceEndDate" className="text-sm font-medium">
-                          End date
-                        </label>
-                        <input
-                          id="eventRecurrenceEndDate"
-                          name="eventRecurrenceEndDate"
-                          type="date"
-                          defaultValue={storedEventPayload.recurrence.endDate ?? ""}
-                          className="w-full rounded-md border px-3 py-2 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label htmlFor="eventRecurrenceOccurrenceCount" className="text-sm font-medium">
-                          Occurrences
-                        </label>
-                        <input
-                          id="eventRecurrenceOccurrenceCount"
-                          name="eventRecurrenceOccurrenceCount"
-                          type="number"
-                          min={1}
-                          defaultValue={storedEventPayload.recurrence.occurrenceCount?.toString() ?? ""}
-                          className="w-full rounded-md border px-3 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
-                  </fieldset>
-                </fieldset>
+                <EventEntryMetadataFields
+                  payload={eventPayloadForForm}
+                  programs={programs}
+                  teams={teams}
+                  timezoneDefault={resolvedEventTimezone}
+                />
               ) : null}
               {entry.type === EntryType.DECISION ? (
                 <fieldset className="space-y-3 rounded-md border p-3">

@@ -10,6 +10,18 @@ export const EVENT_TYPE_VALUES = [
 ] as const;
 export type EventTypeValue = (typeof EVENT_TYPE_VALUES)[number];
 
+export const DEFAULT_EVENT_TIMEZONE = "America/Chicago";
+export const EVENT_TIMEZONE_VALUES = [
+  DEFAULT_EVENT_TIMEZONE,
+  "America/New_York",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Phoenix",
+  "America/Anchorage",
+  "Pacific/Honolulu",
+  "UTC",
+] as const;
+
 export const EVENT_CALENDAR_SCOPE_VALUES = ["PERSONAL", "ORGANIZATION", "PROGRAM", "TEAM"] as const;
 export type EventCalendarScopeValue = (typeof EVENT_CALENDAR_SCOPE_VALUES)[number];
 
@@ -42,14 +54,13 @@ export type EventEntryPayload = {
 
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DATETIME_LOCAL_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
-const MAX_TIMEZONE_LENGTH = 80;
 
 export function createEmptyEventEntryPayload(): EventEntryPayload {
   return {
     eventType: "OTHER",
     startDateTimeLocal: null,
     endDateTimeLocal: null,
-    timezone: "UTC",
+    timezone: DEFAULT_EVENT_TIMEZONE,
     location: "",
     calendarScope: "PERSONAL",
     programId: null,
@@ -77,11 +88,11 @@ export function parseEventEntryPayload(payloadJson: string | null | undefined): 
         ? (parsed.recurrence as Record<string, unknown>)
         : {};
 
-    return {
+    const parsedPayload: EventEntryPayload = {
       eventType: normalizeEventType(asOptionalString(parsed.eventType)) ?? "OTHER",
       startDateTimeLocal: normalizeDateTimeLocal(asOptionalString(parsed.startDateTimeLocal)),
       endDateTimeLocal: normalizeDateTimeLocal(asOptionalString(parsed.endDateTimeLocal)),
-      timezone: normalizeTimezone(asOptionalString(parsed.timezone)) ?? "UTC",
+      timezone: normalizeEventTimezone(asOptionalString(parsed.timezone)) ?? DEFAULT_EVENT_TIMEZONE,
       location: asOptionalString(parsed.location),
       calendarScope: normalizeEventCalendarScope(asOptionalString(parsed.calendarScope)) ?? "PERSONAL",
       programId: normalizeOptionalId(parsed.programId),
@@ -95,6 +106,21 @@ export function parseEventEntryPayload(payloadJson: string | null | undefined): 
         occurrenceCount: normalizePositiveInteger(recurrenceInput.occurrenceCount),
       },
     };
+
+    if (parsedPayload.calendarScope !== "PROGRAM") {
+      parsedPayload.programId = null;
+    }
+    if (parsedPayload.calendarScope !== "TEAM") {
+      parsedPayload.teamId = null;
+    }
+    if (parsedPayload.recurrence.endCondition !== "ON_DATE") {
+      parsedPayload.recurrence.endDate = null;
+    }
+    if (parsedPayload.recurrence.endCondition !== "AFTER_OCCURRENCES") {
+      parsedPayload.recurrence.occurrenceCount = null;
+    }
+
+    return parsedPayload;
   } catch {
     return createEmptyEventEntryPayload();
   }
@@ -159,9 +185,14 @@ export function normalizeEventRecurrenceEnd(value: string | null | undefined): E
   return EVENT_RECURRENCE_END_VALUES.includes(normalized as EventRecurrenceEndValue) ? (normalized as EventRecurrenceEndValue) : null;
 }
 
-function normalizeTimezone(value: string | null | undefined) {
+export function normalizeEventTimezone(value: string | null | undefined) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  return trimmed.slice(0, MAX_TIMEZONE_LENGTH);
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: trimmed });
+    return trimmed;
+  } catch {
+    return null;
+  }
 }
