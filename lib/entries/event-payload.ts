@@ -42,6 +42,7 @@ export type EventEntryPayload = {
 
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DATETIME_LOCAL_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+const MAX_TIMEZONE_LENGTH = 80;
 
 export function createEmptyEventEntryPayload(): EventEntryPayload {
   return {
@@ -162,5 +163,5 @@ function normalizeTimezone(value: string | null | undefined) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  return trimmed.slice(0, 80);
+  return trimmed.slice(0, MAX_TIMEZONE_LENGTH);
 }

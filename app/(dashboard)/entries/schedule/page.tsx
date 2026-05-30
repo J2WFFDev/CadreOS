@@ -16,9 +16,11 @@ type SearchParams = Record<string, string | string[] | undefined>;
 
 type CalendarScope = "PERSONAL" | "ORGANIZATION" | "PROGRAM" | "TEAM";
 const CALENDAR_SCOPE_OPTIONS: CalendarScope[] = ["PERSONAL", "ORGANIZATION", "PROGRAM", "TEAM"];
+const NULL_START_SORT_VALUE = "9999-12-31T23:59";
 
 function readParam(searchParams: SearchParams, key: string) {
   const value = searchParams[key];
+  // Query params are treated as single-select filters for this page.
   if (Array.isArray(value)) return value[0] ?? "";
   return value ?? "";
 }
@@ -110,7 +112,7 @@ export default async function EntryEventSchedulePage({ searchParams }: { searchP
       take: 500,
     }),
     db.program.findMany({
-      where: { organizationId, archivedAt: null },
+      where: { organizationId },
       select: { id: true, name: true },
       orderBy: [{ name: "asc" }],
     }),
@@ -141,8 +143,8 @@ export default async function EntryEventSchedulePage({ searchParams }: { searchP
       return selectedTeamId ? payload.teamId === selectedTeamId : true;
     })
     .sort((a, b) => {
-      const aStart = a.payload.startDateTimeLocal ?? "9999-12-31T23:59";
-      const bStart = b.payload.startDateTimeLocal ?? "9999-12-31T23:59";
+      const aStart = a.payload.startDateTimeLocal ?? NULL_START_SORT_VALUE;
+      const bStart = b.payload.startDateTimeLocal ?? NULL_START_SORT_VALUE;
       if (aStart !== bStart) return aStart.localeCompare(bStart);
       return a.entry.title.localeCompare(b.entry.title);
     });

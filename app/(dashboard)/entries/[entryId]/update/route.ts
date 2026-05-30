@@ -90,6 +90,7 @@ function normalizePositiveInteger(value: string | null | undefined) {
 
 function toEntryDateValue(dateTimeLocal: string | null) {
   if (!dateTimeLocal) return null;
+  // Entry.startDate/endDate are date-only fields; keep only the local calendar date at UTC midnight.
   const datePart = dateTimeLocal.slice(0, 10);
   return new Date(`${datePart}T00:00:00.000Z`);
 }
@@ -308,7 +309,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
       if (requestedProgramId) {
         const program = await db.program.findFirst({
-          where: { id: requestedProgramId, organizationId, archivedAt: null },
+          where: { id: requestedProgramId, organizationId },
           select: { id: true },
         });
         if (!program) {
@@ -518,7 +519,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       if (payload.recurrence.endCondition !== "AFTER_OCCURRENCES") {
         payload.recurrence.occurrenceCount = null;
       }
-      if (payload.recurrence.frequency !== "CUSTOM" && !payload.recurrence.customRule) {
+      if (payload.recurrence.frequency !== "CUSTOM") {
         payload.recurrence.customRule = "";
       }
 

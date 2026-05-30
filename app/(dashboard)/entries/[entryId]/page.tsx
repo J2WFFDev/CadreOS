@@ -416,7 +416,7 @@ export default async function EntryDetailPage({
       : Promise.resolve([]),
     canEditEntry
       ? db.program.findMany({
-          where: { organizationId, archivedAt: null },
+          where: { organizationId },
           select: { id: true, name: true },
           orderBy: [{ name: "asc" }],
         })
