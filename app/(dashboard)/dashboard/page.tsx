@@ -3,6 +3,9 @@ import {
   AttendanceStatus,
   BookingStatus,
   ConsumableTransactionType,
+  EntryListScope,
+  EntryType,
+  EventType,
   GearAssignmentStatus,
   GearCheckoutStatus,
   GearConditionStatus,
@@ -41,6 +44,8 @@ import {
   buildSupportedTaskSourceNoteVisibilityWhere,
   SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
 } from "@/lib/operational-visibility";
+import { fetchListsForActor } from "@/lib/entries/lists";
+import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { getOperationalHistory, type OperationalHistoryItem } from "@/lib/operational-history";
 import { buildOperationalAwarenessView, type OperationalAwarenessView } from "@/lib/operational-awareness";
@@ -65,6 +70,22 @@ const RECENT_OPERATIONAL_CHANGE_WINDOW_DAYS = 7;
 const STALE_UNRESOLVED_TASK_WINDOW_DAYS = 14;
 const EVENT_REVIEW_LOOKAHEAD_DAYS = 14;
 const ATTENDANCE_PARTICIPATION_EVENT_SAMPLE_SIZE = 30;
+const UNIFIED_SECTION_LIMIT = 5;
+const ACTIVITY_FEED_LIMIT = 12;
+const NOTE_PREVIEW_MAX_LENGTH = 72;
+const DEFAULT_EMPTY_SCOPE: {
+  allowAllStaffScope: boolean;
+  allowedTeamIds: string[];
+  allowedProgramIds: string[];
+  hasAmbiguousScopeAssignments: boolean;
+  hasExplicitScopedAccess: boolean;
+} = {
+  allowAllStaffScope: false,
+  allowedTeamIds: [],
+  allowedProgramIds: [],
+  hasAmbiguousScopeAssignments: false,
+  hasExplicitScopedAccess: false,
+};
 
 const OPERATIONAL_REVIEW_CADENCE = [
   {
@@ -313,6 +334,49 @@ function buildScopedPersonWhere(
   };
 }
 
+function labelForRoleType(roleType: RoleType | null) {
+  if (!roleType) {
+    return "Unassigned";
+  }
+
+  return formatEnumLabel(roleType);
+}
+
+function labelForEntryListScope(scope: EntryListScope) {
+  if (scope === EntryListScope.PERSONAL) return "Personal";
+  if (scope === EntryListScope.ORGANIZATION) return "Organization";
+  if (scope === EntryListScope.PROGRAM) return "Program";
+  return "Team";
+}
+
+function filterDashboardLists(input: {
+  lists: Awaited<ReturnType<typeof fetchListsForActor>>;
+  actorPersonId: string | null;
+  unifiedAllowAllScope: boolean;
+  staffAccessAllowed: boolean;
+  unifiedProgramIds: Set<string>;
+  unifiedTeamIds: Set<string>;
+}) {
+  return input.lists.filter((list) => {
+    if (input.unifiedAllowAllScope) {
+      return true;
+    }
+    if (list.scope === EntryListScope.PERSONAL) {
+      return list.ownerPersonId === input.actorPersonId;
+    }
+    if (!input.staffAccessAllowed && list.scope === EntryListScope.ORGANIZATION) {
+      return false;
+    }
+    if (list.scope === EntryListScope.PROGRAM) {
+      return list.programId ? input.unifiedProgramIds.has(list.programId) : false;
+    }
+    if (list.scope === EntryListScope.TEAM) {
+      return list.teamId ? input.unifiedTeamIds.has(list.teamId) : false;
+    }
+    return false;
+  });
+}
+
 export default async function DashboardPage() {
   const scope = await getOrganizationScope();
 
@@ -388,32 +452,11 @@ export default async function DashboardPage() {
     entityType: "operationalDashboard",
   });
 
-  if (!staffAccessDecision.allowed) {
-    return (
-      <section className="space-y-6">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Operational overview for coaches and program operators.
-          </p>
-        </div>
-
-        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            You do not have staff access to view operational dashboard workflows.
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          <h3 className="text-base font-medium">Quick links</h3>
-          {renderNavigationCards()}
-        </div>
-      </section>
-    );
-  }
-
-  const staffScopeResolution = resolveStaffScopeResolution(actorRoleContext);
+  const staffScopeResolution = staffAccessDecision.allowed
+    ? resolveStaffScopeResolution(actorRoleContext)
+    : null;
   if (
+    staffScopeResolution &&
     !staffScopeResolution.allowAllStaffScope &&
     (staffScopeResolution.hasAmbiguousScopeAssignments || !staffScopeResolution.hasExplicitScopedAccess)
   ) {
@@ -434,69 +477,78 @@ export default async function DashboardPage() {
     );
   }
 
-  const scopedEventWhere = staffScopeResolution.allowAllStaffScope
+  const scopedEventWhere = staffScopeResolution?.allowAllStaffScope
     ? {}
     : {
         OR: [
-          ...(staffScopeResolution.allowedTeamIds.length > 0
+          ...(staffScopeResolution?.allowedTeamIds.length
             ? [{ teamId: { in: staffScopeResolution.allowedTeamIds } }]
             : []),
-          ...(staffScopeResolution.allowedProgramIds.length > 0
+          ...(staffScopeResolution?.allowedProgramIds.length
             ? [{ programId: { in: staffScopeResolution.allowedProgramIds } }]
             : []),
         ],
       };
-  const scopedNoteWhere = staffScopeResolution.allowAllStaffScope
+  const scopedNoteWhere = staffScopeResolution?.allowAllStaffScope
     ? {}
     : {
         OR: [
-          ...(staffScopeResolution.allowedTeamIds.length > 0
+          ...(staffScopeResolution?.allowedTeamIds.length
             ? [{ teamId: { in: staffScopeResolution.allowedTeamIds } }]
             : []),
-          ...(staffScopeResolution.allowedTeamIds.length > 0
+          ...(staffScopeResolution?.allowedTeamIds.length
             ? [{ event: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
             : []),
-          ...(staffScopeResolution.allowedProgramIds.length > 0
+          ...(staffScopeResolution?.allowedProgramIds.length
             ? [{ event: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
             : []),
-          ...(staffScopeResolution.allowedProgramIds.length > 0
+          ...(staffScopeResolution?.allowedProgramIds.length
             ? [{ team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
             : []),
         ],
       };
-  const scopedTaskWhere = staffScopeResolution.allowAllStaffScope
+  const scopedTaskWhere = staffScopeResolution?.allowAllStaffScope
     ? buildSupportedTaskSourceNoteVisibilityWhere()
     : {
         AND: [
           buildSupportedTaskSourceNoteVisibilityWhere(),
           {
             OR: [
-              ...(staffScopeResolution.allowedTeamIds.length > 0
+              ...(staffScopeResolution?.allowedTeamIds.length
                 ? [{ sourceEvent: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
                 : []),
-              ...(staffScopeResolution.allowedTeamIds.length > 0
+              ...(staffScopeResolution?.allowedTeamIds.length
                 ? [{ sourceNote: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } }]
                 : []),
-              ...(staffScopeResolution.allowedTeamIds.length > 0
+              ...(staffScopeResolution?.allowedTeamIds.length
                 ? [{ sourceNote: { is: { event: { is: { teamId: { in: staffScopeResolution.allowedTeamIds } } } } } }]
                 : []),
-              ...(staffScopeResolution.allowedProgramIds.length > 0
+              ...(staffScopeResolution?.allowedProgramIds.length
                 ? [{ sourceEvent: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } }]
                 : []),
-              ...(staffScopeResolution.allowedProgramIds.length > 0
+              ...(staffScopeResolution?.allowedProgramIds.length
                 ? [{ sourceNote: { is: { event: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
                 : []),
-              ...(staffScopeResolution.allowedProgramIds.length > 0
+              ...(staffScopeResolution?.allowedProgramIds.length
                 ? [{ sourceNote: { is: { team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
                 : []),
             ],
           },
         ],
       };
-  const scopedProgramWhere = buildScopedProgramWhere(scope.organizationId, staffScopeResolution);
-  const scopedTeamWhere = buildScopedTeamWhere(scope.organizationId, staffScopeResolution);
-  const scopedPersonWhere = buildScopedPersonWhere(scope.organizationId, staffScopeResolution);
-  const canViewOrganizationLevelFieldOpsApprovals = staffScopeResolution.allowAllStaffScope;
+  const scopedProgramWhere = buildScopedProgramWhere(
+    scope.organizationId,
+    staffScopeResolution ?? DEFAULT_EMPTY_SCOPE,
+  );
+  const scopedTeamWhere = buildScopedTeamWhere(
+    scope.organizationId,
+    staffScopeResolution ?? DEFAULT_EMPTY_SCOPE,
+  );
+  const scopedPersonWhere = buildScopedPersonWhere(
+    scope.organizationId,
+    staffScopeResolution ?? DEFAULT_EMPTY_SCOPE,
+  );
+  const canViewOrganizationLevelFieldOpsApprovals = Boolean(staffScopeResolution?.allowAllStaffScope);
   const gearReportingAccess = await resolveGearOpsReadAccess({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
@@ -514,6 +566,705 @@ export default async function DashboardPage() {
   const recentNotesThreshold = new Date(
     currentTime.getTime() - RECENT_NOTE_WINDOW_DAYS * 24 * 60 * 60 * 1000,
   );
+  const actorPersonId = scope.auth.personId;
+  const entryAccess = await resolveEntryAccess({
+    organizationId: scope.organizationId,
+    actorPersonId,
+  });
+  const canReadEntries = entryAccess.level !== "NONE";
+  const roleAssignments = actorPersonId
+    ? await db.roleAssignment.findMany({
+        where: { organizationId: scope.organizationId, personId: actorPersonId },
+        select: { roleType: true },
+      })
+    : [];
+  const roleTypes = new Set(roleAssignments.map((assignment) => assignment.roleType));
+  const rolePrecedenceOrder: RoleType[] = [
+    RoleType.ORGANIZATION_ADMIN,
+    RoleType.PROGRAM_DIRECTOR,
+    RoleType.COACH,
+    RoleType.ASSISTANT_COACH,
+    RoleType.PARENT_GUARDIAN,
+    RoleType.ATHLETE,
+  ];
+  const primaryRole =
+    rolePrecedenceOrder.find((roleType) => roleAssignments.some((assignment) => assignment.roleType === roleType)) ??
+    null;
+
+  const unifiedTeamIds = new Set<string>(staffScopeResolution?.allowedTeamIds ?? []);
+  const unifiedProgramIds = new Set<string>(staffScopeResolution?.allowedProgramIds ?? []);
+  const linkedAthleteIds = new Set<string>();
+
+  if (!staffAccessDecision.allowed && actorPersonId && roleTypes.has(RoleType.PARENT_GUARDIAN)) {
+    const guardianLinks = await db.athleteGuardianRelationship.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        guardianPersonId: actorPersonId,
+      },
+      select: {
+        athletePersonId: true,
+        athlete: {
+          select: {
+            roster: {
+              where: { organizationId: scope.organizationId },
+              select: {
+                teamId: true,
+                team: { select: { programId: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    for (const relationship of guardianLinks) {
+      linkedAthleteIds.add(relationship.athletePersonId);
+      for (const membership of relationship.athlete.roster) {
+        unifiedTeamIds.add(membership.teamId);
+        unifiedProgramIds.add(membership.team.programId);
+      }
+    }
+  }
+
+  if (!staffAccessDecision.allowed && actorPersonId && roleTypes.has(RoleType.ATHLETE)) {
+    linkedAthleteIds.add(actorPersonId);
+    const athleteRoster = await db.rosterMembership.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        personId: actorPersonId,
+      },
+      select: {
+        teamId: true,
+        team: { select: { programId: true } },
+      },
+    });
+
+    for (const membership of athleteRoster) {
+      unifiedTeamIds.add(membership.teamId);
+      unifiedProgramIds.add(membership.team.programId);
+    }
+  }
+
+  const unifiedAllowAllScope = Boolean(staffScopeResolution?.allowAllStaffScope);
+  const unifiedTeamIdList = [...unifiedTeamIds];
+  const unifiedProgramIdList = [...unifiedProgramIds];
+  const unifiedEventScope = unifiedAllowAllScope
+    ? {}
+    : {
+        OR: [
+          ...(unifiedTeamIdList.length > 0 ? [{ teamId: { in: unifiedTeamIdList } }] : []),
+          ...(unifiedProgramIdList.length > 0 ? [{ programId: { in: unifiedProgramIdList } }] : []),
+          ...(actorPersonId ? [{ createdByPersonId: actorPersonId }, { rsvps: { some: { personId: actorPersonId } } }] : []),
+        ],
+      };
+  const unifiedTaskScopeWhere: Prisma.FollowUpTaskWhereInput = staffAccessDecision.allowed
+    ? {
+        organizationId: scope.organizationId,
+        ...scopedTaskWhere,
+      }
+    : {
+        organizationId: scope.organizationId,
+        ...(actorPersonId
+          ? {
+              OR: [
+                { assigneePersonId: actorPersonId },
+                { createdByPersonId: actorPersonId },
+                ...(unifiedTeamIdList.length > 0
+                  ? [
+                      { sourceEvent: { is: { teamId: { in: unifiedTeamIdList } } } },
+                      { sourceNote: { is: { teamId: { in: unifiedTeamIdList } } } },
+                    ]
+                  : []),
+                ...(unifiedProgramIdList.length > 0
+                  ? [{ sourceEvent: { is: { programId: { in: unifiedProgramIdList } } } }]
+                  : []),
+              ],
+            }
+          : { id: "__no_actor__" }),
+      };
+
+  let unifiedDashboardData: {
+    myOpenTasks: Array<{ id: string; title: string; status: TaskStatus; dueAt: Date | null }>;
+    myUpcomingEvents: Array<{ id: string; title: string; startsAt: Date; eventType: EventType; team: { id: string; name: string } | null }>;
+    myRecentDecisions: Array<{ id: string; title: string; updatedAt: Date }>;
+    myActiveLists: Array<{ id: string; name: string; scope: EntryListScope }>;
+    recentNotes: Array<{ id: string; body: string; createdAt: Date }>;
+    recentDecisions: Array<{ id: string; title: string; updatedAt: Date }>;
+    recentEvents: Array<{ id: string; title: string; startsAt: Date; status: string }>;
+    recentTaskActivity: Array<{ id: string; title: string; updatedAt: Date; status: TaskStatus }>;
+    upcomingPractices: Array<{ id: string; title: string; startsAt: Date }>;
+    upcomingMatches: Array<{ id: string; title: string; startsAt: Date }>;
+    upcomingMeetings: Array<{ id: string; title: string; startsAt: Date }>;
+    recentlyCreatedEvents: Array<{ id: string; title: string; createdAt: Date }>;
+    upcomingEventsIn7Days: Array<{ id: string; title: string; startsAt: Date }>;
+    overdueTasks: Array<{ id: string; title: string; dueAt: Date | null }>;
+    activityFeed: Array<{
+      id: string;
+      action: string;
+      entityType: string;
+      entityId: string;
+      createdAt: Date;
+      actor: { firstName: string; lastName: string } | null;
+    }>;
+    gearMaintenanceDueCount: number;
+    missingAssignmentsCount: number;
+    setupWarnings: string[];
+  } | null = null;
+  let unifiedQueryErrorMessage: string | null = null;
+
+  try {
+    const [
+      myOpenTasks,
+      myUpcomingEvents,
+      myRecentDecisions,
+      myActiveLists,
+      recentNotes,
+      recentDecisions,
+      recentEvents,
+      recentTaskActivity,
+      upcomingPractices,
+      upcomingMatches,
+      upcomingMeetings,
+      recentlyCreatedEvents,
+      upcomingEventsIn7Days,
+      overdueTasksForAlerts,
+      activityFeed,
+      gearMaintenanceDueCount,
+    ] = await Promise.all([
+      actorPersonId
+        ? db.followUpTask.findMany({
+            where: {
+              organizationId: scope.organizationId,
+              assigneePersonId: actorPersonId,
+              status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED] },
+            },
+            select: { id: true, title: true, status: true, dueAt: true },
+            orderBy: [{ dueAt: "asc" }, { createdAt: "asc" }],
+            take: UNIFIED_SECTION_LIMIT,
+          })
+        : Promise.resolve([]),
+      actorPersonId
+        ? db.event.findMany({
+            where: {
+              organizationId: scope.organizationId,
+              startsAt: { gte: currentTime },
+              OR: [
+                { createdByPersonId: actorPersonId },
+                { rsvps: { some: { personId: actorPersonId } } },
+                { team: { is: { roster: { some: { organizationId: scope.organizationId, personId: actorPersonId } } } } },
+              ],
+            },
+            select: { id: true, title: true, startsAt: true, eventType: true, team: { select: { id: true, name: true } } },
+            orderBy: [{ startsAt: "asc" }],
+            take: UNIFIED_SECTION_LIMIT,
+          })
+        : Promise.resolve([]),
+      canReadEntries && actorPersonId
+        ? db.entry.findMany({
+            where: {
+              organizationId: scope.organizationId,
+              type: EntryType.DECISION,
+              deletedAt: null,
+              OR: [{ createdByPersonId: actorPersonId }, { assignments: { some: { personId: actorPersonId } } }],
+            },
+            select: { id: true, title: true, updatedAt: true },
+            orderBy: [{ updatedAt: "desc" }],
+            take: UNIFIED_SECTION_LIMIT,
+          })
+        : Promise.resolve([]),
+      canReadEntries
+        ? fetchListsForActor({ organizationId: scope.organizationId, actorPersonId }).then((lists) =>
+            filterDashboardLists({
+              lists,
+              actorPersonId,
+              unifiedAllowAllScope,
+              staffAccessAllowed: staffAccessDecision.allowed,
+              unifiedProgramIds,
+              unifiedTeamIds,
+            })
+              .slice(0, UNIFIED_SECTION_LIMIT)
+              .map((list) => ({ id: list.id, name: list.name, scope: list.scope })),
+          )
+        : Promise.resolve([]),
+      staffAccessDecision.allowed
+        ? db.observationNote.findMany({
+            where: {
+              organizationId: scope.organizationId,
+              visibility: SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
+              ...scopedNoteWhere,
+            },
+            select: { id: true, body: true, createdAt: true },
+            orderBy: [{ createdAt: "desc" }],
+            take: UNIFIED_SECTION_LIMIT,
+          })
+        : Promise.resolve([]),
+      canReadEntries
+        ? db.entry.findMany({
+            where: {
+              organizationId: scope.organizationId,
+              type: EntryType.DECISION,
+              deletedAt: null,
+            },
+            select: { id: true, title: true, updatedAt: true },
+            orderBy: [{ updatedAt: "desc" }],
+            take: UNIFIED_SECTION_LIMIT,
+          })
+        : Promise.resolve([]),
+      db.event.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          ...unifiedEventScope,
+        },
+        select: { id: true, title: true, startsAt: true, status: true },
+        orderBy: [{ updatedAt: "desc" }],
+        take: UNIFIED_SECTION_LIMIT,
+      }),
+      db.followUpTask.findMany({
+        where: unifiedTaskScopeWhere,
+        select: { id: true, title: true, status: true, updatedAt: true },
+        orderBy: [{ updatedAt: "desc" }],
+        take: UNIFIED_SECTION_LIMIT,
+      }),
+      db.event.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          ...unifiedEventScope,
+          startsAt: { gte: currentTime },
+          eventType: EventType.PRACTICE,
+        },
+        select: { id: true, title: true, startsAt: true },
+        orderBy: [{ startsAt: "asc" }],
+        take: UNIFIED_SECTION_LIMIT,
+      }),
+      db.event.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          ...unifiedEventScope,
+          startsAt: { gte: currentTime },
+          eventType: { in: [EventType.MATCH, EventType.GAME] },
+        },
+        select: { id: true, title: true, startsAt: true },
+        orderBy: [{ startsAt: "asc" }],
+        take: UNIFIED_SECTION_LIMIT,
+      }),
+      db.event.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          ...unifiedEventScope,
+          startsAt: { gte: currentTime },
+          eventType: EventType.MEETING,
+        },
+        select: { id: true, title: true, startsAt: true },
+        orderBy: [{ startsAt: "asc" }],
+        take: UNIFIED_SECTION_LIMIT,
+      }),
+      db.event.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          ...unifiedEventScope,
+        },
+        select: { id: true, title: true, createdAt: true },
+        orderBy: [{ createdAt: "desc" }],
+        take: UNIFIED_SECTION_LIMIT,
+      }),
+      db.event.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          ...unifiedEventScope,
+          startsAt: {
+            gte: currentTime,
+            lte: new Date(currentTime.getTime() + 7 * 24 * 60 * 60 * 1000),
+          },
+        },
+        select: { id: true, title: true, startsAt: true },
+        orderBy: [{ startsAt: "asc" }],
+        take: UNIFIED_SECTION_LIMIT,
+      }),
+      db.followUpTask.findMany({
+        where: {
+          ...unifiedTaskScopeWhere,
+          status: { in: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS] },
+          dueAt: { lt: currentTime },
+        },
+        select: { id: true, title: true, dueAt: true },
+        orderBy: [{ dueAt: "asc" }],
+        take: UNIFIED_SECTION_LIMIT,
+      }),
+      db.auditEvent.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          ...(unifiedAllowAllScope
+            ? {}
+            : staffAccessDecision.allowed
+              ? {
+                  OR: [
+                    ...(unifiedTeamIdList.length > 0 ? [{ teamId: { in: unifiedTeamIdList } }] : []),
+                    ...(unifiedProgramIdList.length > 0 ? [{ programId: { in: unifiedProgramIdList } }] : []),
+                    ...(actorPersonId ? [{ actorPersonId }] : []),
+                  ],
+                }
+              : actorPersonId
+                ? { actorPersonId }
+                : { id: "__no_actor__" }),
+        },
+        select: {
+          id: true,
+          action: true,
+          entityType: true,
+          entityId: true,
+          createdAt: true,
+          actor: { select: { firstName: true, lastName: true } },
+        },
+        orderBy: [{ createdAt: "desc" }],
+        take: ACTIVITY_FEED_LIMIT,
+      }),
+      canViewGearOpsReporting
+        ? db.gearItem.count({
+            where: {
+              ...gearReportingAccess.where,
+              lifecycleStatus: GearItemLifecycleStatus.MAINTENANCE,
+            },
+          })
+        : Promise.resolve(0),
+    ]);
+
+    unifiedDashboardData = {
+      myOpenTasks: sortOpenTasks(myOpenTasks),
+      myUpcomingEvents,
+      myRecentDecisions,
+      myActiveLists,
+      recentNotes,
+      recentDecisions,
+      recentEvents,
+      recentTaskActivity,
+      upcomingPractices,
+      upcomingMatches,
+      upcomingMeetings,
+      recentlyCreatedEvents,
+      upcomingEventsIn7Days,
+      overdueTasks: overdueTasksForAlerts,
+      activityFeed,
+      gearMaintenanceDueCount,
+      missingAssignmentsCount: 0,
+      setupWarnings: [
+        ...(scope.auth.organizationWarning ? [scope.auth.organizationWarning] : []),
+        ...(!staffAccessDecision.allowed
+          ? [
+              `Dashboard scope is currently limited to actor-linked and assignment-linked data for ${labelForRoleType(primaryRole)} roles.`,
+            ]
+          : []),
+      ],
+    };
+  } catch (error) {
+    if (isSchemaUnavailableError(error)) {
+      unifiedQueryErrorMessage =
+        "Database schema is not available yet. Run database setup before loading dashboard summaries.";
+    } else {
+      unifiedQueryErrorMessage = "Unable to load unified dashboard sections right now.";
+    }
+  }
+
+  if (!staffAccessDecision.allowed) {
+    return (
+      <section className="space-y-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Arc 24E.1 operational summaries for your assigned scope.
+            </p>
+          </div>
+          <div className="rounded-lg border bg-white px-4 py-3 text-sm dark:bg-zinc-900">
+            <p className="text-zinc-600 dark:text-zinc-400">Role</p>
+            <p className="mt-1 font-medium">{labelForRoleType(primaryRole)}</p>
+          </div>
+        </div>
+
+        {unifiedQueryErrorMessage ? (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
+            <p className="text-sm text-amber-900 dark:text-amber-200">{unifiedQueryErrorMessage}</p>
+          </div>
+        ) : null}
+
+        {!unifiedDashboardData ? null : (
+          <>
+            <div className="grid gap-4 xl:grid-cols-2">
+              <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+                <h3 className="text-base font-medium">My Work</h3>
+                <div className="mt-3 space-y-3 text-sm">
+                  <div>
+                    <p className="font-medium">My Open Tasks</p>
+                    {unifiedDashboardData.myOpenTasks.length === 0
+                      ? renderEmptyList("No open tasks assigned to you.")
+                      : (
+                        <ul className="mt-1 space-y-1">
+                          {unifiedDashboardData.myOpenTasks.map((task) => (
+                            <li key={task.id}>
+                              <Link href={`/tasks/${task.id}`} className="underline">
+                                {task.title}
+                              </Link>{" "}
+                              <span className="text-zinc-500 dark:text-zinc-400">({formatEnumLabel(task.status)})</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                  <div>
+                    <p className="font-medium">My Upcoming Events</p>
+                    {unifiedDashboardData.myUpcomingEvents.length === 0
+                      ? renderEmptyList("No upcoming events in your assigned scope.")
+                      : (
+                        <ul className="mt-1 space-y-1">
+                          {unifiedDashboardData.myUpcomingEvents.map((event) => (
+                            <li key={event.id}>
+                              <Link href={`/events/${event.id}`} className="underline">
+                                {event.title}
+                              </Link>{" "}
+                              <span className="text-zinc-500 dark:text-zinc-400">{formatDateTime(event.startsAt)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                  <div>
+                    <p className="font-medium">My Recent Decisions</p>
+                    {unifiedDashboardData.myRecentDecisions.length === 0
+                      ? renderEmptyList(canReadEntries ? "No recent decisions owned by you." : "Decision access is not enabled for this role.")
+                      : (
+                        <ul className="mt-1 space-y-1">
+                          {unifiedDashboardData.myRecentDecisions.map((decision) => (
+                            <li key={decision.id}>
+                              <Link href={`/entries/${decision.id}`} className="underline">
+                                {decision.title}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                  <div>
+                    <p className="font-medium">My Active Lists</p>
+                    {unifiedDashboardData.myActiveLists.length === 0
+                      ? renderEmptyList(canReadEntries ? "No active lists in your visible scope." : "List access is not enabled for this role.")
+                      : (
+                        <ul className="mt-1 space-y-1">
+                          {unifiedDashboardData.myActiveLists.map((list) => (
+                            <li key={list.id}>
+                              <Link href={`/lists/${list.id}`} className="underline">
+                                {list.name}
+                              </Link>{" "}
+                              <span className="text-zinc-500 dark:text-zinc-400">({labelForEntryListScope(list.scope)})</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+                <h3 className="text-base font-medium">Team Activity</h3>
+                <div className="mt-3 space-y-3 text-sm">
+                  <div>
+                    <p className="font-medium">Recent Notes</p>
+                    {unifiedDashboardData.recentNotes.length === 0
+                      ? renderEmptyList("No visible recent notes.")
+                      : (
+                        <ul className="mt-1 space-y-1">
+                          {unifiedDashboardData.recentNotes.map((note) => (
+                            <li key={note.id}>
+                              <Link href={`/notes/${note.id}`} className="underline">
+                                {note.body.slice(0, NOTE_PREVIEW_MAX_LENGTH)}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                  <div>
+                    <p className="font-medium">Recent Decisions</p>
+                    {unifiedDashboardData.recentDecisions.length === 0
+                      ? renderEmptyList("No visible decision activity.")
+                      : (
+                        <ul className="mt-1 space-y-1">
+                          {unifiedDashboardData.recentDecisions.map((decision) => (
+                            <li key={decision.id}>
+                              <Link href={`/entries/${decision.id}`} className="underline">
+                                {decision.title}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                  <div>
+                    <p className="font-medium">Recent Events</p>
+                    {unifiedDashboardData.recentEvents.length === 0
+                      ? renderEmptyList("No recent event activity.")
+                      : (
+                        <ul className="mt-1 space-y-1">
+                          {unifiedDashboardData.recentEvents.map((event) => (
+                            <li key={event.id}>
+                              <Link href={`/events/${event.id}`} className="underline">
+                                {event.title}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                  <div>
+                    <p className="font-medium">Recent Task Activity</p>
+                    {unifiedDashboardData.recentTaskActivity.length === 0
+                      ? renderEmptyList("No recent task changes.")
+                      : (
+                        <ul className="mt-1 space-y-1">
+                          {unifiedDashboardData.recentTaskActivity.map((task) => (
+                            <li key={task.id}>
+                              <Link href={`/tasks/${task.id}`} className="underline">
+                                {task.title}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+                <h3 className="text-base font-medium">Program Activity</h3>
+                <div className="mt-3 space-y-3 text-sm">
+                  <div>
+                    <p className="font-medium">Upcoming Practices</p>
+                    {unifiedDashboardData.upcomingPractices.length === 0
+                      ? renderEmptyList("No upcoming practices.")
+                      : (
+                        <ul className="mt-1 space-y-1">
+                          {unifiedDashboardData.upcomingPractices.map((event) => (
+                            <li key={event.id}>
+                              <Link href={`/events/${event.id}`} className="underline">
+                                {event.title}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                  <div>
+                    <p className="font-medium">Upcoming Matches</p>
+                    {unifiedDashboardData.upcomingMatches.length === 0
+                      ? renderEmptyList("No upcoming matches.")
+                      : (
+                        <ul className="mt-1 space-y-1">
+                          {unifiedDashboardData.upcomingMatches.map((event) => (
+                            <li key={event.id}>
+                              <Link href={`/events/${event.id}`} className="underline">
+                                {event.title}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                  <div>
+                    <p className="font-medium">Upcoming Meetings</p>
+                    {unifiedDashboardData.upcomingMeetings.length === 0
+                      ? renderEmptyList("No upcoming meetings.")
+                      : (
+                        <ul className="mt-1 space-y-1">
+                          {unifiedDashboardData.upcomingMeetings.map((event) => (
+                            <li key={event.id}>
+                              <Link href={`/events/${event.id}`} className="underline">
+                                {event.title}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                  <div>
+                    <p className="font-medium">Recently Created Events</p>
+                    {unifiedDashboardData.recentlyCreatedEvents.length === 0
+                      ? renderEmptyList("No recently created events.")
+                      : (
+                        <ul className="mt-1 space-y-1">
+                          {unifiedDashboardData.recentlyCreatedEvents.map((event) => (
+                            <li key={event.id}>
+                              <Link href={`/events/${event.id}`} className="underline">
+                                {event.title}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+                <h3 className="text-base font-medium">Alerts</h3>
+                <ul className="mt-3 space-y-2 text-sm">
+                  <li>Overdue Tasks: {unifiedDashboardData.overdueTasks.length}</li>
+                  <li>Upcoming Events (next 7 days): {unifiedDashboardData.upcomingEventsIn7Days.length}</li>
+                  <li>Gear Maintenance Due: {unifiedDashboardData.gearMaintenanceDueCount}</li>
+                  <li>Missing Assignments: {unifiedDashboardData.missingAssignmentsCount}</li>
+                  <li>Setup Warnings: {unifiedDashboardData.setupWarnings.length}</li>
+                </ul>
+                {unifiedDashboardData.setupWarnings.length > 0 ? (
+                  <ul className="mt-2 space-y-1 text-xs text-amber-700 dark:text-amber-300">
+                    {unifiedDashboardData.setupWarnings.map((warning) => (
+                      <li key={warning}>• {warning}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <h3 className="text-base font-medium">Quick Actions</h3>
+              <div className="mt-3 flex flex-wrap gap-2 text-sm">
+                <Link href="/feed?quickCapture=1" className="rounded-full border px-3 py-1">Quick Capture</Link>
+                <Link href="/tasks/new" className="rounded-full border px-3 py-1">Create Task</Link>
+                <Link href="/events/new" className="rounded-full border px-3 py-1">Create Event</Link>
+                <Link href="/notes/new" className="rounded-full border px-3 py-1">Create Note</Link>
+                <Link href="/people" className="rounded-full border px-3 py-1">Members</Link>
+                <Link href="/gear-ops" className="rounded-full border px-3 py-1">GearOps</Link>
+                <Link href="/programs" className="rounded-full border px-3 py-1">Programs</Link>
+                <Link href="/teams" className="rounded-full border px-3 py-1">Teams</Link>
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <h3 className="text-base font-medium">Activity Feed</h3>
+              {unifiedDashboardData.activityFeed.length === 0 ? (
+                renderEmptyList("No activity events found in your visible scope.")
+              ) : (
+                <ul className="mt-3 space-y-2 text-sm">
+                  {unifiedDashboardData.activityFeed.map((item) => (
+                    <li key={item.id} className="flex flex-wrap items-center gap-2">
+                      <span className="text-zinc-500 dark:text-zinc-400">{formatDateTime(item.createdAt)}</span>
+                      <span>{item.action}</span>
+                      <span className="text-zinc-500 dark:text-zinc-400">({item.entityType})</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        )}
+
+        <div className="space-y-3">
+          <h3 className="text-base font-medium">Quick links</h3>
+          {renderNavigationCards()}
+        </div>
+      </section>
+    );
+  }
+
+  const resolvedStaffScope = staffScopeResolution as Exclude<typeof staffScopeResolution, null>;
 
   let dashboardData:
     | {
@@ -1400,18 +2151,18 @@ export default async function DashboardPage() {
         organizationId: scope.organizationId,
         limit: 8,
         sinceDays: RECENT_OPERATIONAL_CHANGE_WINDOW_DAYS,
-        allowAllStaffScope: staffScopeResolution.allowAllStaffScope,
-        allowedTeamIds: staffScopeResolution.allowedTeamIds,
-        allowedProgramIds: staffScopeResolution.allowedProgramIds,
+        allowAllStaffScope: resolvedStaffScope.allowAllStaffScope,
+        allowedTeamIds: resolvedStaffScope.allowedTeamIds,
+        allowedProgramIds: resolvedStaffScope.allowedProgramIds,
       }),
       getOperationalHistory({
         organizationId: scope.organizationId,
         limit: 6,
         sinceDays: 30,
         unresolvedOnly: true,
-        allowAllStaffScope: staffScopeResolution.allowAllStaffScope,
-        allowedTeamIds: staffScopeResolution.allowedTeamIds,
-        allowedProgramIds: staffScopeResolution.allowedProgramIds,
+        allowAllStaffScope: resolvedStaffScope.allowAllStaffScope,
+        allowedTeamIds: resolvedStaffScope.allowedTeamIds,
+        allowedProgramIds: resolvedStaffScope.allowedProgramIds,
       }),
     ]);
 
@@ -1736,6 +2487,82 @@ export default async function DashboardPage() {
           <p className="mt-1 font-medium">{scope.organizationName ?? scope.organizationId}</p>
         </div>
       </div>
+
+      {!unifiedDashboardData ? null : (
+        <>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <h3 className="text-base font-medium">My Work</h3>
+              <ul className="mt-2 space-y-1 text-sm">
+                <li>Open Tasks: {unifiedDashboardData.myOpenTasks.length}</li>
+                <li>Upcoming Events: {unifiedDashboardData.myUpcomingEvents.length}</li>
+                <li>Recent Decisions: {unifiedDashboardData.myRecentDecisions.length}</li>
+                <li>Active Lists: {unifiedDashboardData.myActiveLists.length}</li>
+              </ul>
+            </div>
+            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <h3 className="text-base font-medium">Team Activity</h3>
+              <ul className="mt-2 space-y-1 text-sm">
+                <li>Recent Notes: {unifiedDashboardData.recentNotes.length}</li>
+                <li>Recent Decisions: {unifiedDashboardData.recentDecisions.length}</li>
+                <li>Recent Events: {unifiedDashboardData.recentEvents.length}</li>
+                <li>Recent Task Activity: {unifiedDashboardData.recentTaskActivity.length}</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <h3 className="text-base font-medium">Program Activity</h3>
+              <ul className="mt-2 space-y-1 text-sm">
+                <li>Upcoming Practices: {unifiedDashboardData.upcomingPractices.length}</li>
+                <li>Upcoming Matches: {unifiedDashboardData.upcomingMatches.length}</li>
+                <li>Upcoming Meetings: {unifiedDashboardData.upcomingMeetings.length}</li>
+                <li>Recently Created Events: {unifiedDashboardData.recentlyCreatedEvents.length}</li>
+              </ul>
+            </div>
+            <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <h3 className="text-base font-medium">Alerts</h3>
+              <ul className="mt-2 space-y-1 text-sm">
+                <li>Overdue Tasks: {unifiedDashboardData.overdueTasks.length}</li>
+                <li>Upcoming Events (7 days): {unifiedDashboardData.upcomingEventsIn7Days.length}</li>
+                <li>Gear Maintenance Due: {unifiedDashboardData.gearMaintenanceDueCount}</li>
+                <li>Missing Assignments: {dashboardData?.counts.missingResponsibleFollowUps ?? 0}</li>
+                <li>Setup Warnings: {unifiedDashboardData.setupWarnings.length}</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+            <h3 className="text-base font-medium">Quick Actions</h3>
+            <div className="mt-3 flex flex-wrap gap-2 text-sm">
+              <Link href="/feed?quickCapture=1" className="rounded-full border px-3 py-1">Quick Capture</Link>
+              <Link href="/tasks/new" className="rounded-full border px-3 py-1">Create Task</Link>
+              <Link href="/events/new" className="rounded-full border px-3 py-1">Create Event</Link>
+              <Link href="/notes/new" className="rounded-full border px-3 py-1">Create Note</Link>
+              <Link href="/people" className="rounded-full border px-3 py-1">Members</Link>
+              <Link href="/gear-ops" className="rounded-full border px-3 py-1">GearOps</Link>
+              <Link href="/programs" className="rounded-full border px-3 py-1">Programs</Link>
+              <Link href="/teams" className="rounded-full border px-3 py-1">Teams</Link>
+            </div>
+          </div>
+
+          <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+            <h3 className="text-base font-medium">Activity Feed</h3>
+            {unifiedDashboardData.activityFeed.length === 0 ? (
+              renderEmptyList("No activity events found in the current scope.")
+            ) : (
+              <ul className="mt-2 space-y-1 text-sm">
+                {unifiedDashboardData.activityFeed.map((item) => (
+                  <li key={item.id}>
+                    {formatDateTime(item.createdAt)} · {item.action} ({item.entityType})
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
 
       <div className="space-y-3">
         <h3 className="text-base font-medium">Quick links</h3>
