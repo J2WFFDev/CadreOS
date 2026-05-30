@@ -21,7 +21,7 @@ const DEFAULT_ENTRY_DETAIL_CONFIG: EntryDetailConfig = {
   contentHint: null,
   statusLabel: "Status",
   priorityLabel: "Priority",
-  metadataDateLabel: "Due",
+  metadataDateLabel: "Date",
   dateFieldLabel: null,
   guidance: null,
 };

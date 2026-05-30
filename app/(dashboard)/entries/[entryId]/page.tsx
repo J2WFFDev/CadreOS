@@ -57,7 +57,7 @@ function summarizeEntryActivityMetadata(metadataJson: string | null) {
       details.push(`Target type ${formatEnumLabel(metadata.targetType)}`);
     }
     if (typeof metadata.changedType === "string") {
-      details.push(`Type ${formatEnumLabel(metadata.changedType)}`);
+      details.push(`Type changed to ${formatEnumLabel(metadata.changedType)}`);
     }
     if (typeof metadata.relationshipType === "string") {
       details.push(`Relationship ${formatEnumLabel(metadata.relationshipType)}`);
@@ -78,7 +78,7 @@ function summarizeEntryActivityMetadata(metadataJson: string | null) {
       details.push("Assignment updated");
     }
     if (typeof metadata.changedPriority === "string") {
-      details.push(`Priority ${formatEnumLabel(metadata.changedPriority)}`);
+      details.push(`Priority changed to ${formatEnumLabel(metadata.changedPriority)}`);
     }
 
     return details.slice(0, 3);
