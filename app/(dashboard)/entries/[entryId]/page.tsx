@@ -170,8 +170,7 @@ const entryDetailSelect = Prisma.validator<Prisma.EntryFindFirstArgs>()({
   },
 });
 
-type EntryDetailBaseRecord = Prisma.EntryGetPayload<typeof entryBaseSelect>;
-type EntryDetailRecord = EntryDetailBaseRecord & { listId: string | null };
+type EntryDetailRecord = Prisma.EntryGetPayload<typeof entryDetailSelect>;
 
 async function fetchEntryDetailRecord(
   organizationId: string,
@@ -201,8 +200,10 @@ async function fetchEntryDetailRecord(
       select: entryBaseSelect.select,
     });
 
+    const entryWithUnavailableList = entry ? { ...entry, listId: null } as EntryDetailRecord : null;
+
     return {
-      entry: entry ? { ...entry, listId: null } : null,
+      entry: entryWithUnavailableList,
       listAssignmentUnavailable: true,
     };
   }
