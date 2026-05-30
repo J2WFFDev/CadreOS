@@ -190,6 +190,14 @@ enum InboxItemStatus {
   CLOSED
 }
 
+// Arc 24D.4: Entry list scope types
+enum EntryListScope {
+  PERSONAL
+  ORGANIZATION
+  PROGRAM
+  TEAM
+}
+
 enum ScopeType {
   ORGANIZATION
   PROGRAM
@@ -771,6 +779,7 @@ model Organization {
   journalAssignments           JournalAssignment[]
   // Arc 23D: Habit back-relations
   habits                       Habit[]
+  entryLists                   EntryList[]
   entryLinks                   EntryLink[]
   entryActivities              EntryActivity[]
   entryObjectLinks             EntryObjectLink[]
@@ -805,6 +814,8 @@ model Program {
   resourceBookings ResourceBooking[]
   gearItems        GearItem[]
   gearReservations GearReservation[]
+  // Arc 24D.4: Entry lists scoped to this program
+  entryLists       EntryList[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -833,6 +844,8 @@ model Team {
   journalAssignments JournalAssignment[]
   // Arc 23D: Habit back-relations
   assignedHabits   Habit[]           @relation("HabitTeam")
+  // Arc 24D.4: Entry lists scoped to this team
+  entryLists       EntryList[]
 
   @@unique([programId, name])
   @@index([organizationId, programId])
@@ -959,6 +972,8 @@ model Person {
   athleteHabits                        Habit[]                       @relation("HabitAthlete")
   createdHabits                        Habit[]                       @relation("HabitCreatedBy")
   habitCompletions                     HabitCompletion[]             @relation("HabitCompletionAthlete")
+  // Arc 24D.4: Personal entry lists owned by this person
+  ownedEntryLists                      EntryList[]                   @relation("EntryListOwner")
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
@@ -1112,6 +1127,8 @@ model Entry {
   // Arc 23C: optional linkage to prompt library and assignment
   journalPromptId    String?
   journalAssignmentId String?
+  // Arc 24D.4: optional entry list assignment
+  listId             String?
 
   organization         Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   team                 Team?                @relation(fields: [teamId], references: [id], onDelete: SetNull)
@@ -1136,6 +1153,7 @@ model Entry {
   notifications        Notification[]
   journalPrompt        JournalPrompt?       @relation("JournalPromptResponses", fields: [journalPromptId], references: [id], onDelete: SetNull)
   journalAssignment    JournalAssignment?   @relation("JournalAssignmentResponses", fields: [journalAssignmentId], references: [id], onDelete: SetNull)
+  entryList            EntryList?           @relation("EntryListEntries", fields: [listId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, type, createdAt])
   @@index([organizationId, status, dueDate])
@@ -1145,6 +1163,7 @@ model Entry {
   @@index([organizationId, parentEntryId])
   @@index([organizationId, journalPromptId])
   @@index([organizationId, journalAssignmentId])
+  @@index([organizationId, listId])
 }
 
 model EntryLink {
@@ -1163,6 +1182,36 @@ model EntryLink {
   @@unique([organizationId, fromEntryId, toEntryId])
   @@index([organizationId, fromEntryId])
   @@index([organizationId, toEntryId])
+}
+
+// Arc 24D.4: EntryList — scoped lists for organizing entries
+
+model EntryList {
+  id             String         @id @default(cuid())
+  organizationId String
+  name           String
+  scope          EntryListScope
+  isInbox        Boolean        @default(false)
+  isArchived     Boolean        @default(false)
+  // PERSONAL scope: ownerPersonId is required; programId/teamId are null
+  ownerPersonId  String?
+  // PROGRAM scope: programId is required; teamId is null
+  programId      String?
+  // TEAM scope: programId and teamId are both required
+  teamId         String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  owner        Person?      @relation("EntryListOwner", fields: [ownerPersonId], references: [id], onDelete: SetNull)
+  program      Program?     @relation(fields: [programId], references: [id], onDelete: SetNull)
+  team         Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  entries      Entry[]      @relation("EntryListEntries")
+
+  @@index([organizationId, scope])
+  @@index([organizationId, ownerPersonId])
+  @@index([organizationId, programId])
+  @@index([organizationId, teamId])
 }
 
 model OperationalRelationship {

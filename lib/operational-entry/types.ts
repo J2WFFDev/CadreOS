@@ -61,6 +61,8 @@ export type CreateOperationalEntryInput = {
   taskRecurrenceRule?: string | null;
   sourceTaskId?: string | null;
   sourceNoteId?: string | null;
+  // Arc 24D.4: optional list assignment
+  listId?: string | null;
 };
 
 /** Input for updating an existing OperationalEntry. */

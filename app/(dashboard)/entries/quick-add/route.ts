@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { mapEntryPriorityToInboxPriority, shouldRouteEntryToInbox } from "@/lib/entries/inbox";
+import { resolveOrCreateDefaultList } from "@/lib/entries/lists";
 import { parseQuickAddEntryInput } from "@/lib/entries/parser";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { linkOperationalRecords, mapEntryObjectLinkTargetToGraphNodeType } from "@/lib/operational-graph";
@@ -234,6 +235,21 @@ export async function POST(request: Request) {
   });
   const quickAddAction = ENTRY_ACTIVITY_ACTIONS.ENTRY_QUICK_ADD_TASK;
 
+  // Arc 24D.4: Resolve default list — Team Inbox when context is a team, Personal Inbox otherwise.
+  let defaultListId: string | null = null;
+  try {
+    if (scopedTeamId) {
+      const list = await resolveOrCreateDefaultList({ scope: "TEAM", organizationId, teamId: scopedTeamId });
+      defaultListId = list.id;
+    } else if (actorPersonId) {
+      const list = await resolveOrCreateDefaultList({ scope: "PERSONAL", organizationId, ownerPersonId: actorPersonId });
+      defaultListId = list.id;
+    }
+  } catch (listErr) {
+    // Non-fatal: entry will be created without a list assignment if this fails.
+    console.warn("[entries.quick-add] Failed to resolve default list; entry will be unassigned", listErr);
+  }
+
   try {
     const createdTask = await db.followUpTask.create({
       data: {
@@ -264,6 +280,7 @@ export async function POST(request: Request) {
       timezone: "UTC",
       taskRecurrenceRule: parsed.recurrenceRule,
       sourceTaskId: createdTask.id,
+      listId: defaultListId,
     });
 
     await writeEntryActivity({

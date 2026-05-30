@@ -54,6 +54,7 @@ export async function createOperationalEntry(input: CreateOperationalEntryInput)
       taskRecurrenceRule: input.taskRecurrenceRule ?? null,
       sourceTaskId: input.sourceTaskId ?? null,
       sourceNoteId: input.sourceNoteId ?? null,
+      listId: input.listId ?? null,
     },
     select: { id: true, organizationId: true, type: true, status: true },
   });
