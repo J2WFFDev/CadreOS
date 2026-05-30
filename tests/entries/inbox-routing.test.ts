@@ -8,28 +8,35 @@ import { mapEntryPriorityToInboxPriority, shouldRouteEntryToInbox } from "../../
 test("shouldRouteEntryToInbox returns true for low-context no-due captures", () => {
   const shouldRoute = shouldRouteEntryToInbox({
     entryType: EntryType.NOTE,
-    dueDate: null,
     contextTargetId: null,
   });
 
   assert.equal(shouldRoute, true);
 });
 
-test("shouldRouteEntryToInbox returns false when due date or context exists", () => {
+test("shouldRouteEntryToInbox keeps dated tasks in inbox unless context routing exists", () => {
   assert.equal(
     shouldRouteEntryToInbox({
       entryType: EntryType.TASK,
-      dueDate: new Date("2026-05-27T00:00:00.000Z"),
       contextTargetId: null,
     }),
-    false,
+    true,
   );
 
   assert.equal(
     shouldRouteEntryToInbox({
       entryType: EntryType.NOTE,
-      dueDate: null,
       contextTargetId: "team_123",
+    }),
+    false,
+  );
+});
+
+test("shouldRouteEntryToInbox excludes event entries from inbox routing", () => {
+  assert.equal(
+    shouldRouteEntryToInbox({
+      entryType: EntryType.EVENT,
+      contextTargetId: null,
     }),
     false,
   );

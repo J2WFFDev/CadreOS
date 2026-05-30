@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { USER_SELECTABLE_ENTRY_TYPES } from "@/lib/entries/user-selectable-types";
 import { mapEntryStatusToTaskStatus, writeEntryActivity } from "@/lib/entries/service";
 import { ENTRY_ACTIVITY_ACTIONS, canWriteEntries } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
@@ -64,7 +65,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   const dueAtRaw = String(formData.get("dueAt") ?? "").trim();
   const hasDueAtField = formData.has("dueAt");
 
-  const type = Object.values(EntryType).includes(typeValue as EntryType) ? (typeValue as EntryType) : undefined;
+  const requestedType = Object.values(EntryType).includes(typeValue as EntryType) ? (typeValue as EntryType) : undefined;
   const status = Object.values(EntryStatus).includes(statusValue as EntryStatus) ? (statusValue as EntryStatus) : undefined;
   const priority = Object.values(EntryPriority).includes(priorityValue as EntryPriority)
     ? (priorityValue as EntryPriority)
@@ -73,7 +74,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   console.log("[entries.update] form fields parsed", {
     title: title || "(empty)",
     contentLength: content.length,
-    type,
+    requestedType,
     status,
     priority,
     hasDueAtField,
@@ -106,18 +107,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       sourceNoteId: entry?.sourceNoteId ?? null,
     });
 
-    if (!entry || entry.type === EntryType.JOURNAL) {
-      console.warn("[entries.update] Aborting: entry not found or is a JOURNAL type", {
+    if (!entry) {
+      console.warn("[entries.update] Aborting: entry not found", {
         entryId,
         organizationId,
         found: Boolean(entry),
-        entryType: entry?.type ?? null,
       });
       const url = new URL(returnTo, request.url);
-      url.searchParams.set("error", !entry ? "Entry not found." : "Journal entries cannot be edited here.");
+      url.searchParams.set("error", "Entry not found.");
       return NextResponse.redirect(url, 303);
     }
 
+    // Allow an existing legacy/internal type to remain unchanged while blocking conversion into hidden types.
+    let type: EntryType | undefined;
+    if (requestedType) {
+      const canUseRequestedType =
+        USER_SELECTABLE_ENTRY_TYPES.includes(requestedType) || requestedType === entry.type;
+      if (!canUseRequestedType) {
+        const url = new URL(returnTo, request.url);
+        url.searchParams.set("error", "This entry type is not available for direct selection.");
+        return NextResponse.redirect(url, 303);
+      }
+      type = requestedType;
+    }
     const updateData = {
       ...(title ? { title } : {}),
       ...(content.length > 0 ? { content } : {}),

@@ -5,13 +5,10 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import {
   inferQuickCaptureContextFromPath,
-  isQuickCaptureType,
   normalizeQuickCapturePriority,
-  QUICK_CAPTURE_PRESETS,
   resolveQuickCaptureDueDate,
   type QuickCaptureDueShortcut,
   type QuickCapturePriority,
-  type QuickCaptureType,
 } from "@/lib/quick-capture";
 
 type QuickCaptureLauncherProps = {
@@ -27,24 +24,15 @@ const DUE_SHORTCUTS: Array<{ value: QuickCaptureDueShortcut; label: string }> = 
 ];
 
 const PRIORITIES: QuickCapturePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
-const UNAVAILABLE_CAPTURE_TYPES = [
-  { value: "QUICK_JOURNAL", label: "Journal (not available yet)" },
-  { value: "QUICK_HABIT", label: "Habit (deferred — use recurring tasks)" },
-] as const;
-
 export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disabled = false }: QuickCaptureLauncherProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
-  const queryCaptureType = searchParams.get("captureType") ?? "";
   const queryPriority = searchParams.get("priority");
   const queryDueShortcut = (searchParams.get("dueShortcut") ?? "").toUpperCase();
   const queryTitle = searchParams.get("title") ?? "";
   const queryDetails = searchParams.get("details") ?? "";
   const queryError = searchParams.get("quickCaptureError");
-  const [captureType, setCaptureType] = useState<QuickCaptureType>(
-    isQuickCaptureType(queryCaptureType.toUpperCase()) ? (queryCaptureType.toUpperCase() as QuickCaptureType) : "QUICK_TASK",
-  );
   const [showDetails, setShowDetails] = useState(() => queryDetails.length > 0);
   const [dueShortcut, setDueShortcut] = useState<QuickCaptureDueShortcut | "">(
     resolveQuickCaptureDueDate(queryDueShortcut) ? (queryDueShortcut as QuickCaptureDueShortcut) : "",
@@ -52,6 +40,7 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
   const [priority, setPriority] = useState<QuickCapturePriority>(
     normalizeQuickCapturePriority(queryPriority, "MEDIUM"),
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const context = useMemo(() => inferQuickCaptureContextFromPath(pathname), [pathname]);
   const quickCaptureQuery = searchParams.get("quickCapture");
@@ -134,7 +123,18 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
               </button>
             </div>
 
-            <form action="/entries/quick-add" method="post" className="space-y-3">
+            <form
+              action="/entries/quick-add"
+              method="post"
+              className="space-y-3"
+              onSubmit={(event) => {
+                if (isSubmitting) {
+                  event.preventDefault();
+                  return;
+                }
+                setIsSubmitting(true);
+              }}
+            >
               <input type="hidden" name="returnTo" value={returnTo} />
               <input type="hidden" name="dueShortcut" value={dueShortcut} />
               <input type="hidden" name="priority" value={priority} />
@@ -151,31 +151,6 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
                   {queryError}
                 </div>
               ) : null}
-
-              <div className="space-y-1">
-                <label htmlFor="captureType" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                  Capture type
-                </label>
-                <select
-                  id="captureType"
-                  name="captureType"
-                  defaultValue={captureType}
-                  onChange={(event) => setCaptureType(event.target.value as QuickCaptureType)}
-                  className="w-full rounded-md border px-3 py-2 text-sm"
-                >
-                  {Object.entries(QUICK_CAPTURE_PRESETS).map(([value, preset]) => (
-                    <option key={value} value={value}>
-                      {preset.label}
-                    </option>
-                  ))}
-                  {UNAVAILABLE_CAPTURE_TYPES.map((type) => (
-                    <option key={type.value} value={type.value} disabled>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-zinc-500">Additional entry types will be added in future updates.</p>
-              </div>
 
               <div className="space-y-1">
                 <label htmlFor="title" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -284,8 +259,12 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
 
               <div className="flex items-center justify-between gap-3 pt-1">
                 <p className="text-xs text-zinc-500">Tip: Use ⌘/Ctrl + K to open quick capture.</p>
-                <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-                  Capture
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="rounded-md bg-black px-3 py-1.5 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black"
+                >
+                  {isSubmitting ? "Capturing…" : "Capture"}
                 </button>
               </div>
             </form>

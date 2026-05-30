@@ -1,23 +1,8 @@
 export const QUICK_CAPTURE_PRESETS = {
   QUICK_TASK: {
-    label: "Quick Task",
+    label: "Task",
     entryType: "TASK",
     defaultTags: [],
-  },
-  QUICK_NOTE: {
-    label: "Quick Note",
-    entryType: "NOTE",
-    defaultTags: [],
-  },
-  QUICK_EVENT: {
-    label: "Quick Event",
-    entryType: "EVENT",
-    defaultTags: [],
-  },
-  QUICK_DECISION: {
-    label: "Quick Decision",
-    entryType: "DECISION",
-    defaultTags: ["decision"],
   },
 } as const;
 
@@ -33,7 +18,6 @@ export type QuickCaptureContext = {
   label: string;
 };
 
-const QUICK_CAPTURE_ENTRY_TYPES = ["TASK", "NOTE", "EVENT", "DECISION", "FOLLOW_UP", "OBSERVATION", "READINESS_ITEM"] as const;
 const QUICK_CAPTURE_PRIORITIES: QuickCapturePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const QUICK_CAPTURE_DUE_SHORTCUTS: QuickCaptureDueShortcut[] = ["TODAY", "TOMORROW", "NEXT_WEEK"];
 const QUICK_CAPTURE_CONTEXT_TARGET_TYPES: QuickCaptureContextTargetType[] = ["PERSON", "TEAM", "EVENT", "GEAR_ITEM", "RESOURCE_BOOKING"];
@@ -49,20 +33,8 @@ export function getQuickCapturePreset(value: string | null | undefined) {
   return QUICK_CAPTURE_PRESETS[normalized];
 }
 
-export function resolveQuickCaptureEntryType(input: {
-  captureType?: string | null;
-  legacyEntryType?: string | null;
-  inferredType?: "TASK" | "NOTE";
-}): QuickCaptureEntryType {
-  const preset = getQuickCapturePreset(input.captureType);
-  if (preset) return preset.entryType;
-
-  const legacyType = (input.legacyEntryType ?? "").trim().toUpperCase();
-  if (QUICK_CAPTURE_ENTRY_TYPES.includes(legacyType as QuickCaptureEntryType)) {
-    return legacyType as QuickCaptureEntryType;
-  }
-
-  return input.inferredType === "TASK" ? "TASK" : "NOTE";
+export function resolveQuickCaptureEntryType(): QuickCaptureEntryType {
+  return "TASK";
 }
 
 export function normalizeQuickCapturePriority(value: string | null | undefined, fallback: QuickCapturePriority): QuickCapturePriority {

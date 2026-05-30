@@ -2,12 +2,11 @@ import { EntryPriority, EntryType } from "@prisma/client";
 
 type InboxRoutingContext = {
   entryType: EntryType;
-  dueDate: Date | null;
   contextTargetId: string | null;
 };
 
 export function shouldRouteEntryToInbox(context: InboxRoutingContext) {
-  if (context.dueDate) return false;
+  // Arc 24D.2: quick capture is Inbox-first, so due dates do not remove captures from inbox triage.
   if (context.contextTargetId) return false;
   if (context.entryType === EntryType.EVENT) return false;
   return true;
