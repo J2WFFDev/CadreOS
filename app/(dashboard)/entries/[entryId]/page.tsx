@@ -192,6 +192,13 @@ function withUnavailableDecisionPayload(entry: EntryBaseWithListIdRecord): Entry
   };
 }
 
+function buildFallbackEntrySelect(listSchemaIssue: boolean) {
+  return {
+    ...entryBaseSelect.select,
+    ...(listSchemaIssue ? {} : { listId: true }),
+  };
+}
+
 async function fetchEntryDetailRecord(
   organizationId: string,
   entryId: string,
@@ -224,10 +231,7 @@ async function fetchEntryDetailRecord(
 
     const entry = await db.entry.findFirst({
       where: { id: entryId, organizationId, deletedAt: null },
-      select: {
-        ...entryBaseSelect.select,
-        ...(listSchemaIssue ? {} : { listId: true }),
-      },
+      select: buildFallbackEntrySelect(Boolean(listSchemaIssue)),
     });
 
     return {
