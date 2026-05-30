@@ -79,12 +79,12 @@ test("member move workflow accepts valid roster role types", () => {
   assert.equal(parsed.success, true);
 });
 
-test("lifecycle labels use pending/graduated language", () => {
-  assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.PROSPECT], "Pending");
-  assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.ALUMNI], "Graduated");
+test("lifecycle labels use prospect/alumni language", () => {
+  assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.PROSPECT], "Prospect");
+  assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.ALUMNI], "Alumni");
 });
 
-test("default roster visibility includes active and pending only", () => {
+test("default roster visibility includes active and prospect only", () => {
   assert.deepEqual(MEMBER_LIFECYCLE_DEFAULT_VISIBLE_STATUSES, [
     MemberLifecycleStatus.ACTIVE,
     MemberLifecycleStatus.PROSPECT,

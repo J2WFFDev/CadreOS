@@ -16,6 +16,10 @@ import {
   roleAssignmentWorkflowSchema,
 } from "@/lib/workflows";
 
+const scopedProgramRoleTypeSet = new Set<RoleType>(MEMBEROPS_SCOPED_PROGRAM_ROLE_TYPES);
+const scopedTeamRoleTypeSet = new Set<RoleType>(MEMBEROPS_SCOPED_TEAM_ROLE_TYPES);
+const elevatedRoleTypeSet = new Set<RoleType>(MEMBEROPS_ELEVATED_ROLE_TYPES);
+
 function buildErrorRedirectUrl(requestUrl: string, personId: string, input: {
   values: { roleType: string; scopeType: string; programId: string; teamId: string };
   fieldErrors?: Partial<Record<"roleType" | "scopeType" | "programId" | "teamId", string>>;
@@ -123,14 +127,24 @@ export async function POST(
       select: {
         id: true,
         roles: {
-          select: {
-            roleType: true,
+          where: {
+            organizationId,
+            roleType: RoleType.ATHLETE,
           },
+          select: {
+            id: true,
+          },
+          take: 1,
         },
         roster: {
-          select: {
-            rosterRole: true,
+          where: {
+            organizationId,
+            rosterRole: RoleType.ATHLETE,
           },
+          select: {
+            id: true,
+          },
+          take: 1,
         },
       },
     });
@@ -147,7 +161,6 @@ export async function POST(
 
     let normalizedProgramId: string | null = null;
     let normalizedTeamId: string | null = null;
-
     if (parsed.data.scopeType === ScopeType.ORGANIZATION) {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, personId, {
@@ -162,7 +175,7 @@ export async function POST(
     }
 
     if (parsed.data.scopeType === ScopeType.PROGRAM) {
-      if (!MEMBEROPS_SCOPED_PROGRAM_ROLE_TYPES.includes(parsed.data.roleType)) {
+      if (!scopedProgramRoleTypeSet.has(parsed.data.roleType)) {
         return NextResponse.redirect(
           buildErrorRedirectUrl(request.url, personId, {
             values,
@@ -177,7 +190,7 @@ export async function POST(
     }
 
     if (parsed.data.scopeType === ScopeType.TEAM) {
-      if (!MEMBEROPS_SCOPED_TEAM_ROLE_TYPES.includes(parsed.data.roleType)) {
+      if (!scopedTeamRoleTypeSet.has(parsed.data.roleType)) {
         return NextResponse.redirect(
           buildErrorRedirectUrl(request.url, personId, {
             values,
@@ -191,10 +204,10 @@ export async function POST(
       }
     }
 
-    const isCurrentAthlete =
-      person.roles.some((role) => role.roleType === RoleType.ATHLETE) ||
-      person.roster.some((membership) => membership.rosterRole === RoleType.ATHLETE);
-    if (isCurrentAthlete && MEMBEROPS_ELEVATED_ROLE_TYPES.includes(parsed.data.roleType)) {
+    const hasAthleteRoleOrAthleteRosterMembership =
+      person.roles.length > 0 ||
+      person.roster.length > 0;
+    if (hasAthleteRoleOrAthleteRosterMembership && elevatedRoleTypeSet.has(parsed.data.roleType)) {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, personId, {
           values,

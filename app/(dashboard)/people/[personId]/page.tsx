@@ -457,10 +457,10 @@ export default async function PersonDetailsPage({
     ? readSearchParam(resolvedSearchParams, "teamId")
     : "";
   const selectedRoleTypeParam = readSearchParam(resolvedSearchParams, "roleType");
-  const selectedRoleTypeOptions =
+  const selectedRoleTypeOptions: RoleType[] =
     selectedScopeType === ScopeType.PROGRAM
-      ? MEMBEROPS_SCOPED_PROGRAM_ROLE_TYPES
-      : MEMBEROPS_SCOPED_TEAM_ROLE_TYPES;
+      ? [...MEMBEROPS_SCOPED_PROGRAM_ROLE_TYPES]
+      : [...MEMBEROPS_SCOPED_TEAM_ROLE_TYPES];
   const selectedRoleType = selectedRoleTypeOptions.includes(selectedRoleTypeParam as RoleType)
     ? (selectedRoleTypeParam as RoleType)
     : selectedRoleTypeOptions[0];
@@ -758,7 +758,7 @@ export default async function PersonDetailsPage({
         ) : null}
         <form action={`/people/${person.id}/lifecycle/update`} method="post" className="mt-3 space-y-2">
           <label htmlFor="lifecycleStatus" className="text-sm font-medium">
-            Set lifecycle status
+            Lifecycle status
           </label>
           <div className="flex flex-wrap items-center gap-2">
             <select
@@ -961,16 +961,14 @@ export default async function PersonDetailsPage({
             value: scopeOption.value,
             label: scopeOption.label,
           }))}
-          roleOptionsByScope={{
-            [ScopeType.PROGRAM]: MEMBEROPS_SCOPED_PROGRAM_ROLE_TYPES.map((roleType) => ({
-              value: roleType,
-              label: formatEnumLabel(roleType),
-            })),
-            [ScopeType.TEAM]: MEMBEROPS_SCOPED_TEAM_ROLE_TYPES.map((roleType) => ({
-              value: roleType,
-              label: formatEnumLabel(roleType),
-            })),
-          }}
+          programScopeRoleOptions={MEMBEROPS_SCOPED_PROGRAM_ROLE_TYPES.map((roleType) => ({
+            value: roleType,
+            label: formatEnumLabel(roleType),
+          }))}
+          teamScopeRoleOptions={MEMBEROPS_SCOPED_TEAM_ROLE_TYPES.map((roleType) => ({
+            value: roleType,
+            label: formatEnumLabel(roleType),
+          }))}
           roleTypeError={roleTypeError || undefined}
           scopeTypeError={scopeTypeError || undefined}
           programIdError={programIdError || undefined}

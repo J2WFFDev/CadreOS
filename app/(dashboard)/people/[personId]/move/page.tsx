@@ -3,9 +3,7 @@ import { RoleType } from "@prisma/client";
 import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { FormActions } from "@/components/dashboard/form-actions";
-import {
-  MEMBEROPS_ROSTER_ROLE_TYPES,
-} from "@/lib/member-ops";
+import { MEMBEROPS_ROSTER_ROLE_TYPES } from "@/lib/member-ops";
 import {
   evaluatePersonOperationalContentAccess,
   evaluateStaffOnlyContentAccess,
@@ -220,8 +218,6 @@ export default async function MovePersonPage({
                 select: {
                   id: true,
                   name: true,
-                  startDate: true,
-                  endDate: true,
                   program: {
                     select: {
                       id: true,
@@ -298,6 +294,8 @@ export default async function MovePersonPage({
         select: {
           id: true,
           name: true,
+          startDate: true,
+          endDate: true,
           program: {
             select: {
               id: true,
@@ -378,6 +376,11 @@ export default async function MovePersonPage({
     currentSeasonForSelectedProgram?.id ||
     fallbackMembership?.season.id ||
     "";
+  const seasonSelectionHelpText = currentSeasonForSelectedProgram
+    ? `Season defaults to current season: ${currentSeasonForSelectedProgram.name}.`
+    : seasonsForSelectedProgram.length > 0
+      ? "Select a season to continue."
+      : "No seasons are currently available for the selected program.";
   const selectedRosterRole =
     (readSearchParam(resolvedSearchParams, "rosterRole") || fallbackMembership?.rosterRole || RoleType.ATHLETE) as RoleType;
   const selectedSourceMembershipId =
@@ -511,9 +514,7 @@ export default async function MovePersonPage({
         </div>
 
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          {currentSeasonForSelectedProgram
-            ? `Season defaults to current season: ${currentSeasonForSelectedProgram.name}.`
-            : "Select a season to continue."}
+          {seasonSelectionHelpText}
         </p>
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           This workflow preserves lifecycle status, role assignments, guardian relationships, and existing operational records.

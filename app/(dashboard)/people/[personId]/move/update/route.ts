@@ -136,14 +136,24 @@ export async function POST(
       select: {
         id: true,
         roles: {
-          select: {
-            roleType: true,
+          where: {
+            organizationId,
+            roleType: RoleType.ATHLETE,
           },
+          select: {
+            id: true,
+          },
+          take: 1,
         },
         roster: {
-          select: {
-            rosterRole: true,
+          where: {
+            organizationId,
+            rosterRole: RoleType.ATHLETE,
           },
+          select: {
+            id: true,
+          },
+          take: 1,
         },
       },
     });
@@ -158,10 +168,10 @@ export async function POST(
       );
     }
 
-    const isCurrentAthlete =
-      person.roles.some((role) => role.roleType === RoleType.ATHLETE) ||
-      person.roster.some((membership) => membership.rosterRole === RoleType.ATHLETE);
-    if (isCurrentAthlete && parsed.data.rosterRole === RoleType.COACH) {
+    const hasAthleteRoleOrAthleteRosterMembership =
+      person.roles.length > 0 ||
+      person.roster.length > 0;
+    if (hasAthleteRoleOrAthleteRosterMembership && parsed.data.rosterRole === RoleType.COACH) {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, personId, {
           values,

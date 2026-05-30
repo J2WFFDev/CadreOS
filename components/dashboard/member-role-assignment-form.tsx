@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 type ProgramOption = {
   id: string;
@@ -32,7 +32,8 @@ export function MemberRoleAssignmentForm(props: {
   defaultProgramId: string;
   defaultTeamId: string;
   scopeOptions: ScopeOption[];
-  roleOptionsByScope: Record<string, RoleOption[]>;
+  programScopeRoleOptions: RoleOption[];
+  teamScopeRoleOptions: RoleOption[];
   roleTypeError?: string;
   scopeTypeError?: string;
   programIdError?: string;
@@ -47,25 +48,12 @@ export function MemberRoleAssignmentForm(props: {
     () => (programId ? props.teams.filter((team) => team.program.id === programId) : []),
     [programId, props.teams],
   );
-  const roleOptions = props.roleOptionsByScope[scopeType] ?? [];
-
-  useEffect(() => {
-    if (!roleOptions.some((option) => option.value === roleType)) {
-      setRoleType(roleOptions[0]?.value ?? "");
-    }
-  }, [roleOptions, roleType]);
-
-  useEffect(() => {
-    if (!filteredTeams.some((team) => team.id === teamId)) {
-      setTeamId("");
-    }
-  }, [filteredTeams, teamId]);
-
-  useEffect(() => {
-    if (scopeType === "PROGRAM") {
-      setTeamId("");
-    }
-  }, [scopeType]);
+  const roleOptions = scopeType === "PROGRAM" ? props.programScopeRoleOptions : props.teamScopeRoleOptions;
+  const resolvedRoleType = roleOptions.some((option) => option.value === roleType)
+    ? roleType
+    : (roleOptions[0]?.value ?? "");
+  const resolvedTeamId =
+    scopeType === "PROGRAM" || !filteredTeams.some((team) => team.id === teamId) ? "" : teamId;
 
   return (
     <form action={props.action} method="post" className="space-y-3">
@@ -122,7 +110,7 @@ export function MemberRoleAssignmentForm(props: {
         <select
           id="teamId"
           name="teamId"
-          value={teamId}
+          value={resolvedTeamId}
           onChange={(event) => setTeamId(event.currentTarget.value)}
           className="w-full rounded-md border px-3 py-2 text-sm"
           disabled={scopeType === "PROGRAM" || programId.length === 0}
@@ -147,7 +135,7 @@ export function MemberRoleAssignmentForm(props: {
         <select
           id="roleType"
           name="roleType"
-          value={roleType}
+          value={resolvedRoleType}
           onChange={(event) => setRoleType(event.currentTarget.value)}
           className="w-full rounded-md border px-3 py-2 text-sm"
         >
