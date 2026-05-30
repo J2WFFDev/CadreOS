@@ -25,6 +25,7 @@ import {
 import { resolveActorPersonId } from "@/lib/user-account";
 
 type ContextTarget = { targetType: EntryObjectLinkTargetType; targetId: string };
+const QUICK_CAPTURE_MODEL_TASK_ONLY = "TASK_ONLY";
 
 function buildQuickCaptureRedirectUrl(input: {
   requestUrl: string;
@@ -229,7 +230,6 @@ export async function POST(request: Request) {
   const inboxPriority = mapEntryPriorityToInboxPriority(EntryPriority[priority]);
   const shouldCreateInboxRoutingItem = shouldRouteEntryToInbox({
     entryType,
-    dueDate,
     contextTargetId: contextTarget?.targetId ?? null,
   });
   const quickAddAction = ENTRY_ACTIVITY_ACTIONS.ENTRY_QUICK_ADD_TASK;
@@ -271,7 +271,7 @@ export async function POST(request: Request) {
       entryId: createdEntry.id,
       actorPersonId,
       action: quickAddAction,
-      metadata: { sourceTaskId: createdTask.id, assignedToPersonId, captureModel: "TASK_ONLY" },
+      metadata: { sourceTaskId: createdTask.id, assignedToPersonId, captureModel: QUICK_CAPTURE_MODEL_TASK_ONLY },
     });
     if (assignedToPersonId) {
       await writeEntryActivity({

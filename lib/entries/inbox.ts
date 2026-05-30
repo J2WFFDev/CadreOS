@@ -2,12 +2,10 @@ import { EntryPriority, EntryType } from "@prisma/client";
 
 type InboxRoutingContext = {
   entryType: EntryType;
-  dueDate: Date | null;
   contextTargetId: string | null;
 };
 
 export function shouldRouteEntryToInbox(context: InboxRoutingContext) {
-  void context.dueDate;
   if (context.contextTargetId) return false;
   if (context.entryType === EntryType.EVENT) return false;
   return true;
