@@ -100,7 +100,7 @@ function summarizeEntryActivityMetadata(metadataJson: string | null) {
   }
 }
 
-const entryBaseArgs = Prisma.validator<Prisma.EntryFindFirstArgs>()({
+const entryBaseSelect = Prisma.validator<Prisma.EntryFindFirstArgs>()({
   select: {
     id: true,
     type: true,
@@ -163,14 +163,14 @@ const entryBaseArgs = Prisma.validator<Prisma.EntryFindFirstArgs>()({
   },
 });
 
-const entryDetailArgs = Prisma.validator<Prisma.EntryFindFirstArgs>()({
+const entryDetailSelect = Prisma.validator<Prisma.EntryFindFirstArgs>()({
   select: {
-    ...entryBaseArgs.select,
+    ...entryBaseSelect.select,
     listId: true,
   },
 });
 
-type EntryDetailBaseRecord = Prisma.EntryGetPayload<typeof entryBaseArgs>;
+type EntryDetailBaseRecord = Prisma.EntryGetPayload<typeof entryBaseSelect>;
 type EntryDetailRecord = EntryDetailBaseRecord & { listId: string | null };
 
 async function fetchEntryDetailRecord(
@@ -180,7 +180,7 @@ async function fetchEntryDetailRecord(
   try {
     const entry = await db.entry.findFirst({
       where: { id: entryId, organizationId, deletedAt: null },
-      select: entryDetailArgs.select,
+      select: entryDetailSelect.select,
     });
 
     return {
@@ -198,7 +198,7 @@ async function fetchEntryDetailRecord(
 
     const entry = await db.entry.findFirst({
       where: { id: entryId, organizationId, deletedAt: null },
-      select: entryBaseArgs.select,
+      select: entryBaseSelect.select,
     });
 
     return {
