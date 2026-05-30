@@ -783,6 +783,7 @@ model Organization {
   entryLinks                   EntryLink[]
   entryActivities              EntryActivity[]
   entryObjectLinks             EntryObjectLink[]
+  entryTypePayloads            EntryTypePayload[]
   entryAssignments             EntryAssignment[]
   entryStatusHistory           EntryStatusHistory[]
   entryComments                EntryComment[]
@@ -1154,6 +1155,7 @@ model Entry {
   journalPrompt        JournalPrompt?       @relation("JournalPromptResponses", fields: [journalPromptId], references: [id], onDelete: SetNull)
   journalAssignment    JournalAssignment?   @relation("JournalAssignmentResponses", fields: [journalAssignmentId], references: [id], onDelete: SetNull)
   entryList            EntryList?           @relation("EntryListEntries", fields: [listId], references: [id], onDelete: SetNull)
+  typePayloads         EntryTypePayload[]
 
   @@index([organizationId, type, createdAt])
   @@index([organizationId, status, dueDate])
@@ -1164,6 +1166,26 @@ model Entry {
   @@index([organizationId, journalPromptId])
   @@index([organizationId, journalAssignmentId])
   @@index([organizationId, listId])
+}
+
+// Arc 24D.5: EntryTypePayload — generic type-scoped structured metadata with active/archive state.
+model EntryTypePayload {
+  id             String    @id @default(cuid())
+  organizationId String
+  entryId        String
+  entryType      EntryType
+  payloadJson    String
+  isActive       Boolean   @default(true)
+  archivedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  entry        Entry        @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, entryType])
+  @@index([organizationId, entryType, isActive, updatedAt])
+  @@index([organizationId, entryId])
 }
 
 model EntryLink {
@@ -2785,4 +2807,3 @@ model HabitCompletion {
   @@index([habitId, completedOn])
   @@index([athletePersonId, completedOn])
 }
-

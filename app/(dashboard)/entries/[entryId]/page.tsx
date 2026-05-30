@@ -12,6 +12,12 @@ import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { db } from "@/lib/db";
 import { getEntryDetailConfig } from "@/lib/entries/detail-config";
+import {
+  DECISION_CLASSIFICATION_VALUES,
+  DECISION_MATURITY_RESULT_VALUES,
+  formatDecisionParticipantNames,
+  parseDecisionEntryPayload,
+} from "@/lib/entries/decision-payload";
 import { fetchListsForActor, labelForEntryListScope } from "@/lib/entries/lists";
 import {
   labelForEntryObjectLinkTargetType,
@@ -171,6 +177,12 @@ export default async function EntryDetailPage({
       sourceNoteId: true,
       assignedToPersonId: true,
       listId: true,
+      typePayloads: {
+        where: { entryType: EntryType.DECISION },
+        select: { payloadJson: true, isActive: true },
+        take: 1,
+        orderBy: { updatedAt: "desc" },
+      },
       createdBy: { select: { firstName: true, lastName: true } },
       updatedBy: { select: { firstName: true, lastName: true } },
       assignedTo: { select: { firstName: true, lastName: true } },
@@ -291,6 +303,13 @@ export default async function EntryDetailPage({
   const completedFollowUps = followUpEntries.filter((item) => item.sourceTask?.status === "DONE" || item.sourceTask?.status === "CANCELLED");
 
   const detailConfig = getEntryDetailConfig(entry.type);
+  const decisionPayloadRecord = entry.typePayloads[0] ?? null;
+  const storedDecisionPayload = parseDecisionEntryPayload(decisionPayloadRecord?.payloadJson);
+  const hasStoredDecisionPayload = Boolean(decisionPayloadRecord);
+  const defaultDecisionStatement = hasStoredDecisionPayload ? storedDecisionPayload.decisionStatement : entry.title;
+  const defaultDecisionDetails = hasStoredDecisionPayload
+    ? storedDecisionPayload.decisionDetails
+    : (entry.content ?? "");
 
   return (
     <section className="space-y-6">
@@ -638,6 +657,153 @@ export default async function EntryDetailPage({
                     ))}
                   </select>
                 </div>
+              ) : null}
+              {entry.type === EntryType.DECISION ? (
+                <fieldset className="space-y-3 rounded-md border p-3">
+                  <legend className="px-1 text-sm font-semibold">Decision metadata</legend>
+                  <div className="space-y-1">
+                    <label htmlFor="decisionStatement" className="text-sm font-medium">
+                      Decision statement
+                    </label>
+                    <input
+                      id="decisionStatement"
+                      name="decisionStatement"
+                      defaultValue={defaultDecisionStatement}
+                      className="w-full rounded-md border px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="decisionDetails" className="text-sm font-medium">
+                      Decision details / context
+                    </label>
+                    <textarea
+                      id="decisionDetails"
+                      name="decisionDetails"
+                      rows={6}
+                      defaultValue={defaultDecisionDetails}
+                      className="w-full rounded-md border px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="decisionMaker" className="text-sm font-medium">
+                      Decision maker
+                    </label>
+                    <input
+                      id="decisionMaker"
+                      name="decisionMaker"
+                      defaultValue={storedDecisionPayload.decisionMaker}
+                      className="w-full rounded-md border px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label htmlFor="supporters" className="text-sm font-medium">
+                        Supporters / signed-on participants
+                      </label>
+                      <textarea
+                        id="supporters"
+                        name="supporters"
+                        rows={4}
+                        defaultValue={formatDecisionParticipantNames(storedDecisionPayload.supporters)}
+                        placeholder="One person per line"
+                        className="w-full rounded-md border px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="opposition" className="text-sm font-medium">
+                        Opposition / against participants
+                      </label>
+                      <textarea
+                        id="opposition"
+                        name="opposition"
+                        rows={4}
+                        defaultValue={formatDecisionParticipantNames(storedDecisionPayload.opposition)}
+                        placeholder="One person per line"
+                        className="w-full rounded-md border px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label htmlFor="decisionClassification" className="text-sm font-medium">
+                        Classification
+                      </label>
+                      <select
+                        id="decisionClassification"
+                        name="decisionClassification"
+                        defaultValue={storedDecisionPayload.classification ?? ""}
+                        className="w-full rounded-md border px-3 py-2 text-sm"
+                      >
+                        <option value="">— Not set —</option>
+                        {DECISION_CLASSIFICATION_VALUES.map((value) => (
+                          <option key={value} value={value}>
+                            {value === "SOFT" ? "Soft" : "Hard"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="decisionDate" className="text-sm font-medium">
+                        Decision date
+                      </label>
+                      <input
+                        id="decisionDate"
+                        name="decisionDate"
+                        type="date"
+                        defaultValue={storedDecisionPayload.decisionDate ?? ""}
+                        className="w-full rounded-md border px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label htmlFor="maturityDate" className="text-sm font-medium">
+                        Maturity date
+                      </label>
+                      <input
+                        id="maturityDate"
+                        name="maturityDate"
+                        type="date"
+                        defaultValue={storedDecisionPayload.maturityDate ?? ""}
+                        className="w-full rounded-md border px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="maturityResult" className="text-sm font-medium">
+                        Maturity result
+                      </label>
+                      <select
+                        id="maturityResult"
+                        name="maturityResult"
+                        defaultValue={storedDecisionPayload.maturityResult ?? ""}
+                        className="w-full rounded-md border px-3 py-2 text-sm"
+                      >
+                        <option value="">— Not set —</option>
+                        {DECISION_MATURITY_RESULT_VALUES.map((value) => (
+                          <option key={value} value={value}>
+                            {value === "SUCCESSFUL"
+                              ? "Successful"
+                              : value === "PARTIALLY_SUCCESSFUL"
+                                ? "Partially Successful"
+                                : "Failed"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="maturityReviewNotes" className="text-sm font-medium">
+                      Maturity review notes / explanation
+                    </label>
+                    <textarea
+                      id="maturityReviewNotes"
+                      name="maturityReviewNotes"
+                      rows={4}
+                      defaultValue={storedDecisionPayload.maturityReviewNotes}
+                      className="w-full rounded-md border px-3 py-2 text-sm"
+                    />
+                  </div>
+                </fieldset>
               ) : null}
               <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
                 Save entry
