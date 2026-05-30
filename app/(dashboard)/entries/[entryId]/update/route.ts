@@ -13,11 +13,13 @@ import {
   serializeDecisionEntryPayload,
 } from "@/lib/entries/decision-payload";
 import {
+  DEFAULT_EVENT_TIMEZONE,
   createEmptyEventEntryPayload,
   normalizeDateOnly,
   normalizeEventCalendarScope,
   normalizeEventRecurrenceEnd,
   normalizeEventRecurrenceFrequency,
+  normalizeEventTimezone,
   normalizeEventType,
   parseEventEntryPayload,
   serializeEventEntryPayload,
@@ -303,9 +305,38 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       }
     }
 
+    const requestedCalendarScope = normalizeEventCalendarScope(rawEventCalendarScope) ?? existingEventPayload.calendarScope;
+    const requestedProgramId = normalizeOptionalId(rawEventProgramId);
+    const requestedTeamId = normalizeOptionalId(rawEventTeamId);
+    const requestedRecurrenceEndCondition =
+      normalizeEventRecurrenceEnd(rawEventRecurrenceEndCondition) ?? existingEventPayload.recurrence.endCondition;
+    const requestedRecurrenceEndDate = normalizeDateOnly(rawEventRecurrenceEndDate);
+    const requestedRecurrenceOccurrenceCount = normalizePositiveInteger(rawEventRecurrenceOccurrenceCount);
+
     if (hasEventFormFields) {
-      const requestedProgramId = normalizeOptionalId(rawEventProgramId);
-      const requestedTeamId = normalizeOptionalId(rawEventTeamId);
+      if (requestedCalendarScope === "PROGRAM" && !requestedProgramId) {
+        const url = new URL(returnTo, request.url);
+        url.searchParams.set("error", "Program scope requires selecting a program.");
+        return NextResponse.redirect(url, 303);
+      }
+
+      if (requestedCalendarScope === "TEAM" && !requestedTeamId) {
+        const url = new URL(returnTo, request.url);
+        url.searchParams.set("error", "Team scope requires selecting a team.");
+        return NextResponse.redirect(url, 303);
+      }
+
+      if (requestedRecurrenceEndCondition === "ON_DATE" && !requestedRecurrenceEndDate) {
+        const url = new URL(returnTo, request.url);
+        url.searchParams.set("error", "Recurrence end date is required when 'On date' is selected.");
+        return NextResponse.redirect(url, 303);
+      }
+
+      if (requestedRecurrenceEndCondition === "AFTER_OCCURRENCES" && !requestedRecurrenceOccurrenceCount) {
+        const url = new URL(returnTo, request.url);
+        url.searchParams.set("error", "Recurrence occurrence count is required when 'After N occurrences' is selected.");
+        return NextResponse.redirect(url, 303);
+      }
 
       if (requestedProgramId) {
         const program = await db.program.findFirst({
@@ -334,7 +365,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
     const normalizedEventStartDateTime = normalizeDateTimeLocal(rawEventStartDateTime);
     const normalizedEventEndDateTime = normalizeDateTimeLocal(rawEventEndDateTime);
-    const normalizedEventTimezone = rawEventTimezone ? rawEventTimezone.slice(0, 80) : "";
+    const normalizedEventTimezone =
+      normalizeEventTimezone(rawEventTimezone) ??
+      normalizeEventTimezone(existingEventPayload.timezone) ??
+      normalizeEventTimezone(entry.timezone) ??
+      DEFAULT_EVENT_TIMEZONE;
     const eventDateUpdate =
       hasEventFormFields || nextEntryType === EntryType.EVENT
         ? {
@@ -492,19 +527,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         payload.eventType = normalizeEventType(rawEventType) ?? "OTHER";
         payload.startDateTimeLocal = normalizedEventStartDateTime;
         payload.endDateTimeLocal = normalizedEventEndDateTime;
-        payload.timezone = normalizedEventTimezone || "UTC";
+        payload.timezone = normalizedEventTimezone;
         payload.location = rawEventLocation;
-        payload.calendarScope = normalizeEventCalendarScope(rawEventCalendarScope) ?? "PERSONAL";
-        payload.programId = normalizeOptionalId(rawEventProgramId);
-        payload.teamId = normalizeOptionalId(rawEventTeamId);
+        payload.calendarScope = requestedCalendarScope;
+        payload.programId = requestedProgramId;
+        payload.teamId = requestedTeamId;
         payload.recurrence.frequency = normalizeEventRecurrenceFrequency(rawEventRecurrenceFrequency) ?? "NONE";
         payload.recurrence.interval = normalizePositiveInteger(rawEventRecurrenceInterval);
         payload.recurrence.customRule = rawEventRecurrenceCustomRule;
-        payload.recurrence.endCondition = normalizeEventRecurrenceEnd(rawEventRecurrenceEndCondition) ?? "NEVER";
-        payload.recurrence.endDate = normalizeDateOnly(rawEventRecurrenceEndDate);
-        payload.recurrence.occurrenceCount = normalizePositiveInteger(rawEventRecurrenceOccurrenceCount);
+        payload.recurrence.endCondition = requestedRecurrenceEndCondition;
+        payload.recurrence.endDate = requestedRecurrenceEndDate;
+        payload.recurrence.occurrenceCount = requestedRecurrenceOccurrenceCount;
       } else if (!eventPayloadRecord) {
-        payload.timezone = entry.timezone?.trim() || "UTC";
+        payload.timezone = normalizeEventTimezone(entry.timezone) ?? DEFAULT_EVENT_TIMEZONE;
       }
 
       if (payload.calendarScope !== "PROGRAM") {
