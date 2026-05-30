@@ -119,16 +119,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     }
 
     // Allow an existing legacy/internal type to remain unchanged while blocking conversion into hidden types.
-    const type =
-      requestedType && (USER_SELECTABLE_ENTRY_TYPES.includes(requestedType) || requestedType === entry.type)
-        ? requestedType
-        : undefined;
-    if (requestedType && !type) {
-      const url = new URL(returnTo, request.url);
-      url.searchParams.set("error", "This entry type is not available for direct selection.");
-      return NextResponse.redirect(url, 303);
+    let type: EntryType | undefined;
+    if (requestedType) {
+      const canUseRequestedType =
+        USER_SELECTABLE_ENTRY_TYPES.includes(requestedType) || requestedType === entry.type;
+      if (!canUseRequestedType) {
+        const url = new URL(returnTo, request.url);
+        url.searchParams.set("error", "This entry type is not available for direct selection.");
+        return NextResponse.redirect(url, 303);
+      }
+      type = requestedType;
     }
-
     const updateData = {
       ...(title ? { title } : {}),
       ...(content.length > 0 ? { content } : {}),

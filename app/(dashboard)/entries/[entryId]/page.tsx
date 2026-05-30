@@ -452,7 +452,7 @@ export default async function EntryDetailPage({
           ) : null}
 
           <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-            <h3 className="text-sm font-semibold">Follow-up tasks (secondary)</h3>
+            <h3 className="text-sm font-semibold">Follow-up tasks (advanced workflow)</h3>
             {followUpEntries.length === 0 ? (
               <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No follow-ups created from this entry yet.</p>
             ) : (
