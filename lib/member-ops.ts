@@ -33,6 +33,24 @@ export const MEMBEROPS_TEAM_ROLE_TYPES = [
   RoleType.PARENT_GUARDIAN,
 ] as const;
 
+export const MEMBEROPS_SCOPED_PROGRAM_ROLE_TYPES = [
+  RoleType.PROGRAM_DIRECTOR,
+  RoleType.COACH,
+  RoleType.ASSISTANT_COACH,
+] as const;
+
+export const MEMBEROPS_SCOPED_TEAM_ROLE_TYPES = [
+  RoleType.ATHLETE,
+  RoleType.COACH,
+  RoleType.ASSISTANT_COACH,
+] as const;
+
+export const MEMBEROPS_ELEVATED_ROLE_TYPES = [
+  RoleType.ORGANIZATION_ADMIN,
+  RoleType.PROGRAM_DIRECTOR,
+  RoleType.COACH,
+] as const;
+
 export const MEMBEROPS_ROSTER_ROLE_TYPES = [
   RoleType.ATHLETE,
   RoleType.COACH,
@@ -48,11 +66,17 @@ export const MEMBEROPS_ASSIGNMENT_FILTERS = [
 
 export type MemberOpsStaffRoleType = (typeof MEMBEROPS_STAFF_ROLE_TYPES)[number];
 export type MemberOpsTeamRoleType = (typeof MEMBEROPS_TEAM_ROLE_TYPES)[number];
+export type MemberOpsScopedProgramRoleType = (typeof MEMBEROPS_SCOPED_PROGRAM_ROLE_TYPES)[number];
+export type MemberOpsScopedTeamRoleType = (typeof MEMBEROPS_SCOPED_TEAM_ROLE_TYPES)[number];
+export type MemberOpsElevatedRoleType = (typeof MEMBEROPS_ELEVATED_ROLE_TYPES)[number];
 export type MemberOpsRosterRoleType = (typeof MEMBEROPS_ROSTER_ROLE_TYPES)[number];
 export type MemberOpsAssignmentFilter = (typeof MEMBEROPS_ASSIGNMENT_FILTERS)[number];
 
 const staffRoleTypeSet = new Set<RoleType>(MEMBEROPS_STAFF_ROLE_TYPES);
 const teamRoleTypeSet = new Set<RoleType>(MEMBEROPS_TEAM_ROLE_TYPES);
+const scopedProgramRoleTypeSet = new Set<RoleType>(MEMBEROPS_SCOPED_PROGRAM_ROLE_TYPES);
+const scopedTeamRoleTypeSet = new Set<RoleType>(MEMBEROPS_SCOPED_TEAM_ROLE_TYPES);
+const elevatedRoleTypeSet = new Set<RoleType>(MEMBEROPS_ELEVATED_ROLE_TYPES);
 const rosterRoleTypeSet = new Set<RoleType>(MEMBEROPS_ROSTER_ROLE_TYPES);
 const assignmentFilterSet = new Set<MemberOpsAssignmentFilter>(MEMBEROPS_ASSIGNMENT_FILTERS);
 
@@ -62,6 +86,24 @@ export function isStaffRoleType(roleType: RoleType | string): roleType is Member
 
 export function isTeamScopedRoleType(roleType: RoleType | string): roleType is MemberOpsTeamRoleType {
   return teamRoleTypeSet.has(roleType as RoleType);
+}
+
+export function isMemberOpsScopedProgramRoleType(
+  roleType: RoleType | string,
+): roleType is MemberOpsScopedProgramRoleType {
+  return scopedProgramRoleTypeSet.has(roleType as RoleType);
+}
+
+export function isMemberOpsScopedTeamRoleType(
+  roleType: RoleType | string,
+): roleType is MemberOpsScopedTeamRoleType {
+  return scopedTeamRoleTypeSet.has(roleType as RoleType);
+}
+
+export function isMemberOpsElevatedRoleType(
+  roleType: RoleType | string,
+): roleType is MemberOpsElevatedRoleType {
+  return elevatedRoleTypeSet.has(roleType as RoleType);
 }
 
 export function isRosterRoleType(roleType: RoleType | string): roleType is MemberOpsRosterRoleType {

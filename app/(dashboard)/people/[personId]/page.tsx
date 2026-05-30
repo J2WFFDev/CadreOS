@@ -2,6 +2,7 @@ import { AttendanceStatus, MemberLifecycleStatus, RoleType, ScopeType } from "@p
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
+import { MemberRoleAssignmentForm } from "@/components/dashboard/member-role-assignment-form";
 import { OperationalHistoryPanel } from "@/components/dashboard/operational-history-panel";
 import {
   evaluatePersonOperationalContentAccess,
@@ -14,7 +15,11 @@ import {
 import { db } from "@/lib/db";
 import { isUnresolvedTaskStatus } from "@/lib/follow-up-tasks";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
-import { MEMBER_LIFECYCLE_STATUS_LABELS } from "@/lib/member-ops";
+import {
+  MEMBER_LIFECYCLE_STATUS_LABELS,
+  MEMBEROPS_SCOPED_PROGRAM_ROLE_TYPES,
+  MEMBEROPS_SCOPED_TEAM_ROLE_TYPES,
+} from "@/lib/member-ops";
 import { deriveMemberRosterReadiness } from "@/lib/member-ops-roster-readiness";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { getOperationalHistory } from "@/lib/operational-history";
@@ -47,6 +52,11 @@ function formatEnumLabel(value: string) {
     .toLowerCase()
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
+
+const ASSIGNMENT_SCOPE_OPTIONS = [
+  { value: ScopeType.PROGRAM, label: "Program scope" },
+  { value: ScopeType.TEAM, label: "Team scope" },
+] as const;
 
 function matchesScopedTeamOrProgram(
   staffScopeResolution: StaffScopeResolution,
@@ -435,14 +445,25 @@ export default async function PersonDetailsPage({
   const lifecycleError = readSearchParam(resolvedSearchParams, "lifecycleError");
   const moveSuccess = readSearchParam(resolvedSearchParams, "moveSuccess");
 
-  const selectedRoleType = (readSearchParam(resolvedSearchParams, "roleType") || RoleType.ATHLETE) as RoleType;
-  const selectedScopeType = (readSearchParam(resolvedSearchParams, "scopeType") || ScopeType.ORGANIZATION) as ScopeType;
+  const selectedScopeTypeParam = readSearchParam(resolvedSearchParams, "scopeType");
+  const selectedScopeType =
+    selectedScopeTypeParam === ScopeType.PROGRAM || selectedScopeTypeParam === ScopeType.TEAM
+      ? selectedScopeTypeParam
+      : ScopeType.TEAM;
   const selectedProgramId = hasSearchParam(resolvedSearchParams, "programId")
     ? readSearchParam(resolvedSearchParams, "programId")
     : "";
   const selectedTeamId = hasSearchParam(resolvedSearchParams, "teamId")
     ? readSearchParam(resolvedSearchParams, "teamId")
     : "";
+  const selectedRoleTypeParam = readSearchParam(resolvedSearchParams, "roleType");
+  const selectedRoleTypeOptions =
+    selectedScopeType === ScopeType.PROGRAM
+      ? MEMBEROPS_SCOPED_PROGRAM_ROLE_TYPES
+      : MEMBEROPS_SCOPED_TEAM_ROLE_TYPES;
+  const selectedRoleType = selectedRoleTypeOptions.includes(selectedRoleTypeParam as RoleType)
+    ? (selectedRoleTypeParam as RoleType)
+    : selectedRoleTypeOptions[0];
   const visibleRoles = staffScopeResolution.allowAllStaffScope
     ? person.roles
     : person.roles.filter((role) =>
@@ -735,6 +756,31 @@ export default async function PersonDetailsPage({
         {lifecycleError ? (
           <p className="mt-2 text-sm text-red-600">{lifecycleError}</p>
         ) : null}
+        <form action={`/people/${person.id}/lifecycle/update`} method="post" className="mt-3 space-y-2">
+          <label htmlFor="lifecycleStatus" className="text-sm font-medium">
+            Set lifecycle status
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              id="lifecycleStatus"
+              name="lifecycleStatus"
+              defaultValue={person.lifecycleStatus}
+              className="rounded-md border px-3 py-1.5 text-sm"
+            >
+              {Object.values(MemberLifecycleStatus).map((status) => (
+                <option key={status} value={status}>
+                  {MEMBER_LIFECYCLE_STATUS_LABELS[status]}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black"
+            >
+              Save status
+            </button>
+          </div>
+        </form>
         {(person.lifecycleStatus === MemberLifecycleStatus.PROSPECT ||
           person.lifecycleStatus === MemberLifecycleStatus.INACTIVE ||
           person.lifecycleStatus === MemberLifecycleStatus.ALUMNI) ? (
@@ -890,72 +936,46 @@ export default async function PersonDetailsPage({
 
       <div id="assign-role" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Assign role</h3>
+        <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+          Use this form for scoped role assignment only. Organization Admin is managed in admin workflows.
+        </p>
+        <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+          Season-based team participation is managed in{" "}
+          <Link href={`/people/${person.id}/move`} className="underline">
+            Change team/program
+          </Link>
+          .
+        </p>
 
         {roleError ? <p className="mb-3 text-sm text-red-600">{roleError}</p> : null}
 
-        <form action={`/people/${person.id}/roles/create`} method="post" className="space-y-3">
-          <div className="space-y-1">
-            <label htmlFor="roleType" className="text-sm font-medium">
-              Role type
-            </label>
-            <select id="roleType" name="roleType" defaultValue={selectedRoleType} className="w-full rounded-md border px-3 py-2 text-sm">
-              {Object.values(RoleType).map((roleType) => (
-                <option key={roleType} value={roleType}>
-                  {formatEnumLabel(roleType)}
-                </option>
-              ))}
-            </select>
-            {roleTypeError ? <p className="text-sm text-red-600">{roleTypeError}</p> : null}
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="scopeType" className="text-sm font-medium">
-              Scope type
-            </label>
-            <select id="scopeType" name="scopeType" defaultValue={selectedScopeType} className="w-full rounded-md border px-3 py-2 text-sm">
-              {Object.values(ScopeType).map((scopeType) => (
-                <option key={scopeType} value={scopeType}>
-                  {formatEnumLabel(scopeType)}
-                </option>
-              ))}
-            </select>
-            {scopeTypeError ? <p className="text-sm text-red-600">{scopeTypeError}</p> : null}
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="programId" className="text-sm font-medium">
-              Program (required for PROGRAM scope)
-            </label>
-            <select id="programId" name="programId" defaultValue={selectedProgramId} className="w-full rounded-md border px-3 py-2 text-sm">
-              <option value="">No program</option>
-              {programs.map((program) => (
-                <option key={program.id} value={program.id}>
-                  {program.name}
-                </option>
-              ))}
-            </select>
-            {programIdError ? <p className="text-sm text-red-600">{programIdError}</p> : null}
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="teamId" className="text-sm font-medium">
-              Team (required for TEAM scope)
-            </label>
-            <select id="teamId" name="teamId" defaultValue={selectedTeamId} className="w-full rounded-md border px-3 py-2 text-sm">
-              <option value="">No team</option>
-              {teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.program.name} · {team.name}
-                </option>
-              ))}
-            </select>
-            {teamIdError ? <p className="text-sm text-red-600">{teamIdError}</p> : null}
-          </div>
-
-          <button type="submit" className="rounded-md bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black">
-            Assign role
-          </button>
-        </form>
+        <MemberRoleAssignmentForm
+          action={`/people/${person.id}/roles/create`}
+          programs={programs}
+          teams={teams}
+          defaultRoleType={selectedRoleType}
+          defaultScopeType={selectedScopeType}
+          defaultProgramId={selectedProgramId}
+          defaultTeamId={selectedTeamId}
+          scopeOptions={ASSIGNMENT_SCOPE_OPTIONS.map((scopeOption) => ({
+            value: scopeOption.value,
+            label: scopeOption.label,
+          }))}
+          roleOptionsByScope={{
+            [ScopeType.PROGRAM]: MEMBEROPS_SCOPED_PROGRAM_ROLE_TYPES.map((roleType) => ({
+              value: roleType,
+              label: formatEnumLabel(roleType),
+            })),
+            [ScopeType.TEAM]: MEMBEROPS_SCOPED_TEAM_ROLE_TYPES.map((roleType) => ({
+              value: roleType,
+              label: formatEnumLabel(roleType),
+            })),
+          }}
+          roleTypeError={roleTypeError || undefined}
+          scopeTypeError={scopeTypeError || undefined}
+          programIdError={programIdError || undefined}
+          teamIdError={teamIdError || undefined}
+        />
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">

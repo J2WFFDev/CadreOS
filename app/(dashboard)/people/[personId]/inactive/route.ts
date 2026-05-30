@@ -90,7 +90,7 @@ export async function POST(
         buildErrorRedirectUrl(
           request.url,
           personId,
-          `This person cannot be marked inactive from their current status (${person.lifecycleStatus}). Only Active, Pending, or Graduated members can be marked inactive.`,
+          `This person cannot be marked inactive from their current status (${person.lifecycleStatus}). Only Active, Prospect, or Alumni members can be marked inactive.`,
         ),
         303,
       );

@@ -1,7 +1,12 @@
-import { Prisma, ScopeType } from "@prisma/client";
+import { Prisma, RoleType, ScopeType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import {
+  MEMBEROPS_ELEVATED_ROLE_TYPES,
+  MEMBEROPS_SCOPED_PROGRAM_ROLE_TYPES,
+  MEMBEROPS_SCOPED_TEAM_ROLE_TYPES,
+} from "@/lib/member-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
@@ -117,6 +122,16 @@ export async function POST(
       },
       select: {
         id: true,
+        roles: {
+          select: {
+            roleType: true,
+          },
+        },
+        roster: {
+          select: {
+            rosterRole: true,
+          },
+        },
       },
     });
 
@@ -132,6 +147,67 @@ export async function POST(
 
     let normalizedProgramId: string | null = null;
     let normalizedTeamId: string | null = null;
+
+    if (parsed.data.scopeType === ScopeType.ORGANIZATION) {
+      return NextResponse.redirect(
+        buildErrorRedirectUrl(request.url, personId, {
+          values,
+          fieldErrors: {
+            scopeType: "Organization-scope assignment is managed in admin workflows.",
+          },
+          error: "Select Program or Team scope in this workflow.",
+        }),
+        303,
+      );
+    }
+
+    if (parsed.data.scopeType === ScopeType.PROGRAM) {
+      if (!MEMBEROPS_SCOPED_PROGRAM_ROLE_TYPES.includes(parsed.data.roleType)) {
+        return NextResponse.redirect(
+          buildErrorRedirectUrl(request.url, personId, {
+            values,
+            fieldErrors: {
+              roleType: "Selected role is not available for program scope.",
+            },
+            error: "Role and scope selection do not match.",
+          }),
+          303,
+        );
+      }
+    }
+
+    if (parsed.data.scopeType === ScopeType.TEAM) {
+      if (!MEMBEROPS_SCOPED_TEAM_ROLE_TYPES.includes(parsed.data.roleType)) {
+        return NextResponse.redirect(
+          buildErrorRedirectUrl(request.url, personId, {
+            values,
+            fieldErrors: {
+              roleType: "Selected role is not available for team scope.",
+            },
+            error: "Role and scope selection do not match.",
+          }),
+          303,
+        );
+      }
+    }
+
+    const isCurrentAthlete =
+      person.roles.some((role) => role.roleType === RoleType.ATHLETE) ||
+      person.roster.some((membership) => membership.rosterRole === RoleType.ATHLETE);
+    if (isCurrentAthlete && MEMBEROPS_ELEVATED_ROLE_TYPES.includes(parsed.data.roleType)) {
+      return NextResponse.redirect(
+        buildErrorRedirectUrl(request.url, personId, {
+          values,
+          fieldErrors: {
+            roleType:
+              "Athletes cannot be assigned Coach, Program Director, or Organization Admin roles.",
+          },
+          error:
+            "Role assignment blocked: this person is currently an Athlete and cannot receive elevated staff roles.",
+        }),
+        303,
+      );
+    }
 
     if (parsed.data.scopeType === ScopeType.PROGRAM) {
       const program = await db.program.findFirst({
