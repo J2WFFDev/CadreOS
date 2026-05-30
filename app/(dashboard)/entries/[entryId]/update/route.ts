@@ -96,7 +96,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   try {
     const entry = await db.entry.findFirst({
       where: { id: entryId, organizationId: organizationId, deletedAt: null },
-      select: { id: true, type: true, status: true, sourceTaskId: true, sourceNoteId: true },
+      select: { id: true, type: true, status: true, priority: true, sourceTaskId: true, sourceNoteId: true },
     });
 
     console.log("[entries.update] entry lookup result", {
@@ -117,7 +117,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       url.searchParams.set("error", "Entry not found.");
       return NextResponse.redirect(url, 303);
     }
-
     // Allow an existing legacy/internal type to remain unchanged while blocking conversion into hidden types.
     let type: EntryType | undefined;
     if (requestedType) {
@@ -229,10 +228,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         actorPersonId: scope.auth.personId,
         action: activityAction,
         metadata: {
-          changedType: type ?? null,
+          changedType: type && type !== entry.type ? type : null,
           fromStatus: status && status !== entry.status ? entry.status : null,
           toStatus: status && status !== entry.status ? status : null,
-          changedPriority: priority ?? null,
+          changedPriority: priority && priority !== entry.priority ? priority : null,
         },
       });
 

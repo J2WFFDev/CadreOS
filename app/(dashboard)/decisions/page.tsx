@@ -66,8 +66,8 @@ export default async function DecisionsPage() {
       {entries.length === 0 ? (
         <EmptyState
           message="No decision entries exist yet."
-          actionHref="/entries?type=DECISION"
-          actionLabel="Create via Quick Add"
+          actionHref="/entries"
+          actionLabel="Open entries to convert"
         />
       ) : (
         <div className="space-y-3">
