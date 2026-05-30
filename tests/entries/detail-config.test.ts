@@ -25,3 +25,14 @@ test("task detail config preserves due-date editing", () => {
   assert.equal(config.metadataDateLabel, "Due");
   assert.equal(config.dateFieldLabel, "Due date");
 });
+
+test("event detail config uses schedule-focused labels", () => {
+  const config = getEntryDetailConfig(EntryType.EVENT);
+
+  assert.equal(config.titleLabel, "Event title");
+  assert.equal(config.contentLabel, "Event description / details");
+  assert.equal(config.statusLabel, "Event status");
+  assert.equal(config.metadataDateLabel, "Start");
+  assert.equal(config.dateFieldLabel, null);
+  assert.match(config.guidance ?? "", /calendar scope/i);
+});

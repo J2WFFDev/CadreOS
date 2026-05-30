@@ -133,6 +133,9 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
             <Link href="/entries/inbox" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
               Inbox
             </Link>
+            <Link href="/entries/schedule" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Event schedule
+            </Link>
             <Link href="/assigned" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
               Assigned to me
             </Link>

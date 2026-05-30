@@ -42,6 +42,21 @@ export function getEntryDetailConfig(type: EntryType): EntryDetailConfig {
     };
   }
 
+  if (type === EntryType.EVENT) {
+    return {
+      summaryHeading: "Event details",
+      emptySummary: "No event details captured yet.",
+      titleLabel: "Event title",
+      contentLabel: "Event description / details",
+      contentHint: "Capture logistics, prep, outcomes, and event notes.",
+      statusLabel: "Event status",
+      priorityLabel: "Priority",
+      metadataDateLabel: "Start",
+      dateFieldLabel: null,
+      guidance: "Capture event scheduling metadata, calendar scope, and recurrence details for this entry.",
+    };
+  }
+
   if (type === EntryType.TASK || type === EntryType.FOLLOW_UP) {
     return {
       ...DEFAULT_ENTRY_DETAIL_CONFIG,
