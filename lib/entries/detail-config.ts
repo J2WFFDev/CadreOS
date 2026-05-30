@@ -29,7 +29,7 @@ const DEFAULT_ENTRY_DETAIL_CONFIG: EntryDetailConfig = {
 export function getEntryDetailConfig(type: EntryType): EntryDetailConfig {
   if (type === EntryType.DECISION) {
     return {
-      summaryHeading: "Decision context / rationale",
+      summaryHeading: "Decision overview",
       emptySummary: "No decision context or rationale recorded yet.",
       titleLabel: "Decision statement",
       contentLabel: "Context / rationale",

@@ -326,7 +326,11 @@ export default async function EntryDetailPage({
         </div>
       ) : null}
       {detailConfig.guidance ? (
-        <div className="rounded-md border border-sky-300 bg-sky-50 px-4 py-3 text-sm text-sky-800 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-200">
+        <div
+          role="note"
+          aria-label="Entry guidance"
+          className="rounded-md border border-sky-300 bg-sky-50 px-4 py-3 text-sm text-sky-800 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-200"
+        >
           {detailConfig.guidance}
         </div>
       ) : null}
