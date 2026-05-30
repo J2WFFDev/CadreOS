@@ -15,6 +15,7 @@ import {
   labelForEntryObjectLinkTargetType,
   resolveEntryObjectLinkViews,
 } from "@/lib/entries/object-links";
+import { USER_SELECTABLE_ENTRY_TYPES } from "@/lib/entries/user-selectable-types";
 import { formatEnumLabel, getTaskStatusBadgeClassName, isTaskOverdue } from "@/lib/follow-up-tasks";
 import { labelForActivityAction } from "@/lib/operational-feed/render";
 import {
@@ -80,14 +81,7 @@ function summarizeEntryActivityMetadata(metadataJson: string | null) {
 }
 
 type SearchParams = Record<string, string | string[] | undefined>;
-const USER_SELECTABLE_ENTRY_TYPES: EntryType[] = [
-  EntryType.TASK,
-  EntryType.NOTE,
-  EntryType.EVENT,
-  EntryType.DECISION,
-  EntryType.HABIT,
-  EntryType.JOURNAL,
-];
+// Includes legacy/internal labels so existing non-user-selectable entries can be shown safely if already persisted.
 const ENTRY_TYPE_OPTION_LABELS: Record<EntryType, string> = {
   [EntryType.TASK]: "Task",
   [EntryType.NOTE]: "Note",

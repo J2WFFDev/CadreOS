@@ -3,20 +3,12 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { USER_SELECTABLE_ENTRY_TYPES } from "@/lib/entries/user-selectable-types";
 import { mapEntryStatusToTaskStatus, writeEntryActivity } from "@/lib/entries/service";
 import { ENTRY_ACTIVITY_ACTIONS, canWriteEntries } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
-
-const USER_SELECTABLE_ENTRY_TYPES: EntryType[] = [
-  EntryType.TASK,
-  EntryType.NOTE,
-  EntryType.EVENT,
-  EntryType.DECISION,
-  EntryType.HABIT,
-  EntryType.JOURNAL,
-];
 
 export async function POST(request: Request, { params }: { params: Promise<{ entryId: string }> }) {
   const { entryId } = await params;
