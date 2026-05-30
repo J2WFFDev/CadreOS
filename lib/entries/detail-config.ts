@@ -36,9 +36,9 @@ export function getEntryDetailConfig(type: EntryType): EntryDetailConfig {
       contentHint: "Record the context, rationale, and decision notes here.",
       statusLabel: "Decision status",
       priorityLabel: "Priority",
-      metadataDateLabel: "Effective date",
-      dateFieldLabel: "Effective / Decision Date",
-      guidance: "Capture the decision statement, context, rationale, status, and any linked scope on this entry.",
+      metadataDateLabel: null,
+      dateFieldLabel: null,
+      guidance: "Capture the structured decision statement, context, ownership, and maturity outcome details on this entry.",
     };
   }
 

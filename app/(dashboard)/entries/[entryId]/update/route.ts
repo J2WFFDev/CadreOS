@@ -3,12 +3,38 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import {
+  DECISION_CLASSIFICATION_VALUES,
+  DECISION_MATURITY_RESULT_VALUES,
+  createEmptyDecisionEntryPayload,
+  parseDecisionEntryPayload,
+  parseDecisionParticipantNames,
+  serializeDecisionEntryPayload,
+} from "@/lib/entries/decision-payload";
 import { USER_SELECTABLE_ENTRY_TYPES } from "@/lib/entries/user-selectable-types";
 import { mapEntryStatusToTaskStatus, writeEntryActivity } from "@/lib/entries/service";
 import { ENTRY_ACTIVITY_ACTIONS, canWriteEntries } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
+
+const DECISION_FORM_FIELDS = [
+  "decisionStatement",
+  "decisionDetails",
+  "decisionMaker",
+  "supporters",
+  "opposition",
+  "decisionClassification",
+  "decisionDate",
+  "maturityDate",
+  "maturityResult",
+  "maturityReviewNotes",
+] as const;
+
+function normalizeDateOnly(value: string): string | null {
+  const trimmed = value.trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : null;
+}
 
 export async function POST(request: Request, { params }: { params: Promise<{ entryId: string }> }) {
   const { entryId } = await params;
@@ -95,10 +121,40 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     }
   }
 
+  const hasDecisionFormFields = DECISION_FORM_FIELDS.some((fieldName) => formData.has(fieldName));
+  const rawDecisionStatement = String(formData.get("decisionStatement") ?? "").trim();
+  const rawDecisionDetails = String(formData.get("decisionDetails") ?? "").trim();
+  const rawDecisionMaker = String(formData.get("decisionMaker") ?? "").trim();
+  const rawSupporters = String(formData.get("supporters") ?? "");
+  const rawOpposition = String(formData.get("opposition") ?? "");
+  const rawDecisionClassification = String(formData.get("decisionClassification") ?? "")
+    .trim()
+    .toUpperCase();
+  const rawDecisionDate = String(formData.get("decisionDate") ?? "").trim();
+  const rawMaturityDate = String(formData.get("maturityDate") ?? "").trim();
+  const rawMaturityResult = String(formData.get("maturityResult") ?? "")
+    .trim()
+    .toUpperCase();
+  const rawMaturityReviewNotes = String(formData.get("maturityReviewNotes") ?? "").trim();
+
   try {
     const entry = await db.entry.findFirst({
       where: { id: entryId, organizationId: organizationId, deletedAt: null },
-      select: { id: true, type: true, status: true, priority: true, sourceTaskId: true, sourceNoteId: true },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        content: true,
+        status: true,
+        priority: true,
+        sourceTaskId: true,
+        sourceNoteId: true,
+        typePayloads: {
+          where: { entryType: EntryType.DECISION },
+          select: { id: true, payloadJson: true },
+          take: 1,
+        },
+      },
     });
 
     console.log("[entries.update] entry lookup result", {
@@ -131,6 +187,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       }
       type = requestedType;
     }
+    const nextEntryType = type ?? entry.type;
+    const decisionPayloadRecord = entry.typePayloads[0] ?? null;
+    const existingDecisionPayload = parseDecisionEntryPayload(decisionPayloadRecord?.payloadJson);
 
     // Arc 24D.4: Validate listId belongs to this org before writing.
     let resolvedListId: string | null | undefined;
@@ -177,6 +236,74 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     });
 
     console.log("[entries.update] db.entry.update succeeded");
+
+    if (nextEntryType === EntryType.DECISION) {
+      const payload =
+        decisionPayloadRecord && !hasDecisionFormFields ? existingDecisionPayload : createEmptyDecisionEntryPayload();
+
+      if (hasDecisionFormFields || !decisionPayloadRecord) {
+        payload.decisionStatement = hasDecisionFormFields
+          ? rawDecisionStatement
+          : (title || entry.title);
+        payload.decisionDetails = hasDecisionFormFields
+          ? rawDecisionDetails
+          : (content.length > 0 ? content : (entry.content ?? ""));
+      }
+
+      if (hasDecisionFormFields) {
+        payload.decisionMaker = rawDecisionMaker;
+        payload.supporters = parseDecisionParticipantNames(rawSupporters);
+        payload.opposition = parseDecisionParticipantNames(rawOpposition);
+        payload.classification = DECISION_CLASSIFICATION_VALUES.includes(
+          rawDecisionClassification as (typeof DECISION_CLASSIFICATION_VALUES)[number],
+        )
+          ? (rawDecisionClassification as (typeof DECISION_CLASSIFICATION_VALUES)[number])
+          : null;
+        payload.decisionDate = normalizeDateOnly(rawDecisionDate);
+        payload.maturityDate = normalizeDateOnly(rawMaturityDate);
+        payload.maturityResult = DECISION_MATURITY_RESULT_VALUES.includes(
+          rawMaturityResult as (typeof DECISION_MATURITY_RESULT_VALUES)[number],
+        )
+          ? (rawMaturityResult as (typeof DECISION_MATURITY_RESULT_VALUES)[number])
+          : null;
+        payload.maturityReviewNotes = rawMaturityReviewNotes;
+      }
+
+      await db.entryTypePayload.upsert({
+        where: {
+          entryId_entryType: {
+            entryId: entry.id,
+            entryType: EntryType.DECISION,
+          },
+        },
+        create: {
+          organizationId,
+          entryId: entry.id,
+          entryType: EntryType.DECISION,
+          payloadJson: serializeDecisionEntryPayload(payload),
+          isActive: true,
+          archivedAt: null,
+        },
+        update: {
+          payloadJson: serializeDecisionEntryPayload(payload),
+          isActive: true,
+          archivedAt: null,
+        },
+      });
+    } else {
+      await db.entryTypePayload.updateMany({
+        where: {
+          organizationId,
+          entryId: entry.id,
+          entryType: EntryType.DECISION,
+          isActive: true,
+        },
+        data: {
+          isActive: false,
+          archivedAt: new Date(),
+        },
+      });
+    }
 
     if (entry.sourceTaskId && status) {
       const taskStatusUpdate = await db.followUpTask.updateMany({
