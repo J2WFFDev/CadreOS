@@ -21,6 +21,7 @@ import {
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { linkOperationalRecords, mapEntryObjectLinkTargetToGraphNodeType } from "@/lib/operational-graph";
 import { ENTRY_ACTIVITY_ACTIONS, createOperationalEntry, linkEntryToObject, writeEntryActivity } from "@/lib/operational-entry";
+import type { CreateOperationalEntryInput } from "@/lib/operational-entry/types";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { requirePermission } from "@/lib/permissions";
 import {
@@ -274,7 +275,7 @@ export async function POST(request: Request) {
       select: { id: true },
     });
 
-    const createEntryInput = {
+    const createEntryInput: CreateOperationalEntryInput = {
       organizationId: organizationId,
       type: EntryType.TASK,
       title,
@@ -290,7 +291,7 @@ export async function POST(request: Request) {
       timezone: "UTC",
       taskRecurrenceRule: parsed.recurrenceRule,
       sourceTaskId: createdTask.id,
-    } satisfies Parameters<typeof createOperationalEntry>[0];
+    };
 
     let createdEntry;
 

@@ -172,6 +172,13 @@ const entryDetailSelect = Prisma.validator<Prisma.EntryFindFirstArgs>()({
 
 type EntryDetailRecord = Prisma.EntryGetPayload<typeof entryDetailSelect>;
 
+function withUnavailableList(entry: Prisma.EntryGetPayload<typeof entryBaseSelect>): EntryDetailRecord {
+  return {
+    ...entry,
+    listId: null,
+  };
+}
+
 async function fetchEntryDetailRecord(
   organizationId: string,
   entryId: string,
@@ -200,10 +207,8 @@ async function fetchEntryDetailRecord(
       select: entryBaseSelect.select,
     });
 
-    const entryWithUnavailableList = entry ? { ...entry, listId: null } as EntryDetailRecord : null;
-
     return {
-      entry: entryWithUnavailableList,
+      entry: entry ? withUnavailableList(entry) : null,
       listAssignmentUnavailable: true,
     };
   }
