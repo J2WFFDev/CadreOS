@@ -12,6 +12,10 @@ import {
   parseDecisionParticipantNames,
   serializeDecisionEntryPayload,
 } from "@/lib/entries/decision-payload";
+import {
+  ENTRY_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE,
+  logEntryTypePayloadSchemaIssue,
+} from "@/lib/entries/schema-guard";
 import { USER_SELECTABLE_ENTRY_TYPES } from "@/lib/entries/user-selectable-types";
 import { mapEntryStatusToTaskStatus, writeEntryActivity } from "@/lib/entries/service";
 import { ENTRY_ACTIVITY_ACTIONS, canWriteEntries } from "@/lib/operational-entry";
@@ -141,11 +145,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         priority: true,
         sourceTaskId: true,
         sourceNoteId: true,
-        typePayloads: {
-          where: { entryType: EntryType.DECISION },
-          select: { id: true, payloadJson: true },
-          take: 1,
-        },
       },
     });
 
@@ -180,7 +179,30 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       type = requestedType;
     }
     const nextEntryType = type ?? entry.type;
-    const decisionPayloadRecord = entry.typePayloads[0] ?? null;
+
+    // Arc 24D.5.1: Fetch Decision payload separately so a missing EntryTypePayload table
+    // does not prevent the base entry lookup above from succeeding.
+    let decisionPayloadRecord: { id: string; payloadJson: string } | null = null;
+    let decisionPayloadUnavailable = false;
+    try {
+      const payloadRows = await db.entryTypePayload.findMany({
+        where: { entryId: entry.id, entryType: EntryType.DECISION },
+        select: { id: true, payloadJson: true },
+        take: 1,
+      });
+      decisionPayloadRecord = payloadRows[0] ?? null;
+    } catch (error) {
+      const issue = logEntryTypePayloadSchemaIssue("entries.update.fetch-payload", error, {
+        entryId: entry.id,
+        organizationId,
+      });
+      if (issue) {
+        decisionPayloadUnavailable = true;
+      } else {
+        throw error;
+      }
+    }
+
     const existingDecisionPayload = parseDecisionEntryPayload(decisionPayloadRecord?.payloadJson);
 
     // Arc 24D.4: Validate listId belongs to this org before writing.
@@ -230,6 +252,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     console.log("[entries.update] db.entry.update succeeded");
 
     if (nextEntryType === EntryType.DECISION) {
+      if (decisionPayloadUnavailable) {
+        // Base entry type change was saved. Decision structured fields require the
+        // EntryTypePayload migration to be applied before they can be written.
+        console.warn("[entries.update] Decision payload write skipped: EntryTypePayload schema unavailable", {
+          organizationId,
+          entryId: entry.id,
+        });
+        revalidatePath(`/entries/${entryId}`);
+        const warnUrl = new URL(returnTo, request.url);
+        warnUrl.searchParams.set("saved", "1");
+        warnUrl.searchParams.set("warning", ENTRY_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE);
+        return NextResponse.redirect(warnUrl, 303);
+      }
+
       const payload =
         decisionPayloadRecord && !hasDecisionFormFields ? existingDecisionPayload : createEmptyDecisionEntryPayload();
 
@@ -255,40 +291,71 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         payload.maturityReviewNotes = rawMaturityReviewNotes;
       }
 
-      await db.entryTypePayload.upsert({
-        where: {
-          entryId_entryType: {
+      try {
+        await db.entryTypePayload.upsert({
+          where: {
+            entryId_entryType: {
+              entryId: entry.id,
+              entryType: EntryType.DECISION,
+            },
+          },
+          create: {
+            organizationId,
             entryId: entry.id,
             entryType: EntryType.DECISION,
+            payloadJson: serializeDecisionEntryPayload(payload),
+            isActive: true,
+            archivedAt: null,
           },
-        },
-        create: {
-          organizationId,
+          update: {
+            payloadJson: serializeDecisionEntryPayload(payload),
+            isActive: true,
+            archivedAt: null,
+          },
+        });
+      } catch (error) {
+        const issue = logEntryTypePayloadSchemaIssue("entries.update.upsert-payload", error, {
           entryId: entry.id,
-          entryType: EntryType.DECISION,
-          payloadJson: serializeDecisionEntryPayload(payload),
-          isActive: true,
-          archivedAt: null,
-        },
-        update: {
-          payloadJson: serializeDecisionEntryPayload(payload),
-          isActive: true,
-          archivedAt: null,
-        },
-      });
+          organizationId,
+        });
+        if (issue) {
+          // Base entry was saved. Redirect with warning rather than failing the whole save.
+          revalidatePath(`/entries/${entryId}`);
+          const warnUrl = new URL(returnTo, request.url);
+          warnUrl.searchParams.set("saved", "1");
+          warnUrl.searchParams.set("warning", ENTRY_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE);
+          return NextResponse.redirect(warnUrl, 303);
+        }
+        throw error;
+      }
     } else {
-      await db.entryTypePayload.updateMany({
-        where: {
-          organizationId,
-          entryId: entry.id,
-          entryType: EntryType.DECISION,
-          isActive: true,
-        },
-        data: {
-          isActive: false,
-          archivedAt: new Date(),
-        },
-      });
+      // Non-Decision: archive any active Decision payloads. If EntryTypePayload table is
+      // missing there is nothing to archive, so treat the error as non-fatal.
+      if (!decisionPayloadUnavailable) {
+        try {
+          await db.entryTypePayload.updateMany({
+            where: {
+              organizationId,
+              entryId: entry.id,
+              entryType: EntryType.DECISION,
+              isActive: true,
+            },
+            data: {
+              isActive: false,
+              archivedAt: new Date(),
+            },
+          });
+        } catch (error) {
+          const issue = logEntryTypePayloadSchemaIssue("entries.update.archive-payload", error, {
+            entryId: entry.id,
+            organizationId,
+          });
+          if (!issue) {
+            throw error;
+          }
+          // Table missing — nothing to archive, continue.
+        }
+      }
     }
 
     if (entry.sourceTaskId && status) {
