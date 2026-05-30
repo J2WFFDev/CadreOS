@@ -170,9 +170,13 @@ const entryDetailArgs = Prisma.validator<Prisma.EntryFindFirstArgs>()({
   },
 });
 
-type EntryDetailRecord = Prisma.EntryGetPayload<typeof entryDetailArgs>;
+type EntryDetailBaseRecord = Prisma.EntryGetPayload<typeof entryBaseArgs>;
+type EntryDetailRecord = EntryDetailBaseRecord & { listId: string | null };
 
-async function fetchEntryDetailRecord(organizationId: string, entryId: string) {
+async function fetchEntryDetailRecord(
+  organizationId: string,
+  entryId: string,
+): Promise<{ entry: EntryDetailRecord | null; listAssignmentUnavailable: boolean }> {
   try {
     const entry = await db.entry.findFirst({
       where: { id: entryId, organizationId, deletedAt: null },
@@ -198,7 +202,7 @@ async function fetchEntryDetailRecord(organizationId: string, entryId: string) {
     });
 
     return {
-      entry: entry ? ({ ...entry, listId: null } satisfies EntryDetailRecord) : null,
+      entry: entry ? { ...entry, listId: null } : null,
       listAssignmentUnavailable: true,
     };
   }

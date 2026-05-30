@@ -274,26 +274,30 @@ export async function POST(request: Request) {
       select: { id: true },
     });
 
+    const createEntryInput = {
+      organizationId: organizationId,
+      type: EntryType.TASK,
+      title,
+      content,
+      tags,
+      createdByPersonId: actorPersonId,
+      assignedToPersonId,
+      visibility: EntryVisibility.STAFF_ONLY,
+      status: EntryStatus.OPEN,
+      priority: EntryPriority[priority],
+      dueDate,
+      dueTime,
+      timezone: "UTC",
+      taskRecurrenceRule: parsed.recurrenceRule,
+      sourceTaskId: createdTask.id,
+    } satisfies Parameters<typeof createOperationalEntry>[0];
+
     let createdEntry;
 
     try {
       createdEntry = await createOperationalEntry({
-        organizationId: organizationId,
-        type: EntryType.TASK,
-        title,
-        content,
-        tags,
-        createdByPersonId: actorPersonId,
-        assignedToPersonId,
-        visibility: EntryVisibility.STAFF_ONLY,
-        status: EntryStatus.OPEN,
-        priority: EntryPriority[priority],
-        dueDate,
-        dueTime,
-        timezone: "UTC",
-        taskRecurrenceRule: parsed.recurrenceRule,
-        sourceTaskId: createdTask.id,
-        listId: defaultListId ?? undefined,
+        ...createEntryInput,
+        ...(defaultListId ? { listId: defaultListId } : {}),
       });
     } catch (entryErr) {
       const schemaIssue = getEntryListSchemaIssue(entryErr);
@@ -305,23 +309,7 @@ export async function POST(request: Request) {
           defaultListId,
         });
         listAssignmentWarning = ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE;
-        createdEntry = await createOperationalEntry({
-          organizationId: organizationId,
-          type: EntryType.TASK,
-          title,
-          content,
-          tags,
-          createdByPersonId: actorPersonId,
-          assignedToPersonId,
-          visibility: EntryVisibility.STAFF_ONLY,
-          status: EntryStatus.OPEN,
-          priority: EntryPriority[priority],
-          dueDate,
-          dueTime,
-          timezone: "UTC",
-          taskRecurrenceRule: parsed.recurrenceRule,
-          sourceTaskId: createdTask.id,
-        });
+        createdEntry = await createOperationalEntry(createEntryInput);
       } else {
         throw entryErr;
       }
