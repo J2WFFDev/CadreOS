@@ -6,6 +6,7 @@ type InboxRoutingContext = {
 };
 
 export function shouldRouteEntryToInbox(context: InboxRoutingContext) {
+  // Arc 24D.2: quick capture is Inbox-first, so due dates do not remove captures from inbox triage.
   if (context.contextTargetId) return false;
   if (context.entryType === EntryType.EVENT) return false;
   return true;

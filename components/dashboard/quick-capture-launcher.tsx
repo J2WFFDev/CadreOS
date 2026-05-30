@@ -123,7 +123,18 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
               </button>
             </div>
 
-            <form action="/entries/quick-add" method="post" className="space-y-3" onSubmit={() => setIsSubmitting(true)}>
+            <form
+              action="/entries/quick-add"
+              method="post"
+              className="space-y-3"
+              onSubmit={(event) => {
+                if (isSubmitting) {
+                  event.preventDefault();
+                  return;
+                }
+                setIsSubmitting(true);
+              }}
+            >
               <input type="hidden" name="returnTo" value={returnTo} />
               <input type="hidden" name="dueShortcut" value={dueShortcut} />
               <input type="hidden" name="priority" value={priority} />

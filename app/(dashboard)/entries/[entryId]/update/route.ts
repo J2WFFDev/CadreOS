@@ -126,6 +126,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       return NextResponse.redirect(url, 303);
     }
 
+    // Allow an existing legacy/internal type to remain unchanged while blocking conversion into hidden types.
     const type =
       requestedType && (USER_SELECTABLE_ENTRY_TYPES.includes(requestedType) || requestedType === entry.type)
         ? requestedType
