@@ -13,6 +13,16 @@ import {
   serializeDecisionEntryPayload,
 } from "@/lib/entries/decision-payload";
 import {
+  createEmptyEventEntryPayload,
+  normalizeDateOnly,
+  normalizeEventCalendarScope,
+  normalizeEventRecurrenceEnd,
+  normalizeEventRecurrenceFrequency,
+  normalizeEventType,
+  parseEventEntryPayload,
+  serializeEventEntryPayload,
+} from "@/lib/entries/event-payload";
+import {
   ENTRY_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE,
   logEntryTypePayloadSchemaIssue,
 } from "@/lib/entries/schema-guard";
@@ -35,6 +45,54 @@ const DECISION_FORM_FIELDS = [
   "maturityResult",
   "maturityReviewNotes",
 ] as const;
+
+const EVENT_FORM_FIELDS = [
+  "eventType",
+  "eventStartDateTime",
+  "eventEndDateTime",
+  "eventTimezone",
+  "eventLocation",
+  "eventCalendarScope",
+  "eventProgramId",
+  "eventTeamId",
+  "eventRecurrenceFrequency",
+  "eventRecurrenceInterval",
+  "eventRecurrenceCustomRule",
+  "eventRecurrenceEndCondition",
+  "eventRecurrenceEndDate",
+  "eventRecurrenceOccurrenceCount",
+] as const;
+
+const EVENT_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE =
+  "Event metadata is temporarily unavailable until setup is complete.";
+
+const DATETIME_LOCAL_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+
+function normalizeDateTimeLocal(value: string | null | undefined) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return DATETIME_LOCAL_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function normalizeOptionalId(value: string | null | undefined) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizePositiveInteger(value: string | null | undefined) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number.parseInt(trimmed, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function toEntryDateValue(dateTimeLocal: string | null) {
+  if (!dateTimeLocal) return null;
+  const datePart = dateTimeLocal.slice(0, 10);
+  return new Date(`${datePart}T00:00:00.000Z`);
+}
 
 export async function POST(request: Request, { params }: { params: Promise<{ entryId: string }> }) {
   const { entryId } = await params;
@@ -132,6 +190,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   const rawMaturityDate = String(formData.get("maturityDate") ?? "").trim();
   const rawMaturityResult = String(formData.get("maturityResult") ?? "").trim();
   const rawMaturityReviewNotes = String(formData.get("maturityReviewNotes") ?? "").trim();
+  const hasEventFormFields = EVENT_FORM_FIELDS.some((fieldName) => formData.has(fieldName));
+  const rawEventType = String(formData.get("eventType") ?? "").trim();
+  const rawEventStartDateTime = String(formData.get("eventStartDateTime") ?? "").trim();
+  const rawEventEndDateTime = String(formData.get("eventEndDateTime") ?? "").trim();
+  const rawEventTimezone = String(formData.get("eventTimezone") ?? "").trim();
+  const rawEventLocation = String(formData.get("eventLocation") ?? "").trim();
+  const rawEventCalendarScope = String(formData.get("eventCalendarScope") ?? "").trim();
+  const rawEventProgramId = String(formData.get("eventProgramId") ?? "").trim();
+  const rawEventTeamId = String(formData.get("eventTeamId") ?? "").trim();
+  const rawEventRecurrenceFrequency = String(formData.get("eventRecurrenceFrequency") ?? "").trim();
+  const rawEventRecurrenceInterval = String(formData.get("eventRecurrenceInterval") ?? "").trim();
+  const rawEventRecurrenceCustomRule = String(formData.get("eventRecurrenceCustomRule") ?? "").trim();
+  const rawEventRecurrenceEndCondition = String(formData.get("eventRecurrenceEndCondition") ?? "").trim();
+  const rawEventRecurrenceEndDate = String(formData.get("eventRecurrenceEndDate") ?? "").trim();
+  const rawEventRecurrenceOccurrenceCount = String(formData.get("eventRecurrenceOccurrenceCount") ?? "").trim();
 
   try {
     const entry = await db.entry.findFirst({
@@ -143,6 +216,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         content: true,
         status: true,
         priority: true,
+        startDate: true,
+        endDate: true,
+        timezone: true,
         sourceTaskId: true,
         sourceNoteId: true,
       },
@@ -183,14 +259,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     // Arc 24D.5.1: Fetch Decision payload separately so a missing EntryTypePayload table
     // does not prevent the base entry lookup above from succeeding.
     let decisionPayloadRecord: { id: string; payloadJson: string } | null = null;
+    let eventPayloadRecord: { id: string; payloadJson: string } | null = null;
     let decisionPayloadUnavailable = false;
     try {
       const payloadRows = await db.entryTypePayload.findMany({
-        where: { entryId: entry.id, entryType: EntryType.DECISION },
-        select: { id: true, payloadJson: true },
-        take: 1,
+        where: { entryId: entry.id, entryType: { in: [EntryType.DECISION, EntryType.EVENT] } },
+        select: { id: true, payloadJson: true, entryType: true },
       });
-      decisionPayloadRecord = payloadRows[0] ?? null;
+      decisionPayloadRecord = payloadRows.find((item) => item.entryType === EntryType.DECISION) ?? null;
+      eventPayloadRecord = payloadRows.find((item) => item.entryType === EntryType.EVENT) ?? null;
     } catch (error) {
       const issue = logEntryTypePayloadSchemaIssue("entries.update.fetch-payload", error, {
         entryId: entry.id,
@@ -204,6 +281,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     }
 
     const existingDecisionPayload = parseDecisionEntryPayload(decisionPayloadRecord?.payloadJson);
+    const existingEventPayload = parseEventEntryPayload(eventPayloadRecord?.payloadJson);
 
     // Arc 24D.4: Validate listId belongs to this org before writing.
     let resolvedListId: string | null | undefined;
@@ -224,6 +302,47 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       }
     }
 
+    if (hasEventFormFields) {
+      const requestedProgramId = normalizeOptionalId(rawEventProgramId);
+      const requestedTeamId = normalizeOptionalId(rawEventTeamId);
+
+      if (requestedProgramId) {
+        const program = await db.program.findFirst({
+          where: { id: requestedProgramId, organizationId, archivedAt: null },
+          select: { id: true },
+        });
+        if (!program) {
+          const url = new URL(returnTo, request.url);
+          url.searchParams.set("error", "The selected program is not available.");
+          return NextResponse.redirect(url, 303);
+        }
+      }
+
+      if (requestedTeamId) {
+        const team = await db.team.findFirst({
+          where: { id: requestedTeamId, organizationId },
+          select: { id: true },
+        });
+        if (!team) {
+          const url = new URL(returnTo, request.url);
+          url.searchParams.set("error", "The selected team is not available.");
+          return NextResponse.redirect(url, 303);
+        }
+      }
+    }
+
+    const normalizedEventStartDateTime = normalizeDateTimeLocal(rawEventStartDateTime);
+    const normalizedEventEndDateTime = normalizeDateTimeLocal(rawEventEndDateTime);
+    const normalizedEventTimezone = rawEventTimezone ? rawEventTimezone.slice(0, 80) : "";
+    const eventDateUpdate =
+      hasEventFormFields || nextEntryType === EntryType.EVENT
+        ? {
+            startDate: toEntryDateValue(normalizedEventStartDateTime),
+            endDate: toEntryDateValue(normalizedEventEndDateTime),
+            timezone: normalizedEventTimezone || null,
+          }
+        : undefined;
+
     const updateData = {
       ...(title ? { title } : {}),
       ...(content.length > 0 ? { content } : {}),
@@ -233,6 +352,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         : {}),
       ...(priority ? { priority } : {}),
       ...(dueDateUpdate !== undefined ? dueDateUpdate : {}),
+      ...(eventDateUpdate !== undefined ? eventDateUpdate : {}),
       ...(resolvedListId !== undefined ? { listId: resolvedListId } : {}),
       ...(scope.auth.personId ? { updatedByPersonId: scope.auth.personId } : {}),
       version: { increment: 1 },
@@ -328,8 +448,141 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         }
         throw error;
       }
+
+      try {
+        await db.entryTypePayload.updateMany({
+          where: {
+            organizationId,
+            entryId: entry.id,
+            entryType: EntryType.EVENT,
+            isActive: true,
+          },
+          data: {
+            isActive: false,
+            archivedAt: new Date(),
+          },
+        });
+      } catch (error) {
+        const issue = logEntryTypePayloadSchemaIssue("entries.update.archive-event-payload", error, {
+          entryId: entry.id,
+          organizationId,
+        });
+        if (!issue) {
+          throw error;
+        }
+      }
+    } else if (nextEntryType === EntryType.EVENT) {
+      if (decisionPayloadUnavailable) {
+        console.warn("[entries.update] Event payload write skipped: EntryTypePayload schema unavailable", {
+          organizationId,
+          entryId: entry.id,
+        });
+        revalidatePath(`/entries/${entryId}`);
+        const warnUrl = new URL(returnTo, request.url);
+        warnUrl.searchParams.set("saved", "1");
+        warnUrl.searchParams.set("warning", EVENT_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE);
+        return NextResponse.redirect(warnUrl, 303);
+      }
+
+      const payload =
+        eventPayloadRecord && !hasEventFormFields ? existingEventPayload : createEmptyEventEntryPayload();
+
+      if (hasEventFormFields) {
+        payload.eventType = normalizeEventType(rawEventType) ?? "OTHER";
+        payload.startDateTimeLocal = normalizedEventStartDateTime;
+        payload.endDateTimeLocal = normalizedEventEndDateTime;
+        payload.timezone = normalizedEventTimezone || "UTC";
+        payload.location = rawEventLocation;
+        payload.calendarScope = normalizeEventCalendarScope(rawEventCalendarScope) ?? "PERSONAL";
+        payload.programId = normalizeOptionalId(rawEventProgramId);
+        payload.teamId = normalizeOptionalId(rawEventTeamId);
+        payload.recurrence.frequency = normalizeEventRecurrenceFrequency(rawEventRecurrenceFrequency) ?? "NONE";
+        payload.recurrence.interval = normalizePositiveInteger(rawEventRecurrenceInterval);
+        payload.recurrence.customRule = rawEventRecurrenceCustomRule;
+        payload.recurrence.endCondition = normalizeEventRecurrenceEnd(rawEventRecurrenceEndCondition) ?? "NEVER";
+        payload.recurrence.endDate = normalizeDateOnly(rawEventRecurrenceEndDate);
+        payload.recurrence.occurrenceCount = normalizePositiveInteger(rawEventRecurrenceOccurrenceCount);
+      } else if (!eventPayloadRecord) {
+        payload.timezone = entry.timezone?.trim() || "UTC";
+      }
+
+      if (payload.calendarScope !== "PROGRAM") {
+        payload.programId = null;
+      }
+      if (payload.calendarScope !== "TEAM") {
+        payload.teamId = null;
+      }
+      if (payload.recurrence.endCondition !== "ON_DATE") {
+        payload.recurrence.endDate = null;
+      }
+      if (payload.recurrence.endCondition !== "AFTER_OCCURRENCES") {
+        payload.recurrence.occurrenceCount = null;
+      }
+      if (payload.recurrence.frequency !== "CUSTOM" && !payload.recurrence.customRule) {
+        payload.recurrence.customRule = "";
+      }
+
+      try {
+        await db.entryTypePayload.upsert({
+          where: {
+            entryId_entryType: {
+              entryId: entry.id,
+              entryType: EntryType.EVENT,
+            },
+          },
+          create: {
+            organizationId,
+            entryId: entry.id,
+            entryType: EntryType.EVENT,
+            payloadJson: serializeEventEntryPayload(payload),
+            isActive: true,
+            archivedAt: null,
+          },
+          update: {
+            payloadJson: serializeEventEntryPayload(payload),
+            isActive: true,
+            archivedAt: null,
+          },
+        });
+      } catch (error) {
+        const issue = logEntryTypePayloadSchemaIssue("entries.update.upsert-event-payload", error, {
+          entryId: entry.id,
+          organizationId,
+        });
+        if (issue) {
+          revalidatePath(`/entries/${entryId}`);
+          const warnUrl = new URL(returnTo, request.url);
+          warnUrl.searchParams.set("saved", "1");
+          warnUrl.searchParams.set("warning", EVENT_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE);
+          return NextResponse.redirect(warnUrl, 303);
+        }
+        throw error;
+      }
+
+      try {
+        await db.entryTypePayload.updateMany({
+          where: {
+            organizationId,
+            entryId: entry.id,
+            entryType: EntryType.DECISION,
+            isActive: true,
+          },
+          data: {
+            isActive: false,
+            archivedAt: new Date(),
+          },
+        });
+      } catch (error) {
+        const issue = logEntryTypePayloadSchemaIssue("entries.update.archive-decision-payload", error, {
+          entryId: entry.id,
+          organizationId,
+        });
+        if (!issue) {
+          throw error;
+        }
+      }
     } else {
-      // Non-Decision: archive any active Decision payloads. If EntryTypePayload table is
+      // Non-Decision/Event: archive active type payloads. If EntryTypePayload table is
       // missing there is nothing to archive, so treat the error as non-fatal.
       if (!decisionPayloadUnavailable) {
         try {
@@ -337,7 +590,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
             where: {
               organizationId,
               entryId: entry.id,
-              entryType: EntryType.DECISION,
+              entryType: { in: [EntryType.DECISION, EntryType.EVENT] },
               isActive: true,
             },
             data: {
