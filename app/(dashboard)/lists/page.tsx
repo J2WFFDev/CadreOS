@@ -59,7 +59,7 @@ export default async function ListsPage() {
   const canWrite = entryAccess.level === "WRITE" || entryAccess.level === "MANAGE";
 
   let setupIncompleteMessage = "";
-  let allLists = [] as Awaited<ReturnType<typeof fetchListsForActor>>;
+  let allLists: Awaited<ReturnType<typeof fetchListsForActor>> = [];
   try {
     allLists = await fetchListsForActor({ organizationId, actorPersonId: scope.auth.personId });
   } catch (error) {

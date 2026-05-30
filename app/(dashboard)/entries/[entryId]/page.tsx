@@ -335,7 +335,7 @@ export default async function EntryDetailPage({
   ]);
 
   // Arc 24D.4: Fetch available lists for the list picker.
-  let availableLists = [] as Awaited<ReturnType<typeof fetchListsForActor>>;
+  let availableLists: Awaited<ReturnType<typeof fetchListsForActor>> = [];
   if (canEditEntry && !listAssignmentUnavailable) {
     try {
       availableLists = await fetchListsForActor({ organizationId, actorPersonId: scope.auth.personId });
