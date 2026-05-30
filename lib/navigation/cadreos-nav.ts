@@ -151,12 +151,11 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
         href: "/today",
         moduleKey: "entry",
       }),
-      plannedItem({
+      activeItem({
         key: "ENTRY_LISTS",
         label: "Lists",
         href: "/lists",
         moduleKey: "entry",
-        plannedReason: "Lists route is not implemented yet.",
       }),
       activeItem({
         key: "ENTRY_HABITS",

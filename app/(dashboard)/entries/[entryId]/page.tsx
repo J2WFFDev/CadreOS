@@ -12,6 +12,7 @@ import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { db } from "@/lib/db";
 import { getEntryDetailConfig } from "@/lib/entries/detail-config";
+import { fetchListsForActor, labelForEntryListScope } from "@/lib/entries/lists";
 import {
   labelForEntryObjectLinkTargetType,
   resolveEntryObjectLinkViews,
@@ -169,6 +170,7 @@ export default async function EntryDetailPage({
       sourceTaskId: true,
       sourceNoteId: true,
       assignedToPersonId: true,
+      listId: true,
       createdBy: { select: { firstName: true, lastName: true } },
       updatedBy: { select: { firstName: true, lastName: true } },
       assignedTo: { select: { firstName: true, lastName: true } },
@@ -265,6 +267,11 @@ export default async function EntryDetailPage({
         })
       : Promise.resolve([]),
   ]);
+
+  // Arc 24D.4: Fetch available lists for the list picker.
+  const availableLists = canEditEntry
+    ? await fetchListsForActor({ organizationId, actorPersonId: scope.auth.personId })
+    : [];
 
   const linkedEntryRows = [
     ...entry.linkedFrom.map((item) => ({
@@ -382,6 +389,19 @@ export default async function EntryDetailPage({
               <div>
                 <dt className="text-xs text-zinc-500 dark:text-zinc-400">Updated</dt>
                 <dd>{formatDateTime(entry.updatedAt)} UTC</dd>
+              </div>
+              {/* Arc 24D.4: Show assigned list */}
+              <div>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">List</dt>
+                <dd>
+                  {entry.listId ? (
+                    <Link href={`/lists/${entry.listId}`} className="underline">
+                      {availableLists.find((list) => list.id === entry.listId)?.name ?? "View list"}
+                    </Link>
+                  ) : (
+                    <span className="text-zinc-400 dark:text-zinc-500">None</span>
+                  )}
+                </dd>
               </div>
             </dl>
           </section>
@@ -601,6 +621,22 @@ export default async function EntryDetailPage({
                     }
                     className="w-full rounded-md border px-3 py-2 text-sm sm:w-64"
                   />
+                </div>
+              ) : null}
+              {/* Arc 24D.4: List assignment */}
+              {availableLists.length > 0 ? (
+                <div className="space-y-1">
+                  <label htmlFor="listId" className="text-sm font-medium">
+                    List
+                  </label>
+                  <select id="listId" name="listId" defaultValue={entry.listId ?? ""} className="w-full rounded-md border px-3 py-2 text-sm sm:w-80">
+                    <option value="">— No list —</option>
+                    {availableLists.map((list) => (
+                      <option key={list.id} value={list.id}>
+                        {labelForEntryListScope(list.scope)}: {list.name}{list.isInbox ? " (Inbox)" : ""}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               ) : null}
               <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">

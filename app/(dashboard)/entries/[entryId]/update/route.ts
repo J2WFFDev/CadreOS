@@ -64,6 +64,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   const priorityValue = String(formData.get("priority") ?? "").trim().toUpperCase();
   const dueAtRaw = String(formData.get("dueAt") ?? "").trim();
   const hasDueAtField = formData.has("dueAt");
+  // Arc 24D.4: list assignment — empty string means "clear list", absent means "no change"
+  const rawListId = formData.has("listId") ? String(formData.get("listId") ?? "").trim() : undefined;
 
   const requestedType = Object.values(EntryType).includes(typeValue as EntryType) ? (typeValue as EntryType) : undefined;
   const status = Object.values(EntryStatus).includes(statusValue as EntryStatus) ? (statusValue as EntryStatus) : undefined;
@@ -129,6 +131,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       }
       type = requestedType;
     }
+
+    // Arc 24D.4: Validate listId belongs to this org before writing.
+    let resolvedListId: string | null | undefined;
+    if (rawListId !== undefined) {
+      if (rawListId === "") {
+        resolvedListId = null;
+      } else {
+        const listRecord = await db.entryList.findFirst({
+          where: { id: rawListId, organizationId, isArchived: false },
+          select: { id: true },
+        });
+        resolvedListId = listRecord ? listRecord.id : undefined;
+      }
+    }
+
     const updateData = {
       ...(title ? { title } : {}),
       ...(content.length > 0 ? { content } : {}),
@@ -138,6 +155,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         : {}),
       ...(priority ? { priority } : {}),
       ...(dueDateUpdate !== undefined ? dueDateUpdate : {}),
+      ...(resolvedListId !== undefined ? { listId: resolvedListId } : {}),
       ...(scope.auth.personId ? { updatedByPersonId: scope.auth.personId } : {}),
       version: { increment: 1 },
     };
