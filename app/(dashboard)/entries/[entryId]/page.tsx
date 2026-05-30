@@ -11,6 +11,7 @@ import {
 import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { db } from "@/lib/db";
+import { getEntryDetailConfig } from "@/lib/entries/detail-config";
 import {
   labelForEntryObjectLinkTargetType,
   resolveEntryObjectLinkViews,
@@ -55,6 +56,9 @@ function summarizeEntryActivityMetadata(metadataJson: string | null) {
     if (typeof metadata.targetType === "string") {
       details.push(`Target type ${formatEnumLabel(metadata.targetType)}`);
     }
+    if (typeof metadata.changedType === "string") {
+      details.push(`Type ${formatEnumLabel(metadata.changedType)}`);
+    }
     if (typeof metadata.relationshipType === "string") {
       details.push(`Relationship ${formatEnumLabel(metadata.relationshipType)}`);
     }
@@ -72,6 +76,9 @@ function summarizeEntryActivityMetadata(metadataJson: string | null) {
     }
     if (metadata.personId || metadata.assignedToPersonId) {
       details.push("Assignment updated");
+    }
+    if (typeof metadata.changedPriority === "string") {
+      details.push(`Priority ${formatEnumLabel(metadata.changedPriority)}`);
     }
 
     return details.slice(0, 3);
@@ -276,6 +283,8 @@ export default async function EntryDetailPage({
   const openFollowUps = followUpEntries.filter((item) => item.sourceTask?.status !== "DONE" && item.sourceTask?.status !== "CANCELLED");
   const completedFollowUps = followUpEntries.filter((item) => item.sourceTask?.status === "DONE" || item.sourceTask?.status === "CANCELLED");
 
+  const detailConfig = getEntryDetailConfig(entry.type);
+
   return (
     <section className="space-y-6">
       <div className="space-y-1">
@@ -316,12 +325,17 @@ export default async function EntryDetailPage({
           Journal prompt and assignment workflows are not yet enabled; this entry type currently provides basic detail/edit support only.
         </div>
       ) : null}
+      {detailConfig.guidance ? (
+        <div className="rounded-md border border-sky-300 bg-sky-50 px-4 py-3 text-sm text-sky-800 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-200">
+          {detailConfig.guidance}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-4">
           <article className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-            <h3 className="text-sm font-semibold">Summary</h3>
-            <p className="mt-2 text-sm whitespace-pre-wrap">{entry.content?.trim() ? entry.content : "No details captured yet."}</p>
+            <h3 className="text-sm font-semibold">{detailConfig.summaryHeading}</h3>
+            <p className="mt-2 text-sm whitespace-pre-wrap">{entry.content?.trim() ? entry.content : detailConfig.emptySummary}</p>
             {entry.tags.length > 0 ? (
               <ul className="mt-3 flex flex-wrap gap-2">
                 {entry.tags.map((tag) => (
@@ -348,13 +362,15 @@ export default async function EntryDetailPage({
                 <dt className="text-xs text-zinc-500 dark:text-zinc-400">Last updated by</dt>
                 <dd>{formatPersonName(entry.updatedBy)}</dd>
               </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Due</dt>
-                <dd>
-                  {entry.dueDate ? entry.dueDate.toISOString().slice(0, 10) : "—"}
-                  {entry.dueDate && entry.dueTime ? ` ${entry.dueTime}` : ""}
-                </dd>
-              </div>
+              {detailConfig.metadataDateLabel ? (
+                <div>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">{detailConfig.metadataDateLabel}</dt>
+                  <dd>
+                    {entry.dueDate ? entry.dueDate.toISOString().slice(0, 10) : "—"}
+                    {entry.dueDate && entry.dueTime ? ` ${entry.dueTime}` : ""}
+                  </dd>
+                </div>
+              ) : null}
               <div>
                 <dt className="text-xs text-zinc-500 dark:text-zinc-400">Created</dt>
                 <dd>{formatDateTime(entry.createdAt)} UTC</dd>
@@ -513,15 +529,16 @@ export default async function EntryDetailPage({
               <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
               <div className="space-y-1">
                 <label htmlFor="title" className="text-sm font-medium">
-                  Title
+                  {detailConfig.titleLabel}
                 </label>
                 <input id="title" name="title" defaultValue={entry.title} className="w-full rounded-md border px-3 py-2 text-sm" />
               </div>
               <div className="space-y-1">
                 <label htmlFor="content" className="text-sm font-medium">
-                  Content
+                  {detailConfig.contentLabel}
                 </label>
                 <textarea id="content" name="content" defaultValue={entry.content ?? ""} rows={10} className="w-full rounded-md border px-3 py-2 text-sm" />
+                {detailConfig.contentHint ? <p className="text-xs text-zinc-500 dark:text-zinc-400">{detailConfig.contentHint}</p> : null}
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
@@ -541,7 +558,7 @@ export default async function EntryDetailPage({
                 </div>
                 <div className="space-y-1">
                   <label htmlFor="status" className="text-sm font-medium">
-                    Status
+                    {detailConfig.statusLabel}
                   </label>
                   <select id="status" name="status" defaultValue={entry.status} className="w-full rounded-md border px-3 py-2 text-sm">
                     {Object.values(EntryStatus).map((value) => (
@@ -553,7 +570,7 @@ export default async function EntryDetailPage({
                 </div>
                 <div className="space-y-1">
                   <label htmlFor="priority" className="text-sm font-medium">
-                    Priority
+                    {detailConfig.priorityLabel}
                   </label>
                   <select id="priority" name="priority" defaultValue={entry.priority} className="w-full rounded-md border px-3 py-2 text-sm">
                     {Object.values(EntryPriority).map((value) => (
@@ -564,10 +581,10 @@ export default async function EntryDetailPage({
                   </select>
                 </div>
               </div>
-              {entry.type === EntryType.TASK || entry.type === EntryType.FOLLOW_UP ? (
+              {detailConfig.dateFieldLabel ? (
                 <div className="space-y-1">
                   <label htmlFor="dueAt" className="text-sm font-medium">
-                    Due date
+                    {detailConfig.dateFieldLabel}
                   </label>
                   <input
                     id="dueAt"
