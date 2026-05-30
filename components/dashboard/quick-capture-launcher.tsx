@@ -28,8 +28,8 @@ const DUE_SHORTCUTS: Array<{ value: QuickCaptureDueShortcut; label: string }> = 
 
 const PRIORITIES: QuickCapturePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const UNAVAILABLE_CAPTURE_TYPES = [
-  { value: "JOURNAL_UNAVAILABLE", label: "Journal (not available yet)" },
-  { value: "HABIT_DEFERRED", label: "Habit (deferred — use recurring tasks)" },
+  { value: "QUICK_JOURNAL", label: "Journal (not available yet)" },
+  { value: "QUICK_HABIT", label: "Habit (deferred — use recurring tasks)" },
 ] as const;
 
 export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disabled = false }: QuickCaptureLauncherProps) {
@@ -174,7 +174,7 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-zinc-500">Task and Note are ready now. Journal and Habit are intentionally unavailable here.</p>
+                <p className="text-xs text-zinc-500">Additional entry types will be added in future updates.</p>
               </div>
 
               <div className="space-y-1">

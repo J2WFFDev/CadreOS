@@ -28,16 +28,6 @@ test("resolveQuickCaptureEntryType falls back to inferred type", () => {
   assert.equal(result, "TASK");
 });
 
-test("resolveQuickCaptureEntryType ignores unsupported legacy types", () => {
-  const result = resolveQuickCaptureEntryType({
-    captureType: "",
-    legacyEntryType: "FOLLOW_UP",
-    inferredType: "NOTE",
-  });
-
-  assert.equal(result, "NOTE");
-});
-
 test("resolveQuickCaptureDueDate resolves shortcuts in UTC", () => {
   const now = new Date("2026-05-26T18:00:00.000Z");
 

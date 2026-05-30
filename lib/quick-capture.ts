@@ -33,7 +33,7 @@ export type QuickCaptureContext = {
   label: string;
 };
 
-const QUICK_CAPTURE_ENTRY_TYPES = ["TASK", "NOTE", "EVENT", "DECISION"] as const;
+const QUICK_CAPTURE_ENTRY_TYPES = ["TASK", "NOTE", "EVENT", "DECISION", "FOLLOW_UP", "OBSERVATION", "READINESS_ITEM"] as const;
 const QUICK_CAPTURE_PRIORITIES: QuickCapturePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const QUICK_CAPTURE_DUE_SHORTCUTS: QuickCaptureDueShortcut[] = ["TODAY", "TOMORROW", "NEXT_WEEK"];
 const QUICK_CAPTURE_CONTEXT_TARGET_TYPES: QuickCaptureContextTargetType[] = ["PERSON", "TEAM", "EVENT", "GEAR_ITEM", "RESOURCE_BOOKING"];
