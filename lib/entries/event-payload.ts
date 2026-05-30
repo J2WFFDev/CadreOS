@@ -54,6 +54,13 @@ export type EventEntryPayload = {
 
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DATETIME_LOCAL_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+const SUPPORTED_IANA_TIMEZONES = (() => {
+  try {
+    return new Set(Intl.supportedValuesOf("timeZone"));
+  } catch {
+    return null;
+  }
+})();
 
 export function createEmptyEventEntryPayload(): EventEntryPayload {
   return {
@@ -189,6 +196,10 @@ export function normalizeEventTimezone(value: string | null | undefined) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
+  if (trimmed === "UTC") return "UTC";
+  if (SUPPORTED_IANA_TIMEZONES) {
+    return SUPPORTED_IANA_TIMEZONES.has(trimmed) ? trimmed : null;
+  }
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: trimmed });
     return trimmed;

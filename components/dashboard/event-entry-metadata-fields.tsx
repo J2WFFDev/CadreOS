@@ -24,8 +24,8 @@ type EventEntryMetadataFieldsProps = {
 const SCOPE_HELP_TEXT: Record<EventCalendarScopeValue, string> = {
   PERSONAL: "Personal scope applies to your calendar only.",
   ORGANIZATION: "Organization scope applies to the organization calendar.",
-  PROGRAM: "Program scope applies to a selected program calendar and requires Program.",
-  TEAM: "Team scope applies to a selected team calendar and requires Team.",
+  PROGRAM: "Program scope applies to a selected program calendar.",
+  TEAM: "Team scope applies to a selected team calendar.",
 };
 
 export function EventEntryMetadataFields({ payload, programs, teams, timezoneDefault }: EventEntryMetadataFieldsProps) {
