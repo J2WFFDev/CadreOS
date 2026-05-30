@@ -38,6 +38,7 @@ export function resolveQuickCaptureEntryType(_input: {
   legacyEntryType?: string | null;
   inferredType?: "TASK" | "NOTE";
 }): QuickCaptureEntryType {
+  if (_input) return "TASK";
   return "TASK";
 }
 
