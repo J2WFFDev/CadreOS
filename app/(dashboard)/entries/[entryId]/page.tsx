@@ -100,79 +100,83 @@ function summarizeEntryActivityMetadata(metadataJson: string | null) {
   }
 }
 
-const entryBaseSelect = Prisma.validator<Prisma.EntrySelect>()({
-  id: true,
-  type: true,
-  title: true,
-  content: true,
-  tags: true,
-  status: true,
-  priority: true,
-  dueDate: true,
-  dueTime: true,
-  taskCompleted: true,
-  createdAt: true,
-  updatedAt: true,
-  sourceTaskId: true,
-  sourceNoteId: true,
-  assignedToPersonId: true,
-  typePayloads: {
-    where: { entryType: EntryType.DECISION },
-    select: { payloadJson: true, isActive: true },
-    take: 1,
-    orderBy: { updatedAt: "desc" },
-  },
-  createdBy: { select: { firstName: true, lastName: true } },
-  updatedBy: { select: { firstName: true, lastName: true } },
-  assignedTo: { select: { firstName: true, lastName: true } },
-  objectLinks: {
-    orderBy: { createdAt: "desc" },
-    select: { id: true, targetType: true, targetId: true, createdAt: true },
-    take: 40,
-  },
-  linkedFrom: {
-    select: {
-      id: true,
-      fromEntryId: true,
-      toEntryId: true,
-      toEntry: { select: { id: true, title: true, type: true, deletedAt: true } },
+const entryBaseArgs = Prisma.validator<Prisma.EntryFindFirstArgs>()({
+  select: {
+    id: true,
+    type: true,
+    title: true,
+    content: true,
+    tags: true,
+    status: true,
+    priority: true,
+    dueDate: true,
+    dueTime: true,
+    taskCompleted: true,
+    createdAt: true,
+    updatedAt: true,
+    sourceTaskId: true,
+    sourceNoteId: true,
+    assignedToPersonId: true,
+    typePayloads: {
+      where: { entryType: EntryType.DECISION },
+      select: { payloadJson: true, isActive: true },
+      take: 1,
+      orderBy: { updatedAt: "desc" },
     },
-    take: 40,
-  },
-  linkedTo: {
-    select: {
-      id: true,
-      fromEntryId: true,
-      toEntryId: true,
-      fromEntry: { select: { id: true, title: true, type: true, deletedAt: true } },
+    createdBy: { select: { firstName: true, lastName: true } },
+    updatedBy: { select: { firstName: true, lastName: true } },
+    assignedTo: { select: { firstName: true, lastName: true } },
+    objectLinks: {
+      orderBy: { createdAt: "desc" },
+      select: { id: true, targetType: true, targetId: true, createdAt: true },
+      take: 40,
     },
-    take: 40,
-  },
-  activity: {
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      action: true,
-      metadataJson: true,
-      createdAt: true,
-      actor: { select: { firstName: true, lastName: true } },
+    linkedFrom: {
+      select: {
+        id: true,
+        fromEntryId: true,
+        toEntryId: true,
+        toEntry: { select: { id: true, title: true, type: true, deletedAt: true } },
+      },
+      take: 40,
     },
-    take: 40,
+    linkedTo: {
+      select: {
+        id: true,
+        fromEntryId: true,
+        toEntryId: true,
+        fromEntry: { select: { id: true, title: true, type: true, deletedAt: true } },
+      },
+      take: 40,
+    },
+    activity: {
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        action: true,
+        metadataJson: true,
+        createdAt: true,
+        actor: { select: { firstName: true, lastName: true } },
+      },
+      take: 40,
+    },
   },
 });
 
-const entryDetailSelect = {
-  ...entryBaseSelect,
-  listId: true,
-} satisfies Prisma.EntrySelect;
+const entryDetailArgs = Prisma.validator<Prisma.EntryFindFirstArgs>()({
+  select: {
+    ...entryBaseArgs.select,
+    listId: true,
+  },
+});
 
-type EntryDetailRecord = Prisma.EntryGetPayload<{ select: typeof entryDetailSelect }>;
+type EntryDetailRecord = Prisma.EntryGetPayload<typeof entryDetailArgs>;
 
 async function fetchEntryDetailRecord(organizationId: string, entryId: string) {
   try {
     const entry = await db.entry.findFirst({
       where: { id: entryId, organizationId, deletedAt: null },
-      select: entryDetailSelect,
+      select: entryDetailArgs.select,
     });
 
     return {
@@ -190,7 +194,7 @@ async function fetchEntryDetailRecord(organizationId: string, entryId: string) {
 
     const entry = await db.entry.findFirst({
       where: { id: entryId, organizationId, deletedAt: null },
-      select: entryBaseSelect,
+      select: entryBaseArgs.select,
     });
 
     return {
