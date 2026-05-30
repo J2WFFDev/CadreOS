@@ -33,12 +33,7 @@ export function getQuickCapturePreset(value: string | null | undefined) {
   return QUICK_CAPTURE_PRESETS[normalized];
 }
 
-export function resolveQuickCaptureEntryType(_input: {
-  captureType?: string | null;
-  legacyEntryType?: string | null;
-  inferredType?: "TASK" | "NOTE";
-}): QuickCaptureEntryType {
-  if (_input) return "TASK";
+export function resolveQuickCaptureEntryType(): QuickCaptureEntryType {
   return "TASK";
 }
 

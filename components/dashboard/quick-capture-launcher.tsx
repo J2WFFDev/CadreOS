@@ -125,7 +125,6 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
 
             <form action="/entries/quick-add" method="post" className="space-y-3" onSubmit={() => setIsSubmitting(true)}>
               <input type="hidden" name="returnTo" value={returnTo} />
-              <input type="hidden" name="captureType" value="QUICK_TASK" />
               <input type="hidden" name="dueShortcut" value={dueShortcut} />
               <input type="hidden" name="priority" value={priority} />
 

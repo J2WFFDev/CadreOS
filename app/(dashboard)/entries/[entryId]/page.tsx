@@ -319,7 +319,7 @@ export default async function EntryDetailPage({
       ) : null}
       {entry.type === EntryType.JOURNAL ? (
         <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-          Journal prompt and assignment workflows are not yet enabled here; this entry type is currently basic detail/edit support.
+          Journal prompt and assignment workflows are not yet enabled; this entry type currently provides basic detail/edit support only.
         </div>
       ) : null}
 
