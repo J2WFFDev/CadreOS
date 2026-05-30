@@ -27,6 +27,10 @@ const DUE_SHORTCUTS: Array<{ value: QuickCaptureDueShortcut; label: string }> = 
 ];
 
 const PRIORITIES: QuickCapturePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+const UNAVAILABLE_CAPTURE_TYPES = [
+  { value: "JOURNAL_UNAVAILABLE", label: "Journal (not available yet)" },
+  { value: "HABIT_DEFERRED", label: "Habit (deferred — use recurring tasks)" },
+] as const;
 
 export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disabled = false }: QuickCaptureLauncherProps) {
   const pathname = usePathname();
@@ -164,7 +168,13 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
                       {preset.label}
                     </option>
                   ))}
+                  {UNAVAILABLE_CAPTURE_TYPES.map((type) => (
+                    <option key={type.value} value={type.value} disabled>
+                      {type.label}
+                    </option>
+                  ))}
                 </select>
+                <p className="text-xs text-zinc-500">Task and Note are ready now. Journal and Habit are intentionally unavailable here.</p>
               </div>
 
               <div className="space-y-1">

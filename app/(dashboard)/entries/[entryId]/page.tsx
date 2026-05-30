@@ -357,9 +357,9 @@ export default async function EntryDetailPage({
 
           {canEditEntry ? (
             <section className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-              <h3 className="font-semibold">Create follow-up</h3>
+              <h3 className="font-semibold">Optional follow-up task</h3>
               <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                Create actionable follow-up work from this entry while keeping source context linked.
+                Use this only when you need a separate task. Most updates should stay on the entry itself.
               </p>
               <form action={`/entries/${entry.id}/create-follow-up`} method="post" className="mt-3 space-y-3">
                 <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
@@ -431,7 +431,7 @@ export default async function EntryDetailPage({
                   </div>
                 </div>
                 <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                  Create follow-up task
+                  Create optional follow-up task
                 </button>
               </form>
             </section>

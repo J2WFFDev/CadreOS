@@ -9,30 +9,15 @@ export const QUICK_CAPTURE_PRESETS = {
     entryType: "NOTE",
     defaultTags: [],
   },
-  QUICK_OBSERVATION: {
-    label: "Quick Observation",
-    entryType: "OBSERVATION",
-    defaultTags: ["observation"],
+  QUICK_EVENT: {
+    label: "Quick Event",
+    entryType: "EVENT",
+    defaultTags: [],
   },
-  QUICK_FOLLOW_UP: {
-    label: "Quick Follow-Up",
-    entryType: "FOLLOW_UP",
-    defaultTags: ["follow-up"],
-  },
-  QUICK_READINESS_ITEM: {
-    label: "Quick Readiness Item",
-    entryType: "READINESS_ITEM",
-    defaultTags: ["readiness"],
-  },
-  QUICK_GEAR_ISSUE: {
-    label: "Quick Gear Issue",
-    entryType: "OBSERVATION",
-    defaultTags: ["gear-issue"],
-  },
-  QUICK_ATTENDANCE_NOTE: {
-    label: "Quick Attendance Note",
-    entryType: "OBSERVATION",
-    defaultTags: ["attendance-note"],
+  QUICK_DECISION: {
+    label: "Quick Decision",
+    entryType: "DECISION",
+    defaultTags: ["decision"],
   },
 } as const;
 
@@ -48,7 +33,7 @@ export type QuickCaptureContext = {
   label: string;
 };
 
-const QUICK_CAPTURE_ENTRY_TYPES = ["TASK", "NOTE", "EVENT", "DECISION", "FOLLOW_UP", "OBSERVATION", "READINESS_ITEM"] as const;
+const QUICK_CAPTURE_ENTRY_TYPES = ["TASK", "NOTE", "EVENT", "DECISION"] as const;
 const QUICK_CAPTURE_PRIORITIES: QuickCapturePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const QUICK_CAPTURE_DUE_SHORTCUTS: QuickCaptureDueShortcut[] = ["TODAY", "TOMORROW", "NEXT_WEEK"];
 const QUICK_CAPTURE_CONTEXT_TARGET_TYPES: QuickCaptureContextTargetType[] = ["PERSON", "TEAM", "EVENT", "GEAR_ITEM", "RESOURCE_BOOKING"];

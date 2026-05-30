@@ -10,12 +10,12 @@ import {
 
 test("resolveQuickCaptureEntryType prefers capture preset when provided", () => {
   const result = resolveQuickCaptureEntryType({
-    captureType: "QUICK_FOLLOW_UP",
+    captureType: "QUICK_DECISION",
     legacyEntryType: "NOTE",
     inferredType: "NOTE",
   });
 
-  assert.equal(result, "FOLLOW_UP");
+  assert.equal(result, "DECISION");
 });
 
 test("resolveQuickCaptureEntryType falls back to inferred type", () => {
@@ -26,6 +26,16 @@ test("resolveQuickCaptureEntryType falls back to inferred type", () => {
   });
 
   assert.equal(result, "TASK");
+});
+
+test("resolveQuickCaptureEntryType ignores unsupported legacy types", () => {
+  const result = resolveQuickCaptureEntryType({
+    captureType: "",
+    legacyEntryType: "FOLLOW_UP",
+    inferredType: "NOTE",
+  });
+
+  assert.equal(result, "NOTE");
 });
 
 test("resolveQuickCaptureDueDate resolves shortcuts in UTC", () => {
