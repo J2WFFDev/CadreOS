@@ -6,6 +6,7 @@ import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
 import { fetchListsForActor, labelForEntryListScope } from "@/lib/entries/lists";
+import { formatEntryListSetupIncompleteMessage, getEntryListSchemaIssue, logEntryListSchemaIssue } from "@/lib/entries/schema-guard";
 import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -57,19 +58,45 @@ export default async function ListsPage() {
 
   const canWrite = entryAccess.level === "WRITE" || entryAccess.level === "MANAGE";
 
-  const allLists = await fetchListsForActor({ organizationId, actorPersonId: scope.auth.personId });
+  let setupIncompleteMessage = "";
+  let allLists: Awaited<ReturnType<typeof fetchListsForActor>> = [];
+  try {
+    allLists = await fetchListsForActor({ organizationId, actorPersonId: scope.auth.personId });
+  } catch (error) {
+    const schemaIssue = getEntryListSchemaIssue(error);
 
-  // Count entries per list
-  const entryCounts = await db.entry.groupBy({
-    by: ["listId"],
-    where: { organizationId, deletedAt: null, listId: { not: null } },
-    _count: { id: true },
-  });
-  const countMap = new Map<string, number>(
-    entryCounts
-      .filter((row) => row.listId !== null)
-      .map((row) => [row.listId as string, row._count.id]),
-  );
+    if (!schemaIssue) {
+      throw error;
+    }
+
+    logEntryListSchemaIssue("lists.page.fetch-lists", error, { organizationId, actorPersonId: scope.auth.personId });
+    setupIncompleteMessage = formatEntryListSetupIncompleteMessage();
+  }
+
+  let countMap = new Map<string, number>();
+  if (!setupIncompleteMessage) {
+    try {
+      const entryCounts = await db.entry.groupBy({
+        by: ["listId"],
+        where: { organizationId, deletedAt: null, listId: { not: null } },
+        _count: { id: true },
+      });
+      countMap = new Map<string, number>(
+        entryCounts
+          .filter((row) => row.listId !== null)
+          .map((row) => [row.listId as string, row._count.id]),
+      );
+    } catch (error) {
+      const schemaIssue = getEntryListSchemaIssue(error);
+
+      if (!schemaIssue) {
+        throw error;
+      }
+
+      logEntryListSchemaIssue("lists.page.count-entries", error, { organizationId });
+      setupIncompleteMessage = formatEntryListSetupIncompleteMessage();
+    }
+  }
 
   // Group by scope
   const byScope = new Map<EntryListScope, typeof allLists>();
@@ -83,17 +110,19 @@ export default async function ListsPage() {
     <section className="space-y-6">
       <div className="flex items-start justify-between">
         <PageHeader title="Entry Lists" description="Organize entries into personal, org, program, and team lists." />
-        {canWrite ? (
+        {canWrite && !setupIncompleteMessage ? (
           <Link href="/lists/create" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
             New list
           </Link>
         ) : null}
       </div>
 
+      {setupIncompleteMessage ? <ErrorMessage message={setupIncompleteMessage} /> : null}
+
       {allLists.length === 0 ? (
         <EmptyState
-          message={canWrite ? "No lists yet. Create your first list to start organizing entries." : "No lists are available yet."}
-          {...(canWrite ? { actionHref: "/lists/create", actionLabel: "New list" } : {})}
+          message={setupIncompleteMessage || (canWrite ? "No lists yet. Create your first list to start organizing entries." : "No lists are available yet.")}
+          {...(canWrite && !setupIncompleteMessage ? { actionHref: "/lists/create", actionLabel: "New list" } : {})}
         />
       ) : (
         <div className="space-y-6">

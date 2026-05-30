@@ -13,9 +13,15 @@ import { db } from "@/lib/db";
 import { mapEntryPriorityToInboxPriority, shouldRouteEntryToInbox } from "@/lib/entries/inbox";
 import { resolveOrCreateDefaultList } from "@/lib/entries/lists";
 import { parseQuickAddEntryInput } from "@/lib/entries/parser";
+import {
+  ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE,
+  getEntryListSchemaIssue,
+  logEntryListSchemaIssue,
+} from "@/lib/entries/schema-guard";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { linkOperationalRecords, mapEntryObjectLinkTargetToGraphNodeType } from "@/lib/operational-graph";
 import { ENTRY_ACTIVITY_ACTIONS, createOperationalEntry, linkEntryToObject, writeEntryActivity } from "@/lib/operational-entry";
+import type { CreateOperationalEntryInput } from "@/lib/operational-entry/types";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { requirePermission } from "@/lib/permissions";
 import {
@@ -237,6 +243,7 @@ export async function POST(request: Request) {
 
   // Arc 24D.4: Resolve default list — Team Inbox when context is a team, Personal Inbox otherwise.
   let defaultListId: string | null = null;
+  let listAssignmentWarning: string | null = null;
   try {
     if (scopedTeamId) {
       const list = await resolveOrCreateDefaultList({ scope: "TEAM", organizationId, teamId: scopedTeamId });
@@ -246,8 +253,12 @@ export async function POST(request: Request) {
       defaultListId = list.id;
     }
   } catch (listErr) {
-    // Non-fatal: entry will be created without a list assignment if this fails.
-    console.warn("[entries.quick-add] Failed to resolve default list; entry will be unassigned", listErr);
+    if (getEntryListSchemaIssue(listErr)) {
+      logEntryListSchemaIssue("entries.quick-add.resolve-default-list", listErr, { organizationId, actorPersonId, scopedTeamId });
+      listAssignmentWarning = ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE;
+    } else {
+      console.warn("[entries.quick-add] Failed to resolve default list; entry will be unassigned", listErr);
+    }
   }
 
   try {
@@ -264,7 +275,7 @@ export async function POST(request: Request) {
       select: { id: true },
     });
 
-    const createdEntry = await createOperationalEntry({
+    const createEntryInput: CreateOperationalEntryInput = {
       organizationId: organizationId,
       type: EntryType.TASK,
       title,
@@ -280,8 +291,30 @@ export async function POST(request: Request) {
       timezone: "UTC",
       taskRecurrenceRule: parsed.recurrenceRule,
       sourceTaskId: createdTask.id,
-      listId: defaultListId,
-    });
+    };
+
+    let createdEntry;
+
+    try {
+      createdEntry = await createOperationalEntry({
+        ...createEntryInput,
+        ...(defaultListId ? { listId: defaultListId } : {}),
+      });
+    } catch (entryErr) {
+      const schemaIssue = getEntryListSchemaIssue(entryErr);
+
+      if (defaultListId && schemaIssue?.missing.includes("Entry.listId")) {
+        logEntryListSchemaIssue("entries.quick-add.create-entry", entryErr, {
+          organizationId,
+          actorPersonId,
+          defaultListId,
+        });
+        listAssignmentWarning = ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE;
+        createdEntry = await createOperationalEntry(createEntryInput);
+      } else {
+        throw entryErr;
+      }
+    }
 
     await writeEntryActivity({
       organizationId: organizationId,
@@ -333,7 +366,11 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.redirect(new URL(`/entries/${createdEntry.id}`, request.url), 303);
+    const destination = new URL(`/entries/${createdEntry.id}`, request.url);
+    if (listAssignmentWarning) {
+      destination.searchParams.set("warning", listAssignmentWarning);
+    }
+    return NextResponse.redirect(destination, 303);
   } catch {
     return NextResponse.redirect(
       buildQuickCaptureRedirectUrl({

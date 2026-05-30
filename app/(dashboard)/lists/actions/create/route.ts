@@ -2,6 +2,7 @@ import { EntryListScope } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { formatEntryListSetupIncompleteMessage, getEntryListSchemaIssue, logEntryListSchemaIssue } from "@/lib/entries/schema-guard";
 import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -68,6 +69,21 @@ export async function POST(request: Request) {
     console.log("[lists.create] created EntryList", { id: created.id, name, scope: listScope });
     return NextResponse.redirect(new URL(`/lists/${created.id}`, request.url), 303);
   } catch (err) {
+    if (getEntryListSchemaIssue(err)) {
+      logEntryListSchemaIssue("lists.create.action.create-list", err, {
+        organizationId,
+        scope: listScope,
+        ownerPersonId,
+        programId,
+        teamId,
+      });
+
+      return NextResponse.redirect(
+        new URL(`/lists/create?error=${encodeURIComponent(formatEntryListSetupIncompleteMessage())}`, request.url),
+        303,
+      );
+    }
+
     console.error("[lists.create] failed", err);
     return NextResponse.redirect(new URL("/lists/create?error=Failed+to+create+list", request.url), 303);
   }

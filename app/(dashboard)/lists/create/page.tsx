@@ -4,7 +4,8 @@ import { EntryListScope } from "@prisma/client";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
-import { labelForEntryListScope } from "@/lib/entries/lists";
+import { fetchListsForActor, labelForEntryListScope } from "@/lib/entries/lists";
+import { formatEntryListSetupIncompleteMessage, getEntryListSchemaIssue, logEntryListSchemaIssue } from "@/lib/entries/schema-guard";
 import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -53,6 +54,28 @@ export default async function CreateListPage({ searchParams }: { searchParams: P
       <section className="space-y-4">
         <PageHeader title="New List" description="Create a new entry list." />
         <ErrorMessage message="You do not have permission to create lists." />
+      </section>
+    );
+  }
+
+  try {
+    await fetchListsForActor({ organizationId, actorPersonId: scope.auth.personId });
+  } catch (error) {
+    const schemaIssue = getEntryListSchemaIssue(error);
+
+    if (!schemaIssue) {
+      throw error;
+    }
+
+    logEntryListSchemaIssue("lists.create.page.check-setup", error, {
+      organizationId,
+      actorPersonId: scope.auth.personId,
+    });
+
+    return (
+      <section className="space-y-4">
+        <PageHeader title="New List" description="Create a new entry list." />
+        <ErrorMessage message={formatEntryListSetupIncompleteMessage()} />
       </section>
     );
   }

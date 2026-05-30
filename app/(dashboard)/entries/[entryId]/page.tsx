@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   EntryObjectLinkTargetType,
   EntryPriority,
+  Prisma,
   EntryStatus,
   EntryType,
   OperationalGraphNodeType,
@@ -19,6 +20,11 @@ import {
   parseDecisionEntryPayload,
 } from "@/lib/entries/decision-payload";
 import { fetchListsForActor, labelForEntryListScope } from "@/lib/entries/lists";
+import {
+  ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE,
+  getEntryListSchemaIssue,
+  logEntryListSchemaIssue,
+} from "@/lib/entries/schema-guard";
 import {
   labelForEntryObjectLinkTargetType,
   resolveEntryObjectLinkViews,
@@ -94,6 +100,120 @@ function summarizeEntryActivityMetadata(metadataJson: string | null) {
   }
 }
 
+const entryBaseSelect = Prisma.validator<Prisma.EntryFindFirstArgs>()({
+  select: {
+    id: true,
+    type: true,
+    title: true,
+    content: true,
+    tags: true,
+    status: true,
+    priority: true,
+    dueDate: true,
+    dueTime: true,
+    taskCompleted: true,
+    createdAt: true,
+    updatedAt: true,
+    sourceTaskId: true,
+    sourceNoteId: true,
+    assignedToPersonId: true,
+    typePayloads: {
+      where: { entryType: EntryType.DECISION },
+      select: { payloadJson: true, isActive: true },
+      take: 1,
+      orderBy: { updatedAt: "desc" },
+    },
+    createdBy: { select: { firstName: true, lastName: true } },
+    updatedBy: { select: { firstName: true, lastName: true } },
+    assignedTo: { select: { firstName: true, lastName: true } },
+    objectLinks: {
+      orderBy: { createdAt: "desc" },
+      select: { id: true, targetType: true, targetId: true, createdAt: true },
+      take: 40,
+    },
+    linkedFrom: {
+      select: {
+        id: true,
+        fromEntryId: true,
+        toEntryId: true,
+        toEntry: { select: { id: true, title: true, type: true, deletedAt: true } },
+      },
+      take: 40,
+    },
+    linkedTo: {
+      select: {
+        id: true,
+        fromEntryId: true,
+        toEntryId: true,
+        fromEntry: { select: { id: true, title: true, type: true, deletedAt: true } },
+      },
+      take: 40,
+    },
+    activity: {
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        action: true,
+        metadataJson: true,
+        createdAt: true,
+        actor: { select: { firstName: true, lastName: true } },
+      },
+      take: 40,
+    },
+  },
+});
+
+const entryDetailSelect = Prisma.validator<Prisma.EntryFindFirstArgs>()({
+  select: {
+    ...entryBaseSelect.select,
+    listId: true,
+  },
+});
+
+type EntryDetailRecord = Prisma.EntryGetPayload<typeof entryDetailSelect>;
+
+function withUnavailableList(entry: Prisma.EntryGetPayload<typeof entryBaseSelect>): EntryDetailRecord {
+  return {
+    ...entry,
+    listId: null,
+  };
+}
+
+async function fetchEntryDetailRecord(
+  organizationId: string,
+  entryId: string,
+): Promise<{ entry: EntryDetailRecord | null; listAssignmentUnavailable: boolean }> {
+  try {
+    const entry = await db.entry.findFirst({
+      where: { id: entryId, organizationId, deletedAt: null },
+      select: entryDetailSelect.select,
+    });
+
+    return {
+      entry,
+      listAssignmentUnavailable: false,
+    };
+  } catch (error) {
+    const schemaIssue = getEntryListSchemaIssue(error);
+
+    if (!schemaIssue) {
+      throw error;
+    }
+
+    logEntryListSchemaIssue("entries.detail.fetch-entry", error, { organizationId, entryId });
+
+    const entry = await db.entry.findFirst({
+      where: { id: entryId, organizationId, deletedAt: null },
+      select: entryBaseSelect.select,
+    });
+
+    return {
+      entry: entry ? withUnavailableList(entry) : null,
+      listAssignmentUnavailable: true,
+    };
+  }
+}
+
 type SearchParams = Record<string, string | string[] | undefined>;
 // Includes legacy/internal labels so existing non-user-selectable entries can be shown safely if already persisted.
 const ENTRY_TYPE_OPTION_LABELS: Record<EntryType, string> = {
@@ -120,6 +240,7 @@ export default async function EntryDetailPage({
   const resolvedSearchParams = await searchParams;
   const routeError = Array.isArray(resolvedSearchParams.error) ? resolvedSearchParams.error[0] : resolvedSearchParams.error;
   const savedParam = Array.isArray(resolvedSearchParams.saved) ? resolvedSearchParams.saved[0] : resolvedSearchParams.saved;
+  const warningParam = Array.isArray(resolvedSearchParams.warning) ? resolvedSearchParams.warning[0] : resolvedSearchParams.warning;
   const scope = await getOrganizationScope();
 
   if (!scope.databaseReady) {
@@ -158,70 +279,9 @@ export default async function EntryDetailPage({
     );
   }
 
-  const entry = await db.entry.findFirst({
-    where: { id: entryId, organizationId, deletedAt: null },
-    select: {
-      id: true,
-      type: true,
-      title: true,
-      content: true,
-      tags: true,
-      status: true,
-      priority: true,
-      dueDate: true,
-      dueTime: true,
-      taskCompleted: true,
-      createdAt: true,
-      updatedAt: true,
-      sourceTaskId: true,
-      sourceNoteId: true,
-      assignedToPersonId: true,
-      listId: true,
-      typePayloads: {
-        where: { entryType: EntryType.DECISION },
-        select: { payloadJson: true, isActive: true },
-        take: 1,
-        orderBy: { updatedAt: "desc" },
-      },
-      createdBy: { select: { firstName: true, lastName: true } },
-      updatedBy: { select: { firstName: true, lastName: true } },
-      assignedTo: { select: { firstName: true, lastName: true } },
-      objectLinks: {
-        orderBy: { createdAt: "desc" },
-        select: { id: true, targetType: true, targetId: true, createdAt: true },
-        take: 40,
-      },
-      linkedFrom: {
-        select: {
-          id: true,
-          fromEntryId: true,
-          toEntryId: true,
-          toEntry: { select: { id: true, title: true, type: true, deletedAt: true } },
-        },
-        take: 40,
-      },
-      linkedTo: {
-        select: {
-          id: true,
-          fromEntryId: true,
-          toEntryId: true,
-          fromEntry: { select: { id: true, title: true, type: true, deletedAt: true } },
-        },
-        take: 40,
-      },
-      activity: {
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          action: true,
-          metadataJson: true,
-          createdAt: true,
-          actor: { select: { firstName: true, lastName: true } },
-        },
-        take: 40,
-      },
-    },
-  });
+  const entryResult = await fetchEntryDetailRecord(organizationId, entryId);
+  const entry = entryResult.entry;
+  let listAssignmentUnavailable = entryResult.listAssignmentUnavailable;
 
   if (!entry) {
     return (
@@ -281,9 +341,25 @@ export default async function EntryDetailPage({
   ]);
 
   // Arc 24D.4: Fetch available lists for the list picker.
-  const availableLists = canEditEntry
-    ? await fetchListsForActor({ organizationId, actorPersonId: scope.auth.personId })
-    : [];
+  let availableLists: Awaited<ReturnType<typeof fetchListsForActor>> = [];
+  if (canEditEntry && !listAssignmentUnavailable) {
+    try {
+      availableLists = await fetchListsForActor({ organizationId, actorPersonId: scope.auth.personId });
+    } catch (error) {
+      const schemaIssue = getEntryListSchemaIssue(error);
+
+      if (!schemaIssue) {
+        throw error;
+      }
+
+      logEntryListSchemaIssue("entries.detail.fetch-available-lists", error, {
+        organizationId,
+        entryId,
+        actorPersonId: scope.auth.personId,
+      });
+      listAssignmentUnavailable = true;
+    }
+  }
 
   const linkedEntryRows = [
     ...entry.linkedFrom.map((item) => ({
@@ -339,6 +415,16 @@ export default async function EntryDetailPage({
       {savedParam && !routeError ? (
         <div className="rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-300">
           Entry saved successfully.
+        </div>
+      ) : null}
+      {warningParam ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          {warningParam}
+        </div>
+      ) : null}
+      {listAssignmentUnavailable ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          {ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}
         </div>
       ) : null}
       {entry.type === EntryType.HABIT ? (
@@ -413,7 +499,9 @@ export default async function EntryDetailPage({
               <div>
                 <dt className="text-xs text-zinc-500 dark:text-zinc-400">List</dt>
                 <dd>
-                  {entry.listId ? (
+                  {listAssignmentUnavailable ? (
+                    <span className="text-amber-700 dark:text-amber-300">{ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}</span>
+                  ) : entry.listId ? (
                     <Link href={`/lists/${entry.listId}`} className="underline">
                       {availableLists.find((list) => list.id === entry.listId)?.name ?? "View list"}
                     </Link>
@@ -643,7 +731,12 @@ export default async function EntryDetailPage({
                 </div>
               ) : null}
               {/* Arc 24D.4: List assignment */}
-              {availableLists.length > 0 ? (
+              {listAssignmentUnavailable ? (
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">List</label>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">{ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}</p>
+                </div>
+              ) : availableLists.length > 0 ? (
                 <div className="space-y-1">
                   <label htmlFor="listId" className="text-sm font-medium">
                     List
