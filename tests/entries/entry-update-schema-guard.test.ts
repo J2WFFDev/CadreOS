@@ -24,7 +24,7 @@ function makeP2021(table: string): Prisma.PrismaClientKnownRequestError {
 }
 
 // D5-SCHEMA-001: fetch-payload guard detects missing table and returns issue
-test("logEntryTypePayloadSchemaIssue returns issue for P2021 on EntryTypePayload table", () => {
+test("detects missing EntryTypePayload table from P2021 error during fetch-payload", () => {
   const error = makeP2021("public.EntryTypePayload");
   const issue = logEntryTypePayloadSchemaIssue("entries.update.fetch-payload", error, {
     entryId: "entry-1",
@@ -36,7 +36,7 @@ test("logEntryTypePayloadSchemaIssue returns issue for P2021 on EntryTypePayload
 });
 
 // D5-SCHEMA-002: fetch-payload guard passes through unrelated errors
-test("logEntryTypePayloadSchemaIssue returns null for P2021 on unrelated table", () => {
+test("ignores P2021 errors for unrelated tables during fetch-payload", () => {
   const error = makeP2021("public.SomeOtherTable");
   const issue = logEntryTypePayloadSchemaIssue("entries.update.fetch-payload", error, {
     entryId: "entry-1",
@@ -47,7 +47,7 @@ test("logEntryTypePayloadSchemaIssue returns null for P2021 on unrelated table",
 });
 
 // D5-SCHEMA-003: upsert-payload guard detects missing table and returns issue
-test("logEntryTypePayloadSchemaIssue returns issue for P2021 on upsert path", () => {
+test("detects missing EntryTypePayload table from P2021 error during upsert-payload", () => {
   const error = makeP2021("public.EntryTypePayload");
   const issue = logEntryTypePayloadSchemaIssue("entries.update.upsert-payload", error, {
     entryId: "entry-2",
@@ -59,7 +59,7 @@ test("logEntryTypePayloadSchemaIssue returns issue for P2021 on upsert path", ()
 });
 
 // D5-SCHEMA-004: archive-payload guard detects missing table and returns issue (non-fatal path)
-test("logEntryTypePayloadSchemaIssue returns issue for P2021 on archive path", () => {
+test("detects missing EntryTypePayload table from P2021 error during archive-payload", () => {
   const error = makeP2021("public.EntryTypePayload");
   const issue = logEntryTypePayloadSchemaIssue("entries.update.archive-payload", error, {
     entryId: "entry-3",
@@ -71,12 +71,14 @@ test("logEntryTypePayloadSchemaIssue returns issue for P2021 on archive path", (
 });
 
 // D5-SCHEMA-005: getEntryTypePayloadSchemaIssue also detects relation-not-found from message text
-test("getEntryTypePayloadSchemaIssue detects entrytypepayload relation message (case-insensitive)", () => {
-  const error = new Error('ERROR: relation "EntryTypePayload" does not exist');
-  const issue = getEntryTypePayloadSchemaIssue(error);
+test("detects EntryTypePayload schema issue from relation-not-found error message text", () => {
+  const upper = getEntryTypePayloadSchemaIssue(new Error('ERROR: relation "EntryTypePayload" does not exist'));
+  const lower = getEntryTypePayloadSchemaIssue(new Error('ERROR: relation "entrytypepayload" does not exist'));
 
-  assert.ok(issue, "Expected issue to be non-null");
-  assert.deepEqual(issue.missing, ["EntryTypePayload"]);
+  assert.ok(upper, "Expected issue for mixed-case table name");
+  assert.deepEqual(upper.missing, ["EntryTypePayload"]);
+  assert.ok(lower, "Expected issue for lowercase table name");
+  assert.deepEqual(lower.missing, ["EntryTypePayload"]);
 });
 
 // D5-SCHEMA-006: user-facing unavailability message and migration name are consistent
@@ -94,7 +96,7 @@ test("formatEntryTypePayloadSetupIncompleteMessage includes migration name", () 
 });
 
 // D5-REG-001: non-EntryTypePayload P2021 errors are not swallowed by the guard
-test("logEntryTypePayloadSchemaIssue returns null for P2021 on Entry table (unrelated)", () => {
+test("ignores P2021 errors for Entry table (unrelated to EntryTypePayload)", () => {
   const error = makeP2021("public.Entry");
   const issue = logEntryTypePayloadSchemaIssue("entries.update.fetch-payload", error, {
     entryId: "entry-1",
@@ -105,7 +107,7 @@ test("logEntryTypePayloadSchemaIssue returns null for P2021 on Entry table (unre
 });
 
 // D5-REG-002: plain non-Prisma errors are not swallowed
-test("logEntryTypePayloadSchemaIssue returns null for plain Error", () => {
+test("ignores non-Prisma errors", () => {
   const error = new Error("unexpected failure");
   const issue = logEntryTypePayloadSchemaIssue("entries.update.fetch-payload", error, {
     entryId: "entry-1",
