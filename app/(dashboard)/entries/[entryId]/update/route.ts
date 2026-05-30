@@ -142,7 +142,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
           where: { id: rawListId, organizationId, isArchived: false },
           select: { id: true },
         });
-        resolvedListId = listRecord ? listRecord.id : undefined;
+        if (!listRecord) {
+          const url = new URL(returnTo, request.url);
+          url.searchParams.set("error", "The selected list is not available.");
+          return NextResponse.redirect(url, 303);
+        }
+        resolvedListId = listRecord.id;
       }
     }
 

@@ -38,6 +38,9 @@ export async function POST(request: Request) {
     : EntryListScope.PERSONAL;
 
   // Validate scope-required fields
+  if (listScope === EntryListScope.PERSONAL && !scope.auth.personId) {
+    return NextResponse.redirect(new URL("/lists/create?error=A+linked+person+is+required+for+Personal+lists", request.url), 303);
+  }
   if (listScope === EntryListScope.PROGRAM && !programId) {
     return NextResponse.redirect(new URL("/lists/create?error=Program+ID+required+for+Program+scope", request.url), 303);
   }
@@ -45,7 +48,7 @@ export async function POST(request: Request) {
     return NextResponse.redirect(new URL("/lists/create?error=Team+ID+required+for+Team+scope", request.url), 303);
   }
 
-  const ownerPersonId = listScope === EntryListScope.PERSONAL ? scope.auth.personId ?? null : null;
+  const ownerPersonId = listScope === EntryListScope.PERSONAL ? scope.auth.personId! : null;
 
   try {
     const created = await db.entryList.create({

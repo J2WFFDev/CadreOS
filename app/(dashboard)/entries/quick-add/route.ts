@@ -245,8 +245,9 @@ export async function POST(request: Request) {
       const list = await resolveOrCreateDefaultList({ scope: "PERSONAL", organizationId, ownerPersonId: actorPersonId });
       defaultListId = list.id;
     }
-  } catch {
+  } catch (listErr) {
     // Non-fatal: entry will be created without a list assignment if this fails.
+    console.warn("[entries.quick-add] Failed to resolve default list; entry will be unassigned", listErr);
   }
 
   try {
