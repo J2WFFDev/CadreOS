@@ -47,39 +47,6 @@ export function getEntryListSchemaIssue(error: unknown): EntryListSchemaIssue | 
       details.push(`Missing database table: ${table}`);
     }
 
-    export function getEntryTypePayloadSchemaIssue(error: unknown): EntryTypePayloadSchemaIssue | null {
-      const missing = new Set<EntryTypePayloadSchemaRequirement>();
-      const details: string[] = [];
-
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        const meta = (error.meta ?? {}) as Record<string, unknown>;
-        const table = typeof meta.table === "string" ? meta.table : null;
-
-        if (error.code === "P2021" && includesValue(table, "EntryTypePayload")) {
-          missing.add("EntryTypePayload");
-          details.push(`Missing database table: ${table}`);
-        }
-      }
-
-      const message = stringifyErrorMessage(error);
-      if (
-        includesValue(message, "entrytypepayload")
-        && (includesValue(message, "does not exist") || includesValue(message, "relation"))
-      ) {
-        missing.add("EntryTypePayload");
-        details.push("Missing database table: EntryTypePayload");
-      }
-
-      if (missing.size === 0) {
-        return null;
-      }
-
-      return {
-        missing: Array.from(missing),
-        detail: details.join("; "),
-      };
-    }
-
     if (error.code === "P2022" && (includesValue(column, "Entry.listId") || includesValue(column, "listId"))) {
       missing.add("Entry.listId");
       details.push(`Missing database column: ${column ?? "Entry.listId"}`);
@@ -94,6 +61,39 @@ export function getEntryListSchemaIssue(error: unknown): EntryListSchemaIssue | 
   ) {
     missing.add("EntryListScope");
     details.push("Missing database enum: EntryListScope");
+  }
+
+  if (missing.size === 0) {
+    return null;
+  }
+
+  return {
+    missing: Array.from(missing),
+    detail: details.join("; "),
+  };
+}
+
+export function getEntryTypePayloadSchemaIssue(error: unknown): EntryTypePayloadSchemaIssue | null {
+  const missing = new Set<EntryTypePayloadSchemaRequirement>();
+  const details: string[] = [];
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    const meta = (error.meta ?? {}) as Record<string, unknown>;
+    const table = typeof meta.table === "string" ? meta.table : null;
+
+    if (error.code === "P2021" && includesValue(table, "EntryTypePayload")) {
+      missing.add("EntryTypePayload");
+      details.push(`Missing database table: ${table}`);
+    }
+  }
+
+  const message = stringifyErrorMessage(error);
+  if (
+    includesValue(message, "entrytypepayload")
+    && (includesValue(message, "does not exist") || includesValue(message, "relation"))
+  ) {
+    missing.add("EntryTypePayload");
+    details.push("Missing database table: EntryTypePayload");
   }
 
   if (missing.size === 0) {
