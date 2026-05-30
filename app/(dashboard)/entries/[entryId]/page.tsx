@@ -192,11 +192,26 @@ function withUnavailableDecisionPayload(entry: EntryBaseWithListIdRecord): Entry
   };
 }
 
-function buildFallbackEntrySelect(listSchemaIssue: boolean) {
+function buildFallbackEntrySelect(hasListSchemaIssue: boolean) {
   return {
     ...entryBaseSelect.select,
-    ...(listSchemaIssue ? {} : { listId: true }),
+    ...(hasListSchemaIssue ? {} : { listId: true }),
   };
+}
+
+function normalizeFallbackEntryRecord(
+  entry: EntryBaseRecord | EntryBaseWithListIdRecord | null,
+  hasListSchemaIssue: boolean,
+): EntryDetailRecord | null {
+  if (!entry) {
+    return null;
+  }
+
+  if (hasListSchemaIssue) {
+    return withUnavailableList(entry as EntryBaseRecord);
+  }
+
+  return withUnavailableDecisionPayload(entry as EntryBaseWithListIdRecord);
 }
 
 async function fetchEntryDetailRecord(
@@ -235,11 +250,7 @@ async function fetchEntryDetailRecord(
     });
 
     return {
-      entry: entry
-        ? listSchemaIssue
-          ? withUnavailableList(entry)
-          : withUnavailableDecisionPayload(entry as EntryBaseWithListIdRecord)
-        : null,
+      entry: normalizeFallbackEntryRecord(entry, Boolean(listSchemaIssue)),
       listAssignmentUnavailable: Boolean(listSchemaIssue),
       decisionPayloadUnavailable: Boolean(decisionSchemaIssue),
     };
