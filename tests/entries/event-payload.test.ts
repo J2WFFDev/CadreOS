@@ -42,11 +42,11 @@ test("parseEventEntryPayload normalizes supported scope and recurrence fields", 
   assert.equal(payload.timezone, "America/New_York");
   assert.equal(payload.calendarScope, "PROGRAM");
   assert.equal(payload.programId, "prog-1");
-  assert.equal(payload.teamId, "team-1");
+  assert.equal(payload.teamId, null);
   assert.equal(payload.recurrence.frequency, "WEEKLY");
   assert.equal(payload.recurrence.interval, 2);
   assert.equal(payload.recurrence.endCondition, "AFTER_OCCURRENCES");
-  assert.equal(payload.recurrence.endDate, "2026-09-01");
+  assert.equal(payload.recurrence.endDate, null);
   assert.equal(payload.recurrence.occurrenceCount, 8);
 });
 
