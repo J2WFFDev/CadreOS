@@ -22,8 +22,11 @@ import {
 import { fetchListsForActor, labelForEntryListScope } from "@/lib/entries/lists";
 import {
   ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE,
+  ENTRY_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE,
   getEntryListSchemaIssue,
+  getEntryTypePayloadSchemaIssue,
   logEntryListSchemaIssue,
+  logEntryTypePayloadSchemaIssue,
 } from "@/lib/entries/schema-guard";
 import {
   labelForEntryObjectLinkTargetType,
@@ -117,12 +120,6 @@ const entryBaseSelect = Prisma.validator<Prisma.EntryFindFirstArgs>()({
     sourceTaskId: true,
     sourceNoteId: true,
     assignedToPersonId: true,
-    typePayloads: {
-      where: { entryType: EntryType.DECISION },
-      select: { payloadJson: true, isActive: true },
-      take: 1,
-      orderBy: { updatedAt: "desc" },
-    },
     createdBy: { select: { firstName: true, lastName: true } },
     updatedBy: { select: { firstName: true, lastName: true } },
     assignedTo: { select: { firstName: true, lastName: true } },
@@ -166,23 +163,77 @@ const entryBaseSelect = Prisma.validator<Prisma.EntryFindFirstArgs>()({
 const entryDetailSelect = Prisma.validator<Prisma.EntryFindFirstArgs>()({
   select: {
     ...entryBaseSelect.select,
+    typePayloads: {
+      where: { entryType: EntryType.DECISION },
+      select: { payloadJson: true, isActive: true },
+      take: 1,
+      orderBy: { updatedAt: "desc" },
+    },
     listId: true,
   },
 });
 
 type EntryDetailRecord = Prisma.EntryGetPayload<typeof entryDetailSelect>;
+type EntryBaseRecord = Prisma.EntryGetPayload<typeof entryBaseSelect>;
+type EntryBaseWithListIdRecord = EntryBaseRecord & { listId: string | null };
 
-function withUnavailableList(entry: Prisma.EntryGetPayload<typeof entryBaseSelect>): EntryDetailRecord {
+function withUnavailableList(entry: EntryBaseRecord): EntryDetailRecord {
   return {
     ...entry,
+    typePayloads: [],
     listId: null,
   };
+}
+
+function withUnavailableDecisionPayload(entry: EntryBaseWithListIdRecord): EntryDetailRecord {
+  return {
+    ...entry,
+    typePayloads: [],
+  };
+}
+
+function buildFallbackEntrySelect(hasListSchemaIssue: boolean, hasDecisionSchemaIssue: boolean) {
+  const shouldIncludeListId = !hasListSchemaIssue;
+
+  // When either schema dependency is unavailable, always use the base projection
+  // (which intentionally excludes typePayloads) and only include listId when safe.
+  if (hasListSchemaIssue || hasDecisionSchemaIssue) {
+    return {
+      ...entryBaseSelect.select,
+      ...(shouldIncludeListId ? { listId: true } : {}),
+    };
+  }
+
+  return {
+    ...entryBaseSelect.select,
+    listId: true,
+  };
+}
+
+function normalizeFallbackEntryRecord(
+  entry: EntryBaseRecord | EntryBaseWithListIdRecord | null,
+  hasListSchemaIssue: boolean,
+  hasDecisionSchemaIssue: boolean,
+): EntryDetailRecord | null {
+  if (!entry) {
+    return null;
+  }
+
+  if (hasListSchemaIssue) {
+    return withUnavailableList(entry as EntryBaseRecord);
+  }
+
+  if (hasDecisionSchemaIssue) {
+    return withUnavailableDecisionPayload(entry as EntryBaseWithListIdRecord);
+  }
+
+  return entry as EntryDetailRecord;
 }
 
 async function fetchEntryDetailRecord(
   organizationId: string,
   entryId: string,
-): Promise<{ entry: EntryDetailRecord | null; listAssignmentUnavailable: boolean }> {
+): Promise<{ entry: EntryDetailRecord | null; listAssignmentUnavailable: boolean; decisionPayloadUnavailable: boolean }> {
   try {
     const entry = await db.entry.findFirst({
       where: { id: entryId, organizationId, deletedAt: null },
@@ -192,24 +243,35 @@ async function fetchEntryDetailRecord(
     return {
       entry,
       listAssignmentUnavailable: false,
+      decisionPayloadUnavailable: false,
     };
   } catch (error) {
-    const schemaIssue = getEntryListSchemaIssue(error);
+    const listSchemaIssue = getEntryListSchemaIssue(error);
+    const decisionSchemaIssue = getEntryTypePayloadSchemaIssue(error);
 
-    if (!schemaIssue) {
+    if (!listSchemaIssue && !decisionSchemaIssue) {
       throw error;
     }
 
-    logEntryListSchemaIssue("entries.detail.fetch-entry", error, { organizationId, entryId });
+    if (listSchemaIssue) {
+      logEntryListSchemaIssue("entries.detail.fetch-entry", error, { organizationId, entryId });
+    }
+    if (decisionSchemaIssue) {
+      logEntryTypePayloadSchemaIssue("entries.detail.fetch-entry", error, { organizationId, entryId });
+    }
+
+    const hasListSchemaIssue = Boolean(listSchemaIssue);
+    const hasDecisionSchemaIssue = Boolean(decisionSchemaIssue);
 
     const entry = await db.entry.findFirst({
       where: { id: entryId, organizationId, deletedAt: null },
-      select: entryBaseSelect.select,
+      select: buildFallbackEntrySelect(hasListSchemaIssue, hasDecisionSchemaIssue),
     });
 
     return {
-      entry: entry ? withUnavailableList(entry) : null,
-      listAssignmentUnavailable: true,
+      entry: normalizeFallbackEntryRecord(entry, hasListSchemaIssue, hasDecisionSchemaIssue),
+      listAssignmentUnavailable: hasListSchemaIssue,
+      decisionPayloadUnavailable: hasDecisionSchemaIssue,
     };
   }
 }
@@ -282,6 +344,7 @@ export default async function EntryDetailPage({
   const entryResult = await fetchEntryDetailRecord(organizationId, entryId);
   const entry = entryResult.entry;
   let listAssignmentUnavailable = entryResult.listAssignmentUnavailable;
+  const decisionPayloadUnavailable = entryResult.decisionPayloadUnavailable;
 
   if (!entry) {
     return (
@@ -425,6 +488,11 @@ export default async function EntryDetailPage({
       {listAssignmentUnavailable ? (
         <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
           {ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}
+        </div>
+      ) : null}
+      {decisionPayloadUnavailable && entry.type === EntryType.DECISION ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          {ENTRY_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE}
         </div>
       ) : null}
       {entry.type === EntryType.HABIT ? (
