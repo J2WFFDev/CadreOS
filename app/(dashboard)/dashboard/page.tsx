@@ -97,8 +97,8 @@ const OPERATIONAL_REVIEW_CADENCE = [
 const NAVIGATION_CARDS = [
   {
     href: "/people",
-    title: "People",
-    description: "Review athletes, guardians, coaches, and operators.",
+    title: "Members",
+    description: "Review member lifecycle, roster assignments, and guardian context.",
   },
   {
     href: "/programs",
@@ -1988,7 +1988,7 @@ export default async function DashboardPage() {
             {[
               { label: "Programs", value: dashboardData.counts.programs, href: "/programs" },
               { label: "Teams", value: dashboardData.counts.teams, href: "/teams" },
-              { label: "People", value: dashboardData.counts.people, href: "/people" },
+              { label: "Members", value: dashboardData.counts.people, href: "/people" },
               { label: "Active members", value: dashboardData.counts.activeMembers, href: "/people" },
               { label: "Prospects", value: dashboardData.counts.prospectMembers, href: "/people" },
               { label: "Inactive members", value: dashboardData.counts.inactiveMembers, href: "/people" },

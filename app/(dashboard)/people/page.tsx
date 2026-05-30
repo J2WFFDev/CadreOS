@@ -166,8 +166,8 @@ export default async function PeoplePage({
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">People</h2>
-        <ErrorMessage message={scope.errorMessage ?? "Unable to query people right now."} />
+        <h2 className="text-2xl font-semibold tracking-tight">Members</h2>
+        <ErrorMessage message={scope.errorMessage ?? "Unable to query members right now."} />
       </section>
     );
   }
@@ -175,7 +175,7 @@ export default async function PeoplePage({
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">People</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Members</h2>
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             No organization context is available yet.
@@ -198,7 +198,7 @@ export default async function PeoplePage({
   if (!staffAccessDecision.allowed) {
     return (
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">People</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Members</h2>
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             You do not have staff access to view people operational workflows.
@@ -215,7 +215,7 @@ export default async function PeoplePage({
   ) {
     return (
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">People</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Members</h2>
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Your role scope is incomplete for safe people visibility evaluation. Contact an organization admin.
@@ -396,8 +396,8 @@ export default async function PeoplePage({
   if (!people) {
     return (
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">People</h2>
-        <ErrorMessage message="Unable to load people right now. Please try again later." />
+        <h2 className="text-2xl font-semibold tracking-tight">Members</h2>
+        <ErrorMessage message="Unable to load members right now. Please try again later." />
       </section>
     );
   }
@@ -407,7 +407,7 @@ export default async function PeoplePage({
   const selectedSeasonId =
     (requestedSeasonId && organizationSeasons.some((season) => season.id === requestedSeasonId)
       ? requestedSeasonId
-      : activeSeason?.id) ?? "";
+      : "") ?? "";
   const selectedProgramIdParam = readSearchParam(resolvedSearchParams, "programId");
   const selectedProgramId = organizationPrograms.some((program) => program.id === selectedProgramIdParam)
     ? selectedProgramIdParam
@@ -432,7 +432,7 @@ export default async function PeoplePage({
     lifecycleFilterParam === "all" ||
     Object.values(MemberLifecycleStatus).includes(lifecycleFilterParam as MemberLifecycleStatus)
       ? lifecycleFilterParam
-      : "";
+      : "all";
   const assignmentFilter = resolveMemberAssignmentFilter(readSearchParam(resolvedSearchParams, "assignmentFilter"));
   const guardianFilterParam = readSearchParam(resolvedSearchParams, "guardianFilter");
   const guardianFilter =
@@ -564,17 +564,17 @@ export default async function PeoplePage({
   return (
     <section className="space-y-4">
       <PageHeader
-        title="People"
-        description="Manage athletes, guardians, coaches, and other personnel in your organization."
+        title="Members"
+        description="Manage member lifecycle, roster assignments, and guardian relationships."
         actions={
           <Link href="/people/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-            New person
+            New member
           </Link>
         }
       />
 
       {people.length === 0 ? (
-        <EmptyState message="No people have been added yet." actionHref="/people/new" actionLabel="Add the first person" />
+        <EmptyState message="No members have been added yet." actionHref="/people/new" actionLabel="Add the first member" />
       ) : (
         <div className="space-y-4">
           <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
@@ -586,11 +586,6 @@ export default async function PeoplePage({
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Status mix in current scope: {lifecycleStatusSummary}.
             </p>
-            {!lifecycleFilter ? (
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                Default roster view shows Active + Pending members only.
-              </p>
-            ) : null}
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Members needing attention in current scope: {membersNeedingAttention}.
             </p>
@@ -614,12 +609,10 @@ export default async function PeoplePage({
                 Season
               </label>
               <select id="seasonId" name="seasonId" defaultValue={selectedSeasonId} className="w-full rounded-md border px-2 py-1 text-sm">
-                {activeSeason ? (
-                  <option value={activeSeason.id}>{activeSeason.name} (active default)</option>
-                ) : (
-                  <option value="">All seasons</option>
-                )}
                 <option value="">All seasons</option>
+                {activeSeason ? (
+                  <option value={activeSeason.id}>{activeSeason.name} (active)</option>
+                ) : null}
                 {organizationSeasons
                   .filter((season) => season.id !== activeSeason?.id)
                   .map((season) => (
@@ -673,8 +666,8 @@ export default async function PeoplePage({
                 Lifecycle status
               </label>
               <select id="lifecycleFilter" name="lifecycleFilter" defaultValue={lifecycleFilter} className="w-full rounded-md border px-2 py-1 text-sm">
-                <option value="">Default operational view (Active + Pending)</option>
                 <option value="all">All statuses</option>
+                <option value="">Active + Prospect only</option>
                 {Object.values(MemberLifecycleStatus).map((status) => (
                   <option key={status} value={status}>
                     {MEMBER_LIFECYCLE_STATUS_LABELS[status]}
@@ -717,7 +710,7 @@ export default async function PeoplePage({
               <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
                 Apply filters
               </button>
-              <Link href={buildPeopleViewHref({ seasonId: activeSeason?.id })} className="rounded-md border px-3 py-1.5 text-sm">
+              <Link href={buildPeopleViewHref({})} className="rounded-md border px-3 py-1.5 text-sm">
                 Reset
               </Link>
             </div>
