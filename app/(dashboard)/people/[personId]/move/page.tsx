@@ -3,6 +3,7 @@ import { RoleType } from "@prisma/client";
 import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { FormActions } from "@/components/dashboard/form-actions";
+import { MEMBEROPS_ROSTER_ROLE_TYPES } from "@/lib/member-ops";
 import {
   evaluatePersonOperationalContentAccess,
   evaluateStaffOnlyContentAccess,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { selectSeededOrCurrentSeason } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -172,7 +174,13 @@ export default async function MovePersonPage({
     | null = null;
   let programs: Array<{ id: string; name: string }> = [];
   let teams: Array<{ id: string; name: string; program: { id: string; name: string } }> = [];
-  let seasons: Array<{ id: string; name: string; program: { id: string; name: string } }> = [];
+  let seasons: Array<{
+    id: string;
+    name: string;
+    startDate: Date | null;
+    endDate: Date | null;
+    program: { id: string; name: string };
+  }> = [];
 
   try {
     [person, programs, teams, seasons] = await Promise.all([
@@ -286,6 +294,8 @@ export default async function MovePersonPage({
         select: {
           id: true,
           name: true,
+          startDate: true,
+          endDate: true,
           program: {
             select: {
               id: true,
@@ -358,10 +368,19 @@ export default async function MovePersonPage({
     readSearchParam(resolvedSearchParams, "programId") || fallbackMembership?.team.program.id || programs[0]?.id || "";
   const teamsForSelectedProgram = teams.filter((team) => team.program.id === selectedProgramId);
   const seasonsForSelectedProgram = seasons.filter((season) => season.program.id === selectedProgramId);
+  const currentSeasonForSelectedProgram = selectSeededOrCurrentSeason(seasonsForSelectedProgram);
   const selectedTeamId =
     readSearchParam(resolvedSearchParams, "teamId") || fallbackMembership?.team.id || teamsForSelectedProgram[0]?.id || "";
   const selectedSeasonId =
-    readSearchParam(resolvedSearchParams, "seasonId") || fallbackMembership?.season.id || seasonsForSelectedProgram[0]?.id || "";
+    readSearchParam(resolvedSearchParams, "seasonId") ||
+    currentSeasonForSelectedProgram?.id ||
+    fallbackMembership?.season.id ||
+    "";
+  const seasonSelectionHelpText = currentSeasonForSelectedProgram
+    ? `Season defaults to current season: ${currentSeasonForSelectedProgram.name}.`
+    : seasonsForSelectedProgram.length > 0
+      ? "Select a season to continue."
+      : "No seasons are currently available for the selected program.";
   const selectedRosterRole =
     (readSearchParam(resolvedSearchParams, "rosterRole") || fallbackMembership?.rosterRole || RoleType.ATHLETE) as RoleType;
   const selectedSourceMembershipId =
@@ -483,7 +502,7 @@ export default async function MovePersonPage({
             defaultValue={selectedRosterRole}
             className="w-full rounded-md border px-3 py-2 text-sm"
           >
-            {Object.values(RoleType).map((roleType) => (
+            {MEMBEROPS_ROSTER_ROLE_TYPES.map((roleType) => (
               <option key={roleType} value={roleType}>
                 {formatEnumLabel(roleType)}
               </option>
@@ -494,6 +513,9 @@ export default async function MovePersonPage({
           ) : null}
         </div>
 
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          {seasonSelectionHelpText}
+        </p>
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           This workflow preserves lifecycle status, role assignments, guardian relationships, and existing operational records.
         </p>

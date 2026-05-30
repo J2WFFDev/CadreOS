@@ -1,5 +1,6 @@
-import { MemberLifecycleStatus } from "@prisma/client";
+import { MemberLifecycleStatus, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -7,21 +8,18 @@ import {
   getStringField,
   isPermissionDeniedError,
   isSchemaUnavailableError,
-  memberLifecycleActivateSchema,
   requirePhase1CMutationPermission,
 } from "@/lib/workflows";
 
-const ACTIVATABLE_STATUSES = new Set<MemberLifecycleStatus>([
-  MemberLifecycleStatus.PROSPECT,
-  MemberLifecycleStatus.INACTIVE,
-  MemberLifecycleStatus.ALUMNI,
-]);
+const lifecycleStatusUpdateSchema = z.object({
+  lifecycleStatus: z.nativeEnum(MemberLifecycleStatus, {
+    message: "Lifecycle status must use an existing status value.",
+  }),
+});
 
 function buildErrorRedirectUrl(requestUrl: string, personId: string, error: string) {
   const url = new URL(`/people/${personId}`, requestUrl);
-
-  url.searchParams.set("activateError", error);
-
+  url.searchParams.set("lifecycleError", error);
   return url;
 }
 
@@ -32,14 +30,13 @@ export async function POST(
   const { personId } = await params;
   const scope = await getOrganizationScope();
   const formData = await request.formData();
-
   const values = {
-    confirm: getStringField(formData, "confirm"),
+    lifecycleStatus: getStringField(formData, "lifecycleStatus"),
   };
 
   if (!scope.databaseReady) {
     return NextResponse.redirect(
-      buildErrorRedirectUrl(request.url, personId, scope.errorMessage ?? "Unable to activate member right now."),
+      buildErrorRedirectUrl(request.url, personId, scope.errorMessage ?? "Unable to update lifecycle status right now."),
       303,
     );
   }
@@ -52,30 +49,26 @@ export async function POST(
   }
   const organizationId = scope.organizationId;
 
-  const parsed = memberLifecycleActivateSchema.safeParse(values);
-
+  const parsed = lifecycleStatusUpdateSchema.safeParse(values);
   if (!parsed.success) {
     return NextResponse.redirect(
-      buildErrorRedirectUrl(request.url, personId, "Activation confirmation is required."),
+      buildErrorRedirectUrl(request.url, personId, "Select a valid lifecycle status."),
       303,
     );
   }
 
   try {
     await requirePhase1CMutationPermission({
-      organizationId: organizationId,
-      action: "person.activate",
+      organizationId,
+      action: "person.update",
     });
 
     const person = await db.person.findFirst({
       where: {
         id: personId,
-        organizationId: organizationId,
+        organizationId,
       },
-      select: {
-        id: true,
-        lifecycleStatus: true,
-      },
+      select: { id: true },
     });
 
     if (!person) {
@@ -85,29 +78,25 @@ export async function POST(
       );
     }
 
-    if (!ACTIVATABLE_STATUSES.has(person.lifecycleStatus)) {
-      return NextResponse.redirect(
-        buildErrorRedirectUrl(
-          request.url,
-          personId,
-          `This person cannot be activated from their current status (${person.lifecycleStatus}). Only Prospect, Inactive, or Alumni members can be activated.`,
-        ),
-        303,
-      );
-    }
-
     await db.person.update({
       where: {
-        id: personId,
-        organizationId: organizationId,
+        id: person.id,
+        organizationId,
       },
       data: {
-        lifecycleStatus: MemberLifecycleStatus.ACTIVE,
+        lifecycleStatus: parsed.data.lifecycleStatus,
       },
     });
 
     return NextResponse.redirect(new URL(`/people/${personId}`, request.url), 303);
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return NextResponse.redirect(
+        buildErrorRedirectUrl(request.url, personId, "Person not found in the selected organization."),
+        303,
+      );
+    }
+
     return NextResponse.redirect(
       buildErrorRedirectUrl(
         request.url,
@@ -115,8 +104,8 @@ export async function POST(
         isPermissionDeniedError(error)
           ? error.message
           : isSchemaUnavailableError(error)
-            ? "Database schema is not available yet. Run database setup before activating members."
-            : "Unable to activate member right now. Please try again.",
+            ? "Database schema is not available yet. Run database setup before updating lifecycle status."
+            : "Unable to update lifecycle status right now. Please try again.",
       ),
       303,
     );

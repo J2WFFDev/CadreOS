@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, RoleType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
@@ -135,6 +135,26 @@ export async function POST(
       },
       select: {
         id: true,
+        roles: {
+          where: {
+            organizationId,
+            roleType: RoleType.ATHLETE,
+          },
+          select: {
+            id: true,
+          },
+          take: 1,
+        },
+        roster: {
+          where: {
+            organizationId,
+            rosterRole: RoleType.ATHLETE,
+          },
+          select: {
+            id: true,
+          },
+          take: 1,
+        },
       },
     });
 
@@ -143,6 +163,23 @@ export async function POST(
         buildErrorRedirectUrl(request.url, personId, {
           values,
           error: "Person not found in the selected organization.",
+        }),
+        303,
+      );
+    }
+
+    const hasAthleteRoleOrAthleteRosterMembership =
+      person.roles.length > 0 ||
+      person.roster.length > 0;
+    if (hasAthleteRoleOrAthleteRosterMembership && parsed.data.rosterRole === RoleType.COACH) {
+      return NextResponse.redirect(
+        buildErrorRedirectUrl(request.url, personId, {
+          values,
+          fieldErrors: {
+            rosterRole: "Athletes cannot be assigned Coach roster role.",
+          },
+          error:
+            "Roster assignment blocked: this person is currently an Athlete and cannot be assigned Coach.",
         }),
         303,
       );
@@ -328,7 +365,10 @@ export async function POST(
               sourceMembershipId:
                 "Select the existing current-season membership to transition in place for this program.",
             },
-            error: `This person already has a ${season.name} membership in this program (${sameProgramSeasonMembership.team.name}).`,
+            error:
+              parsed.data.rosterRole === RoleType.ATHLETE
+                ? `Athlete duplicate blocked: this person already has a ${season.name} team membership in this program (${sameProgramSeasonMembership.team.name}).`
+                : `This person already has a ${season.name} membership in this program (${sameProgramSeasonMembership.team.name}).`,
           }),
           303,
         );
