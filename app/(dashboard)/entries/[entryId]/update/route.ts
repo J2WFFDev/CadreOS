@@ -4,9 +4,10 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import {
-  DECISION_CLASSIFICATION_VALUES,
-  DECISION_MATURITY_RESULT_VALUES,
   createEmptyDecisionEntryPayload,
+  normalizeDecisionClassification,
+  normalizeDecisionDateOnly,
+  normalizeDecisionMaturityResult,
   parseDecisionEntryPayload,
   parseDecisionParticipantNames,
   serializeDecisionEntryPayload,
@@ -30,11 +31,6 @@ const DECISION_FORM_FIELDS = [
   "maturityResult",
   "maturityReviewNotes",
 ] as const;
-
-function normalizeDateOnly(value: string): string | null {
-  const trimmed = value.trim();
-  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : null;
-}
 
 export async function POST(request: Request, { params }: { params: Promise<{ entryId: string }> }) {
   const { entryId } = await params;
@@ -127,14 +123,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   const rawDecisionMaker = String(formData.get("decisionMaker") ?? "").trim();
   const rawSupporters = String(formData.get("supporters") ?? "");
   const rawOpposition = String(formData.get("opposition") ?? "");
-  const rawDecisionClassification = String(formData.get("decisionClassification") ?? "")
-    .trim()
-    .toUpperCase();
+  const rawDecisionClassification = String(formData.get("decisionClassification") ?? "").trim();
   const rawDecisionDate = String(formData.get("decisionDate") ?? "").trim();
   const rawMaturityDate = String(formData.get("maturityDate") ?? "").trim();
-  const rawMaturityResult = String(formData.get("maturityResult") ?? "")
-    .trim()
-    .toUpperCase();
+  const rawMaturityResult = String(formData.get("maturityResult") ?? "").trim();
   const rawMaturityReviewNotes = String(formData.get("maturityReviewNotes") ?? "").trim();
 
   try {
@@ -241,31 +233,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       const payload =
         decisionPayloadRecord && !hasDecisionFormFields ? existingDecisionPayload : createEmptyDecisionEntryPayload();
 
-      if (hasDecisionFormFields || !decisionPayloadRecord) {
-        payload.decisionStatement = hasDecisionFormFields
-          ? rawDecisionStatement
-          : (title || entry.title);
-        payload.decisionDetails = hasDecisionFormFields
-          ? rawDecisionDetails
-          : (content.length > 0 ? content : (entry.content ?? ""));
+      const fallbackDecisionStatement = (title.length > 0 ? title : entry.title).trim() || "Untitled decision";
+      const fallbackDecisionDetails = content || entry.content || "";
+
+      if (hasDecisionFormFields) {
+        payload.decisionStatement = rawDecisionStatement;
+        payload.decisionDetails = rawDecisionDetails;
+      } else if (!decisionPayloadRecord) {
+        payload.decisionStatement = fallbackDecisionStatement;
+        payload.decisionDetails = fallbackDecisionDetails;
       }
 
       if (hasDecisionFormFields) {
         payload.decisionMaker = rawDecisionMaker;
         payload.supporters = parseDecisionParticipantNames(rawSupporters);
         payload.opposition = parseDecisionParticipantNames(rawOpposition);
-        payload.classification = DECISION_CLASSIFICATION_VALUES.includes(
-          rawDecisionClassification as (typeof DECISION_CLASSIFICATION_VALUES)[number],
-        )
-          ? (rawDecisionClassification as (typeof DECISION_CLASSIFICATION_VALUES)[number])
-          : null;
-        payload.decisionDate = normalizeDateOnly(rawDecisionDate);
-        payload.maturityDate = normalizeDateOnly(rawMaturityDate);
-        payload.maturityResult = DECISION_MATURITY_RESULT_VALUES.includes(
-          rawMaturityResult as (typeof DECISION_MATURITY_RESULT_VALUES)[number],
-        )
-          ? (rawMaturityResult as (typeof DECISION_MATURITY_RESULT_VALUES)[number])
-          : null;
+        payload.classification = normalizeDecisionClassification(rawDecisionClassification);
+        payload.decisionDate = normalizeDecisionDateOnly(rawDecisionDate);
+        payload.maturityDate = normalizeDecisionDateOnly(rawMaturityDate);
+        payload.maturityResult = normalizeDecisionMaturityResult(rawMaturityResult);
         payload.maturityReviewNotes = rawMaturityReviewNotes;
       }
 

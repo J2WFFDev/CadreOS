@@ -307,7 +307,9 @@ export default async function EntryDetailPage({
   const storedDecisionPayload = parseDecisionEntryPayload(decisionPayloadRecord?.payloadJson);
   const hasStoredDecisionPayload = Boolean(decisionPayloadRecord);
   const defaultDecisionStatement = hasStoredDecisionPayload ? storedDecisionPayload.decisionStatement : entry.title;
-  const defaultDecisionDetails = hasStoredDecisionPayload ? storedDecisionPayload.decisionDetails : (entry.content ?? "");
+  const defaultDecisionDetails = hasStoredDecisionPayload
+    ? storedDecisionPayload.decisionDetails
+    : (entry.content ?? "");
 
   return (
     <section className="space-y-6">

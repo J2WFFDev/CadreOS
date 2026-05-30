@@ -43,8 +43,8 @@ export function parseDecisionEntryPayload(payloadJson: string | null | undefined
     const parsed = JSON.parse(payloadJson) as Record<string, unknown> | null;
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return createEmptyDecisionEntryPayload();
 
-    const classification = asDecisionClassification(parsed.classification);
-    const maturityResult = asDecisionMaturityResult(parsed.maturityResult);
+    const classification = normalizeDecisionClassification(asOptionalString(parsed.classification));
+    const maturityResult = normalizeDecisionMaturityResult(asOptionalString(parsed.maturityResult));
 
     return {
       decisionStatement: asOptionalString(parsed.decisionStatement),
@@ -53,8 +53,8 @@ export function parseDecisionEntryPayload(payloadJson: string | null | undefined
       supporters: asNameList(parsed.supporters),
       opposition: asNameList(parsed.opposition),
       classification,
-      decisionDate: asDateOnly(parsed.decisionDate),
-      maturityDate: asDateOnly(parsed.maturityDate),
+      decisionDate: normalizeDecisionDateOnly(asOptionalString(parsed.decisionDate)),
+      maturityDate: normalizeDecisionDateOnly(asOptionalString(parsed.maturityDate)),
       maturityResult,
       maturityReviewNotes: asOptionalString(parsed.maturityReviewNotes),
     };
@@ -73,7 +73,7 @@ export function parseDecisionParticipantNames(input: string) {
   for (const line of input.split(/\r?\n/g)) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    const key = trimmed.toLocaleLowerCase();
+    const key = trimmed.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
     names.push(trimmed);
@@ -94,7 +94,7 @@ function asOptionalString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function asDateOnly(value: unknown) {
+export function normalizeDecisionDateOnly(value: string | null | undefined) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return DATE_ONLY_PATTERN.test(trimmed) ? trimmed : null;
@@ -108,7 +108,7 @@ function asNameList(value: unknown) {
     if (typeof item !== "string") continue;
     const trimmed = item.trim();
     if (!trimmed) continue;
-    const key = trimmed.toLocaleLowerCase();
+    const key = trimmed.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
     names.push(trimmed);
@@ -116,7 +116,7 @@ function asNameList(value: unknown) {
   return names;
 }
 
-function asDecisionClassification(value: unknown): DecisionClassificationValue | null {
+export function normalizeDecisionClassification(value: string | null | undefined): DecisionClassificationValue | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim().toUpperCase();
   return DECISION_CLASSIFICATION_VALUES.includes(normalized as DecisionClassificationValue)
@@ -124,7 +124,7 @@ function asDecisionClassification(value: unknown): DecisionClassificationValue |
     : null;
 }
 
-function asDecisionMaturityResult(value: unknown): DecisionMaturityResultValue | null {
+export function normalizeDecisionMaturityResult(value: string | null | undefined): DecisionMaturityResultValue | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim().toUpperCase();
   return DECISION_MATURITY_RESULT_VALUES.includes(normalized as DecisionMaturityResultValue)
