@@ -5,7 +5,6 @@ import {
   EntryType,
   EntryVisibility,
   InboxItemStatus,
-  NoteVisibility,
   TaskStatus,
 } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -19,11 +18,9 @@ import { ENTRY_ACTIVITY_ACTIONS, createOperationalEntry, linkEntryToObject, writ
 import { getOrganizationScope } from "@/lib/organization-context";
 import { requirePermission } from "@/lib/permissions";
 import {
-  getQuickCapturePreset,
   isQuickCaptureContextTargetType,
   normalizeQuickCapturePriority,
   resolveQuickCaptureDueDate,
-  resolveQuickCaptureEntryType,
 } from "@/lib/quick-capture";
 import { resolveActorPersonId } from "@/lib/user-account";
 
@@ -35,7 +32,6 @@ function buildQuickCaptureRedirectUrl(input: {
   values: {
     title: string;
     details: string;
-    captureType: string;
     priority: string;
     dueShortcut: string;
     assigneePersonId: string;
@@ -52,7 +48,6 @@ function buildQuickCaptureRedirectUrl(input: {
 
   url.searchParams.set("title", input.values.title);
   url.searchParams.set("details", input.values.details);
-  url.searchParams.set("captureType", input.values.captureType);
   url.searchParams.set("priority", input.values.priority);
   url.searchParams.set("dueShortcut", input.values.dueShortcut);
   url.searchParams.set("assigneePersonId", input.values.assigneePersonId);
@@ -119,8 +114,6 @@ export async function POST(request: Request) {
   const rawDetails = String(formData.get("details") ?? "").trim();
   const combinedInput = [rawTitle, rawDetails].filter(Boolean).join(" ").trim();
   const effectiveInput = rawInput || combinedInput;
-  const captureType = String(formData.get("captureType") ?? "").trim().toUpperCase();
-  const rawType = String(formData.get("entryType") ?? "AUTO").trim().toUpperCase();
   const rawPriority = String(formData.get("priority") ?? "").trim().toUpperCase();
   const rawDueShortcut = String(formData.get("dueShortcut") ?? "").trim().toUpperCase();
   const rawAssigneePersonId = String(formData.get("assigneePersonId") ?? "").trim();
@@ -130,7 +123,6 @@ export async function POST(request: Request) {
   const redirectValues = {
     title: rawTitle,
     details: rawDetails,
-    captureType,
     priority: rawPriority,
     dueShortcut: rawDueShortcut,
     assigneePersonId: rawAssigneePersonId,
@@ -185,33 +177,14 @@ export async function POST(request: Request) {
   }
 
   const parsed = parseQuickAddEntryInput(effectiveInput);
-  const resolvedType = resolveQuickCaptureEntryType({
-    captureType,
-    legacyEntryType: rawType,
-    inferredType: parsed.inferredType,
-  });
-  const entryType = EntryType[resolvedType];
-  if (!entryType) {
-    return NextResponse.redirect(
-      buildQuickCaptureRedirectUrl({
-        requestUrl: request.url,
-        returnTo,
-        values: redirectValues,
-        error: "Select a valid capture type.",
-        openQuickCapture: true,
-      }),
-      303,
-    );
-  }
-
-  const quickCapturePreset = getQuickCapturePreset(captureType);
+  const entryType = EntryType.TASK;
   const dueDateFromShortcut = resolveQuickCaptureDueDate(rawDueShortcut);
   const dueDate = dueDateFromShortcut ?? parsed.dueDate;
   const dueTime = dueDateFromShortcut ? null : parsed.dueTime;
   const priority = normalizeQuickCapturePriority(rawPriority, parsed.priority);
   const content = rawDetails || parsed.content;
   const title = rawTitle || parsed.title;
-  const tags = Array.from(new Set([...parsed.tags, ...(quickCapturePreset?.defaultTags ?? [])]));
+  const tags = Array.from(new Set(parsed.tags));
   const dueAt = mergeDueAt(dueDate, dueTime);
 
   const contextTarget = await resolveContextTarget({
@@ -227,7 +200,7 @@ export async function POST(request: Request) {
     await requirePermission({
       actorUserId: scope.auth.clerkUserId,
       organizationId: organizationId,
-      action: entryType === EntryType.TASK ? "task.create" : entryType === EntryType.NOTE ? "note.create" : "entry.create",
+      action: "task.create",
       teamId: scopedTeamId,
       eventId: scopedEventId,
     });
@@ -259,16 +232,10 @@ export async function POST(request: Request) {
     dueDate,
     contextTargetId: contextTarget?.targetId ?? null,
   });
-  const quickAddAction =
-    entryType === EntryType.TASK
-      ? ENTRY_ACTIVITY_ACTIONS.ENTRY_QUICK_ADD_TASK
-      : entryType === EntryType.NOTE
-        ? ENTRY_ACTIVITY_ACTIONS.ENTRY_QUICK_ADD_NOTE
-        : ENTRY_ACTIVITY_ACTIONS.ENTRY_QUICK_ADD_GENERIC;
+  const quickAddAction = ENTRY_ACTIVITY_ACTIONS.ENTRY_QUICK_ADD_TASK;
 
   try {
-    if (entryType === EntryType.TASK) {
-      const createdTask = await db.followUpTask.create({
+    const createdTask = await db.followUpTask.create({
       data: {
         organizationId: organizationId,
         title,
@@ -304,154 +271,7 @@ export async function POST(request: Request) {
       entryId: createdEntry.id,
       actorPersonId,
       action: quickAddAction,
-      metadata: { inferredType: parsed.inferredType, captureType, sourceTaskId: createdTask.id, assignedToPersonId },
-    });
-    if (assignedToPersonId) {
-      await writeEntryActivity({
-        organizationId: organizationId,
-        entryId: createdEntry.id,
-        actorPersonId,
-        action: ENTRY_ACTIVITY_ACTIONS.ENTRY_ASSIGNED,
-        metadata: { personId: assignedToPersonId, role: "OWNER", source: "quick_add" },
-      });
-    }
-
-    if (contextTarget) {
-      await linkEntryToObject({
-        organizationId: organizationId,
-        entryId: createdEntry.id,
-        targetType: contextTarget.targetType,
-        targetId: contextTarget.targetId,
-        createdByPersonId: actorPersonId,
-      });
-
-      await linkOperationalRecords({
-        organizationId: organizationId,
-        from: { nodeType: "ENTRY", nodeId: createdEntry.id },
-        to: { nodeType: mapEntryObjectLinkTargetToGraphNodeType(contextTarget.targetType), nodeId: contextTarget.targetId },
-        relationshipType: defaultContextRelationshipType(contextTarget.targetType),
-        createdByPersonId: actorPersonId,
-      });
-    }
-
-    if (shouldCreateInboxRoutingItem) {
-      await db.inboxRoutingItem.create({
-        data: {
-          organizationId: organizationId,
-          category: "ENTRY_CAPTURE",
-          subjectRefType: "ENTRY",
-          subjectRefId: createdEntry.id,
-          priority: inboxPriority,
-          status: InboxItemStatus.OPEN,
-          ownerPersonId: assignedToPersonId,
-          createdByPersonId: actorPersonId,
-        },
-      });
-    }
-
-      return NextResponse.redirect(new URL(`/entries/${createdEntry.id}`, request.url), 303);
-    }
-
-    if (entryType === EntryType.NOTE) {
-      const createdNote = await db.observationNote.create({
-      data: {
-        organizationId: organizationId,
-        authorPersonId: actorPersonId,
-        body: content,
-        visibility: NoteVisibility.STAFF_ONLY,
-      },
-      select: { id: true },
-    });
-
-    const createdEntry = await createOperationalEntry({
-      organizationId: organizationId,
-      type: EntryType.NOTE,
-      title,
-      content,
-      tags,
-      createdByPersonId: actorPersonId,
-      assignedToPersonId,
-      visibility: EntryVisibility.STAFF_ONLY,
-      status: EntryStatus.OPEN,
-      priority: EntryPriority[priority],
-      sourceNoteId: createdNote.id,
-    });
-
-    await writeEntryActivity({
-      organizationId: organizationId,
-      entryId: createdEntry.id,
-      actorPersonId,
-      action: quickAddAction,
-      metadata: { inferredType: parsed.inferredType, captureType, sourceNoteId: createdNote.id, assignedToPersonId },
-    });
-    if (assignedToPersonId) {
-      await writeEntryActivity({
-        organizationId: organizationId,
-        entryId: createdEntry.id,
-        actorPersonId,
-        action: ENTRY_ACTIVITY_ACTIONS.ENTRY_ASSIGNED,
-        metadata: { personId: assignedToPersonId, role: "OWNER", source: "quick_add" },
-      });
-    }
-
-    if (contextTarget) {
-      await linkEntryToObject({
-        organizationId: organizationId,
-        entryId: createdEntry.id,
-        targetType: contextTarget.targetType,
-        targetId: contextTarget.targetId,
-        createdByPersonId: actorPersonId,
-      });
-
-      await linkOperationalRecords({
-        organizationId: organizationId,
-        from: { nodeType: "ENTRY", nodeId: createdEntry.id },
-        to: { nodeType: mapEntryObjectLinkTargetToGraphNodeType(contextTarget.targetType), nodeId: contextTarget.targetId },
-        relationshipType: defaultContextRelationshipType(contextTarget.targetType),
-        createdByPersonId: actorPersonId,
-      });
-    }
-
-    if (shouldCreateInboxRoutingItem) {
-      await db.inboxRoutingItem.create({
-        data: {
-          organizationId: organizationId,
-          category: "ENTRY_CAPTURE",
-          subjectRefType: "ENTRY",
-          subjectRefId: createdEntry.id,
-          priority: inboxPriority,
-          status: InboxItemStatus.OPEN,
-          ownerPersonId: assignedToPersonId,
-          createdByPersonId: actorPersonId,
-        },
-      });
-    }
-
-      return NextResponse.redirect(new URL(`/entries/${createdEntry.id}`, request.url), 303);
-    }
-
-    const createdEntry = await createOperationalEntry({
-      organizationId: organizationId,
-      type: entryType,
-      title,
-      content,
-      tags,
-      createdByPersonId: actorPersonId,
-      assignedToPersonId,
-      visibility: EntryVisibility.STAFF_ONLY,
-      status: EntryStatus.OPEN,
-      priority: EntryPriority[priority],
-      dueDate,
-      dueTime,
-      timezone: "UTC",
-    });
-
-    await writeEntryActivity({
-      organizationId: organizationId,
-      entryId: createdEntry.id,
-      actorPersonId,
-      action: quickAddAction,
-      metadata: { inferredType: parsed.inferredType, captureType, entryType, assignedToPersonId },
+      metadata: { sourceTaskId: createdTask.id, assignedToPersonId, captureModel: "TASK_ONLY" },
     });
     if (assignedToPersonId) {
       await writeEntryActivity({

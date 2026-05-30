@@ -80,6 +80,26 @@ function summarizeEntryActivityMetadata(metadataJson: string | null) {
 }
 
 type SearchParams = Record<string, string | string[] | undefined>;
+const USER_SELECTABLE_ENTRY_TYPES: EntryType[] = [
+  EntryType.TASK,
+  EntryType.NOTE,
+  EntryType.EVENT,
+  EntryType.DECISION,
+  EntryType.HABIT,
+  EntryType.JOURNAL,
+];
+const ENTRY_TYPE_OPTION_LABELS: Record<EntryType, string> = {
+  [EntryType.TASK]: "Task",
+  [EntryType.NOTE]: "Note",
+  [EntryType.EVENT]: "Event",
+  [EntryType.DECISION]: "Decision",
+  [EntryType.HABIT]: "Habit",
+  [EntryType.JOURNAL]: "Journal Entry",
+  [EntryType.OBSERVATION]: "Observation",
+  [EntryType.FOLLOW_UP]: "Follow-up",
+  [EntryType.ACTIVITY]: "Activity",
+  [EntryType.READINESS_ITEM]: "Readiness Item",
+};
 
 export default async function EntryDetailPage({
   params,
@@ -197,19 +217,6 @@ export default async function EntryDetailPage({
     );
   }
 
-  if (entry.type === EntryType.JOURNAL) {
-    return (
-      <section className="space-y-4">
-        <BackLink href="/entries" label="All entries" />
-        <h2 className="text-2xl font-semibold tracking-tight">Journal entry</h2>
-        <ErrorMessage message="Journal entries are managed in the dedicated Journals workflow." />
-        <Link href={`/journals/${entry.id}`} className="inline-flex rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-          Open journal detail
-        </Link>
-      </section>
-    );
-  }
-
   const [relatedItems, objectLinkViews] = await Promise.all([
     listRelatedOperationalRecords({
       organizationId,
@@ -305,6 +312,16 @@ export default async function EntryDetailPage({
           Entry saved successfully.
         </div>
       ) : null}
+      {entry.type === EntryType.HABIT ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          Habit advanced recurrence and reporting workflows are partially supported and will expand in a future arc.
+        </div>
+      ) : null}
+      {entry.type === EntryType.JOURNAL ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          Journal prompt and assignment workflows are not yet enabled here; this entry type is currently basic detail/edit support.
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-4">
@@ -357,88 +374,91 @@ export default async function EntryDetailPage({
 
           {canEditEntry ? (
             <section className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-              <h3 className="font-semibold">Optional follow-up task</h3>
+              <h3 className="font-semibold">Advanced follow-up tasks</h3>
               <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                Use this only when you need a separate task. Most updates should stay on the entry itself.
+                Secondary workflow only. Keep primary updates on the entry unless a separate operational task is required.
               </p>
-              <form action={`/entries/${entry.id}/create-follow-up`} method="post" className="mt-3 space-y-3">
-                <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
-                <div className="space-y-1">
-                  <label htmlFor="followUpTitle" className="text-sm font-medium">
-                    Follow-up title
-                  </label>
-                  <input
-                    id="followUpTitle"
-                    name="title"
-                    defaultValue={`Follow up: ${entry.title}`.slice(0, 160)}
-                    className="w-full rounded-md border px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label htmlFor="followUpDescription" className="text-sm font-medium">
-                    Follow-up description
-                  </label>
-                  <textarea
-                    id="followUpDescription"
-                    name="description"
-                    defaultValue={entry.content ?? ""}
-                    rows={5}
-                    className="w-full rounded-md border px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="grid gap-3 sm:grid-cols-3">
+              <details className="mt-3 rounded-md border p-3">
+                <summary className="cursor-pointer text-sm font-medium">Create follow-up task</summary>
+                <form action={`/entries/${entry.id}/create-follow-up`} method="post" className="mt-3 space-y-3">
+                  <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
                   <div className="space-y-1">
-                    <label htmlFor="followUpAssigneePersonId" className="text-sm font-medium">
-                      Assignee
+                    <label htmlFor="followUpTitle" className="text-sm font-medium">
+                      Follow-up title
                     </label>
-                    <select
-                      id="followUpAssigneePersonId"
-                      name="assigneePersonId"
-                      defaultValue={entry.assignedToPersonId ?? ""}
-                      disabled={people.length === 0}
+                    <input
+                      id="followUpTitle"
+                      name="title"
+                      defaultValue={`Follow up: ${entry.title}`.slice(0, 160)}
                       className="w-full rounded-md border px-3 py-2 text-sm"
-                    >
-                      {people.length === 0 ? <option value="">No people available</option> : null}
-                      {people.map((person) => (
-                        <option key={person.id} value={person.id}>
-                          {person.firstName} {person.lastName}
-                        </option>
-                      ))}
-                    </select>
-                    {people.length === 0 ? (
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        Add a person before creating follow-up assignments.
-                      </p>
-                    ) : null}
+                    />
                   </div>
                   <div className="space-y-1">
-                    <label htmlFor="followUpDueAt" className="text-sm font-medium">
-                      Due date
+                    <label htmlFor="followUpDescription" className="text-sm font-medium">
+                      Follow-up description
                     </label>
-                    <input id="followUpDueAt" name="dueAt" type="datetime-local" className="w-full rounded-md border px-3 py-2 text-sm" />
+                    <textarea
+                      id="followUpDescription"
+                      name="description"
+                      defaultValue={entry.content ?? ""}
+                      rows={5}
+                      className="w-full rounded-md border px-3 py-2 text-sm"
+                    />
                   </div>
-                  <div className="space-y-1">
-                    <label htmlFor="followUpPriority" className="text-sm font-medium">
-                      Priority
-                    </label>
-                    <select id="followUpPriority" name="priority" defaultValue={entry.priority} className="w-full rounded-md border px-3 py-2 text-sm">
-                      {Object.values(EntryPriority).map((value) => (
-                        <option key={value} value={value}>
-                          {value}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-1">
+                      <label htmlFor="followUpAssigneePersonId" className="text-sm font-medium">
+                        Assignee
+                      </label>
+                      <select
+                        id="followUpAssigneePersonId"
+                        name="assigneePersonId"
+                        defaultValue={entry.assignedToPersonId ?? ""}
+                        disabled={people.length === 0}
+                        className="w-full rounded-md border px-3 py-2 text-sm"
+                      >
+                        {people.length === 0 ? <option value="">No people available</option> : null}
+                        {people.map((person) => (
+                          <option key={person.id} value={person.id}>
+                            {person.firstName} {person.lastName}
+                          </option>
+                        ))}
+                      </select>
+                      {people.length === 0 ? (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                          Add a person before creating follow-up assignments.
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="followUpDueAt" className="text-sm font-medium">
+                        Due date
+                      </label>
+                      <input id="followUpDueAt" name="dueAt" type="datetime-local" className="w-full rounded-md border px-3 py-2 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="followUpPriority" className="text-sm font-medium">
+                        Priority
+                      </label>
+                      <select id="followUpPriority" name="priority" defaultValue={entry.priority} className="w-full rounded-md border px-3 py-2 text-sm">
+                        {Object.values(EntryPriority).map((value) => (
+                          <option key={value} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                </div>
-                <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                  Create optional follow-up task
-                </button>
-              </form>
+                  <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                    Create follow-up task
+                  </button>
+                </form>
+              </details>
             </section>
           ) : null}
 
           <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-            <h3 className="text-sm font-semibold">Follow-ups</h3>
+            <h3 className="text-sm font-semibold">Follow-up tasks (secondary)</h3>
             {followUpEntries.length === 0 ? (
               <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No follow-ups created from this entry yet.</p>
             ) : (
@@ -515,9 +535,12 @@ export default async function EntryDetailPage({
                     Type
                   </label>
                   <select id="type" name="type" defaultValue={entry.type} className="w-full rounded-md border px-3 py-2 text-sm">
-                    {Object.values(EntryType).map((value) => (
+                    {USER_SELECTABLE_ENTRY_TYPES.includes(entry.type) ? null : (
+                      <option value={entry.type}>{ENTRY_TYPE_OPTION_LABELS[entry.type]} (legacy/internal)</option>
+                    )}
+                    {USER_SELECTABLE_ENTRY_TYPES.map((value) => (
                       <option key={value} value={value}>
-                        {value}
+                        {ENTRY_TYPE_OPTION_LABELS[value]}
                       </option>
                     ))}
                   </select>

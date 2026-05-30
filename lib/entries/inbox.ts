@@ -7,7 +7,7 @@ type InboxRoutingContext = {
 };
 
 export function shouldRouteEntryToInbox(context: InboxRoutingContext) {
-  if (context.dueDate) return false;
+  void context.dueDate;
   if (context.contextTargetId) return false;
   if (context.entryType === EntryType.EVENT) return false;
   return true;

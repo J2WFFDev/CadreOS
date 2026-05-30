@@ -8,21 +8,21 @@ import {
   resolveQuickCaptureEntryType,
 } from "../../lib/quick-capture";
 
-test("resolveQuickCaptureEntryType prefers capture preset when provided", () => {
+test("resolveQuickCaptureEntryType always resolves to task for quick capture", () => {
   const result = resolveQuickCaptureEntryType({
     captureType: "QUICK_DECISION",
     legacyEntryType: "NOTE",
     inferredType: "NOTE",
   });
 
-  assert.equal(result, "DECISION");
+  assert.equal(result, "TASK");
 });
 
-test("resolveQuickCaptureEntryType falls back to inferred type", () => {
+test("resolveQuickCaptureEntryType ignores legacy and inferred entry type values", () => {
   const result = resolveQuickCaptureEntryType({
     captureType: "",
-    legacyEntryType: "AUTO",
-    inferredType: "TASK",
+    legacyEntryType: "EVENT",
+    inferredType: "NOTE",
   });
 
   assert.equal(result, "TASK");
