@@ -1,10 +1,10 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
-import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
-const detailPagePath = path.join(process.cwd(), "app/(dashboard)/entries/[entryId]/page.tsx");
-const relationshipPanelPath = path.join(process.cwd(), "components/dashboard/relationship-panel.tsx");
+const detailPagePath = fileURLToPath(new URL("../../app/(dashboard)/entries/[entryId]/page.tsx", import.meta.url));
+const relationshipPanelPath = fileURLToPath(new URL("../../components/dashboard/relationship-panel.tsx", import.meta.url));
 
 function read(filePath: string) {
   return readFileSync(filePath, "utf8");
