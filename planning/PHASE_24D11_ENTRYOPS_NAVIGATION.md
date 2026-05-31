@@ -79,7 +79,7 @@ Combined empty-state covers both: "Nothing due or scheduled for today, and no ha
 
 ### Upcoming Page (`app/(dashboard)/upcoming/page.tsx`)
 
-Improved description: "Tasks, events, decisions, and journals due or scheduled in the next 14 days."
+Improved description: "Tasks, events, decisions, and journals due or scheduled in the next 7 days."
 Added "New task" quick-action button in the empty state.
 
 ### Inbox Page (`app/(dashboard)/entries/inbox/page.tsx`)
@@ -149,7 +149,7 @@ NAV-001 through NAV-020 manual checks:
 | NAV-011 | Inbox active link correct | `/entries/inbox` | "Inbox" highlighted; "All" NOT highlighted |
 | NAV-012 | Today shows habits section | `/today` | "Habits" section appears below work items |
 | NAV-013 | Today empty state covers both | `/today` | "Nothing due… and no habits to check in on" |
-| NAV-014 | Upcoming description | `/upcoming` | Mentions tasks, events, decisions, journals |
+| NAV-014 | Upcoming description | `/upcoming` | Mentions tasks, events, decisions, journals, next 7 days |
 | NAV-015 | Upcoming empty state | `/upcoming` | "New task" action button visible |
 | NAV-016 | Inbox title | `/entries/inbox` | Page heading is "Inbox" (not "Work Inbox") |
 | NAV-017 | My Work excludes done/archived | `/assigned` | Description says "excluding completed and archived work" |

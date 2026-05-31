@@ -27,7 +27,7 @@ function HabitsTodayList({ habits }: { habits: ActionableHabitItem[] }) {
         <li key={habit.id} className="flex items-center justify-between gap-3 border-b px-4 py-2.5 last:border-b-0 text-sm">
           <div className="flex items-center gap-2 min-w-0">
             {habit.completedToday ? (
-              <span className="inline-block h-4 w-4 shrink-0 rounded-full bg-green-500 text-white text-[10px] flex items-center justify-center" aria-label="Completed today">✓</span>
+              <span className="inline-block h-4 w-4 shrink-0 rounded-full bg-green-500 text-white text-[10px] flex items-center justify-center" aria-label="Completed today" aria-hidden="true">✓</span>
             ) : (
               <span className="inline-block h-4 w-4 shrink-0 rounded border border-zinc-300 dark:border-zinc-600" aria-hidden="true" />
             )}
