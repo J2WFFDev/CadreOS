@@ -47,10 +47,24 @@ export type FeedActivityItem = {
   id: string;
   entryId: string;
   entryTitle: string;
-  entryType: EntryType;
+  entryType: EntryType | "HABIT";
   action: string;
   actorPersonId: string | null;
   createdAt: Date;
+};
+
+/**
+ * Arc 24D.8: An actionable habit item for the My Work / Today section.
+ * Shown when a habit is ACTIVE and its schedule says it should be acted on today.
+ */
+export type ActionableHabitItem = {
+  id: string;
+  title: string;
+  frequency: string | null;
+  trackingMode: string | null;
+  targetCount: number | null;
+  targetUnit: string | null;
+  completedToday: boolean;
 };
 
 // ── Query context ───────────────────────────────────────────────────────────
@@ -90,4 +104,6 @@ export type OperationalFeedResult = {
   assigned: FeedEntryItem[];
   upcoming: FeedEntryItem[];
   recentActivity: FeedActivityItem[];
+  /** Arc 24D.8: Actionable habits for today's My Work section. */
+  habitsToday: ActionableHabitItem[];
 };

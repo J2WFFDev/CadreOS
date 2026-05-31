@@ -125,6 +125,47 @@ export default async function CreateHabitPage() {
         </div>
 
         <fieldset className="space-y-3 rounded-md border p-4">
+          <legend className="px-1 text-sm font-medium">Tracking mode</legend>
+
+          <div className="space-y-1">
+            <label htmlFor="trackingMode" className="block text-sm font-medium">How is completion tracked?</label>
+            <select
+              id="trackingMode"
+              name="trackingMode"
+              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
+            >
+              <option value="CHECKOFF">Checkoff — mark as done</option>
+              <option value="COUNT">Count — track a numeric value</option>
+              <option value="NOTES">Notes — log a free-text entry</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label htmlFor="targetCount" className="block text-sm font-medium">Target count <span className="text-zinc-400">(optional, Count mode)</span></label>
+              <input
+                id="targetCount"
+                name="targetCount"
+                type="number"
+                min={1}
+                placeholder="e.g. 10"
+                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="targetUnit" className="block text-sm font-medium">Unit <span className="text-zinc-400">(optional, e.g. reps, minutes)</span></label>
+              <input
+                id="targetUnit"
+                name="targetUnit"
+                type="text"
+                placeholder="e.g. reps"
+                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
+              />
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset className="space-y-3 rounded-md border p-4">
           <legend className="px-1 text-sm font-medium">Recurrence / Cadence <span className="text-zinc-400">(optional)</span></legend>
 
           <div className="space-y-1">

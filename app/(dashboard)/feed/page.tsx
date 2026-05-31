@@ -5,7 +5,7 @@ import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { aggregateOperationalFeed } from "@/lib/operational-feed";
 import { formatDueDate, isOverdueFeedEntry, labelForActivityAction, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
-import type { FeedActivityItem, FeedEntryItem } from "@/lib/operational-feed/types";
+import type { ActionableHabitItem, FeedActivityItem, FeedEntryItem } from "@/lib/operational-feed/types";
 import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -82,6 +82,45 @@ function FeedTable({
   );
 }
 
+/** Arc 24D.8: Renders actionable habits for today's My Work section. */
+function HabitsTodayList({ habits }: { habits: ActionableHabitItem[] }) {
+  if (habits.length === 0) {
+    return <p className="text-sm text-zinc-500 dark:text-zinc-400">No actionable habits today.</p>;
+  }
+
+  return (
+    <ul className="space-y-1 rounded-lg border bg-white dark:bg-zinc-900">
+      {habits.map((habit) => (
+        <li key={habit.id} className="flex items-center justify-between gap-3 border-b px-4 py-2.5 last:border-b-0 text-sm">
+          <div className="flex items-center gap-2 min-w-0">
+            {habit.completedToday ? (
+              <span className="inline-block h-4 w-4 shrink-0 rounded-full bg-green-500 text-white text-[10px] flex items-center justify-center" aria-label="Completed today">✓</span>
+            ) : (
+              <span className="inline-block h-4 w-4 shrink-0 rounded border border-zinc-300 dark:border-zinc-600" aria-hidden="true" />
+            )}
+            <Link href={`/habits/${habit.id}`} className="underline truncate font-medium text-zinc-700 dark:text-zinc-300">
+              {habit.title}
+            </Link>
+            {habit.frequency ? (
+              <span className="text-xs text-zinc-400">{habit.frequency.charAt(0) + habit.frequency.slice(1).toLowerCase()}</span>
+            ) : null}
+          </div>
+          {!habit.completedToday ? (
+            <form method="POST" action={`/habits/${habit.id}/check-in`} className="shrink-0">
+              <input type="hidden" name="completedOn" value={new Date().toISOString().slice(0, 10)} />
+              <button type="submit" className="rounded-md border px-2 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                Check in
+              </button>
+            </form>
+          ) : (
+            <span className="text-xs text-green-600 dark:text-green-400 shrink-0">Done</span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function ActivityFeed({ items }: { items: FeedActivityItem[] }) {
   if (items.length === 0) {
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">No recent activity.</p>;
@@ -97,7 +136,13 @@ function ActivityFeed({ items }: { items: FeedActivityItem[] }) {
           <span className="font-medium text-zinc-700 dark:text-zinc-300">{labelForActivityAction(item.action)}</span>
           <span className="text-zinc-500">—</span>
           <Link
-            href={item.entryType === "JOURNAL" ? `/journals/${item.entryId}` : `/entries/${item.entryId}`}
+            href={
+              item.entryType === "HABIT"
+                ? `/habits/${item.entryId}`
+                : item.entryType === "JOURNAL"
+                  ? `/journals/${item.entryId}`
+                  : `/entries/${item.entryId}`
+            }
             className="underline text-zinc-700 dark:text-zinc-300 truncate"
           >
             {item.entryTitle}
@@ -203,6 +248,14 @@ export default async function FeedPage() {
           showType
           emptyMessage="Nothing overdue or due today."
         />
+      </div>
+
+      {/* Arc 24D.8: Habits My Work section */}
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Habits Today
+        </h2>
+        <HabitsTodayList habits={feed.habitsToday} />
       </div>
 
       <div className="space-y-2">

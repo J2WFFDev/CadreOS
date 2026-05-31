@@ -1,5 +1,5 @@
 /**
- * Arc 23D — Habit Model, Recurrence, and Completion Tracking
+ * Arc 23D / Arc 24D.8 — Habit Model, Recurrence, and Completion Tracking
  *
  * Authorization helpers for the Habit, HabitSchedule, and HabitCompletion models.
  * These are pure functions — no DB dependencies — and are fully testable.
@@ -157,7 +157,7 @@ export function canEditHabit(context: HabitAccessContext, habit: HabitRecord): b
   return false;
 }
 
-/** Admin or the creator can archive a habit. */
+/** Admin or the creator can archive a habit that isn't already archived. */
 export function canArchiveHabit(context: HabitAccessContext, habit: HabitRecord): boolean {
   if (!context.actorPersonId) return false;
   if (habit.status === HabitStatus.ARCHIVED) return false;
@@ -166,10 +166,11 @@ export function canArchiveHabit(context: HabitAccessContext, habit: HabitRecord)
   return false;
 }
 
-/** Admin or the creator can pause/resume a habit. */
+/** Admin or the creator can pause/resume an active or paused habit. COMPLETED/ARCHIVED habits cannot be paused. */
 export function canPauseHabit(context: HabitAccessContext, habit: HabitRecord): boolean {
   if (!context.actorPersonId) return false;
   if (habit.status === HabitStatus.ARCHIVED) return false;
+  if (habit.status === HabitStatus.COMPLETED) return false;
   if (hasHabitAdminAccess(context)) return true;
   if (habit.createdByPersonId === context.actorPersonId) return true;
   return false;
@@ -179,12 +180,39 @@ export function canPauseHabit(context: HabitAccessContext, habit: HabitRecord): 
  * Habit check-in is allowed for:
  * - the habit's own athlete
  * - org admin/director (on behalf of athlete)
+ * Only ACTIVE habits can receive check-ins.
  */
 export function canCheckInHabit(context: HabitAccessContext, habit: HabitRecord): boolean {
   if (!context.actorPersonId) return false;
   if (habit.status !== HabitStatus.ACTIVE) return false;
   if (habit.athletePersonId === context.actorPersonId) return true;
   if (hasHabitAdminAccess(context)) return true;
+  return false;
+}
+
+/**
+ * Arc 24D.8: Complete the habit lifecycle (mark the habit itself as COMPLETED).
+ * Distinct from completing an occurrence/check-in.
+ * Only ACTIVE or PAUSED habits can be lifecycle-completed.
+ */
+export function canCompleteHabit(context: HabitAccessContext, habit: HabitRecord): boolean {
+  if (!context.actorPersonId) return false;
+  if (habit.status === HabitStatus.ARCHIVED) return false;
+  if (habit.status === HabitStatus.COMPLETED) return false;
+  if (hasHabitAdminAccess(context)) return true;
+  if (habit.createdByPersonId === context.actorPersonId) return true;
+  return false;
+}
+
+/**
+ * Arc 24D.8: Restore an archived or completed habit back to ACTIVE.
+ * Only admins or the original creator can restore.
+ */
+export function canRestoreHabit(context: HabitAccessContext, habit: HabitRecord): boolean {
+  if (!context.actorPersonId) return false;
+  if (habit.status !== HabitStatus.ARCHIVED && habit.status !== HabitStatus.COMPLETED) return false;
+  if (hasHabitAdminAccess(context)) return true;
+  if (habit.createdByPersonId === context.actorPersonId) return true;
   return false;
 }
 

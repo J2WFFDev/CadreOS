@@ -17,6 +17,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
     where: { id: habitId, organizationId: scope.organizationId },
     select: {
       id: true,
+      title: true,
       athletePersonId: true,
       assignedToTeamId: true,
       createdByPersonId: true,
@@ -38,6 +39,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
   const formData = await request.formData();
   const completedOnRaw = String(formData.get("completedOn") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim().slice(0, MAX_CHECKIN_NOTE_LENGTH) || null;
+  const countValueRaw = String(formData.get("countValue") ?? "").trim();
+  const countValue = countValueRaw ? parseInt(countValueRaw, 10) || null : null;
 
   if (!completedOnRaw) {
     return NextResponse.redirect(new URL(`/habits/${habitId}`, request.url), 303);
@@ -54,6 +57,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
         athletePersonId: habit.athletePersonId,
         completedOn,
         note,
+        completedBy: scope.auth.personId,
+        countValue,
       },
     });
   } catch (error: unknown) {
@@ -68,6 +73,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
     }
     throw error;
   }
+
+  // Update lastCompletedAt on the habit and write a HabitActivity record.
+  await Promise.all([
+    db.habit.update({
+      where: { id: habitId },
+      data: { lastCompletedAt: completedOn },
+    }),
+    db.habitActivity.create({
+      data: {
+        organizationId: scope.organizationId,
+        habitId,
+        action: "habit.checked_in",
+        actorPersonId: scope.auth.personId,
+      },
+    }),
+  ]);
 
   return NextResponse.redirect(new URL(`/habits/${habitId}`, request.url), 303);
 }

@@ -3,7 +3,12 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { canCreateHabit, resolveHabitAccessContext } from "@/lib/habits/access";
-import { MAX_HABIT_DESCRIPTION_LENGTH, MAX_HABIT_TITLE_LENGTH, normalizeCompletedOn } from "@/lib/habits/policy";
+import {
+  MAX_HABIT_DESCRIPTION_LENGTH,
+  MAX_HABIT_TITLE_LENGTH,
+  normalizeCompletedOn,
+  normalizeTrackingMode,
+} from "@/lib/habits/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 function normalizeFrequency(raw: string): HabitFrequency | null {
@@ -38,6 +43,9 @@ export async function POST(request: Request) {
   const daysOfWeek = String(formData.get("daysOfWeek") ?? "").trim() || null;
   const startDateRaw = String(formData.get("startDate") ?? "").trim();
   const endDateRaw = String(formData.get("endDate") ?? "").trim();
+  const trackingModeRaw = String(formData.get("trackingMode") ?? "").trim();
+  const targetCountRaw = String(formData.get("targetCount") ?? "").trim();
+  const targetUnit = String(formData.get("targetUnit") ?? "").trim() || null;
 
   if (!title || !athletePersonId) {
     return NextResponse.redirect(new URL("/habits/create", request.url), 303);
@@ -66,6 +74,8 @@ export async function POST(request: Request) {
   const frequency = normalizeFrequency(frequencyRaw);
   const startDate = startDateRaw ? new Date(startDateRaw) : null;
   const endDate = endDateRaw ? new Date(endDateRaw) : null;
+  const trackingMode = normalizeTrackingMode(trackingModeRaw);
+  const targetCount = targetCountRaw ? parseInt(targetCountRaw, 10) || null : null;
 
   const habit = await db.habit.create({
     data: {
@@ -75,6 +85,9 @@ export async function POST(request: Request) {
       athletePersonId,
       assignedToTeamId,
       createdByPersonId: scope.auth.personId,
+      trackingMode: trackingMode ?? undefined,
+      targetCount,
+      targetUnit,
       ...(frequency && startDate
         ? {
             schedules: {
@@ -89,6 +102,15 @@ export async function POST(request: Request) {
         : {}),
     },
     select: { id: true },
+  });
+
+  await db.habitActivity.create({
+    data: {
+      organizationId: scope.organizationId,
+      habitId: habit.id,
+      action: "habit.created",
+      actorPersonId: scope.auth.personId,
+    },
   });
 
   return NextResponse.redirect(new URL(`/habits/${habit.id}`, request.url), 303);

@@ -103,6 +103,9 @@ const ACTIVITY_ACTION_LABELS: Record<string, string> = {
   "habit.paused": "Habit paused",
   "habit.resumed": "Habit resumed",
   "habit.checked_in": "Habit check-in recorded",
+  // Arc 24D.8: Additional habit lifecycle actions
+  "habit.completed": "Habit completed",
+  "habit.restored": "Habit restored",
 };
 
 export function labelForActivityAction(action: string): string {
