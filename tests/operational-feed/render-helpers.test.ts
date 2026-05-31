@@ -4,6 +4,7 @@ import test from "node:test";
 import type { EntryPriority, EntryStatus, EntryType } from "@prisma/client";
 
 import {
+  describeActivityAction,
   formatDueDate,
   hrefForActivityItem,
   isOverdueFeedEntry,
@@ -98,6 +99,28 @@ test("labelForActivityAction returns human-readable labels for known actions", (
 
 test("labelForActivityAction falls back to raw action string for unknown actions", () => {
   assert.equal(labelForActivityAction("custom.action.x"), "custom.action.x");
+});
+
+test("describeActivityAction appends nouns only for verb overrides", () => {
+  assert.equal(describeActivityAction("entry.created", "TASK"), "Created task");
+  assert.equal(describeActivityAction("entry.quick_add.task", "TASK"), "Captured task");
+});
+
+test("describeActivityAction keeps full labels unchanged when no override exists", () => {
+  assert.equal(describeActivityAction("entry.quick_add.note", "NOTE"), "Quick-added note");
+  assert.equal(describeActivityAction("journal.draft_updated", "JOURNAL"), "Journal draft updated");
+});
+
+test("describeActivityAction avoids duplicate nouns for note and journal labels", () => {
+  assert.equal(describeActivityAction("entry.quick_add.note", "NOTE"), "Quick-added note");
+  assert.equal(describeActivityAction("journal.draft_updated", "JOURNAL"), "Journal draft updated");
+});
+
+test("describeActivityAction keeps habit occurrence, task, decision, and event language readable", () => {
+  assert.equal(describeActivityAction("habit.checked_in", "HABIT_ACTIVITY"), "Completed habit occurrence");
+  assert.equal(describeActivityAction("entry.updated", "TASK"), "Updated task");
+  assert.equal(describeActivityAction("entry.updated", "DECISION"), "Updated decision");
+  assert.equal(describeActivityAction("entry.updated", "EVENT"), "Updated event");
 });
 
 test("hrefForActivityItem routes standalone habit activity to the habit detail page", () => {

@@ -7,9 +7,11 @@
  * exported for testing. Async DB functions are the runtime API.
  */
 
-import { EntryStatus, EntryType, HabitFrequency, HabitStatus, InboxItemStatus } from "@prisma/client";
+import { EntryStatus, EntryType, HabitFrequency, HabitStatus, InboxItemStatus, type Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { parseDecisionEntryPayload } from "@/lib/entries/decision-payload";
+import { parseEventEntryPayload } from "@/lib/entries/event-payload";
 import {
   canCheckInHabit,
   canReadHabit,
@@ -19,7 +21,7 @@ import {
 } from "@/lib/habits/access";
 import { deriveSafeHabitActivityText, isHabitActionableToday } from "@/lib/habits/policy";
 import { deriveSafeJournalActivityText } from "@/lib/journals/policy";
-import { ACTIVE_FEED_STATUSES, ACTIVE_OPERATIONAL_TYPES, DEFAULT_UPCOMING_DAYS } from "./types";
+import { ACTIVE_FEED_STATUSES, DEFAULT_UPCOMING_DAYS } from "./types";
 import type {
   ActionableHabitItem,
   FeedActivityItem,
@@ -84,22 +86,242 @@ function isActionableJournal(status: EntryStatus) {
   return status === EntryStatus.IN_PROGRESS;
 }
 
-function isActionableMyWorkEntry(
-  entry: FeedEntryItem,
-  options: { requireScheduledSignalForEventAndDecision: boolean },
-) {
-  if (entry.type === EntryType.JOURNAL) {
-    return isActionableJournal(entry.status);
+const FEED_ENTRY_ACTIONABLE_SELECT = {
+  ...FEED_ENTRY_SELECT,
+  startDate: true,
+  endDate: true,
+  typePayloads: {
+    where: { entryType: { in: [EntryType.EVENT, EntryType.DECISION] } },
+    orderBy: { updatedAt: "desc" },
+    select: { entryType: true, payloadJson: true },
+    take: 2,
+  },
+} satisfies Prisma.EntrySelect;
+
+type FeedEntryQueryRow = FeedEntryItem & {
+  startDate: Date | null;
+  endDate: Date | null;
+  typePayloads: Array<{
+    entryType: EntryType;
+    payloadJson: string;
+  }>;
+};
+type EntryDateWindow = { from: Date; to: Date } | { before: Date } | null;
+
+const EVENT_PAYLOAD_DATE_KEYS = ['"startDateTimeLocal":"', '"endDateTimeLocal":"'] as const;
+const DECISION_PAYLOAD_DATE_KEYS = ['"maturityDate":"', '"decisionDate":"'] as const;
+
+function parseDateOnlyToUtc(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  return new Date(`${value}T00:00:00.000Z`);
+}
+
+function parseDateTimeLocalToUtcDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const dateOnly = value.slice(0, 10);
+  return parseDateOnlyToUtc(dateOnly);
+}
+
+function payloadJsonForEntryType(entry: FeedEntryQueryRow, entryType: EntryType): string | null {
+  return entry.typePayloads.find((payload) => payload.entryType === entryType)?.payloadJson ?? null;
+}
+
+function eventPayloadScheduleDate(payloadJson: string | null): Date | null {
+  const payload = parseEventEntryPayload(payloadJson);
+  return parseDateTimeLocalToUtcDate(payload.startDateTimeLocal) ?? parseDateTimeLocalToUtcDate(payload.endDateTimeLocal);
+}
+
+function decisionPayloadScheduleDate(payloadJson: string | null): Date | null {
+  const payload = parseDecisionEntryPayload(payloadJson);
+  return parseDateOnlyToUtc(payload.maturityDate) ?? parseDateOnlyToUtc(payload.decisionDate);
+}
+
+function dateMatchesWindow(date: Date | null, window: EntryDateWindow): boolean {
+  if (!date) return false;
+  if (!window) return true;
+  if ("before" in window) return date < window.before;
+  return date >= window.from && date < window.to;
+}
+
+function hasEventScheduleSignal(entry: FeedEntryQueryRow, window: EntryDateWindow): boolean {
+  return hasEventScheduleSignalForMyWork(
+    {
+      dueDate: entry.dueDate,
+      startDate: entry.startDate,
+      endDate: entry.endDate,
+      eventPayloadJson: payloadJsonForEntryType(entry, EntryType.EVENT),
+    },
+    window,
+  );
+}
+
+function hasDecisionScheduleSignal(entry: FeedEntryQueryRow, window: EntryDateWindow): boolean {
+  return hasDecisionScheduleSignalForMyWork(
+    {
+      dueDate: entry.dueDate,
+      decisionPayloadJson: payloadJsonForEntryType(entry, EntryType.DECISION),
+    },
+    window,
+  );
+}
+
+export function hasEventScheduleSignalForMyWork(
+  input: {
+    dueDate: Date | null;
+    startDate: Date | null;
+    endDate: Date | null;
+    eventPayloadJson: string | null;
+  },
+  window: EntryDateWindow,
+): boolean {
+  if (
+    dateMatchesWindow(input.dueDate, window) ||
+    dateMatchesWindow(input.startDate, window) ||
+    dateMatchesWindow(input.endDate, window)
+  ) {
+    return true;
   }
+  return dateMatchesWindow(eventPayloadScheduleDate(input.eventPayloadJson), window);
+}
+
+export function hasDecisionScheduleSignalForMyWork(
+  input: {
+    dueDate: Date | null;
+    decisionPayloadJson: string | null;
+  },
+  window: EntryDateWindow,
+): boolean {
+  if (dateMatchesWindow(input.dueDate, window)) return true;
+  return dateMatchesWindow(decisionPayloadScheduleDate(input.decisionPayloadJson), window);
+}
+
+function isActionableMyWorkEntry(
+  entry: FeedEntryQueryRow,
+  options: {
+    requireScheduledSignalForEventAndDecision: boolean;
+    dateWindow: EntryDateWindow;
+  },
+) {
+  const requiresDateWindow = Boolean(options.dateWindow);
 
   if (
-    options.requireScheduledSignalForEventAndDecision &&
-    (entry.type === EntryType.EVENT || entry.type === EntryType.DECISION)
+    entry.type === EntryType.TASK ||
+    entry.type === EntryType.FOLLOW_UP ||
+    entry.type === EntryType.READINESS_ITEM
   ) {
-    return Boolean(entry.dueDate);
+    return requiresDateWindow ? dateMatchesWindow(entry.dueDate, options.dateWindow) : true;
+  }
+
+  if (entry.type === EntryType.JOURNAL) {
+    return isActionableJournal(entry.status) && (requiresDateWindow ? dateMatchesWindow(entry.dueDate, options.dateWindow) : true);
+  }
+
+  if (entry.type === EntryType.EVENT) {
+    return options.requireScheduledSignalForEventAndDecision
+      ? hasEventScheduleSignal(entry, options.dateWindow)
+      : dateMatchesWindow(entry.dueDate, options.dateWindow);
+  }
+
+  if (entry.type === EntryType.DECISION) {
+    return options.requireScheduledSignalForEventAndDecision
+      ? hasDecisionScheduleSignal(entry, options.dateWindow)
+      : dateMatchesWindow(entry.dueDate, options.dateWindow);
   }
 
   return true;
+}
+
+function toFeedEntryItem(entry: FeedEntryQueryRow): FeedEntryItem {
+  return {
+    id: entry.id,
+    type: entry.type,
+    title: entry.title,
+    status: entry.status,
+    priority: entry.priority,
+    dueDate: entry.dueDate,
+    dueTime: entry.dueTime,
+    teamId: entry.teamId,
+    assignedToPersonId: entry.assignedToPersonId,
+    assignedTo: entry.assignedTo,
+    createdAt: entry.createdAt,
+  };
+}
+
+function buildDateWindowWhere(window: EntryDateWindow, payloadDateKeys?: readonly string[]): Prisma.EntryWhereInput | null {
+  if (!window) return null;
+
+  const dateConditions: Prisma.EntryWhereInput[] = [];
+  if ("before" in window) {
+    dateConditions.push(
+      { dueDate: { lt: window.before } },
+      { startDate: { lt: window.before } },
+      { endDate: { lt: window.before } },
+    );
+  } else {
+    dateConditions.push(
+      { dueDate: { gte: window.from, lt: window.to } },
+      { startDate: { gte: window.from, lt: window.to } },
+      { endDate: { gte: window.from, lt: window.to } },
+    );
+  }
+
+  if (payloadDateKeys?.length) {
+    for (const key of payloadDateKeys) {
+      dateConditions.push({
+        typePayloads: {
+          some: {
+            payloadJson: { contains: key },
+          },
+        },
+      });
+    }
+  }
+
+  return { OR: dateConditions };
+}
+
+export function buildActionableWhere(
+  window: EntryDateWindow,
+  requireScheduledSignalForEventAndDecision: boolean,
+): Prisma.EntryWhereInput {
+  const directDateWhere = buildDateWindowWhere(window);
+  const eventDateWhere = buildDateWindowWhere(
+    window,
+    requireScheduledSignalForEventAndDecision ? EVENT_PAYLOAD_DATE_KEYS : undefined,
+  );
+  const decisionDateWhere = buildDateWindowWhere(
+    window,
+    requireScheduledSignalForEventAndDecision ? DECISION_PAYLOAD_DATE_KEYS : undefined,
+  );
+
+  const branches: Prisma.EntryWhereInput[] = [
+    {
+      type: { in: [EntryType.TASK, EntryType.FOLLOW_UP, EntryType.READINESS_ITEM] },
+      ...(directDateWhere ?? {}),
+    },
+    {
+      type: EntryType.JOURNAL,
+      status: EntryStatus.IN_PROGRESS,
+      ...(directDateWhere ?? {}),
+    },
+  ];
+
+  if (eventDateWhere) {
+    branches.push({
+      type: EntryType.EVENT,
+      ...eventDateWhere,
+    });
+  }
+
+  if (decisionDateWhere) {
+    branches.push({
+      type: EntryType.DECISION,
+      ...decisionDateWhere,
+    });
+  }
+
+  return { OR: branches };
 }
 
 // ── DB query functions ──────────────────────────────────────────────────────
@@ -115,19 +337,23 @@ export async function queryTodayEntries(ctx: FeedQueryContext): Promise<FeedEntr
   const entries = await db.entry.findMany({
     where: {
       organizationId: ctx.organizationId,
-      type: { in: [...ACTIVE_OPERATIONAL_TYPES] },
       deletedAt: null,
       status: { in: [...ACTIVE_FEED_STATUSES] },
-      dueDate: { lt: tomorrowStart },
+      ...buildActionableWhere({ before: tomorrowStart }, true),
     },
     orderBy: [{ dueDate: "asc" }, { priority: "desc" }, { updatedAt: "desc" }],
-    select: FEED_ENTRY_SELECT,
+    select: FEED_ENTRY_ACTIONABLE_SELECT,
     take: 100,
-  });
+  }) as FeedEntryQueryRow[];
 
-  return entries.filter((entry) =>
-    isActionableMyWorkEntry(entry, { requireScheduledSignalForEventAndDecision: false }),
-  );
+  return entries
+    .filter((entry) =>
+      isActionableMyWorkEntry(entry, {
+        requireScheduledSignalForEventAndDecision: true,
+        dateWindow: { before: tomorrowStart },
+      }),
+    )
+    .map(toFeedEntryItem);
 }
 
 /**
@@ -145,28 +371,37 @@ export async function queryAssignedEntries(ctx: FeedQueryContext): Promise<FeedE
     where: {
       organizationId: ctx.organizationId,
       deletedAt: null,
-      type: { in: [...ACTIVE_OPERATIONAL_TYPES] },
       status: { in: [...ACTIVE_FEED_STATUSES] },
-      OR: [
-        { assignedToPersonId: ctx.actorPersonId },
+      AND: [
+        buildActionableWhere(null, true),
         {
-          assignments: {
-            some: {
-              personId: ctx.actorPersonId,
-              revokedAt: null,
+          OR: [
+            { assignedToPersonId: ctx.actorPersonId },
+            {
+              assignments: {
+                some: {
+                  personId: ctx.actorPersonId,
+                  revokedAt: null,
+                },
+              },
             },
-          },
+          ],
         },
       ],
     },
     orderBy: [{ dueDate: "asc" }, { priority: "desc" }, { updatedAt: "desc" }],
-    select: FEED_ENTRY_SELECT,
+    select: FEED_ENTRY_ACTIONABLE_SELECT,
     take: 50,
-  });
+  }) as FeedEntryQueryRow[];
 
-  return entries.filter((entry) =>
-    isActionableMyWorkEntry(entry, { requireScheduledSignalForEventAndDecision: true }),
-  );
+  return entries
+    .filter((entry) =>
+      isActionableMyWorkEntry(entry, {
+        requireScheduledSignalForEventAndDecision: true,
+        dateWindow: null,
+      }),
+    )
+    .map(toFeedEntryItem);
 }
 
 /**
@@ -215,19 +450,23 @@ export async function queryUpcomingEntries(ctx: FeedQueryContext): Promise<FeedE
   const entries = await db.entry.findMany({
     where: {
       organizationId: ctx.organizationId,
-      type: { in: [...ACTIVE_OPERATIONAL_TYPES] },
       deletedAt: null,
       status: { in: [EntryStatus.OPEN, EntryStatus.IN_PROGRESS] },
-      dueDate: { gte: from, lt: to },
+      ...buildActionableWhere({ from, to }, true),
     },
     orderBy: [{ dueDate: "asc" }, { priority: "desc" }],
-    select: FEED_ENTRY_SELECT,
+    select: FEED_ENTRY_ACTIONABLE_SELECT,
     take: 100,
-  });
+  }) as FeedEntryQueryRow[];
 
-  return entries.filter((entry) =>
-    isActionableMyWorkEntry(entry, { requireScheduledSignalForEventAndDecision: false }),
-  );
+  return entries
+    .filter((entry) =>
+      isActionableMyWorkEntry(entry, {
+        requireScheduledSignalForEventAndDecision: true,
+        dateWindow: { from, to },
+      }),
+    )
+    .map(toFeedEntryItem);
 }
 
 /**

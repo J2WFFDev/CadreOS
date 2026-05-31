@@ -25,6 +25,7 @@ import {
   normalizeEventTimezone,
   parseEventEntryPayload,
 } from "@/lib/entries/event-payload";
+import { readFirstSearchParam, shouldShowQuickCaptureSuccessBanner } from "@/lib/entries/entry-detail-query-state";
 import {
   JOURNAL_PAYLOAD_VISIBILITY_VALUES,
   type JournalPayloadVisibility,
@@ -321,10 +322,10 @@ export default async function EntryDetailPage({
 }) {
   const { entryId } = await params;
   const resolvedSearchParams = await searchParams;
-  const routeError = Array.isArray(resolvedSearchParams.error) ? resolvedSearchParams.error[0] : resolvedSearchParams.error;
-  const savedParam = Array.isArray(resolvedSearchParams.saved) ? resolvedSearchParams.saved[0] : resolvedSearchParams.saved;
-  const quickCapturedParam = Array.isArray(resolvedSearchParams.quickCaptured) ? resolvedSearchParams.quickCaptured[0] : resolvedSearchParams.quickCaptured;
-  const warningParam = Array.isArray(resolvedSearchParams.warning) ? resolvedSearchParams.warning[0] : resolvedSearchParams.warning;
+  const routeError = readFirstSearchParam(resolvedSearchParams.error);
+  const savedParam = readFirstSearchParam(resolvedSearchParams.saved);
+  const quickCapturedParam = readFirstSearchParam(resolvedSearchParams.quickCaptured);
+  const warningParam = readFirstSearchParam(resolvedSearchParams.warning);
   const scope = await getOrganizationScope();
 
   if (!scope.databaseReady) {
@@ -528,7 +529,7 @@ export default async function EntryDetailPage({
           Work item saved successfully.
         </div>
       ) : null}
-      {quickCapturedParam && !routeError ? (
+      {shouldShowQuickCaptureSuccessBanner(quickCapturedParam) && !routeError ? (
         <div className="rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-300">
           Captured as a task and routed to your inbox. Add details below when you are ready.
         </div>

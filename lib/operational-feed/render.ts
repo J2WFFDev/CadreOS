@@ -136,8 +136,9 @@ function nounForActivityType(entryType: FeedActivityEntryType): string {
 }
 
 export function describeActivityAction(action: string, entryType: FeedActivityEntryType): string {
-  const verb = ACTIVITY_VERB_OVERRIDES[action] ?? labelForActivityAction(action);
-  return `${verb} ${nounForActivityType(entryType)}`.trim();
+  const verbOverride = ACTIVITY_VERB_OVERRIDES[action];
+  if (!verbOverride) return labelForActivityAction(action);
+  return `${verbOverride} ${nounForActivityType(entryType)}`.trim();
 }
 
 export function hrefForActivityItem(entryId: string, entryType: FeedActivityEntryType): string {
