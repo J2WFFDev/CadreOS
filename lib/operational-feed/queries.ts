@@ -76,17 +76,9 @@ const FEED_ENTRY_SELECT = {
   priority: true,
   dueDate: true,
   dueTime: true,
-  startDate: true,
-  endDate: true,
   teamId: true,
   assignedToPersonId: true,
   assignedTo: { select: { firstName: true, lastName: true } },
-  typePayloads: {
-    where: { entryType: { in: [EntryType.EVENT, EntryType.DECISION] } },
-    orderBy: { updatedAt: "desc" },
-    select: { entryType: true, payloadJson: true },
-    take: 2,
-  },
   createdAt: true,
 } as const;
 
@@ -94,10 +86,28 @@ function isActionableJournal(status: EntryStatus) {
   return status === EntryStatus.IN_PROGRESS;
 }
 
-type FeedEntryQueryRow = Prisma.EntryGetPayload<{ select: typeof FEED_ENTRY_SELECT }>;
+const FEED_ENTRY_ACTIONABLE_SELECT = {
+  ...FEED_ENTRY_SELECT,
+  startDate: true,
+  endDate: true,
+  typePayloads: {
+    where: { entryType: { in: [EntryType.EVENT, EntryType.DECISION] } },
+    orderBy: { updatedAt: "desc" },
+    select: { entryType: true, payloadJson: true },
+    take: 2,
+  },
+} satisfies Prisma.EntrySelect;
+
+type FeedEntryQueryRow = FeedEntryItem & {
+  startDate: Date | null;
+  endDate: Date | null;
+  typePayloads: Array<{
+    entryType: EntryType;
+    payloadJson: string;
+  }>;
+};
 type EntryDateWindow = { from: Date; to: Date } | { before: Date } | null;
 
-const DIRECT_ACTIONABLE_TYPES = [EntryType.TASK, EntryType.FOLLOW_UP, EntryType.READINESS_ITEM] as const;
 const EVENT_PAYLOAD_DATE_KEYS = ['"startDateTimeLocal":"', '"endDateTimeLocal":"'] as const;
 const DECISION_PAYLOAD_DATE_KEYS = ['"maturityDate":"', '"decisionDate":"'] as const;
 
@@ -195,7 +205,11 @@ function isActionableMyWorkEntry(
 ) {
   const requiresDateWindow = Boolean(options.dateWindow);
 
-  if (DIRECT_ACTIONABLE_TYPES.includes(entry.type)) {
+  if (
+    entry.type === EntryType.TASK ||
+    entry.type === EntryType.FOLLOW_UP ||
+    entry.type === EntryType.READINESS_ITEM
+  ) {
     return requiresDateWindow ? dateMatchesWindow(entry.dueDate, options.dateWindow) : true;
   }
 
@@ -283,7 +297,7 @@ export function buildActionableWhere(
 
   const branches: Prisma.EntryWhereInput[] = [
     {
-      type: { in: [...DIRECT_ACTIONABLE_TYPES] },
+      type: { in: [EntryType.TASK, EntryType.FOLLOW_UP, EntryType.READINESS_ITEM] },
       ...(directDateWhere ?? {}),
     },
     {
@@ -328,9 +342,9 @@ export async function queryTodayEntries(ctx: FeedQueryContext): Promise<FeedEntr
       ...buildActionableWhere({ before: tomorrowStart }, true),
     },
     orderBy: [{ dueDate: "asc" }, { priority: "desc" }, { updatedAt: "desc" }],
-    select: FEED_ENTRY_SELECT,
+    select: FEED_ENTRY_ACTIONABLE_SELECT,
     take: 100,
-  });
+  }) as FeedEntryQueryRow[];
 
   return entries
     .filter((entry) =>
@@ -376,9 +390,9 @@ export async function queryAssignedEntries(ctx: FeedQueryContext): Promise<FeedE
       ],
     },
     orderBy: [{ dueDate: "asc" }, { priority: "desc" }, { updatedAt: "desc" }],
-    select: FEED_ENTRY_SELECT,
+    select: FEED_ENTRY_ACTIONABLE_SELECT,
     take: 50,
-  });
+  }) as FeedEntryQueryRow[];
 
   return entries
     .filter((entry) =>
@@ -441,9 +455,9 @@ export async function queryUpcomingEntries(ctx: FeedQueryContext): Promise<FeedE
       ...buildActionableWhere({ from, to }, true),
     },
     orderBy: [{ dueDate: "asc" }, { priority: "desc" }],
-    select: FEED_ENTRY_SELECT,
+    select: FEED_ENTRY_ACTIONABLE_SELECT,
     take: 100,
-  });
+  }) as FeedEntryQueryRow[];
 
   return entries
     .filter((entry) =>
