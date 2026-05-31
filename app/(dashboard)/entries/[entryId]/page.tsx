@@ -1,12 +1,10 @@
 import Link from "next/link";
 import {
-  EntryObjectLinkTargetType,
   EntryPriority,
   Prisma,
   EntryStatus,
   EntryType,
   OperationalGraphNodeType,
-  OperationalRelationshipType,
 } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
@@ -49,12 +47,8 @@ import {
   logEntryListSchemaIssue,
   logEntryTypePayloadSchemaIssue,
 } from "@/lib/entries/schema-guard";
-import {
-  labelForEntryObjectLinkTargetType,
-  resolveEntryObjectLinkViews,
-} from "@/lib/entries/object-links";
 import { USER_SELECTABLE_ENTRY_TYPES } from "@/lib/entries/user-selectable-types";
-import { formatEnumLabel, getTaskStatusBadgeClassName, isTaskOverdue } from "@/lib/follow-up-tasks";
+import { formatEnumLabel } from "@/lib/follow-up-tasks";
 import {
   hintForJournalPayloadVisibility,
   labelForJournalPayloadVisibility,
@@ -62,7 +56,6 @@ import {
 import { labelForActivityAction } from "@/lib/operational-feed/render";
 import {
   labelForOperationalNodeType,
-  labelForOperationalRelationshipType,
   listRelatedOperationalRecords,
 } from "@/lib/operational-graph";
 import { resolveEntryAccess } from "@/lib/operational-entry";
@@ -387,18 +380,11 @@ export default async function EntryDetailPage({
     );
   }
 
-  const [relatedItems, objectLinkViews] = await Promise.all([
-    listRelatedOperationalRecords({
-      organizationId,
-      node: { nodeType: "ENTRY", nodeId: entry.id },
-      limit: 30,
-    }),
-    resolveEntryObjectLinkViews({
-      organizationId,
-      links: entry.objectLinks,
-      canViewTargetDetails: canReadEntry,
-    }),
-  ]);
+  const relatedItems = await listRelatedOperationalRecords({
+    organizationId,
+    node: { nodeType: "ENTRY", nodeId: entry.id },
+    limit: 30,
+  });
   const relationshipTargetTypeParam = readFirstSearchParam(resolvedSearchParams.relationshipTargetType);
   const relationshipTargetType = parseRelationshipTargetNodeType(relationshipTargetTypeParam);
   const relationshipQuery = readFirstSearchParam(resolvedSearchParams.relationshipQuery)?.trim() ?? "";
@@ -427,40 +413,25 @@ export default async function EntryDetailPage({
   const relatedOperationalItems = relatedItems.filter(
     (item) => item.node.nodeType !== "ENTRY" && item.node.nodeType !== "HABIT",
   );
-  const [followUpEntries, people, programs, teams] = await Promise.all([
-    db.entry.findMany({
-      where: {
-        organizationId,
-        parentEntryId: entry.id,
-        deletedAt: null,
-        sourceTaskId: { not: null },
-      },
-      orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        priority: true,
-        dueDate: true,
-        dueTime: true,
-        sourceTaskId: true,
-        sourceTask: {
-          select: {
-            id: true,
-            status: true,
-            dueAt: true,
-            assignee: { select: { firstName: true, lastName: true } },
-          },
-        },
-      },
-    }),
-    canEditEntry
-      ? db.person.findMany({
-          where: { organizationId },
-          select: { id: true, firstName: true, lastName: true },
-          orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-        })
-      : Promise.resolve([]),
+  const followUpEntries = await db.entry.findMany({
+    where: {
+      organizationId,
+      parentEntryId: entry.id,
+      deletedAt: null,
+      sourceTaskId: { not: null },
+    },
+    orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      priority: true,
+      dueDate: true,
+      dueTime: true,
+      sourceTaskId: true,
+    },
+  });
+  const [programs, teams] = await Promise.all([
     canEditEntry
       ? db.program.findMany({
           where: { organizationId },
@@ -498,22 +469,7 @@ export default async function EntryDetailPage({
     }
   }
 
-  const linkedEntryRows = [
-    ...entry.linkedFrom.map((item) => ({
-      linkId: item.id,
-      fromEntryId: item.fromEntryId,
-      toEntryId: item.toEntryId,
-      linked: item.toEntry,
-    })),
-    ...entry.linkedTo.map((item) => ({
-      linkId: item.id,
-      fromEntryId: item.fromEntryId,
-      toEntryId: item.toEntryId,
-      linked: item.fromEntry,
-    })),
-  ];
-  const openFollowUps = followUpEntries.filter((item) => item.sourceTask?.status !== "DONE" && item.sourceTask?.status !== "CANCELLED");
-  const completedFollowUps = followUpEntries.filter((item) => item.sourceTask?.status === "DONE" || item.sourceTask?.status === "CANCELLED");
+  const hasLegacyContext = Boolean(entry.sourceTaskId || entry.sourceNoteId || followUpEntries.length > 0);
 
   const detailConfig = getEntryDetailConfig(entry.type);
   const decisionPayloadRecord = entry.typePayloads.find((payload) => payload.entryType === EntryType.DECISION) ?? null;
@@ -537,23 +493,7 @@ export default async function EntryDetailPage({
     <section className="space-y-6">
       <div className="space-y-1">
         <BackLink href="/entries" label="All work" />
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-2xl font-semibold tracking-tight">{entry.title}</h2>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/entries/inbox" className="rounded-md border px-3 py-1.5 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              Work inbox
-            </Link>
-            <Link href="/entries/schedule" className="rounded-md border px-3 py-1.5 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              Calendar-ready
-            </Link>
-            <Link href="/feed" className="rounded-md border px-3 py-1.5 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              Operational feed
-            </Link>
-          </div>
-        </div>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Type: {entry.type} · Status: {entry.status} · Priority: {entry.priority}
-        </p>
+        <h2 className="text-2xl font-semibold tracking-tight">{entry.title}</h2>
       </div>
 
       {routeError ? (
@@ -612,9 +552,8 @@ export default async function EntryDetailPage({
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-4">
-          <article className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-            <h3 className="text-sm font-semibold">{detailConfig.summaryHeading}</h3>
-            <p className="mt-2 text-sm whitespace-pre-wrap">{entry.content?.trim() ? entry.content : detailConfig.emptySummary}</p>
+          <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+            <h3 className="text-sm font-semibold">Main item</h3>
             {entry.tags.length > 0 ? (
               <ul className="mt-3 flex flex-wrap gap-2">
                 {entry.tags.map((tag) => (
@@ -624,198 +563,6 @@ export default async function EntryDetailPage({
                 ))}
               </ul>
             ) : null}
-          </article>
-
-          <section className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-            <h3 className="font-semibold">Metadata</h3>
-            <dl className="mt-2 grid gap-2 sm:grid-cols-2">
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Creator</dt>
-                <dd>{formatPersonName(entry.createdBy)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Assignee</dt>
-                <dd>{formatPersonName(entry.assignedTo)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Last updated by</dt>
-                <dd>{formatPersonName(entry.updatedBy)}</dd>
-              </div>
-              {detailConfig.metadataDateLabel ? (
-                <div>
-                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">{detailConfig.metadataDateLabel}</dt>
-                  <dd>
-                    {entry.dueDate ? entry.dueDate.toISOString().slice(0, 10) : "—"}
-                    {entry.dueDate && entry.dueTime ? ` ${entry.dueTime}` : ""}
-                  </dd>
-                </div>
-              ) : null}
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Created</dt>
-                <dd>{formatDateTime(entry.createdAt)} UTC</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Updated</dt>
-                <dd>{formatDateTime(entry.updatedAt)} UTC</dd>
-              </div>
-              {/* Arc 24D.4: Show assigned list */}
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">List</dt>
-                <dd>
-                  {listAssignmentUnavailable ? (
-                    <span className="text-amber-700 dark:text-amber-300">{ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}</span>
-                  ) : entry.listId ? (
-                    <Link href={`/lists/${entry.listId}`} className="underline">
-                      {availableLists.find((list) => list.id === entry.listId)?.name ?? "View list"}
-                    </Link>
-                  ) : (
-                    <span className="text-zinc-400 dark:text-zinc-500">None</span>
-                  )}
-                </dd>
-              </div>
-            </dl>
-          </section>
-
-          {canEditEntry ? (
-            <section className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-              <h3 className="font-semibold">Advanced follow-up tasks</h3>
-              <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                Secondary workflow only. Keep primary updates on the entry unless a separate operational task is required.
-              </p>
-              <details className="mt-3 rounded-md border p-3">
-                <summary className="cursor-pointer text-sm font-medium">Create follow-up task</summary>
-                <form action={`/entries/${entry.id}/create-follow-up`} method="post" className="mt-3 space-y-3">
-                  <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
-                  <div className="space-y-1">
-                    <label htmlFor="followUpTitle" className="text-sm font-medium">
-                      Follow-up title
-                    </label>
-                    <input
-                      id="followUpTitle"
-                      name="title"
-                      defaultValue={`Follow up: ${entry.title}`.slice(0, 160)}
-                      className="w-full rounded-md border px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label htmlFor="followUpDescription" className="text-sm font-medium">
-                      Follow-up description
-                    </label>
-                    <textarea
-                      id="followUpDescription"
-                      name="description"
-                      defaultValue={entry.content ?? ""}
-                      rows={5}
-                      className="w-full rounded-md border px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="space-y-1">
-                      <label htmlFor="followUpAssigneePersonId" className="text-sm font-medium">
-                        Assignee
-                      </label>
-                      <select
-                        id="followUpAssigneePersonId"
-                        name="assigneePersonId"
-                        defaultValue={entry.assignedToPersonId ?? ""}
-                        disabled={people.length === 0}
-                        className="w-full rounded-md border px-3 py-2 text-sm"
-                      >
-                        {people.length === 0 ? <option value="">No people available</option> : null}
-                        {people.map((person) => (
-                          <option key={person.id} value={person.id}>
-                            {person.firstName} {person.lastName}
-                          </option>
-                        ))}
-                      </select>
-                      {people.length === 0 ? (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                          Add a person before creating follow-up assignments.
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-1">
-                      <label htmlFor="followUpDueAt" className="text-sm font-medium">
-                        Due date
-                      </label>
-                      <input id="followUpDueAt" name="dueAt" type="datetime-local" className="w-full rounded-md border px-3 py-2 text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <label htmlFor="followUpPriority" className="text-sm font-medium">
-                        Priority
-                      </label>
-                      <select id="followUpPriority" name="priority" defaultValue={entry.priority} className="w-full rounded-md border px-3 py-2 text-sm">
-                        {Object.values(EntryPriority).map((value) => (
-                          <option key={value} value={value}>
-                            {value}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                    Create follow-up task
-                  </button>
-                </form>
-              </details>
-            </section>
-          ) : null}
-
-          <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-            <h3 className="text-sm font-semibold">Follow-up tasks (advanced workflow)</h3>
-            {followUpEntries.length === 0 ? (
-              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No follow-up tasks created from this work item yet.</p>
-            ) : (
-              <div className="space-y-3">
-                <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                  {openFollowUps.length} active · {completedFollowUps.length} completed
-                </p>
-                <ul className="space-y-2 text-sm">
-                  {followUpEntries.map((followUp) => {
-                    const followUpTask = followUp.sourceTask;
-                    const followUpStatus = followUpTask?.status ?? followUp.status;
-                    const followUpOverdue = followUpTask ? isTaskOverdue(followUpTask) : false;
-
-                    return (
-                      <li key={followUp.id} className="rounded-md border px-3 py-2">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="font-medium">
-                            <Link href={`/entries/${followUp.id}`} className="underline">
-                              {followUp.title}
-                            </Link>
-                          </div>
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getTaskStatusBadgeClassName(followUpStatus)}`}>
-                            {formatEnumLabel(followUpStatus)}
-                          </span>
-                        </div>
-                        <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                          Priority: {formatEnumLabel(followUp.priority)}
-                          {followUpTask?.assignee
-                            ? ` · Assignee: ${followUpTask.assignee.firstName} ${followUpTask.assignee.lastName}`
-                            : ""}
-                          {followUpTask?.dueAt
-                            ? ` · Due: ${followUpTask.dueAt.toISOString().slice(0, 16).replace("T", " ")} UTC`
-                            : followUp.dueDate
-                              ? ` · Due: ${followUp.dueDate.toISOString().slice(0, 10)}${followUp.dueTime ? ` ${followUp.dueTime}` : ""}`
-                              : ""}
-                          {followUpOverdue ? " · Overdue" : ""}
-                        </div>
-                        <div className="mt-1 flex flex-wrap gap-3 text-xs">
-                          {followUp.sourceTaskId ? (
-                            <Link href={`/tasks/${followUp.sourceTaskId}`} className="underline">
-                              Open task
-                            </Link>
-                          ) : null}
-                          <Link href={`/entries/${followUp.id}`} className="underline">
-                            Open follow-up entry
-                          </Link>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
           </section>
 
           {canEditEntry ? (
@@ -1143,229 +890,89 @@ export default async function EntryDetailPage({
               <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
                 Save work item
               </button>
+              <div className="flex flex-wrap gap-2 border-t pt-3">
+                {entry.type === EntryType.TASK && !entry.taskCompleted ? (
+                  <form action={`/entries/${entry.id}/complete`} method="post">
+                    <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
+                    <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                      Complete task
+                    </button>
+                  </form>
+                ) : null}
+                {entry.type === EntryType.NOTE ? (
+                  <form action={`/entries/${entry.id}/convert-note-to-task`} method="post">
+                    <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
+                    <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                      Convert note to task
+                    </button>
+                  </form>
+                ) : null}
+                <form action={`/entries/${entry.id}/delete`} method="post">
+                  <input type="hidden" name="returnTo" value="/entries" />
+                  <button type="submit" className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300">
+                    Soft delete
+                  </button>
+                </form>
+              </div>
             </form>
           ) : (
             <div className="rounded-lg border bg-white p-4 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
               Work item editing is unavailable for your role.
             </div>
           )}
-
-          {canEditEntry ? (
-            <div className="flex flex-wrap gap-2">
-              {entry.type === EntryType.TASK && !entry.taskCompleted ? (
-                <form action={`/entries/${entry.id}/complete`} method="post">
-                  <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
-                  <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                    Complete task
-                  </button>
-                </form>
-              ) : null}
-              {entry.type === EntryType.NOTE ? (
-                <form action={`/entries/${entry.id}/convert-note-to-task`} method="post">
-                  <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
-                  <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                    Convert note to task
-                  </button>
-                </form>
-              ) : null}
-              <form action={`/entries/${entry.id}/delete`} method="post">
-                <input type="hidden" name="returnTo" value="/entries" />
-                <button type="submit" className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300">
-                  Soft delete
-                </button>
-              </form>
-            </div>
-          ) : null}
         </div>
 
         <aside className="space-y-4">
           <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-            <h3 className="font-semibold">Source links</h3>
-            <ul className="mt-2 space-y-1 text-zinc-600 dark:text-zinc-400">
-              {entry.sourceTaskId ? (
-                <li>
-                  <Link href={`/tasks/${entry.sourceTaskId}`} className="underline">
-                    Open linked task
-                  </Link>
-                </li>
+            <h3 className="font-semibold">Metadata</h3>
+            <dl className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+              <div>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Creator</dt>
+                <dd>{formatPersonName(entry.createdBy)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Assignee</dt>
+                <dd>{formatPersonName(entry.assignedTo)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Last updated by</dt>
+                <dd>{formatPersonName(entry.updatedBy)}</dd>
+              </div>
+              {detailConfig.metadataDateLabel ? (
+                <div>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">{detailConfig.metadataDateLabel}</dt>
+                  <dd>
+                    {entry.dueDate ? entry.dueDate.toISOString().slice(0, 10) : "—"}
+                    {entry.dueDate && entry.dueTime ? ` ${entry.dueTime}` : ""}
+                  </dd>
+                </div>
               ) : null}
-              {entry.sourceNoteId ? (
-                <li>
-                  <Link href={`/notes/${entry.sourceNoteId}`} className="underline">
-                    Open linked note
-                  </Link>
-                </li>
-              ) : null}
-              {!entry.sourceTaskId && !entry.sourceNoteId ? <li>No linked source object.</li> : null}
-            </ul>
-          </div>
-
-          {canEditEntry ? (
-            <>
-              <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-                <h3 className="font-semibold">Link work items</h3>
-                <form action="/entries/link" method="post" className="mt-2 space-y-2">
-                  <input type="hidden" name="fromEntryId" value={entry.id} />
-                  <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
-                  <input
-                    name="toEntryId"
-                    placeholder="Target work item ID"
-                    className="w-full rounded-md border px-3 py-2 text-sm"
-                    aria-label="Target work item ID"
-                  />
-                  <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                    Link work item
-                  </button>
-                </form>
+              <div>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Created</dt>
+                <dd>{formatDateTime(entry.createdAt)} UTC</dd>
               </div>
-
-              <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-                <h3 className="font-semibold">Link operational object</h3>
-                <form action="/entries/object-links/link" method="post" className="mt-2 space-y-2">
-                  <input type="hidden" name="entryId" value={entry.id} />
-                  <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
-                  <div className="space-y-1">
-                    <label htmlFor="targetType" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                      Target type
-                    </label>
-                    <select id="targetType" name="targetType" defaultValue={EntryObjectLinkTargetType.PERSON} className="w-full rounded-md border px-3 py-2 text-sm">
-                      {Object.values(EntryObjectLinkTargetType).map((value) => (
-                        <option key={value} value={value}>
-                          {labelForEntryObjectLinkTargetType(value)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label htmlFor="targetId" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                      Target ID
-                    </label>
-                    <input id="targetId" name="targetId" placeholder="Target record ID" className="w-full rounded-md border px-3 py-2 text-sm" />
-                  </div>
-                  <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                    Add linked object
-                  </button>
-                </form>
+              <div>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Updated</dt>
+                <dd>{formatDateTime(entry.updatedAt)} UTC</dd>
               </div>
-
-              <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-                <h3 className="font-semibold">Operational graph link</h3>
-                <form action="/entries/relationships/link" method="post" className="mt-2 space-y-2">
-                  <input type="hidden" name="fromNodeType" value="ENTRY" />
-                  <input type="hidden" name="fromNodeId" value={entry.id} />
-                  <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
-                  <div className="space-y-1">
-                    <label htmlFor="toNodeType" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                      Target type
-                    </label>
-                    <select id="toNodeType" name="toNodeType" defaultValue={OperationalGraphNodeType.ENTRY} className="w-full rounded-md border px-3 py-2 text-sm">
-                      {Object.values(OperationalGraphNodeType).map((value) => (
-                        <option key={value} value={value}>
-                          {labelForOperationalNodeType(value)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label htmlFor="toNodeId" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                      Target ID
-                    </label>
-                    <input id="toNodeId" name="toNodeId" placeholder="Target record ID" className="w-full rounded-md border px-3 py-2 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label htmlFor="relationshipType" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                      Relationship type
-                    </label>
-                    <select id="relationshipType" name="relationshipType" defaultValue={OperationalRelationshipType.RELATED_TO} className="w-full rounded-md border px-3 py-2 text-sm">
-                      {Object.values(OperationalRelationshipType).map((value) => (
-                        <option key={value} value={value}>
-                          {labelForOperationalRelationshipType(value)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                    Link operational record
-                  </button>
-                </form>
-              </div>
-            </>
-          ) : (
-            <div className="rounded-lg border bg-white p-4 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
-              Linking actions are unavailable for your role.
-            </div>
-          )}
-        </aside>
-      </div>
-
-      <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <h3 className="text-sm font-semibold">Linked objects</h3>
-        {objectLinkViews.length === 0 ? (
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No linked objects yet.</p>
-        ) : (
-          <ul className="mt-2 space-y-2 text-sm">
-            {objectLinkViews.map((objectLink) => (
-              <li key={objectLink.id} className="rounded-md border px-3 py-2">
-                <div className="font-medium">
-                  {objectLink.href ? (
-                    <Link href={objectLink.href} className="underline">
-                      {objectLink.title}
+              <div>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">List</dt>
+                <dd>
+                  {listAssignmentUnavailable ? (
+                    <span className="text-amber-700 dark:text-amber-300">{ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}</span>
+                  ) : entry.listId ? (
+                    <Link href={`/lists/${entry.listId}`} className="underline">
+                      {availableLists.find((list) => list.id === entry.listId)?.name ?? "View list"}
                     </Link>
                   ) : (
-                    objectLink.title
+                    <span className="text-zinc-400 dark:text-zinc-500">None</span>
                   )}
-                </div>
-                <div className="text-xs text-zinc-600 dark:text-zinc-400">
-                  {labelForEntryObjectLinkTargetType(objectLink.targetType)}
-                  {objectLink.subtitle ? ` · ${objectLink.subtitle}` : ""}
-                </div>
-                {canEditEntry ? (
-                  <form action="/entries/object-links/unlink" method="post" className="mt-2">
-                    <input type="hidden" name="entryId" value={entry.id} />
-                    <input type="hidden" name="targetType" value={objectLink.targetType} />
-                    <input type="hidden" name="targetId" value={objectLink.targetId} />
-                    <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
-                    <button type="submit" className="rounded-md border px-2 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                      Remove link
-                    </button>
-                  </form>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <h3 className="text-sm font-semibold">Linked work items</h3>
-        {linkedEntryRows.length === 0 ? (
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No linked work items yet.</p>
-        ) : (
-          <ul className="mt-2 space-y-2 text-sm">
-            {linkedEntryRows.map((row) => (
-              <li key={row.linkId} className="rounded-md border px-3 py-2">
-                {row.linked.deletedAt ? (
-                  <span>Linked work item unavailable</span>
-                ) : (
-                  <Link href={`/entries/${row.linked.id}`} className="underline">
-                    {row.linked.type}: {row.linked.title}
-                  </Link>
-                )}
-                {canEditEntry ? (
-                  <form action="/entries/unlink" method="post" className="mt-2">
-                    <input type="hidden" name="fromEntryId" value={row.fromEntryId} />
-                    <input type="hidden" name="toEntryId" value={row.toEntryId} />
-                    <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
-                    <button type="submit" className="rounded-md border px-2 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                      Unlink
-                    </button>
-                  </form>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </aside>
+      </div>
 
       <RelationshipPanel
         sourceNodeType={OperationalGraphNodeType.ENTRY}
@@ -1385,47 +992,59 @@ export default async function EntryDetailPage({
         limitation="List relationships are hidden for now because list visibility is still broader than the conservative permission checks used for relationship linking."
       />
 
-      <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <h3 className="text-sm font-semibold">Related operational items</h3>
-        {relatedOperationalItems.length === 0 ? (
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No related operational items yet.</p>
-        ) : (
+      {hasLegacyContext ? (
+        <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <h3 className="text-sm font-semibold">Legacy context (read-only)</h3>
+          <ul className="mt-2 space-y-2 text-sm">
+            {entry.sourceTaskId ? (
+              <li className="rounded-md border px-3 py-2">
+                Created from{" "}
+                <Link href={`/tasks/${entry.sourceTaskId}`} className="underline">
+                  task source
+                </Link>
+              </li>
+            ) : null}
+            {entry.sourceNoteId ? (
+              <li className="rounded-md border px-3 py-2">
+                Created from{" "}
+                <Link href={`/notes/${entry.sourceNoteId}`} className="underline">
+                  note source
+                </Link>
+              </li>
+            ) : null}
+            {followUpEntries.map((followUp) => (
+              <li key={followUp.id} className="rounded-md border px-3 py-2">
+                Follow-up entry:{" "}
+                <Link href={`/entries/${followUp.id}`} className="underline">
+                  {followUp.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {relatedOperationalItems.length > 0 ? (
+        <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <h3 className="text-sm font-semibold">Related operational records</h3>
           <ul className="mt-2 space-y-2 text-sm">
             {relatedOperationalItems.map((item) => (
               <li key={item.id} className="rounded-md border px-3 py-2">
-                <div className="font-medium">
-                  {item.direction === "OUTBOUND" ? "→" : "←"} {labelForOperationalRelationshipType(item.relationshipType)}
-                </div>
+                <div className="font-medium">{item.node.title}</div>
                 <div className="text-xs text-zinc-600 dark:text-zinc-400">
-                  {labelForOperationalNodeType(item.node.nodeType)} · {item.node.subtitle ?? "Operational record"}
+                  {labelForOperationalNodeType(item.node.nodeType)}
+                  {item.node.subtitle ? ` · ${item.node.subtitle}` : ""}
                 </div>
-                <div className="mt-1">
-                  {item.node.href ? (
-                    <Link href={item.node.href} className="underline">
-                      {item.node.title}
-                    </Link>
-                  ) : (
-                    <span>{item.node.title}</span>
-                  )}
-                </div>
-                {canEditEntry ? (
-                  <form action="/entries/relationships/unlink" method="post" className="mt-2">
-                    <input type="hidden" name="fromNodeType" value={item.direction === "OUTBOUND" ? "ENTRY" : item.node.nodeType} />
-                    <input type="hidden" name="fromNodeId" value={item.direction === "OUTBOUND" ? entry.id : item.node.nodeId} />
-                    <input type="hidden" name="toNodeType" value={item.direction === "OUTBOUND" ? item.node.nodeType : "ENTRY"} />
-                    <input type="hidden" name="toNodeId" value={item.direction === "OUTBOUND" ? item.node.nodeId : entry.id} />
-                    <input type="hidden" name="relationshipType" value={item.relationshipType} />
-                    <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
-                    <button type="submit" className="rounded-md border px-2 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                      Unlink
-                    </button>
-                  </form>
+                {item.node.href ? (
+                  <Link href={item.node.href} className="mt-1 inline-block underline">
+                    Open record
+                  </Link>
                 ) : null}
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </section>
+      ) : null}
 
       <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-sm font-semibold">Activity / history</h3>
