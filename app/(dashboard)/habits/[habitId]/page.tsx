@@ -315,7 +315,7 @@ export default async function HabitDetailPage({
           label: labelForRelationshipDirection(value, "OUTBOUND"),
         }))}
         searchTargetOptions={[OperationalGraphNodeType.ENTRY, OperationalGraphNodeType.HABIT]}
-        limitation="List relationships are hidden for now because list access is broader than relationship creation currently supports."
+        limitation="List relationships are hidden for now because list visibility is still broader than the conservative permission checks used for relationship linking."
       />
 
       {/* Check-in form */}
