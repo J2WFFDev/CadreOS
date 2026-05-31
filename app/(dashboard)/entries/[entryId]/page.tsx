@@ -554,6 +554,7 @@ export default async function EntryDetailPage({
         <div className="space-y-4">
           <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
             <h3 className="text-sm font-semibold">Main item</h3>
+            <p className="mt-2 text-sm whitespace-pre-wrap">{entry.content?.trim() ? entry.content : detailConfig.emptySummary}</p>
             {entry.tags.length > 0 ? (
               <ul className="mt-3 flex flex-wrap gap-2">
                 {entry.tags.map((tag) => (
@@ -566,111 +567,112 @@ export default async function EntryDetailPage({
           </section>
 
           {canEditEntry ? (
-            <form action={`/entries/${entry.id}/update`} method="post" className="space-y-3 rounded-lg border bg-white p-4 dark:bg-zinc-900">
-              <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
-              <div className="space-y-1">
-                <label htmlFor="title" className="text-sm font-medium">
-                  {detailConfig.titleLabel}
-                </label>
-                <input id="title" name="title" defaultValue={entry.title} className="w-full rounded-md border px-3 py-2 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor="content" className="text-sm font-medium">
-                  {detailConfig.contentLabel}
-                </label>
-                <textarea id="content" name="content" defaultValue={entry.content ?? ""} rows={10} className="w-full rounded-md border px-3 py-2 text-sm" />
-                {detailConfig.contentHint ? <p className="text-xs text-zinc-500 dark:text-zinc-400">{detailConfig.contentHint}</p> : null}
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3">
+            <section className="space-y-3 rounded-lg border bg-white p-4 dark:bg-zinc-900">
+              <form action={`/entries/${entry.id}/update`} method="post" className="space-y-3">
+                <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
                 <div className="space-y-1">
-                  <label htmlFor="type" className="text-sm font-medium">
-                    Type
+                  <label htmlFor="title" className="text-sm font-medium">
+                    {detailConfig.titleLabel}
                   </label>
-                  <select id="type" name="type" defaultValue={entry.type} className="w-full rounded-md border px-3 py-2 text-sm">
-                    {USER_SELECTABLE_ENTRY_TYPES.includes(entry.type) ? null : (
-                      <option value={entry.type}>{ENTRY_TYPE_OPTION_LABELS[entry.type]} (legacy/internal)</option>
-                    )}
-                    {USER_SELECTABLE_ENTRY_TYPES.map((value) => (
-                      <option key={value} value={value}>
-                        {ENTRY_TYPE_OPTION_LABELS[value]}
-                      </option>
-                    ))}
-                  </select>
+                  <input id="title" name="title" defaultValue={entry.title} className="w-full rounded-md border px-3 py-2 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <label htmlFor="status" className="text-sm font-medium">
-                    {detailConfig.statusLabel}
+                  <label htmlFor="content" className="text-sm font-medium">
+                    {detailConfig.contentLabel}
                   </label>
-                  <select id="status" name="status" defaultValue={entry.status} className="w-full rounded-md border px-3 py-2 text-sm">
-                    {Object.values(EntryStatus).map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
+                  <textarea id="content" name="content" defaultValue={entry.content ?? ""} rows={10} className="w-full rounded-md border px-3 py-2 text-sm" />
+                  {detailConfig.contentHint ? <p className="text-xs text-zinc-500 dark:text-zinc-400">{detailConfig.contentHint}</p> : null}
                 </div>
-                <div className="space-y-1">
-                  <label htmlFor="priority" className="text-sm font-medium">
-                    {detailConfig.priorityLabel}
-                  </label>
-                  <select id="priority" name="priority" defaultValue={entry.priority} className="w-full rounded-md border px-3 py-2 text-sm">
-                    {Object.values(EntryPriority).map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="space-y-1">
+                    <label htmlFor="type" className="text-sm font-medium">
+                      Type
+                    </label>
+                    <select id="type" name="type" defaultValue={entry.type} className="w-full rounded-md border px-3 py-2 text-sm">
+                      {USER_SELECTABLE_ENTRY_TYPES.includes(entry.type) ? null : (
+                        <option value={entry.type}>{ENTRY_TYPE_OPTION_LABELS[entry.type]} (legacy/internal)</option>
+                      )}
+                      {USER_SELECTABLE_ENTRY_TYPES.map((value) => (
+                        <option key={value} value={value}>
+                          {ENTRY_TYPE_OPTION_LABELS[value]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="status" className="text-sm font-medium">
+                      {detailConfig.statusLabel}
+                    </label>
+                    <select id="status" name="status" defaultValue={entry.status} className="w-full rounded-md border px-3 py-2 text-sm">
+                      {Object.values(EntryStatus).map((value) => (
+                        <option key={value} value={value}>
+                          {value}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="priority" className="text-sm font-medium">
+                      {detailConfig.priorityLabel}
+                    </label>
+                    <select id="priority" name="priority" defaultValue={entry.priority} className="w-full rounded-md border px-3 py-2 text-sm">
+                      {Object.values(EntryPriority).map((value) => (
+                        <option key={value} value={value}>
+                          {value}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
-              {detailConfig.dateFieldLabel ? (
-                <div className="space-y-1">
-                  <label htmlFor="dueAt" className="text-sm font-medium">
-                    {detailConfig.dateFieldLabel}
-                  </label>
-                  <input
-                    id="dueAt"
-                    name="dueAt"
-                    type="datetime-local"
-                    defaultValue={
-                      entry.dueDate
-                        ? `${entry.dueDate.toISOString().slice(0, 10)}T${entry.dueTime ?? "00:00"}`
-                        : ""
-                    }
-                    className="w-full rounded-md border px-3 py-2 text-sm sm:w-64"
+                {detailConfig.dateFieldLabel ? (
+                  <div className="space-y-1">
+                    <label htmlFor="dueAt" className="text-sm font-medium">
+                      {detailConfig.dateFieldLabel}
+                    </label>
+                    <input
+                      id="dueAt"
+                      name="dueAt"
+                      type="datetime-local"
+                      defaultValue={
+                        entry.dueDate
+                          ? `${entry.dueDate.toISOString().slice(0, 10)}T${entry.dueTime ?? "00:00"}`
+                          : ""
+                      }
+                      className="w-full rounded-md border px-3 py-2 text-sm sm:w-64"
+                    />
+                  </div>
+                ) : null}
+                {/* Arc 24D.4: List assignment */}
+                {listAssignmentUnavailable ? (
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">List</label>
+                    <p className="text-sm text-amber-700 dark:text-amber-300">{ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}</p>
+                  </div>
+                ) : availableLists.length > 0 ? (
+                  <div className="space-y-1">
+                    <label htmlFor="listId" className="text-sm font-medium">
+                      List
+                    </label>
+                    <select id="listId" name="listId" defaultValue={entry.listId ?? ""} className="w-full rounded-md border px-3 py-2 text-sm sm:w-80">
+                      <option value="">— No list —</option>
+                      {availableLists.map((list) => (
+                        <option key={list.id} value={list.id}>
+                          {labelForEntryListScope(list.scope)}: {list.name}{list.isInbox ? " (Inbox)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+                {entry.type === EntryType.EVENT ? (
+                  <EventEntryMetadataFields
+                    payload={eventPayloadForForm}
+                    programs={programs}
+                    teams={teams}
+                    timezoneDefault={resolvedEventTimezone}
                   />
-                </div>
-              ) : null}
-              {/* Arc 24D.4: List assignment */}
-              {listAssignmentUnavailable ? (
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">List</label>
-                  <p className="text-sm text-amber-700 dark:text-amber-300">{ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}</p>
-                </div>
-              ) : availableLists.length > 0 ? (
-                <div className="space-y-1">
-                  <label htmlFor="listId" className="text-sm font-medium">
-                    List
-                  </label>
-                  <select id="listId" name="listId" defaultValue={entry.listId ?? ""} className="w-full rounded-md border px-3 py-2 text-sm sm:w-80">
-                    <option value="">— No list —</option>
-                    {availableLists.map((list) => (
-                      <option key={list.id} value={list.id}>
-                        {labelForEntryListScope(list.scope)}: {list.name}{list.isInbox ? " (Inbox)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
-              {entry.type === EntryType.EVENT ? (
-                <EventEntryMetadataFields
-                  payload={eventPayloadForForm}
-                  programs={programs}
-                  teams={teams}
-                  timezoneDefault={resolvedEventTimezone}
-                />
-              ) : null}
-              {entry.type === EntryType.DECISION ? (
-                <fieldset className="space-y-3 rounded-md border p-3">
+                ) : null}
+                {entry.type === EntryType.DECISION ? (
+                  <fieldset className="space-y-3 rounded-md border p-3">
                   <legend className="px-1 text-sm font-semibold">Decision metadata</legend>
                   <div className="space-y-1">
                     <label htmlFor="decisionStatement" className="text-sm font-medium">
@@ -814,10 +816,10 @@ export default async function EntryDetailPage({
                       className="w-full rounded-md border px-3 py-2 text-sm"
                     />
                   </div>
-                </fieldset>
-              ) : null}
-              {entry.type === EntryType.JOURNAL ? (
-                <fieldset className="space-y-3 rounded-md border p-3" disabled={entry.status === "DONE"}>
+                  </fieldset>
+                ) : null}
+                {entry.type === EntryType.JOURNAL ? (
+                  <fieldset className="space-y-3 rounded-md border p-3" disabled={entry.status === "DONE"}>
                   <legend className="px-1 text-sm font-semibold">Journal metadata</legend>
                   {entry.status === "DONE" ? (
                     <p className="text-xs text-amber-700 dark:text-amber-300">
@@ -885,11 +887,12 @@ export default async function EntryDetailPage({
                     </Link>{" "}
                     for finalize/archive/reopen actions.
                   </p>
-                </fieldset>
-              ) : null}
-              <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-                Save work item
-              </button>
+                  </fieldset>
+                ) : null}
+                <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+                  Save work item
+                </button>
+              </form>
               <div className="flex flex-wrap gap-2 border-t pt-3">
                 {entry.type === EntryType.TASK && !entry.taskCompleted ? (
                   <form action={`/entries/${entry.id}/complete`} method="post">
@@ -914,7 +917,7 @@ export default async function EntryDetailPage({
                   </button>
                 </form>
               </div>
-            </form>
+            </section>
           ) : (
             <div className="rounded-lg border bg-white p-4 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
               Work item editing is unavailable for your role.
