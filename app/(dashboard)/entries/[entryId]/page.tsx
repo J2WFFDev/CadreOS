@@ -11,8 +11,17 @@ import {
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
+import { RelationshipPanel } from "@/components/dashboard/relationship-panel";
 import { EventEntryMetadataFields } from "@/components/dashboard/event-entry-metadata-fields";
 import { db } from "@/lib/db";
+import {
+  canWriteRelationshipSource,
+  FOUNDATION_RELATIONSHIP_TYPES,
+  labelForRelationshipDirection,
+  listFoundationRelationships,
+  parseRelationshipTargetNodeType,
+  searchRelationshipTargets,
+} from "@/lib/entry-relationships";
 import { getEntryDetailConfig } from "@/lib/entries/detail-config";
 import {
   DECISION_CLASSIFICATION_VALUES,
@@ -390,6 +399,34 @@ export default async function EntryDetailPage({
       canViewTargetDetails: canReadEntry,
     }),
   ]);
+  const relationshipTargetTypeParam = readFirstSearchParam(resolvedSearchParams.relationshipTargetType);
+  const relationshipTargetType = parseRelationshipTargetNodeType(relationshipTargetTypeParam);
+  const relationshipQuery = readFirstSearchParam(resolvedSearchParams.relationshipQuery)?.trim() ?? "";
+  const relationshipSource = { nodeType: OperationalGraphNodeType.ENTRY, nodeId: entry.id } as const;
+  const [relationshipItems, relationshipCandidates, canCreateRelationships] = await Promise.all([
+    listFoundationRelationships({
+      organizationId,
+      actorPersonId: scope.auth.personId,
+      source: relationshipSource,
+      limit: 20,
+    }),
+    searchRelationshipTargets({
+      organizationId,
+      actorPersonId: scope.auth.personId,
+      source: relationshipSource,
+      targetNodeType: relationshipTargetType,
+      query: relationshipQuery,
+      limit: 8,
+    }),
+    canWriteRelationshipSource({
+      organizationId,
+      actorPersonId: scope.auth.personId,
+      source: relationshipSource,
+    }),
+  ]);
+  const relatedOperationalItems = relatedItems.filter(
+    (item) => item.node.nodeType !== "ENTRY" && item.node.nodeType !== "HABIT",
+  );
   const [followUpEntries, people, programs, teams] = await Promise.all([
     db.entry.findMany({
       where: {
@@ -1330,13 +1367,31 @@ export default async function EntryDetailPage({
         )}
       </section>
 
+      <RelationshipPanel
+        sourceNodeType={OperationalGraphNodeType.ENTRY}
+        sourceNodeId={entry.id}
+        returnTo={`/entries/${entry.id}`}
+        searchPath={`/entries/${entry.id}`}
+        canCreate={canCreateRelationships}
+        searchTargetType={relationshipTargetType}
+        searchQuery={relationshipQuery}
+        relationshipItems={relationshipItems}
+        candidates={relationshipCandidates}
+        relationshipOptions={FOUNDATION_RELATIONSHIP_TYPES.map((value) => ({
+          value,
+          label: labelForRelationshipDirection(value, "OUTBOUND"),
+        }))}
+        searchTargetOptions={[OperationalGraphNodeType.ENTRY, OperationalGraphNodeType.HABIT]}
+        limitation="List relationships are hidden for now because list visibility is still broader than the conservative permission checks used for relationship linking."
+      />
+
       <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-sm font-semibold">Related operational items</h3>
-        {relatedItems.length === 0 ? (
+        {relatedOperationalItems.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No related operational items yet.</p>
         ) : (
           <ul className="mt-2 space-y-2 text-sm">
-            {relatedItems.map((item) => (
+            {relatedOperationalItems.map((item) => (
               <li key={item.id} className="rounded-md border px-3 py-2">
                 <div className="font-medium">
                   {item.direction === "OUTBOUND" ? "→" : "←"} {labelForOperationalRelationshipType(item.relationshipType)}

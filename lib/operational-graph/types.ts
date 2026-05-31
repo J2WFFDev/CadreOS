@@ -8,6 +8,7 @@ export { OperationalGraphNodeType, OperationalRelationshipType };
 
 export const OPERATIONAL_GRAPH_NODE_TYPES: OperationalGraphNodeType[] = [
   "ENTRY",
+  "HABIT",
   "PERSON",
   "TEAM",
   "PROGRAM",
@@ -33,9 +34,14 @@ export const OPERATIONAL_GRAPH_NODE_TYPES: OperationalGraphNodeType[] = [
 
 export const OPERATIONAL_RELATIONSHIP_TYPES: OperationalRelationshipType[] = [
   "RELATED_TO",
+  "BLOCKS",
   "BLOCKED_BY",
+  "FOLLOW_UP_FOR",
   "FOLLOW_UP_TO",
   "CREATED_FROM",
+  "SUPPORTS",
+  "REFERENCES",
+  "DUPLICATES",
   "IMPACTS",
   "ASSIGNED_FOR",
   "OBSERVED_DURING",

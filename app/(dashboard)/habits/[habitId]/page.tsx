@@ -1,11 +1,21 @@
-import { HabitStatus } from "@prisma/client";
+import { HabitStatus, OperationalGraphNodeType } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { RelationshipPanel } from "@/components/dashboard/relationship-panel";
 import { StatusBadge } from "@/components/dashboard/status-badge";
+import {
+  canWriteRelationshipSource,
+  FOUNDATION_RELATIONSHIP_TYPES,
+  labelForRelationshipDirection,
+  listFoundationRelationships,
+  parseRelationshipTargetNodeType,
+  searchRelationshipTargets,
+} from "@/lib/entry-relationships";
+import { readFirstSearchParam } from "@/lib/entries/entry-detail-query-state";
 import {
   canArchiveHabit,
   canCheckInHabit,
@@ -31,8 +41,15 @@ import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export default async function HabitDetailPage({ params }: { params: Promise<{ habitId: string }> }) {
+export default async function HabitDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ habitId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { habitId } = await params;
+  const resolvedSearchParams = await searchParams;
   const scope = await getOrganizationScope();
 
   if (!scope.databaseReady || !scope.organizationId) {
@@ -106,6 +123,31 @@ export default async function HabitDetailPage({ params }: { params: Promise<{ ha
   const frequency = habit.schedules[0]?.frequency;
   const currentStreak = frequency ? computeCurrentStreak(completionDates, frequency) : null;
   const completionCount = computeCompletionCount(completionDates);
+  const relationshipTargetTypeParam = readFirstSearchParam(resolvedSearchParams.relationshipTargetType);
+  const relationshipTargetType = parseRelationshipTargetNodeType(relationshipTargetTypeParam);
+  const relationshipQuery = readFirstSearchParam(resolvedSearchParams.relationshipQuery)?.trim() ?? "";
+  const relationshipSource = { nodeType: OperationalGraphNodeType.HABIT, nodeId: habit.id } as const;
+  const [relationshipItems, relationshipCandidates, canCreateRelationships] = await Promise.all([
+    listFoundationRelationships({
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+      source: relationshipSource,
+      limit: 20,
+    }),
+    searchRelationshipTargets({
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+      source: relationshipSource,
+      targetNodeType: relationshipTargetType,
+      query: relationshipQuery,
+      limit: 8,
+    }),
+    canWriteRelationshipSource({
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+      source: relationshipSource,
+    }),
+  ]);
 
   const athleteName = `${habit.athlete.firstName} ${habit.athlete.lastName}`.trim() || "Unknown";
   const creatorName = `${habit.createdBy.firstName} ${habit.createdBy.lastName}`.trim() || "Unknown";
@@ -252,6 +294,24 @@ export default async function HabitDetailPage({ params }: { params: Promise<{ ha
           </div>
         </dl>
       </div>
+
+      <RelationshipPanel
+        sourceNodeType={OperationalGraphNodeType.HABIT}
+        sourceNodeId={habit.id}
+        returnTo={`/habits/${habit.id}`}
+        searchPath={`/habits/${habit.id}`}
+        canCreate={canCreateRelationships}
+        searchTargetType={relationshipTargetType}
+        searchQuery={relationshipQuery}
+        relationshipItems={relationshipItems}
+        candidates={relationshipCandidates}
+        relationshipOptions={FOUNDATION_RELATIONSHIP_TYPES.map((value) => ({
+          value,
+          label: labelForRelationshipDirection(value, "OUTBOUND"),
+        }))}
+        searchTargetOptions={[OperationalGraphNodeType.ENTRY, OperationalGraphNodeType.HABIT]}
+        limitation="List relationships are hidden for now because list visibility is still broader than the conservative permission checks used for relationship linking."
+      />
 
       {/* Check-in form */}
       {canCheckIn ? (

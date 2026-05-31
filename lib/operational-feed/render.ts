@@ -72,6 +72,8 @@ const ACTIVITY_ACTION_LABELS: Record<string, string> = {
   "entry.object_link_removed": "Unlinked from object",
   "entry.graph_link_added": "Graph link added",
   "entry.graph_link_removed": "Graph link removed",
+  "entry.relationship_added": "Relationship added",
+  "entry.relationship_removed": "Relationship removed",
   "entry.completed": "Completed",
   "entry.archived": "Archived",
   "entry.task_completed": "Completed",
@@ -105,6 +107,8 @@ const ACTIVITY_ACTION_LABELS: Record<string, string> = {
   "habit.paused": "Habit paused",
   "habit.resumed": "Habit resumed",
   "habit.checked_in": "Habit check-in recorded",
+  "habit.relationship_added": "Habit relationship added",
+  "habit.relationship_removed": "Habit relationship removed",
   // Arc 24D.8: Additional habit lifecycle actions
   "habit.completed": "Habit completed",
   "habit.restored": "Habit restored",
