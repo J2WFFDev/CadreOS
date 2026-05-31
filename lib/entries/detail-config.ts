@@ -57,6 +57,21 @@ export function getEntryDetailConfig(type: EntryType): EntryDetailConfig {
     };
   }
 
+  if (type === EntryType.JOURNAL) {
+    return {
+      summaryHeading: "Journal body",
+      emptySummary: "No journal content captured yet.",
+      titleLabel: "Journal title",
+      contentLabel: "Journal body",
+      contentHint: "Write your journal reflection here. Body text is not exposed in broad feed surfaces.",
+      statusLabel: "Entry status",
+      priorityLabel: "Priority",
+      metadataDateLabel: null,
+      dateFieldLabel: "Journal date",
+      guidance: "Capture journal metadata below. Final journals are locked for editing unless reopened.",
+    };
+  }
+
   if (type === EntryType.TASK || type === EntryType.FOLLOW_UP) {
     return {
       ...DEFAULT_ENTRY_DETAIL_CONFIG,

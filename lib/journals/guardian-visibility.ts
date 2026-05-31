@@ -44,11 +44,11 @@ export type GuardianHabitRecord = {
 /** Guardian-safe journal summary — no body text, only metadata. */
 export type GuardianSafeJournalSummary = {
   id: string;
-  /** Safe display title. For submitted/visible journals, the actual title is shown.
+  /** Safe display title. For final/visible journals, the actual title is shown.
    *  Draft titles are never exposed to guardians. */
   displayTitle: string;
   /** Workflow status label safe for guardian display. */
-  statusLabel: "Submitted" | "Archived";
+  statusLabel: "Final" | "Archived";
   updatedAt: Date;
 };
 
@@ -105,7 +105,7 @@ export function toGuardianSafeJournalSummary(journal: GuardianJournalRecord): Gu
   return {
     id: journal.id,
     displayTitle: journal.title,
-    statusLabel: journal.status === EntryStatus.ARCHIVED ? "Archived" : "Submitted",
+    statusLabel: journal.status === EntryStatus.ARCHIVED ? "Archived" : "Final",
     updatedAt: journal.updatedAt,
   };
 }

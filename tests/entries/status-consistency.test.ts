@@ -78,7 +78,7 @@ test("all HabitStatus values have human-readable labels", () => {
 test("all JournalWorkflowStatus values have human-readable labels", () => {
   const cases = [
     ["DRAFT", "Draft"],
-    ["SUBMITTED", "Submitted"],
+    ["FINAL", "Final"],
     ["ARCHIVED", "Archived"],
   ] as const;
   for (const [status, expected] of cases) {
@@ -104,8 +104,8 @@ test("mapEntryStatusToJournalWorkflowStatus maps ARCHIVED → ARCHIVED", () => {
   assert.equal(mapEntryStatusToJournalWorkflowStatus("ARCHIVED"), "ARCHIVED");
 });
 
-test("mapEntryStatusToJournalWorkflowStatus maps DONE → SUBMITTED", () => {
-  assert.equal(mapEntryStatusToJournalWorkflowStatus("DONE"), "SUBMITTED");
+test("mapEntryStatusToJournalWorkflowStatus maps DONE → FINAL", () => {
+  assert.equal(mapEntryStatusToJournalWorkflowStatus("DONE"), "FINAL");
 });
 
 test("mapEntryStatusToJournalWorkflowStatus maps OPEN → DRAFT", () => {
@@ -123,9 +123,9 @@ test("mapEntryStatusToJournalWorkflowStatus maps CANCELLED → DRAFT", () => {
 // ── Operational status vocabulary consistency ─────────────────────────────────
 // Documents the cross-domain status philosophy so conflicts are caught by tests.
 
-test("Entry DONE maps to journal SUBMITTED (not DONE) — journal vocabulary is domain-specific", () => {
+test("Entry DONE maps to journal FINAL (not DONE) — journal vocabulary is domain-specific", () => {
   const journalStatus = mapEntryStatusToJournalWorkflowStatus("DONE");
-  assert.equal(journalStatus, "SUBMITTED");
+  assert.equal(journalStatus, "FINAL");
   assert.notEqual(journalStatus, "DONE");
 });
 

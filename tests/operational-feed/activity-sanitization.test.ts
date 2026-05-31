@@ -11,8 +11,10 @@ test("sanitizeActivityEntryTitle preserves non-journal titles", () => {
 
 test("sanitizeActivityEntryTitle strips journal titles in feed activity", () => {
   assert.equal(
+    // journal.submitted is a legacy action; Arc 24D.7 renamed this to journal.finalized.
+    // Both map to the same safe label.
     sanitizeActivityEntryTitle("journal.submitted", EntryType.JOURNAL, "Private confidence reflection"),
-    "Journal submitted",
+    "Journal finalized",
   );
   assert.equal(sanitizeActivityEntryTitle("entry.updated", EntryType.JOURNAL, "Very private draft"), "Journal entry");
   assert.equal(sanitizeActivityEntryTitle("unexpected.action", EntryType.JOURNAL, "Hidden"), "Journal entry");
