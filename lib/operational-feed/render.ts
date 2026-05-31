@@ -7,6 +7,8 @@
 
 import type { EntryPriority, EntryStatus, EntryType } from "@prisma/client";
 
+import type { FeedActivityEntryType } from "./types";
+
 // ── Entry type labels ───────────────────────────────────────────────────────
 
 const ENTRY_TYPE_LABELS: Record<string, string> = {
@@ -123,8 +125,8 @@ const ACTIVITY_VERB_OVERRIDES: Record<string, string> = {
   "habit.completed": "Completed",
 };
 
-function nounForActivityType(entryType: EntryType | "HABIT"): string {
-  if (entryType === "HABIT") return "habit occurrence";
+function nounForActivityType(entryType: FeedActivityEntryType): string {
+  if (entryType === "HABIT_ACTIVITY") return "habit occurrence";
   if (entryType === "JOURNAL") return "journal";
   if (entryType === "DECISION") return "decision";
   if (entryType === "EVENT") return "event";
@@ -133,9 +135,15 @@ function nounForActivityType(entryType: EntryType | "HABIT"): string {
   return "work item";
 }
 
-export function describeActivityAction(action: string, entryType: EntryType | "HABIT"): string {
+export function describeActivityAction(action: string, entryType: FeedActivityEntryType): string {
   const verb = ACTIVITY_VERB_OVERRIDES[action] ?? labelForActivityAction(action);
   return `${verb} ${nounForActivityType(entryType)}`.trim();
+}
+
+export function hrefForActivityItem(entryId: string, entryType: FeedActivityEntryType): string {
+  if (entryType === "HABIT_ACTIVITY") return `/habits/${entryId}`;
+  if (entryType === "JOURNAL") return `/journals/${entryId}`;
+  return `/entries/${entryId}`;
 }
 
 // ── Date formatting helpers ─────────────────────────────────────────────────

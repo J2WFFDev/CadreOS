@@ -17,6 +17,7 @@ import {
   MAX_HABIT_TITLE_LENGTH,
   normalizeCompletedOn,
   normalizeTrackingMode,
+  parseHabitCountValue,
 } from "../../lib/habits/policy";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -94,6 +95,25 @@ test("normalizeCompletedOn does not mutate the input date", () => {
   const inputTime = input.getTime();
   normalizeCompletedOn(input);
   assert.equal(input.getTime(), inputTime);
+});
+
+test("parseHabitCountValue returns null for blank input", () => {
+  assert.equal(parseHabitCountValue(""), null);
+  assert.equal(parseHabitCountValue("   "), null);
+});
+
+test("parseHabitCountValue preserves zero", () => {
+  assert.equal(parseHabitCountValue("0"), 0);
+});
+
+test("parseHabitCountValue parses positive integers", () => {
+  assert.equal(parseHabitCountValue("12"), 12);
+});
+
+test("parseHabitCountValue rejects invalid numeric input safely", () => {
+  assert.equal(parseHabitCountValue("abc"), null);
+  assert.equal(parseHabitCountValue("12abc"), null);
+  assert.equal(parseHabitCountValue("-1"), null);
 });
 
 // ── computeCompletionCount ────────────────────────────────────────────────────

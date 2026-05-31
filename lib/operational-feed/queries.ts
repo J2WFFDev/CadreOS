@@ -7,9 +7,16 @@
  * exported for testing. Async DB functions are the runtime API.
  */
 
-import { EntryStatus, EntryType, HabitStatus, InboxItemStatus } from "@prisma/client";
+import { EntryStatus, EntryType, HabitFrequency, HabitStatus, InboxItemStatus } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import {
+  canCheckInHabit,
+  canReadHabit,
+  resolveHabitAccessContext,
+  type HabitAccessContext,
+  type HabitRecord,
+} from "@/lib/habits/access";
 import { deriveSafeHabitActivityText, isHabitActionableToday } from "@/lib/habits/policy";
 import { deriveSafeJournalActivityText } from "@/lib/journals/policy";
 import { ACTIVE_FEED_STATUSES, ACTIVE_OPERATIONAL_TYPES, DEFAULT_UPCOMING_DAYS } from "./types";
@@ -259,15 +266,130 @@ export async function queryRecentActivity(
   }));
 }
 
+type HabitActivityRow = {
+  id: string;
+  habitId: string;
+  action: string;
+  actorPersonId: string | null;
+  createdAt: Date;
+  habit: {
+    title: string;
+    athletePersonId: string;
+    assignedToTeamId: string | null;
+    createdByPersonId: string;
+    status: HabitStatus;
+    assignedToTeam: { programId: string } | null;
+  };
+};
+
+type ActionableHabitRow = {
+  id: string;
+  title: string;
+  trackingMode: string | null;
+  targetCount: number | null;
+  targetUnit: string | null;
+  athletePersonId: string;
+  assignedToTeamId: string | null;
+  createdByPersonId: string;
+  status: HabitStatus;
+  assignedToTeam: { programId: string } | null;
+  schedules: Array<{
+    frequency: HabitFrequency;
+    daysOfWeek: string | null;
+    startDate: Date;
+    endDate: Date | null;
+  }>;
+  completions: Array<{ id: string }>;
+};
+
+function toHabitRecord(input: {
+  id: string;
+  athletePersonId: string;
+  assignedToTeamId: string | null;
+  createdByPersonId: string;
+  status: HabitStatus;
+  assignedToTeam: { programId: string } | null;
+}): HabitRecord {
+  return {
+    id: input.id,
+    athletePersonId: input.athletePersonId,
+    assignedToTeamId: input.assignedToTeamId,
+    createdByPersonId: input.createdByPersonId,
+    status: input.status,
+    teamProgramId: input.assignedToTeam?.programId ?? null,
+  };
+}
+
+export function buildRecentHabitActivityItems(
+  activities: HabitActivityRow[],
+  accessContext: HabitAccessContext,
+  limit = 20,
+): FeedActivityItem[] {
+  return activities
+    .filter((activity) => canReadHabit(accessContext, toHabitRecord({ id: activity.habitId, ...activity.habit })))
+    .map((activity) => ({
+      id: activity.id,
+      entryId: activity.habitId,
+      entryTitle: deriveSafeHabitActivityText(activity.action, activity.habit.title),
+      entryType: "HABIT_ACTIVITY" as const,
+      action: activity.action,
+      actorPersonId: activity.actorPersonId,
+      createdAt: activity.createdAt,
+    }))
+    .slice(0, limit);
+}
+
+export function buildActionableHabitsTodayItems(
+  habits: ActionableHabitRow[],
+  accessContext: HabitAccessContext,
+  now: Date,
+): ActionableHabitItem[] {
+  const result: ActionableHabitItem[] = [];
+
+  for (const habit of habits) {
+    const habitRecord = toHabitRecord(habit);
+    if (!canReadHabit(accessContext, habitRecord)) continue;
+
+    const schedule = habit.schedules[0] ?? null;
+    const actionable = isHabitActionableToday({
+      status: habit.status,
+      scheduleFrequency: schedule?.frequency ?? null,
+      scheduleDaysOfWeek: schedule?.daysOfWeek ?? null,
+      scheduleStartDate: schedule?.startDate ?? null,
+      scheduleEndDate: schedule?.endDate ?? null,
+      todayDate: now,
+    });
+    if (!actionable) continue;
+
+    result.push({
+      id: habit.id,
+      title: habit.title,
+      frequency: schedule?.frequency ?? null,
+      trackingMode: habit.trackingMode ?? null,
+      targetCount: habit.targetCount,
+      targetUnit: habit.targetUnit,
+      completedToday: habit.completions.length > 0,
+      canCheckIn: canCheckInHabit(accessContext, habitRecord),
+    });
+  }
+
+  return result;
+}
+
 /**
  * Arc 24D.8: Queries the most recent HabitActivity records for the organization.
- * Maps habitId onto the entryId field (with entryType: "HABIT") for unified
+ * Maps habitId onto the entryId field (with entryType: "HABIT_ACTIVITY") for unified
  * rendering through the existing FeedActivityItem pipeline.
  */
 export async function queryRecentHabitActivity(
-  ctx: Pick<FeedQueryContext, "organizationId">,
+  ctx: Pick<FeedQueryContext, "organizationId" | "actorPersonId">,
   limit = 20,
 ): Promise<FeedActivityItem[]> {
+  const accessContext = await resolveHabitAccessContext({
+    organizationId: ctx.organizationId,
+    actorPersonId: ctx.actorPersonId,
+  });
+  const scopedFetchLimit = Math.max(limit * 5, limit);
   const activities = await db.habitActivity.findMany({
     where: { organizationId: ctx.organizationId },
     orderBy: { createdAt: "desc" },
@@ -277,20 +399,21 @@ export async function queryRecentHabitActivity(
       action: true,
       actorPersonId: true,
       createdAt: true,
-      habit: { select: { title: true } },
+      habit: {
+        select: {
+          title: true,
+          athletePersonId: true,
+          assignedToTeamId: true,
+          createdByPersonId: true,
+          status: true,
+          assignedToTeam: { select: { programId: true } },
+        },
+      },
     },
-    take: limit,
+    take: scopedFetchLimit,
   });
 
-  return activities.map((a) => ({
-    id: a.id,
-    entryId: a.habitId,
-    entryTitle: deriveSafeHabitActivityText(a.action, a.habit.title),
-    entryType: "HABIT" as const,
-    action: a.action,
-    actorPersonId: a.actorPersonId,
-    createdAt: a.createdAt,
-  }));
+  return buildRecentHabitActivityItems(activities, accessContext, limit);
 }
 
 /**
@@ -301,6 +424,10 @@ export async function queryRecentHabitActivity(
 export async function queryActionableHabitsToday(ctx: FeedQueryContext): Promise<ActionableHabitItem[]> {
   const now = ctx.now ?? new Date();
   const { todayStart, tomorrowStart } = computeTodayWindow(now);
+  const accessContext = await resolveHabitAccessContext({
+    organizationId: ctx.organizationId,
+    actorPersonId: ctx.actorPersonId,
+  });
 
   const habits = await db.habit.findMany({
     where: {
@@ -313,6 +440,11 @@ export async function queryActionableHabitsToday(ctx: FeedQueryContext): Promise
       trackingMode: true,
       targetCount: true,
       targetUnit: true,
+      athletePersonId: true,
+      assignedToTeamId: true,
+      createdByPersonId: true,
+      status: true,
+      assignedToTeam: { select: { programId: true } },
       schedules: {
         orderBy: { createdAt: "asc" },
         take: 1,
@@ -333,33 +465,7 @@ export async function queryActionableHabitsToday(ctx: FeedQueryContext): Promise
     },
   });
 
-  const result: ActionableHabitItem[] = [];
-  for (const habit of habits) {
-    const schedule = habit.schedules[0] ?? null;
-    const actionable = isHabitActionableToday(
-      {
-        status: HabitStatus.ACTIVE,
-        scheduleFrequency: schedule?.frequency ?? null,
-        scheduleDaysOfWeek: schedule?.daysOfWeek ?? null,
-        scheduleStartDate: schedule?.startDate ?? null,
-        scheduleEndDate: schedule?.endDate ?? null,
-        todayDate: now,
-      },
-    );
-    if (!actionable) continue;
-
-    result.push({
-      id: habit.id,
-      title: habit.title,
-      frequency: schedule?.frequency ?? null,
-      trackingMode: habit.trackingMode ?? null,
-      targetCount: habit.targetCount,
-      targetUnit: habit.targetUnit,
-      completedToday: habit.completions.length > 0,
-    });
-  }
-
-  return result;
+  return buildActionableHabitsTodayItems(habits, accessContext, now);
 }
 
 /**

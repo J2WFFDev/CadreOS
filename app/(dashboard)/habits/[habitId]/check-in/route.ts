@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { canCheckInHabit, resolveHabitAccessContext } from "@/lib/habits/access";
-import { MAX_CHECKIN_NOTE_LENGTH, normalizeCompletedOn } from "@/lib/habits/policy";
+import { MAX_CHECKIN_NOTE_LENGTH, normalizeCompletedOn, parseHabitCountValue } from "@/lib/habits/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export async function POST(request: Request, { params }: { params: Promise<{ habitId: string }> }) {
@@ -39,8 +39,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
   const formData = await request.formData();
   const completedOnRaw = String(formData.get("completedOn") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim().slice(0, MAX_CHECKIN_NOTE_LENGTH) || null;
-  const countValueRaw = String(formData.get("countValue") ?? "").trim();
-  const countValue = countValueRaw ? parseInt(countValueRaw, 10) || null : null;
+  const countValue = parseHabitCountValue(String(formData.get("countValue") ?? ""));
 
   if (!completedOnRaw) {
     return NextResponse.redirect(new URL(`/habits/${habitId}`, request.url), 303);

@@ -5,6 +5,7 @@ import type { EntryPriority, EntryStatus, EntryType } from "@prisma/client";
 
 import {
   formatDueDate,
+  hrefForActivityItem,
   isOverdueFeedEntry,
   labelForActivityAction,
   labelForEntryPriority,
@@ -97,6 +98,14 @@ test("labelForActivityAction returns human-readable labels for known actions", (
 
 test("labelForActivityAction falls back to raw action string for unknown actions", () => {
   assert.equal(labelForActivityAction("custom.action.x"), "custom.action.x");
+});
+
+test("hrefForActivityItem routes standalone habit activity to the habit detail page", () => {
+  assert.equal(hrefForActivityItem("habit-123", "HABIT_ACTIVITY"), "/habits/habit-123");
+});
+
+test("hrefForActivityItem keeps EntryType.HABIT activity on the entry detail page", () => {
+  assert.equal(hrefForActivityItem("entry-123", "HABIT"), "/entries/entry-123");
 });
 
 // ── formatDueDate ───────────────────────────────────────────────────────────
