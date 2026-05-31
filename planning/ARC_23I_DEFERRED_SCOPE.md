@@ -118,6 +118,25 @@ full check-in → streak → feed flow require DB fixtures and are deferred.
 
 ---
 
+## Category 6 — EntryOps Relationship/UI Follow-ons
+
+### Arc 24D.12 — Operational Object Linking UI Foundation
+Deferred from Entry detail cleanup.
+- Entry Relationships remain the single Entry-to-Entry context workflow.
+- Entry-to-Person/Team/Program/Gear/Event/Facility context will move to a dedicated search/select linking UI.
+- Raw target-type/target-id linking forms are intentionally removed from normal Entry detail UX.
+
+### Arc 24D.13 — EntryOps Field-Level Audit History
+Deferred from Entry detail cleanup.
+- Activity/History remains available but currently summarizes changes at a high level.
+- Future work will add field-level before/after details (status, priority, due date, assignee, list, etc.).
+
+### Follow-up task UX direction
+- Follow-up context should be represented through Entry relationships (e.g., `CREATED_FROM`, `FOLLOW_UP_FOR`, `RELATED_TO`).
+- Any follow-up shortcut should create a normal Task and attach relationship context, not reintroduce a separate visible follow-up workflow.
+
+---
+
 ## Arc 24 Recommendation
 
 Based on the Arc 23I review, the platform is operationally ready to begin:

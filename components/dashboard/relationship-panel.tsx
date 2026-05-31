@@ -68,7 +68,7 @@ export function RelationshipPanel({
   return (
     <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">Related items</h3>
+        <h3 className="text-sm font-semibold">Related Items / Context</h3>
         <span className="text-xs text-zinc-500 dark:text-zinc-400">
           Context only — related items do not change My Work visibility.
         </span>
