@@ -564,6 +564,77 @@ export default async function EventDetailsPage({
         </div>
       </div>
 
+      <section className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
+        <h3 className="font-semibold">EntryOps structure</h3>
+        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <article className="rounded-md border p-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Main Item</h4>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Event description, start/end window, location, participation, and readiness details remain event-specific.
+            </p>
+          </article>
+          <article className="rounded-md border p-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Context</h4>
+            <dl className="mt-1 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+              <div className="flex justify-between gap-2">
+                <dt>List</dt>
+                <dd>Not used for events</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>Relationships</dt>
+                <dd>{eventNotes.length + eventTasks.length}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>Scope</dt>
+                <dd>{event.team ? "Program + team" : "Program-level"}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>Visibility</dt>
+                <dd>Staff scoped</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>Assignment</dt>
+                <dd>{event.team ? event.team.name : "Unassigned team"}</dd>
+              </div>
+            </dl>
+          </article>
+          <article className="rounded-md border p-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Metadata</h4>
+            <dl className="mt-1 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+              <div className="flex justify-between gap-2">
+                <dt>Created By</dt>
+                <dd>{event.createdBy ? `${event.createdBy.firstName} ${event.createdBy.lastName}` : "—"}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>Created Date</dt>
+                <dd>{formatDateTime(event.createdAt)}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>Updated Date</dt>
+                <dd>{formatDateTime(event.updatedAt)}</dd>
+              </div>
+            </dl>
+          </article>
+          <article className="rounded-md border p-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Activity / History</h4>
+            <dl className="mt-1 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+              <div className="flex justify-between gap-2">
+                <dt>Recent history items</dt>
+                <dd>{eventOperationalHistory.length}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>Unresolved activity</dt>
+                <dd>{unresolvedEventOperationalHistory.length}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>Archive/restore actions</dt>
+                <dd>Tracked in operational history</dd>
+              </div>
+            </dl>
+          </article>
+        </div>
+      </section>
+
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>

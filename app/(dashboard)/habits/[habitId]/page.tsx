@@ -37,6 +37,7 @@ import {
   MAX_CHECKIN_NOTE_LENGTH,
 } from "@/lib/habits/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { labelForActivityAction } from "@/lib/operational-feed/render";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -89,6 +90,11 @@ export default async function HabitDetailPage({
       completions: {
         orderBy: { completedOn: "desc" },
         select: { id: true, completedOn: true, note: true, athletePersonId: true, countValue: true },
+      },
+      activities: {
+        orderBy: { createdAt: "desc" },
+        select: { id: true, action: true, createdAt: true },
+        take: 30,
       },
     },
   });
@@ -152,6 +158,7 @@ export default async function HabitDetailPage({
   const athleteName = `${habit.athlete.firstName} ${habit.athlete.lastName}`.trim() || "Unknown";
   const creatorName = `${habit.createdBy.firstName} ${habit.createdBy.lastName}`.trim() || "Unknown";
   const trackingMode = habit.trackingMode;
+  const linkedOperationalRecordCount = relationshipItems.length;
 
   return (
     <section className="space-y-6">
@@ -217,8 +224,43 @@ export default async function HabitDetailPage({
         }
       />
 
-      {/* Metadata card */}
+      <section className="rounded-lg border bg-white p-5 dark:bg-zinc-900">
+        <h3 className="text-sm font-semibold">Main Item</h3>
+        <p className="mt-2 text-sm whitespace-pre-wrap">{habit.description?.trim() ? habit.description : "No habit detail captured."}</p>
+      </section>
+
+      <section className="rounded-lg border bg-white p-5 dark:bg-zinc-900">
+        <h3 className="text-sm font-semibold">Context</h3>
+        <dl className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">List</dt>
+            <dd className="mt-1 text-sm">Not assigned in habit workflow</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Relationships</dt>
+            <dd className="mt-1 text-sm">{relationshipItems.length}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Scope</dt>
+            <dd className="mt-1 text-sm">{habit.assignedToTeam ? `Team: ${habit.assignedToTeam.name}` : "Organization habit scope"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Visibility</dt>
+            <dd className="mt-1 text-sm">Role and relationship policy controlled</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Assignment</dt>
+            <dd className="mt-1 text-sm">{athleteName}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Linked operational records</dt>
+            <dd className="mt-1 text-sm">{linkedOperationalRecordCount}</dd>
+          </div>
+        </dl>
+      </section>
+
       <div className="rounded-lg border bg-white p-5 dark:bg-zinc-900">
+        <h3 className="text-sm font-semibold">Metadata</h3>
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Status</dt>
@@ -291,6 +333,10 @@ export default async function HabitDetailPage({
           <div>
             <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Created</dt>
             <dd className="mt-1 text-sm text-zinc-500">{habit.createdAt.toISOString().slice(0, 10)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Updated</dt>
+            <dd className="mt-1 text-sm text-zinc-500">{habit.updatedAt.toISOString().slice(0, 10)}</dd>
           </div>
         </dl>
       </div>
@@ -366,9 +412,24 @@ export default async function HabitDetailPage({
         </div>
       ) : null}
 
-      {/* Completion history */}
       <div className="space-y-2">
-        <h2 className="text-sm font-semibold">Completion history</h2>
+        <h2 className="text-sm font-semibold">Activity / history</h2>
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <h3 className="text-sm font-medium">Lifecycle activity</h3>
+          {habit.activities.length === 0 ? (
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No lifecycle activity recorded yet.</p>
+          ) : (
+            <ul className="mt-2 space-y-2 text-sm">
+              {habit.activities.map((activity) => (
+                <li key={activity.id} className="rounded-md border px-3 py-2">
+                  <div className="font-medium">{labelForActivityAction(activity.action)}</div>
+                  <div className="text-xs text-zinc-600 dark:text-zinc-400">{activity.createdAt.toISOString().slice(0, 16).replace("T", " ")} UTC</div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <h3 className="text-sm font-medium">Completion history</h3>
         {habit.completions.length === 0 ? (
           <EmptyState
             message="No check-ins recorded yet."

@@ -488,6 +488,7 @@ export default async function EntryDetailPage({
     normalizeEventTimezone(entry.timezone) ??
     DEFAULT_EVENT_TIMEZONE;
   const eventPayloadForForm = { ...storedEventPayload, timezone: resolvedEventTimezone };
+  const linkedContextCount = relationshipItems.length + legacyContextLinks.length;
 
   return (
     <section className="space-y-6">
@@ -927,113 +928,128 @@ export default async function EntryDetailPage({
 
         <aside className="space-y-4">
           <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-            <h3 className="font-semibold">Metadata</h3>
+            <h3 className="font-semibold">Context</h3>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
               <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Creator</dt>
-                <dd>{formatPersonName(entry.createdBy)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Assignee</dt>
-                <dd>{formatPersonName(entry.assignedTo)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Last updated by</dt>
-                <dd>{formatPersonName(entry.updatedBy)}</dd>
-              </div>
-              {detailConfig.metadataDateLabel ? (
-                <div>
-                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">{detailConfig.metadataDateLabel}</dt>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">List</dt>
                   <dd>
-                    {entry.dueDate ? entry.dueDate.toISOString().slice(0, 10) : "—"}
-                    {entry.dueDate && entry.dueTime ? ` ${entry.dueTime}` : ""}
+                    {listAssignmentUnavailable ? (
+                      <span className="text-amber-700 dark:text-amber-300">{ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}</span>
+                    ) : entry.listId ? (
+                      <Link href={`/lists/${entry.listId}`} className="underline">
+                        {availableLists.find((list) => list.id === entry.listId)?.name ?? "View list"}
+                      </Link>
+                    ) : (
+                      <span className="text-zinc-400 dark:text-zinc-500">None</span>
+                    )}
                   </dd>
                 </div>
-              ) : null}
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Created</dt>
-                <dd>{formatDateTime(entry.createdAt)} UTC</dd>
+                <div>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Assignment</dt>
+                  <dd>{formatPersonName(entry.assignedTo)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Scope</dt>
+                  <dd>{entry.type === EntryType.EVENT ? "Program/Team event scope" : "Organization entry scope"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Visibility</dt>
+                  <dd>Role and relationship policy controlled</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Relationships</dt>
+                  <dd>{linkedContextCount}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Linked operational records</dt>
+                  <dd>{relatedOperationalItems.length}</dd>
+                </div>
+            </dl>
+          </div>
+          <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
+            <h3 className="font-semibold">Metadata</h3>
+            <dl className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                <div>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Created by</dt>
+                  <dd>{formatPersonName(entry.createdBy)}</dd>
               </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Updated</dt>
-                <dd>{formatDateTime(entry.updatedAt)} UTC</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">List</dt>
-                <dd>
-                  {listAssignmentUnavailable ? (
-                    <span className="text-amber-700 dark:text-amber-300">{ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}</span>
-                  ) : entry.listId ? (
-                    <Link href={`/lists/${entry.listId}`} className="underline">
-                      {availableLists.find((list) => list.id === entry.listId)?.name ?? "View list"}
-                    </Link>
-                  ) : (
-                    <span className="text-zinc-400 dark:text-zinc-500">None</span>
-                  )}
-                </dd>
-              </div>
+                <div>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Last updated by</dt>
+                  <dd>{formatPersonName(entry.updatedBy)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Created date</dt>
+                  <dd>{formatDateTime(entry.createdAt)} UTC</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Updated date</dt>
+                  <dd>{formatDateTime(entry.updatedAt)} UTC</dd>
+                </div>
             </dl>
           </div>
         </aside>
       </div>
 
-      <RelationshipPanel
-        sourceNodeType={OperationalGraphNodeType.ENTRY}
-        sourceNodeId={entry.id}
-        returnTo={`/entries/${entry.id}`}
-        searchPath={`/entries/${entry.id}`}
-        canCreate={canCreateRelationships}
-        searchTargetType={relationshipTargetType}
-        searchQuery={relationshipQuery}
-        relationshipItems={relationshipItems}
-        candidates={relationshipCandidates}
-        relationshipOptions={FOUNDATION_RELATIONSHIP_TYPES.map((value) => ({
-          value,
-          label: labelForRelationshipDirection(value, "OUTBOUND"),
-        }))}
-        searchTargetOptions={[OperationalGraphNodeType.ENTRY, OperationalGraphNodeType.HABIT]}
-        limitation="List relationships are hidden for now because list visibility is still broader than the conservative permission checks used for relationship linking."
-      />
+      <section className="space-y-4">
+        <h3 className="text-sm font-semibold">Context</h3>
+        <RelationshipPanel
+          sourceNodeType={OperationalGraphNodeType.ENTRY}
+          sourceNodeId={entry.id}
+          returnTo={`/entries/${entry.id}`}
+          searchPath={`/entries/${entry.id}`}
+          canCreate={canCreateRelationships}
+          searchTargetType={relationshipTargetType}
+          searchQuery={relationshipQuery}
+          relationshipItems={relationshipItems}
+          candidates={relationshipCandidates}
+          relationshipOptions={FOUNDATION_RELATIONSHIP_TYPES.map((value) => ({
+            value,
+            label: labelForRelationshipDirection(value, "OUTBOUND"),
+          }))}
+          searchTargetOptions={[OperationalGraphNodeType.ENTRY, OperationalGraphNodeType.HABIT]}
+          limitation="List relationships are hidden for now because list visibility is still broader than the conservative permission checks used for relationship linking."
+        />
 
-      {hasLegacyContext ? (
-        <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-          <h3 className="text-sm font-semibold">Legacy context (read-only)</h3>
-          <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-            Existing source and follow-up references are shown for continuity while new linking flows use Related Items / Context.
-          </p>
-          <ul className="mt-2 space-y-2 text-sm">
-            {legacyContextLinks.map((item) => (
-              <li key={item.key} className="rounded-md border px-3 py-2">
-                <Link href={item.href} className="underline">
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+        {hasLegacyContext ? (
+          <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+            <h3 className="text-sm font-semibold">Legacy context (read-only)</h3>
+            <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                Existing source and follow-up references are shown for continuity while new linking flows use Related Items / Context.
+            </p>
+            <ul className="mt-2 space-y-2 text-sm">
+                {legacyContextLinks.map((item) => (
+                  <li key={item.key} className="rounded-md border px-3 py-2">
+                    <Link href={item.href} className="underline">
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+            </ul>
+          </section>
+        ) : null}
 
-      {relatedOperationalItems.length > 0 ? (
-        <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-          <h3 className="text-sm font-semibold">Related operational records</h3>
-          <ul className="mt-2 space-y-2 text-sm">
-            {relatedOperationalItems.map((item) => (
-              <li key={item.id} className="rounded-md border px-3 py-2">
-                <div className="font-medium">{item.node.title}</div>
-                <div className="text-xs text-zinc-600 dark:text-zinc-400">
-                  {labelForOperationalNodeType(item.node.nodeType)}
-                  {item.node.subtitle ? ` · ${item.node.subtitle}` : ""}
-                </div>
-                {item.node.href ? (
-                  <Link href={item.node.href} className="mt-1 inline-block underline">
-                    Open record
-                  </Link>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+        {relatedOperationalItems.length > 0 ? (
+          <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+            <h3 className="text-sm font-semibold">Related operational records</h3>
+            <ul className="mt-2 space-y-2 text-sm">
+                {relatedOperationalItems.map((item) => (
+                  <li key={item.id} className="rounded-md border px-3 py-2">
+                    <div className="font-medium">{item.node.title}</div>
+                    <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                      {labelForOperationalNodeType(item.node.nodeType)}
+                      {item.node.subtitle ? ` · ${item.node.subtitle}` : ""}
+                    </div>
+                    {item.node.href ? (
+                      <Link href={item.node.href} className="mt-1 inline-block underline">
+                        Open record
+                      </Link>
+                    ) : null}
+                  </li>
+                ))}
+            </ul>
+          </section>
+        ) : null}
+      </section>
 
       <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-sm font-semibold">Activity / history</h3>
