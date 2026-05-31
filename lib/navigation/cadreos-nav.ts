@@ -34,7 +34,7 @@ const ALL_ROLES: readonly AppRole[] = [
 
 const MEMBEROPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH"];
 const WORKOPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "GUARDIAN", "ATHLETE"];
-const PROMPT_LIBRARY_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "ATHLETE"];
+const ENTRYOPS_STAFF_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH"];
 const FIELDOPS_RESOURCEOPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH"];
 const GEAROPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "GUARDIAN", "ATHLETE"];
 const ADMIN_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER"];
@@ -132,6 +132,7 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
         label: "Inbox",
         href: "/entries/inbox",
         moduleKey: "entry",
+        allowedRoles: ENTRYOPS_STAFF_ROLES,
       }),
       activeItem({
         key: "ENTRY_MY_WORK",
@@ -156,12 +157,14 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
         label: "Review",
         href: "/entries/review",
         moduleKey: "entry",
+        allowedRoles: ENTRYOPS_STAFF_ROLES,
       }),
       activeItem({
         key: "ENTRY_LISTS",
         label: "Lists",
         href: "/lists",
         moduleKey: "entry",
+        allowedRoles: ENTRYOPS_STAFF_ROLES,
       }),
       activeItem({
         key: "ENTRY_ACTIVITY",
@@ -174,6 +177,7 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
         label: "All",
         href: "/entries",
         moduleKey: "entry",
+        allowedRoles: ENTRYOPS_STAFF_ROLES,
       }),
       activeItem({
         key: "ENTRY_HABITS",
@@ -193,7 +197,7 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
         label: "Prompt Library",
         href: "/prompts",
         moduleKey: "journal",
-        allowedRoles: PROMPT_LIBRARY_ROLES,
+        allowedRoles: ENTRYOPS_STAFF_ROLES,
       }),
       activeItem({
         key: "ENTRY_PROMPT_ASSIGNMENTS",

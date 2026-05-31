@@ -3,9 +3,9 @@ import Link from "next/link";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { queryUpcomingEntries } from "@/lib/operational-feed";
+import { computeUpcomingWindow, queryAssignedEntries, queryUpcomingEntries } from "@/lib/operational-feed";
 import { formatDueDate, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
-import { resolveEntryAccess } from "@/lib/operational-entry";
+import { hasSelfServiceEntryRole, resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +39,15 @@ export default async function UpcomingPage() {
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
   });
-  if (entryAccess.level === "NONE") {
+  const selfServiceAccess =
+    entryAccess.level === "NONE"
+      ? await hasSelfServiceEntryRole({
+          organizationId: scope.organizationId,
+          actorPersonId: scope.auth.personId,
+        })
+      : false;
+  const canCreateTasks = entryAccess.level !== "NONE";
+  if (entryAccess.level === "NONE" && !selfServiceAccess) {
     return (
       <section className="space-y-4">
         <PageHeader title="Upcoming" description="Look ahead at scheduled work." />
@@ -49,7 +57,13 @@ export default async function UpcomingPage() {
   }
 
   const now = new Date();
-  const entries = await queryUpcomingEntries({ organizationId: scope.organizationId, actorPersonId: scope.auth.personId, now });
+  const ctx = { organizationId: scope.organizationId, actorPersonId: scope.auth.personId, now };
+  const entries = await (entryAccess.level !== "NONE"
+    ? queryUpcomingEntries(ctx)
+    : queryAssignedEntries(ctx).then((assigned) => {
+        const { from, to } = computeUpcomingWindow(now);
+        return assigned.filter((entry) => entry.dueDate && entry.dueDate >= from && entry.dueDate < to);
+      }));
 
   return (
     <section className="space-y-4">
@@ -57,17 +71,23 @@ export default async function UpcomingPage() {
         title="Upcoming"
         description="Tasks, events, decisions, and journals scheduled in the next 7 days."
         actions={
-          <Link href="/tasks/new?returnTo=%2Fupcoming" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-            New task
-          </Link>
+          canCreateTasks ? (
+            <Link href="/tasks/new?returnTo=%2Fupcoming" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+              New task
+            </Link>
+          ) : null
         }
       />
 
       {entries.length === 0 ? (
         <EmptyState
-          message="Nothing is scheduled in the next 7 days. Add due dates to tasks, events, or decisions to see them here."
-          actionHref="/tasks/new?returnTo=%2Fupcoming"
-          actionLabel="Create task"
+          message={
+            canCreateTasks
+              ? "Nothing is scheduled in the next 7 days. Add due dates to tasks, events, or decisions to see them here."
+              : "No assigned items are scheduled in the next 7 days."
+          }
+          actionHref={canCreateTasks ? "/tasks/new?returnTo=%2Fupcoming" : "/today"}
+          actionLabel={canCreateTasks ? "Create task" : "View today"}
         />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
