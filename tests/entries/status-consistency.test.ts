@@ -14,6 +14,7 @@ import {
   labelForJournalWorkflowStatus,
   labelForJournalVisibility,
   mapEntryStatusToJournalWorkflowStatus,
+  resolveJournalWorkflowStatus,
 } from "../../lib/journals/policy";
 
 // ── Unified Entry type coverage ───────────────────────────────────────────────
@@ -118,6 +119,14 @@ test("mapEntryStatusToJournalWorkflowStatus maps IN_PROGRESS → DRAFT", () => {
 
 test("mapEntryStatusToJournalWorkflowStatus maps CANCELLED → DRAFT", () => {
   assert.equal(mapEntryStatusToJournalWorkflowStatus("CANCELLED"), "DRAFT");
+});
+
+test("resolveJournalWorkflowStatus prefers explicit archived payload status", () => {
+  assert.equal(resolveJournalWorkflowStatus("ARCHIVED", "OPEN"), "ARCHIVED");
+});
+
+test("resolveJournalWorkflowStatus preserves legacy final state from entry status", () => {
+  assert.equal(resolveJournalWorkflowStatus("DRAFT", "DONE"), "FINAL");
 });
 
 // ── Operational status vocabulary consistency ─────────────────────────────────

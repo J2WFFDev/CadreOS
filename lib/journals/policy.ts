@@ -1,6 +1,6 @@
 import { EntryStatus, EntryVisibility } from "@prisma/client";
 
-import type { JournalPayloadVisibility } from "@/lib/entries/journal-payload";
+import type { JournalPayloadStatus, JournalPayloadVisibility } from "@/lib/entries/journal-payload";
 
 /**
  * Arc 24D.7: Journal lifecycle status labels.
@@ -14,6 +14,18 @@ export function mapEntryStatusToJournalWorkflowStatus(status: EntryStatus): Jour
   if (status === EntryStatus.ARCHIVED) return "ARCHIVED";
   if (status === EntryStatus.DONE) return "FINAL";
   return "DRAFT";
+}
+
+export function resolveJournalWorkflowStatus(
+  journalStatus: JournalPayloadStatus | null | undefined,
+  entryStatus: EntryStatus,
+): JournalWorkflowStatus {
+  const fallbackStatus = mapEntryStatusToJournalWorkflowStatus(entryStatus);
+  if ((journalStatus ?? "DRAFT") === "DRAFT" && fallbackStatus !== "DRAFT") {
+    return fallbackStatus;
+  }
+
+  return (journalStatus ?? "DRAFT") as JournalWorkflowStatus;
 }
 
 export function labelForJournalWorkflowStatus(status: JournalWorkflowStatus): string {
@@ -90,6 +102,7 @@ export function deriveSafeJournalActivityText(action: string): string {
   if (action === "journal.submitted") return "Journal finalized";
   if (action === "journal.reopened") return "Journal reopened";
   if (action === "journal.archived") return "Journal archived";
+  if (action === "journal.restored") return "Journal restored";
   if (action === "journal.prompt_assigned") return "Journal prompt assigned";
   if (action === "journal.prompt_response_submitted") return "Journal prompt completed";
   if (action === "journal.prompt_assignment_cancelled") return "Prompt assignment cancelled";

@@ -19,4 +19,6 @@ test("entry activity actions include Arc 22E notification-ready concepts", () =>
   assert.equal(ENTRY_ACTIVITY_ACTIONS.JOURNAL_DRAFT_UPDATED, "journal.draft_updated");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.JOURNAL_SUBMITTED, "journal.submitted");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.JOURNAL_ARCHIVED, "journal.archived");
+  assert.equal(ENTRY_ACTIVITY_ACTIONS.JOURNAL_REOPENED, "journal.reopened");
+  assert.equal(ENTRY_ACTIVITY_ACTIONS.JOURNAL_RESTORED, "journal.restored");
 });

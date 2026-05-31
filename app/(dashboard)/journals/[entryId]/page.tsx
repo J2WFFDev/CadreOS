@@ -8,6 +8,7 @@ import { parseJournalEntryPayload } from "@/lib/entries/journal-payload";
 import {
   canArchiveJournal,
   canEditJournalDraft,
+  canRestoreJournal,
   canReadJournalEntry,
   canSubmitJournal,
   hasJournalAdminAccess,
@@ -16,6 +17,7 @@ import {
 import {
   labelForJournalPayloadVisibility,
   labelForJournalWorkflowStatus,
+  resolveJournalWorkflowStatus,
 } from "@/lib/journals/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { labelForEntryStatus } from "@/lib/operational-feed/render";
@@ -114,26 +116,16 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
   const isAuthor = scope.auth.personId === journal.createdByPersonId;
   const isAdmin = hasJournalAdminAccess(accessContext);
   const journalPayload = parseJournalEntryPayload(journal.typePayloads[0]?.payloadJson ?? null);
-  const fallbackStatusFromEntry =
-    journal.status === EntryStatus.ARCHIVED
-      ? "ARCHIVED"
-      : journal.status === EntryStatus.DONE
-        ? "FINAL"
-        : "DRAFT";
-
-  // Arc 24D.7.1: prefer explicit journal payload status, but preserve compatibility
-  // for existing records that predate payload status transitions.
-  const journalStatus =
-    journalPayload.journalStatus === "DRAFT" && fallbackStatusFromEntry !== "DRAFT"
-      ? fallbackStatusFromEntry
-      : journalPayload.journalStatus;
+  const journalStatus = resolveJournalWorkflowStatus(journalPayload.journalStatus, journal.status);
 
   const canViewBody = isAuthor || isAdmin || journalStatus === "FINAL";
   const canEditDraft = canEditJournalDraft(accessContext, journal);
   const canSubmitDraft = canSubmitJournal(accessContext, journal);
   const canArchive = canArchiveJournal(accessContext, journal);
   const isFinal = journalStatus === "FINAL";
+  const isArchived = journalStatus === "ARCHIVED";
   const canReopen = isFinal && (isAuthor || isAdmin);
+  const canRestore = isArchived && canRestoreJournal(accessContext, journal);
 
   return (
     <section className="space-y-4">
@@ -145,7 +137,8 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {labelForJournalPayloadVisibility(journalPayload.journalVisibility)}
-          {isFinal ? " · Locked for editing" : ""}
+          {isFinal ? " · Final journals are read-only until reopened" : ""}
+          {isArchived ? " · Archived journals are preserved and must be restored before editing" : ""}
         </p>
       </div>
 
@@ -219,8 +212,13 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
             <dd>{formatPersonName(journal.updatedBy)}</dd>
           </div>
           <div>
-            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Entry status</dt>
-            <dd>{labelForEntryStatus(journal.status)}</dd>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Operational status</dt>
+            <dd>
+              {labelForEntryStatus(journal.status)}
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Operational status is separate from the journal editorial status shown above.
+              </p>
+            </dd>
           </div>
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Source</dt>
@@ -239,7 +237,7 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
         {canSubmitDraft ? (
           <form action={`/journals/${journal.id}/submit`} method="post">
             <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              Finalize journal
+              Submit final
             </button>
           </form>
         ) : null}
@@ -252,10 +250,18 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
           </form>
         ) : null}
 
-        {canArchive && journalStatus !== "ARCHIVED" ? (
+        {canArchive && !isArchived ? (
           <form action={`/journals/${journal.id}/archive`} method="post">
             <button type="submit" className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300">
-              Archive journal
+              Archive Journal
+            </button>
+          </form>
+        ) : null}
+
+        {canRestore ? (
+          <form action={`/journals/${journal.id}/restore`} method="post">
+            <button type="submit" className="rounded-md border border-emerald-300 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300">
+              Restore Journal
             </button>
           </form>
         ) : null}
