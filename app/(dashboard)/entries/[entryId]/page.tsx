@@ -77,6 +77,34 @@ function formatPersonName(person: { firstName: string; lastName: string } | null
   return fullName || "—";
 }
 
+type LegacyContextLink = {
+  key: string;
+  label: string;
+  href: string;
+};
+
+export function buildLegacyContextLinks({
+  sourceTaskId,
+  sourceNoteId,
+  followUpEntries,
+}: {
+  sourceTaskId: string | null;
+  sourceNoteId: string | null;
+  followUpEntries: Array<{ id: string; title: string }>;
+}): LegacyContextLink[] {
+  const links: LegacyContextLink[] = [];
+  if (sourceTaskId) {
+    links.push({ key: `task:${sourceTaskId}`, label: "Created from task source", href: `/tasks/${sourceTaskId}` });
+  }
+  if (sourceNoteId) {
+    links.push({ key: `note:${sourceNoteId}`, label: "Created from note source", href: `/notes/${sourceNoteId}` });
+  }
+  for (const followUp of followUpEntries) {
+    links.push({ key: `follow-up:${followUp.id}`, label: `Follow-up entry: ${followUp.title}`, href: `/entries/${followUp.id}` });
+  }
+  return links;
+}
+
 function summarizeEntryActivityMetadata(metadataJson: string | null) {
   if (!metadataJson) return [];
   try {
@@ -463,7 +491,12 @@ export default async function EntryDetailPage({
     }
   }
 
-  const hasLegacyContext = Boolean(entry.sourceTaskId || entry.sourceNoteId || followUpEntries.length > 0);
+  const legacyContextLinks = buildLegacyContextLinks({
+    sourceTaskId: entry.sourceTaskId,
+    sourceNoteId: entry.sourceNoteId,
+    followUpEntries,
+  });
+  const hasLegacyContext = legacyContextLinks.length > 0;
 
   const detailConfig = getEntryDetailConfig(entry.type);
   const decisionPayloadRecord = entry.typePayloads.find((payload) => payload.entryType === EntryType.DECISION) ?? null;
@@ -996,27 +1029,10 @@ export default async function EntryDetailPage({
             Existing source and follow-up references are shown for continuity while new linking flows use Related Items / Context.
           </p>
           <ul className="mt-2 space-y-2 text-sm">
-            {entry.sourceTaskId ? (
-              <li className="rounded-md border px-3 py-2">
-                Created from{" "}
-                <Link href={`/tasks/${entry.sourceTaskId}`} className="underline">
-                  task source
-                </Link>
-              </li>
-            ) : null}
-            {entry.sourceNoteId ? (
-              <li className="rounded-md border px-3 py-2">
-                Created from{" "}
-                <Link href={`/notes/${entry.sourceNoteId}`} className="underline">
-                  note source
-                </Link>
-              </li>
-            ) : null}
-            {followUpEntries.map((followUp) => (
-              <li key={followUp.id} className="rounded-md border px-3 py-2">
-                Follow-up entry:{" "}
-                <Link href={`/entries/${followUp.id}`} className="underline">
-                  {followUp.title}
+            {legacyContextLinks.map((item) => (
+              <li key={item.key} className="rounded-md border px-3 py-2">
+                <Link href={item.href} className="underline">
+                  {item.label}
                 </Link>
               </li>
             ))}

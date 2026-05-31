@@ -29,7 +29,7 @@ test("entry detail page keeps main form actions, metadata, context, and activity
   const detailSource = read(detailPagePath);
   const relationshipSource = read(relationshipPanelPath);
 
-  assert.equal(detailSource.includes("Main item"), true);
+  assert.equal(detailSource.includes("Main Item"), true);
   assert.equal(detailSource.includes("Metadata"), true);
   assert.equal(detailSource.includes("Complete task"), true);
   assert.equal(detailSource.includes("Soft delete"), true);
