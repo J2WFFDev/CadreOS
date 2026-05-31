@@ -143,7 +143,7 @@ const OUTBOUND_RELATIONSHIP_LABELS: Record<FoundationRelationshipType, string> =
   FOLLOW_UP_FOR: "Follow-up for",
   SUPPORTS: "Supports",
   REFERENCES: "References",
-  DUPLICATES: "Duplicate with",
+  DUPLICATES: "Duplicates",
 };
 
 const INBOUND_RELATIONSHIP_LABELS: Record<FoundationRelationshipType, string> = {
@@ -154,7 +154,7 @@ const INBOUND_RELATIONSHIP_LABELS: Record<FoundationRelationshipType, string> = 
   FOLLOW_UP_FOR: "Has follow-up",
   SUPPORTS: "Supported by",
   REFERENCES: "Referenced by",
-  DUPLICATES: "Duplicate with",
+  DUPLICATES: "Duplicates",
 };
 
 export function labelForRelationshipDirection(
@@ -507,7 +507,7 @@ export async function listFoundationRelationships(input: {
     where: {
       organizationId: input.organizationId,
       removedAt: null,
-      relationshipType: { in: FOUNDATION_RELATIONSHIP_TYPES },
+      relationshipType: { in: [...FOUNDATION_RELATIONSHIP_TYPES] },
       OR: [
         { fromNodeType: input.source.nodeType, fromNodeId: input.source.nodeId },
         { toNodeType: input.source.nodeType, toNodeId: input.source.nodeId },
@@ -562,7 +562,7 @@ export async function listFoundationRelationships(input: {
       return {
         id: row.id,
         relationshipType: row.relationshipType,
-        relationshipLabel: labelForRelationshipDirection(row.relationshipType, direction),
+        relationshipLabel: labelForRelationshipDirection(row.relationshipType as FoundationRelationshipType, direction),
         direction,
         note: parseRelationshipNote(row.metadataJson),
         related,
