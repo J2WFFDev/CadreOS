@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { db } from "@/lib/db";
+import { parseJournalEntryPayload } from "@/lib/entries/journal-payload";
 import {
   canArchiveJournal,
   canEditJournalDraft,
@@ -13,8 +14,7 @@ import {
   resolveJournalAccessContext,
 } from "@/lib/journals/access";
 import {
-  hintForJournalVisibility,
-  labelForJournalVisibility,
+  labelForJournalPayloadVisibility,
   labelForJournalWorkflowStatus,
   mapEntryStatusToJournalWorkflowStatus,
 } from "@/lib/journals/policy";
@@ -70,6 +70,11 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
       journalPromptId: true,
       journalAssignmentId: true,
       journalPrompt: { select: { id: true, title: true, category: true, promptText: true } },
+      typePayloads: {
+        where: { entryType: EntryType.JOURNAL },
+        select: { entryType: true, payloadJson: true },
+        take: 1,
+      },
     },
   });
 
@@ -114,6 +119,11 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
   const canArchive = canArchiveJournal(accessContext, journal);
   const status = mapEntryStatusToJournalWorkflowStatus(journal.status);
 
+  // Arc 24D.7: journal payload metadata
+  const journalPayload = parseJournalEntryPayload(journal.typePayloads[0]?.payloadJson ?? null);
+  const isFinal = journal.status === EntryStatus.DONE;
+  const canReopen = isFinal && (isAuthor || isAdmin);
+
   return (
     <section className="space-y-4">
       <div className="space-y-1">
@@ -123,7 +133,8 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
           <span className="rounded-full border px-2.5 py-1 text-xs font-medium">{labelForJournalWorkflowStatus(status)}</span>
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {labelForJournalVisibility(journal.visibility)} · {hintForJournalVisibility(journal.visibility)}
+          {labelForJournalPayloadVisibility(journalPayload.journalVisibility)}
+          {isFinal ? " · Locked for editing" : ""}
         </p>
       </div>
 
@@ -154,13 +165,32 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
         )}
       </article>
 
+      {/* Arc 24D.7: journal metadata section */}
       <section className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-        <h3 className="font-semibold">Metadata</h3>
+        <h3 className="font-semibold">Journal metadata</h3>
         <dl className="mt-2 grid gap-2 sm:grid-cols-2">
           <div>
-            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Author</dt>
-            <dd>{formatPersonName(journal.createdBy)}</dd>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Journal date</dt>
+            <dd>{journalPayload.journalDate ?? "—"}</dd>
           </div>
+          <div>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Author</dt>
+            <dd>{journalPayload.journalAuthor || formatPersonName(journal.createdBy)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Visibility</dt>
+            <dd>{labelForJournalPayloadVisibility(journalPayload.journalVisibility)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Journal status</dt>
+            <dd>{labelForJournalWorkflowStatus(status)}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
+        <h3 className="font-semibold">Entry metadata</h3>
+        <dl className="mt-2 grid gap-2 sm:grid-cols-2">
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Team scope</dt>
             <dd>{journal.team?.name ?? "—"}</dd>
@@ -194,7 +224,15 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
         {canSubmitDraft ? (
           <form action={`/journals/${journal.id}/submit`} method="post">
             <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              Finalize / submit
+              Finalize journal
+            </button>
+          </form>
+        ) : null}
+
+        {canReopen ? (
+          <form action={`/journals/${journal.id}/reopen`} method="post">
+            <button type="submit" className="rounded-md border border-amber-400 px-3 py-1.5 text-sm text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300">
+              Reopen journal
             </button>
           </form>
         ) : null}

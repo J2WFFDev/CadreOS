@@ -1,11 +1,18 @@
-import { EntryVisibility } from "@prisma/client";
 import Link from "next/link";
 
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
+import {
+  JOURNAL_PAYLOAD_VISIBILITY_VALUES,
+  type JournalPayloadVisibility,
+} from "@/lib/entries/journal-payload";
 import { canCreateJournal, resolveJournalAccessContext } from "@/lib/journals/access";
-import { MAX_JOURNAL_TITLE_LENGTH, hintForJournalVisibility, labelForJournalVisibility } from "@/lib/journals/policy";
+import {
+  MAX_JOURNAL_TITLE_LENGTH,
+  labelForJournalPayloadVisibility,
+  hintForJournalPayloadVisibility,
+} from "@/lib/journals/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
 
@@ -158,23 +165,53 @@ export default async function CreateJournalPage({ searchParams }: { searchParams
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="visibility" className="text-sm font-medium">
-            Submission visibility policy
+          <label htmlFor="journalVisibility" className="text-sm font-medium">
+            Visibility
           </label>
-          <select id="visibility" name="visibility" defaultValue={EntryVisibility.STAFF_ONLY} className="w-full rounded-md border px-3 py-2 text-sm">
-            {Object.values(EntryVisibility).map((visibility) => (
-              <option key={visibility} value={visibility}>
-                {labelForJournalVisibility(visibility)}
+          <select id="journalVisibility" name="journalVisibility" defaultValue="PRIVATE" className="w-full rounded-md border px-3 py-2 text-sm">
+            {JOURNAL_PAYLOAD_VISIBILITY_VALUES.map((vis: JournalPayloadVisibility) => (
+              <option key={vis} value={vis}>
+                {labelForJournalPayloadVisibility(vis)}
               </option>
             ))}
           </select>
           <ul className="space-y-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-            {Object.values(EntryVisibility).map((visibility) => (
-              <li key={visibility}>
-                <span className="font-medium">{labelForJournalVisibility(visibility)}:</span> {hintForJournalVisibility(visibility)}
+            {JOURNAL_PAYLOAD_VISIBILITY_VALUES.map((vis: JournalPayloadVisibility) => (
+              <li key={vis}>
+                <span className="font-medium">{labelForJournalPayloadVisibility(vis)}:</span>{" "}
+                {hintForJournalPayloadVisibility(vis)}
               </li>
             ))}
           </ul>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label htmlFor="journalDate" className="text-sm font-medium">
+              Journal date
+            </label>
+            <input
+              id="journalDate"
+              name="journalDate"
+              type="date"
+              defaultValue={new Date().toISOString().slice(0, 10)}
+              className="w-full rounded-md border px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="journalAuthor" className="text-sm font-medium">
+              Author (optional)
+            </label>
+            <input
+              id="journalAuthor"
+              name="journalAuthor"
+              type="text"
+              maxLength={120}
+              placeholder="Leave blank to use your name"
+              className="w-full rounded-md border px-3 py-2 text-sm"
+            />
+          </div>
         </div>
 
         <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">

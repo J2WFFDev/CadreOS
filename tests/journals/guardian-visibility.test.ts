@@ -101,7 +101,7 @@ test("toGuardianSafeJournalSummary returns metadata without body text field", ()
   const summary = toGuardianSafeJournalSummary(journal);
   assert.equal(summary.id, "journal-1");
   assert.equal(summary.displayTitle, "Athlete reflection on match day");
-  assert.equal(summary.statusLabel, "Submitted");
+  assert.equal(summary.statusLabel, "Final");
   assert.deepStrictEqual(summary.updatedAt, new Date("2026-05-01T12:00:00Z"));
   // No body text field
   assert.equal("content" in summary, false);

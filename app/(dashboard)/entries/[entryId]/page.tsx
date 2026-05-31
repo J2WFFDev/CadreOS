@@ -25,6 +25,11 @@ import {
   normalizeEventTimezone,
   parseEventEntryPayload,
 } from "@/lib/entries/event-payload";
+import {
+  JOURNAL_PAYLOAD_VISIBILITY_VALUES,
+  type JournalPayloadVisibility,
+  parseJournalEntryPayload,
+} from "@/lib/entries/journal-payload";
 import { fetchListsForActor, labelForEntryListScope } from "@/lib/entries/lists";
 import {
   ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE,
@@ -40,6 +45,10 @@ import {
 } from "@/lib/entries/object-links";
 import { USER_SELECTABLE_ENTRY_TYPES } from "@/lib/entries/user-selectable-types";
 import { formatEnumLabel, getTaskStatusBadgeClassName, isTaskOverdue } from "@/lib/follow-up-tasks";
+import {
+  hintForJournalPayloadVisibility,
+  labelForJournalPayloadVisibility,
+} from "@/lib/journals/policy";
 import { labelForActivityAction } from "@/lib/operational-feed/render";
 import {
   labelForOperationalNodeType,
@@ -176,9 +185,9 @@ const entryDetailSelect = Prisma.validator<Prisma.EntryFindFirstArgs>()({
   select: {
     ...entryBaseSelect.select,
     typePayloads: {
-      where: { entryType: { in: [EntryType.DECISION, EntryType.EVENT] } },
+      where: { entryType: { in: [EntryType.DECISION, EntryType.EVENT, EntryType.JOURNAL] } },
       select: { entryType: true, payloadJson: true, isActive: true },
-      take: 2,
+      take: 3,
       orderBy: { updatedAt: "desc" },
     },
     listId: true,
@@ -470,8 +479,10 @@ export default async function EntryDetailPage({
   const detailConfig = getEntryDetailConfig(entry.type);
   const decisionPayloadRecord = entry.typePayloads.find((payload) => payload.entryType === EntryType.DECISION) ?? null;
   const eventPayloadRecord = entry.typePayloads.find((payload) => payload.entryType === EntryType.EVENT) ?? null;
+  const journalPayloadRecord = entry.typePayloads.find((payload) => payload.entryType === EntryType.JOURNAL) ?? null;
   const storedDecisionPayload = parseDecisionEntryPayload(decisionPayloadRecord?.payloadJson);
   const storedEventPayload = parseEventEntryPayload(eventPayloadRecord?.payloadJson);
+  const storedJournalPayload = parseJournalEntryPayload(journalPayloadRecord?.payloadJson ?? null);
   const hasStoredDecisionPayload = Boolean(decisionPayloadRecord);
   const defaultDecisionStatement = hasStoredDecisionPayload ? storedDecisionPayload.decisionStatement : entry.title;
   const defaultDecisionDetails = hasStoredDecisionPayload
@@ -536,9 +547,13 @@ export default async function EntryDetailPage({
           Habit advanced recurrence and reporting workflows are partially supported and will expand in a future arc.
         </div>
       ) : null}
-      {entry.type === EntryType.JOURNAL ? (
+      {entry.type === EntryType.JOURNAL && entry.status === "DONE" ? (
         <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-          Journal prompt and assignment workflows are not yet enabled; this entry type currently provides basic detail/edit support only.
+          This journal is <strong>Final</strong> and locked for editing. To resume editing,{" "}
+          <Link href={`/journals/${entry.id}/reopen`} className="underline">
+            reopen it via the journal view
+          </Link>{" "}
+          or use the Reopen button.
         </div>
       ) : null}
       {detailConfig.guidance ? (
@@ -1008,6 +1023,77 @@ export default async function EntryDetailPage({
                       className="w-full rounded-md border px-3 py-2 text-sm"
                     />
                   </div>
+                </fieldset>
+              ) : null}
+              {entry.type === EntryType.JOURNAL ? (
+                <fieldset className="space-y-3 rounded-md border p-3" disabled={entry.status === "DONE"}>
+                  <legend className="px-1 text-sm font-semibold">Journal metadata</legend>
+                  {entry.status === "DONE" ? (
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      This journal is Final. Fields are read-only. Reopen the journal to edit.
+                    </p>
+                  ) : null}
+                  <div className="space-y-1">
+                    <label htmlFor="journalVisibility" className="text-sm font-medium">
+                      Visibility
+                    </label>
+                    <select
+                      id="journalVisibility"
+                      name="journalVisibility"
+                      defaultValue={storedJournalPayload.journalVisibility}
+                      className="w-full rounded-md border px-3 py-2 text-sm"
+                    >
+                      {JOURNAL_PAYLOAD_VISIBILITY_VALUES.map((vis: JournalPayloadVisibility) => (
+                        <option key={vis} value={vis}>
+                          {labelForJournalPayloadVisibility(vis)}
+                        </option>
+                      ))}
+                    </select>
+                    <ul className="space-y-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                      {JOURNAL_PAYLOAD_VISIBILITY_VALUES.map((vis: JournalPayloadVisibility) => (
+                        <li key={vis}>
+                          <span className="font-medium">{labelForJournalPayloadVisibility(vis)}:</span>{" "}
+                          {hintForJournalPayloadVisibility(vis)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label htmlFor="journalDate" className="text-sm font-medium">
+                        Journal date
+                      </label>
+                      <input
+                        id="journalDate"
+                        name="journalDate"
+                        type="date"
+                        defaultValue={storedJournalPayload.journalDate ?? ""}
+                        className="w-full rounded-md border px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="journalAuthor" className="text-sm font-medium">
+                        Author (optional)
+                      </label>
+                      <input
+                        id="journalAuthor"
+                        name="journalAuthor"
+                        type="text"
+                        maxLength={120}
+                        defaultValue={storedJournalPayload.journalAuthor ?? ""}
+                        placeholder="Leave blank to use your name"
+                        className="w-full rounded-md border px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Journal body visibility: journal body is never surfaced in broad activity feeds.
+                    Use the{" "}
+                    <Link href={`/journals/${entry.id}`} className="underline">
+                      journal workflow view
+                    </Link>{" "}
+                    for finalize/archive/reopen actions.
+                  </p>
                 </fieldset>
               ) : null}
               <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">

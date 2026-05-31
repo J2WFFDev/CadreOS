@@ -25,6 +25,14 @@ import {
   serializeEventEntryPayload,
 } from "@/lib/entries/event-payload";
 import {
+  createEmptyJournalEntryPayload,
+  mapJournalPayloadVisibilityToEntryVisibility,
+  normalizeJournalDateOnly,
+  normalizeJournalPayloadVisibility,
+  parseJournalEntryPayload,
+  serializeJournalEntryPayload,
+} from "@/lib/entries/journal-payload";
+import {
   ENTRY_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE,
   logEntryTypePayloadSchemaIssue,
 } from "@/lib/entries/schema-guard";
@@ -63,6 +71,13 @@ const EVENT_FORM_FIELDS = [
   "eventRecurrenceEndCondition",
   "eventRecurrenceEndDate",
   "eventRecurrenceOccurrenceCount",
+] as const;
+
+// Arc 24D.7: journal metadata form fields
+const JOURNAL_FORM_FIELDS = [
+  "journalVisibility",
+  "journalDate",
+  "journalAuthor",
 ] as const;
 
 const EVENT_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE =
@@ -209,6 +224,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   const rawEventRecurrenceEndDate = String(formData.get("eventRecurrenceEndDate") ?? "").trim();
   const rawEventRecurrenceOccurrenceCount = String(formData.get("eventRecurrenceOccurrenceCount") ?? "").trim();
 
+  // Arc 24D.7: journal payload form fields
+  const hasJournalFormFields = JOURNAL_FORM_FIELDS.some((fieldName) => formData.has(fieldName));
+  const rawJournalVisibility = String(formData.get("journalVisibility") ?? "PRIVATE").trim();
+  const rawJournalDate = String(formData.get("journalDate") ?? "").trim();
+  const rawJournalAuthor = String(formData.get("journalAuthor") ?? "").trim();
+
   try {
     const entry = await db.entry.findFirst({
       where: { id: entryId, organizationId: organizationId, deletedAt: null },
@@ -263,14 +284,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     // does not prevent the base entry lookup above from succeeding.
     let decisionPayloadRecord: { id: string; payloadJson: string } | null = null;
     let eventPayloadRecord: { id: string; payloadJson: string } | null = null;
+    let journalPayloadRecord: { id: string; payloadJson: string } | null = null;
     let decisionPayloadUnavailable = false;
     try {
       const payloadRows = await db.entryTypePayload.findMany({
-        where: { entryId: entry.id, entryType: { in: [EntryType.DECISION, EntryType.EVENT] } },
+        where: { entryId: entry.id, entryType: { in: [EntryType.DECISION, EntryType.EVENT, EntryType.JOURNAL] } },
         select: { id: true, payloadJson: true, entryType: true },
       });
       decisionPayloadRecord = payloadRows.find((item) => item.entryType === EntryType.DECISION) ?? null;
       eventPayloadRecord = payloadRows.find((item) => item.entryType === EntryType.EVENT) ?? null;
+      journalPayloadRecord = payloadRows.find((item) => item.entryType === EntryType.JOURNAL) ?? null;
     } catch (error) {
       const issue = logEntryTypePayloadSchemaIssue("entries.update.fetch-payload", error, {
         entryId: entry.id,
@@ -285,6 +308,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
     const existingDecisionPayload = parseDecisionEntryPayload(decisionPayloadRecord?.payloadJson);
     const existingEventPayload = parseEventEntryPayload(eventPayloadRecord?.payloadJson);
+    const existingJournalPayload = parseJournalEntryPayload(journalPayloadRecord?.payloadJson ?? null);
+
+    // Arc 24D.7: Final journal locking guard.
+    // A Final (DONE) journal's title, content, and journal payload fields may not be edited
+    // via the entry update route. Status changes (e.g. ARCHIVED) and type conversions are allowed.
+    if (entry.type === EntryType.JOURNAL && entry.status === EntryStatus.DONE) {
+      const isContentChange = (title && title !== entry.title) || (content.length > 0 && content !== (entry.content ?? ""));
+      const isPayloadChange = hasJournalFormFields;
+      // Allow type conversion away from JOURNAL, status changes, and list assignment. Block content/payload edits.
+      if (isContentChange || isPayloadChange) {
+        const url = new URL(returnTo, request.url);
+        url.searchParams.set("error", "Final journals are locked. Reopen the journal before editing content or metadata.");
+        return NextResponse.redirect(url, 303);
+      }
+    }
 
     // Arc 24D.4: Validate listId belongs to this org before writing.
     let resolvedListId: string | null | undefined;
@@ -617,8 +655,91 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
           throw error;
         }
       }
+    } else if (nextEntryType === EntryType.JOURNAL) {
+      // Arc 24D.7: upsert journal payload and archive DECISION/EVENT payloads.
+      if (!decisionPayloadUnavailable) {
+        const journalVisibility = normalizeJournalPayloadVisibility(rawJournalVisibility);
+        const journalDate = normalizeJournalDateOnly(rawJournalDate);
+        const entryVisibility = mapJournalPayloadVisibilityToEntryVisibility(journalVisibility);
+
+        const journalPayload = hasJournalFormFields
+          ? {
+              ...existingJournalPayload,
+              journalVisibility,
+              journalDate,
+              journalAuthor: rawJournalAuthor,
+            }
+          : journalPayloadRecord
+            ? existingJournalPayload
+            : { ...createEmptyJournalEntryPayload(), journalStatus: "DRAFT" as const };
+
+        try {
+          await db.entryTypePayload.upsert({
+            where: { entryId_entryType: { entryId: entry.id, entryType: EntryType.JOURNAL } },
+            create: {
+              organizationId,
+              entryId: entry.id,
+              entryType: EntryType.JOURNAL,
+              payloadJson: serializeJournalEntryPayload(journalPayload),
+              isActive: true,
+              archivedAt: null,
+            },
+            update: {
+              payloadJson: serializeJournalEntryPayload(journalPayload),
+              isActive: true,
+              archivedAt: null,
+            },
+          });
+        } catch (error) {
+          const issue = logEntryTypePayloadSchemaIssue("entries.update.upsert-journal-payload", error, {
+            entryId: entry.id,
+            organizationId,
+          });
+          if (issue) {
+            revalidatePath(`/entries/${entryId}`);
+            const warnUrl = new URL(returnTo, request.url);
+            warnUrl.searchParams.set("saved", "1");
+            warnUrl.searchParams.set("warning", ENTRY_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE);
+            return NextResponse.redirect(warnUrl, 303);
+          }
+          throw error;
+        }
+
+        // Sync Entry.visibility with the journal payload's visibility setting
+        if (hasJournalFormFields) {
+          try {
+            await db.entry.update({
+              where: { id: entry.id },
+              data: { visibility: entryVisibility },
+              select: { id: true },
+            });
+          } catch {
+            // Non-fatal: payload was saved; visibility sync is best-effort
+          }
+        }
+
+        try {
+          await db.entryTypePayload.updateMany({
+            where: {
+              organizationId,
+              entryId: entry.id,
+              entryType: { in: [EntryType.DECISION, EntryType.EVENT] },
+              isActive: true,
+            },
+            data: { isActive: false, archivedAt: new Date() },
+          });
+        } catch (error) {
+          const issue = logEntryTypePayloadSchemaIssue("entries.update.archive-non-journal-payloads", error, {
+            entryId: entry.id,
+            organizationId,
+          });
+          if (!issue) {
+            throw error;
+          }
+        }
+      }
     } else {
-      // Non-Decision/Event: archive active type payloads. If EntryTypePayload table is
+      // Non-Decision/Event/Journal: archive active type payloads. If EntryTypePayload table is
       // missing there is nothing to archive, so treat the error as non-fatal.
       if (!decisionPayloadUnavailable) {
         try {

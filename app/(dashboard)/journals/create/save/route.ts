@@ -3,27 +3,34 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeEntryActivity } from "@/lib/entries/service";
+import {
+  createEmptyJournalEntryPayload,
+  mapJournalPayloadVisibilityToEntryVisibility,
+  normalizeJournalDateOnly,
+  normalizeJournalPayloadVisibility,
+  serializeJournalEntryPayload,
+} from "@/lib/entries/journal-payload";
 import { canCreateJournal, resolveJournalAccessContext } from "@/lib/journals/access";
 import { MAX_JOURNAL_TITLE_LENGTH } from "@/lib/journals/policy";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
 
-function normalizeJournalVisibility(rawValue: string): EntryVisibility {
-  const normalized = rawValue.trim().toUpperCase();
-  if (normalized === EntryVisibility.TEAM_STAFF) return EntryVisibility.TEAM_STAFF;
-  if (normalized === EntryVisibility.ORGANIZATION_SCOPED) return EntryVisibility.ORGANIZATION_SCOPED;
-  return EntryVisibility.STAFF_ONLY;
-}
-
 export async function POST(request: Request) {
   const scope = await getOrganizationScope();
   const formData = await request.formData();
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
-  const visibility = normalizeJournalVisibility(String(formData.get("visibility") ?? EntryVisibility.STAFF_ONLY));
   const journalPromptId = String(formData.get("journalPromptId") ?? "").trim() || null;
   const journalAssignmentId = String(formData.get("journalAssignmentId") ?? "").trim() || null;
+
+  // Arc 24D.7: journal-specific payload fields
+  const rawJournalVisibility = String(formData.get("journalVisibility") ?? "PRIVATE").trim();
+  const rawJournalDate = String(formData.get("journalDate") ?? "").trim();
+  const rawJournalAuthor = String(formData.get("journalAuthor") ?? "").trim();
+  const journalVisibility = normalizeJournalPayloadVisibility(rawJournalVisibility);
+  const journalDate = normalizeJournalDateOnly(rawJournalDate);
+  const entryVisibility = mapJournalPayloadVisibilityToEntryVisibility(journalVisibility);
 
   if (!scope.databaseReady || !scope.organizationId || !scope.auth.personId) {
     return NextResponse.redirect(new URL("/journals", request.url), 303);
@@ -76,13 +83,21 @@ export async function POST(request: Request) {
       select: { teamId: true },
     });
 
+    const journalPayload = {
+      ...createEmptyJournalEntryPayload(),
+      journalStatus: "DRAFT" as const,
+      journalVisibility,
+      journalDate,
+      journalAuthor: rawJournalAuthor,
+    };
+
     const entry = await db.entry.create({
       data: {
         organizationId: scope.organizationId,
         type: EntryType.JOURNAL,
         title: title.slice(0, MAX_JOURNAL_TITLE_LENGTH),
         content,
-        visibility,
+        visibility: entryVisibility,
         status: EntryStatus.OPEN,
         priority: "MEDIUM",
         createdByPersonId: scope.auth.personId,
@@ -94,13 +109,24 @@ export async function POST(request: Request) {
       select: { id: true },
     });
 
+    // Arc 24D.7: persist journal metadata payload
+    await db.entryTypePayload.create({
+      data: {
+        organizationId: scope.organizationId,
+        entryId: entry.id,
+        entryType: EntryType.JOURNAL,
+        payloadJson: serializeJournalEntryPayload(journalPayload),
+        isActive: true,
+      },
+    });
+
     try {
       await writeEntryActivity({
         organizationId: scope.organizationId,
         entryId: entry.id,
         actorPersonId: scope.auth.personId,
         action: ENTRY_ACTIVITY_ACTIONS.JOURNAL_DRAFT_CREATED,
-        metadata: { visibility, hasPrompt: Boolean(journalPromptId) },
+        metadata: { journalVisibility, hasPrompt: Boolean(journalPromptId) },
       });
     } catch (error) {
       console.error("[journals.create.save] Journal activity write failed", {

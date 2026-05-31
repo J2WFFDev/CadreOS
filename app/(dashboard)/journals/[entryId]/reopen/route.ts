@@ -1,17 +1,25 @@
-import { EntryType } from "@prisma/client";
+/**
+ * Arc 24D.7 — Journal Entry First-Class Workflow
+ *
+ * Reopen route: transitions a Final (DONE) journal back to Draft (OPEN) state,
+ * allowing the author to continue editing. Preserves journal metadata.
+ *
+ * Only the journal author or an org admin may reopen a Final journal.
+ */
+
+import { EntryStatus, EntryType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeEntryActivity } from "@/lib/entries/service";
 import {
-  mapJournalPayloadVisibilityToEntryVisibility,
-  normalizeJournalDateOnly,
-  normalizeJournalPayloadVisibility,
   parseJournalEntryPayload,
   serializeJournalEntryPayload,
 } from "@/lib/entries/journal-payload";
-import { canEditJournalDraft, resolveJournalAccessContext } from "@/lib/journals/access";
-import { MAX_JOURNAL_TITLE_LENGTH } from "@/lib/journals/policy";
+import {
+  hasJournalAdminAccess,
+  resolveJournalAccessContext,
+} from "@/lib/journals/access";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -34,7 +42,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       id: true,
       type: true,
       status: true,
-      visibility: true,
       createdByPersonId: true,
       teamId: true,
       team: { select: { programId: true } },
@@ -50,51 +57,39 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(new URL("/journals", request.url), 303);
   }
 
+  // Only Final (DONE) journals can be reopened
+  if (journal.status !== EntryStatus.DONE) {
+    return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);
+  }
+
   const accessContext = await resolveJournalAccessContext({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
   });
 
-  if (!canEditJournalDraft(accessContext, journal)) {
+  // Only the author or an org admin may reopen
+  const isAuthor = scope.auth.personId === journal.createdByPersonId;
+  const isAdmin = hasJournalAdminAccess(accessContext);
+  if (!isAuthor && !isAdmin) {
     return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);
   }
 
-  const formData = await request.formData();
-  const title = String(formData.get("title") ?? "").trim();
-  const content = String(formData.get("content") ?? "").trim();
-  const rawJournalVisibility = String(formData.get("journalVisibility") ?? "PRIVATE").trim();
-  const rawJournalDate = String(formData.get("journalDate") ?? "").trim();
-  const rawJournalAuthor = String(formData.get("journalAuthor") ?? "").trim();
-
-  if (!title || !content) {
-    return NextResponse.redirect(new URL(`/journals/${entryId}/edit`, request.url), 303);
-  }
-
-  const journalVisibility = normalizeJournalPayloadVisibility(rawJournalVisibility);
-  const journalDate = normalizeJournalDateOnly(rawJournalDate);
-  const entryVisibility = mapJournalPayloadVisibilityToEntryVisibility(journalVisibility);
-
-  // Merge with existing payload so we don't lose other fields
-  const existingPayload = parseJournalEntryPayload(journal.typePayloads[0]?.payloadJson ?? null);
-  const updatedPayload = {
-    ...existingPayload,
-    journalVisibility,
-    journalDate,
-    journalAuthor: rawJournalAuthor,
-  };
+  // Update entry status to OPEN (Draft) and update journal payload status
+  const existingPayloadJson = journal.typePayloads[0]?.payloadJson ?? null;
+  const existingPayload = parseJournalEntryPayload(existingPayloadJson);
+  const updatedPayload = { ...existingPayload, journalStatus: "DRAFT" as const };
 
   await db.entry.update({
     where: { id: entryId },
     data: {
-      title: title.slice(0, MAX_JOURNAL_TITLE_LENGTH),
-      content,
-      visibility: entryVisibility,
+      status: EntryStatus.OPEN,
+      completedAt: null,
       updatedByPersonId: scope.auth.personId,
       version: { increment: 1 },
     },
   });
 
-  // Arc 24D.7: upsert journal payload
+  // Update the journal payload to reflect DRAFT status
   await db.entryTypePayload.upsert({
     where: { entryId_entryType: { entryId, entryType: EntryType.JOURNAL } },
     update: {
@@ -115,8 +110,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     organizationId: scope.organizationId,
     entryId,
     actorPersonId: scope.auth.personId,
-    action: ENTRY_ACTIVITY_ACTIONS.JOURNAL_DRAFT_UPDATED,
-    metadata: { journalVisibility },
+    action: ENTRY_ACTIVITY_ACTIONS.JOURNAL_REOPENED,
+    metadata: { reopenedAt: new Date().toISOString() },
   });
 
   return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);
