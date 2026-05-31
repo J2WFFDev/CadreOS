@@ -1,22 +1,15 @@
-import { HabitFrequency } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { canCreateHabit, resolveHabitAccessContext } from "@/lib/habits/access";
 import {
-  MAX_HABIT_DESCRIPTION_LENGTH,
-  MAX_HABIT_TITLE_LENGTH,
-  normalizeCompletedOn,
-  normalizeTrackingMode,
-} from "@/lib/habits/policy";
+  buildHabitCreateData,
+  createHabitActivitySafely,
+  getHabitCreateValidationError,
+  normalizeHabitCreateFormInput,
+} from "@/lib/habits/create";
 import { getOrganizationScope } from "@/lib/organization-context";
-
-function normalizeFrequency(raw: string): HabitFrequency | null {
-  if (raw === "DAILY") return HabitFrequency.DAILY;
-  if (raw === "WEEKLY") return HabitFrequency.WEEKLY;
-  if (raw === "CUSTOM") return HabitFrequency.CUSTOM;
-  return null;
-}
+import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
 
 export async function POST(request: Request) {
   const scope = await getOrganizationScope();
@@ -35,35 +28,26 @@ export async function POST(request: Request) {
   }
 
   const formData = await request.formData();
-  const title = String(formData.get("title") ?? "").trim().slice(0, MAX_HABIT_TITLE_LENGTH);
-  const description = String(formData.get("description") ?? "").trim().slice(0, MAX_HABIT_DESCRIPTION_LENGTH) || null;
-  const athletePersonId = String(formData.get("athletePersonId") ?? "").trim();
-  const assignedToTeamId = String(formData.get("assignedToTeamId") ?? "").trim() || null;
-  const frequencyRaw = String(formData.get("frequency") ?? "").trim();
-  const daysOfWeek = String(formData.get("daysOfWeek") ?? "").trim() || null;
-  const startDateRaw = String(formData.get("startDate") ?? "").trim();
-  const endDateRaw = String(formData.get("endDate") ?? "").trim();
-  const trackingModeRaw = String(formData.get("trackingMode") ?? "").trim();
-  const targetCountRaw = String(formData.get("targetCount") ?? "").trim();
-  const targetUnit = String(formData.get("targetUnit") ?? "").trim() || null;
+  const input = normalizeHabitCreateFormInput(formData);
 
-  if (!title || !athletePersonId) {
-    return NextResponse.redirect(new URL("/habits/create", request.url), 303);
+  const validationError = getHabitCreateValidationError(input);
+  if (validationError) {
+    return NextResponse.redirect(new URL(`/habits/create?error=${validationError}`, request.url), 303);
   }
 
   // Validate athlete belongs to the organization
   const athlete = await db.person.findFirst({
-    where: { id: athletePersonId, organizationId: scope.organizationId },
+    where: { id: input.athletePersonId, organizationId: scope.organizationId },
     select: { id: true },
   });
   if (!athlete) {
-    return NextResponse.redirect(new URL("/habits/create", request.url), 303);
+    return NextResponse.redirect(new URL("/habits/create?error=missing_athlete", request.url), 303);
   }
 
   // Validate team if provided
-  if (assignedToTeamId) {
+  if (input.assignedToTeamId) {
     const team = await db.team.findFirst({
-      where: { id: assignedToTeamId, organizationId: scope.organizationId },
+      where: { id: input.assignedToTeamId, organizationId: scope.organizationId },
       select: { id: true },
     });
     if (!team) {
@@ -71,47 +55,54 @@ export async function POST(request: Request) {
     }
   }
 
-  const frequency = normalizeFrequency(frequencyRaw);
-  const startDate = startDateRaw ? new Date(startDateRaw) : null;
-  const endDate = endDateRaw ? new Date(endDateRaw) : null;
-  const trackingMode = normalizeTrackingMode(trackingModeRaw);
-  const targetCount = targetCountRaw ? parseInt(targetCountRaw, 10) || null : null;
-
-  const habit = await db.habit.create({
-    data: {
+  let habitId: string;
+  try {
+    const habit = await db.habit.create({
+      data: buildHabitCreateData(input, {
+        organizationId: scope.organizationId,
+        actorPersonId: scope.auth.personId,
+      }),
+      select: { id: true },
+    });
+    habitId = habit.id;
+  } catch (error) {
+    const schemaDetail = describeSchemaUnavailableError(error);
+    console.error("[habits.create.save] Habit create failed", {
       organizationId: scope.organizationId,
-      title,
-      description,
-      athletePersonId,
-      assignedToTeamId,
-      createdByPersonId: scope.auth.personId,
-      trackingMode: trackingMode ?? undefined,
-      targetCount,
-      targetUnit,
-      ...(frequency && startDate
-        ? {
-            schedules: {
-              create: {
-                frequency,
-                daysOfWeek: daysOfWeek || null,
-                startDate: normalizeCompletedOn(startDate),
-                endDate: endDate ? normalizeCompletedOn(endDate) : null,
-              },
-            },
-          }
-        : {}),
-    },
-    select: { id: true },
-  });
-
-  await db.habitActivity.create({
-    data: {
-      organizationId: scope.organizationId,
-      habitId: habit.id,
-      action: "habit.created",
       actorPersonId: scope.auth.personId,
+      schemaDetail,
+      error,
+    });
+    if (isSchemaUnavailableError(error)) {
+      return NextResponse.redirect(new URL("/habits/create?error=schema_unavailable", request.url), 303);
+    }
+    return NextResponse.redirect(new URL("/habits/create?error=create_failed", request.url), 303);
+  }
+
+  await createHabitActivitySafely({
+    createActivity: async ({ organizationId, habitId, actorPersonId }) =>
+      db.habitActivity.create({
+        data: {
+          organizationId,
+          habitId,
+          action: "habit.created",
+          actorPersonId,
+        },
+      }),
+    organizationId: scope.organizationId,
+    habitId,
+    actorPersonId: scope.auth.personId,
+    logError: (error) => {
+      const schemaDetail = describeSchemaUnavailableError(error);
+      console.error("[habits.create.save] Habit activity create failed", {
+        organizationId: scope.organizationId,
+        habitId,
+        actorPersonId: scope.auth.personId,
+        schemaDetail,
+        error,
+      });
     },
   });
 
-  return NextResponse.redirect(new URL(`/habits/${habit.id}`, request.url), 303);
+  return NextResponse.redirect(new URL(`/habits/${habitId}`, request.url), 303);
 }
