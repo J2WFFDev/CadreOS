@@ -126,7 +126,7 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
   const isArchived = journalStatus === "ARCHIVED";
   const canReopen = isFinal && (isAuthor || isAdmin);
   const canRestore = isArchived && canRestoreJournal(accessContext, journal);
-  const lifecycleSummary =
+  const lifecycleHintText =
     isFinal
       ? " · Final journals are read-only until reopened"
       : isArchived
@@ -143,7 +143,7 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {labelForJournalPayloadVisibility(journalPayload.journalVisibility)}
-          {lifecycleSummary}
+          {lifecycleHintText}
         </p>
       </div>
 
@@ -226,7 +226,8 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
           </div>
         </dl>
         <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-          Operational status is separate from the journal editorial status shown above.
+          Operational status reflects the underlying entry record state, while journal status tracks the editorial
+          lifecycle for draft, final, and archived journal content.
         </p>
       </section>
 

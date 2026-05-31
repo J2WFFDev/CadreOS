@@ -26,7 +26,9 @@ export function resolveJournalWorkflowStatus(
     return fallbackStatus;
   }
 
-  return normalizedJournalStatus as JournalWorkflowStatus;
+  if (normalizedJournalStatus === "FINAL") return "FINAL";
+  if (normalizedJournalStatus === "ARCHIVED") return "ARCHIVED";
+  return "DRAFT";
 }
 
 export function labelForJournalWorkflowStatus(status: JournalWorkflowStatus): string {
