@@ -56,7 +56,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);
   }
 
-  const restoredAt = new Date();
   const existingPayload = parseJournalEntryPayload(journal.typePayloads[0]?.payloadJson ?? null);
   const updatedPayload = { ...existingPayload, journalStatus: "DRAFT" as const };
 
@@ -91,7 +90,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     entryId,
     actorPersonId: scope.auth.personId,
     action: ENTRY_ACTIVITY_ACTIONS.JOURNAL_RESTORED,
-    metadata: { restoredAt: restoredAt.toISOString() },
+    metadata: { restoredAt: new Date().toISOString() },
   });
 
   return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);

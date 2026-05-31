@@ -218,18 +218,16 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
           </div>
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Operational status</dt>
-            <dd>
-              {labelForEntryStatus(journal.status)}
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Operational status is separate from the journal editorial status shown above.
-              </p>
-            </dd>
+            <dd>{labelForEntryStatus(journal.status)}</dd>
           </div>
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Source</dt>
             <dd>{journal.journalPromptId ? "Prompted" : "Freeform"}</dd>
           </div>
         </dl>
+        <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+          Operational status is separate from the journal editorial status shown above.
+        </p>
       </section>
 
       <div className="flex flex-wrap gap-2">
