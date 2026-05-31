@@ -80,12 +80,12 @@ export async function POST(request: Request) {
   }
 
   await createHabitActivitySafely({
-    createActivity: async ({ organizationId, habitId, action, actorPersonId }) =>
+    createActivity: async ({ organizationId, habitId, actorPersonId }) =>
       db.habitActivity.create({
         data: {
           organizationId,
           habitId,
-          action,
+          action: "habit.created",
           actorPersonId,
         },
       }),

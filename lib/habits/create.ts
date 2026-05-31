@@ -114,7 +114,6 @@ export async function createHabitActivitySafely(input: {
   createActivity: (args: {
     organizationId: string;
     habitId: string;
-    action: string;
     actorPersonId: string;
   }) => Promise<unknown>;
   organizationId: string;
@@ -127,7 +126,6 @@ export async function createHabitActivitySafely(input: {
     await input.createActivity({
       organizationId: input.organizationId,
       habitId: input.habitId,
-      action: "habit.created",
       actorPersonId: input.actorPersonId,
     });
     return true;
