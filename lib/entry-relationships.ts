@@ -40,6 +40,10 @@ export const FOUNDATION_RELATIONSHIP_TYPES = [
 
 export type FoundationRelationshipType = (typeof FOUNDATION_RELATIONSHIP_TYPES)[number];
 
+const FOUNDATION_STORED_RELATIONSHIP_TYPES = FOUNDATION_RELATIONSHIP_TYPES.filter(
+  (relationshipType) => relationshipType !== OperationalRelationshipType.BLOCKED_BY,
+) as FoundationRelationshipType[];
+
 export const FOUNDATION_RELATIONSHIP_TARGET_TYPES: OperationalGraphNodeType[] = [
   OperationalGraphNodeType.ENTRY,
   OperationalGraphNodeType.HABIT,
@@ -508,7 +512,7 @@ export async function listFoundationRelationships(input: {
     where: {
       organizationId: input.organizationId,
       removedAt: null,
-      relationshipType: { in: [...FOUNDATION_RELATIONSHIP_TYPES] },
+      relationshipType: { in: FOUNDATION_STORED_RELATIONSHIP_TYPES },
       OR: [
         { fromNodeType: input.source.nodeType, fromNodeId: input.source.nodeId },
         { toNodeType: input.source.nodeType, toNodeId: input.source.nodeId },
@@ -533,8 +537,14 @@ export async function listFoundationRelationships(input: {
         return null;
       }
 
-      const direction: RelationshipDirection =
-        row.fromNodeType === input.source.nodeType && row.fromNodeId === input.source.nodeId ? "OUTBOUND" : "INBOUND";
+      const sourceIsFromNode = row.fromNodeType === input.source.nodeType && row.fromNodeId === input.source.nodeId;
+      const sourceIsToNode = row.toNodeType === input.source.nodeType && row.toNodeId === input.source.nodeId;
+
+      if (!sourceIsFromNode && !sourceIsToNode) {
+        return null;
+      }
+
+      const direction: RelationshipDirection = sourceIsFromNode ? "OUTBOUND" : "INBOUND";
 
       const relatedNode: RelationshipNodeRef =
         direction === "OUTBOUND"

@@ -424,6 +424,9 @@ export default async function EntryDetailPage({
       source: relationshipSource,
     }),
   ]);
+  const relatedOperationalItems = relatedItems.filter(
+    (item) => item.node.nodeType !== "ENTRY" && item.node.nodeType !== "HABIT",
+  );
   const [followUpEntries, people, programs, teams] = await Promise.all([
     db.entry.findMany({
       where: {
@@ -1384,13 +1387,11 @@ export default async function EntryDetailPage({
 
       <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="text-sm font-semibold">Related operational items</h3>
-        {relatedItems.filter((item) => item.node.nodeType !== "ENTRY" && item.node.nodeType !== "HABIT").length === 0 ? (
+        {relatedOperationalItems.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No related operational items yet.</p>
         ) : (
           <ul className="mt-2 space-y-2 text-sm">
-            {relatedItems
-              .filter((item) => item.node.nodeType !== "ENTRY" && item.node.nodeType !== "HABIT")
-              .map((item) => (
+            {relatedOperationalItems.map((item) => (
               <li key={item.id} className="rounded-md border px-3 py-2">
                 <div className="font-medium">
                   {item.direction === "OUTBOUND" ? "→" : "←"} {labelForOperationalRelationshipType(item.relationshipType)}
