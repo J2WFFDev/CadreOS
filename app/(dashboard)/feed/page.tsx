@@ -184,14 +184,15 @@ export default async function FeedPage() {
       </section>
     );
   }
+  const organizationId = scope.organizationId;
   const entryAccess = await resolveEntryAccess({
-    organizationId: scope.organizationId,
+    organizationId,
     actorPersonId: scope.auth.personId,
   });
   const selfServiceAccess =
     entryAccess.level === "NONE"
       ? await hasSelfServiceEntryRole({
-          organizationId: scope.organizationId,
+          organizationId,
           actorPersonId: scope.auth.personId,
         })
       : false;
@@ -210,24 +211,24 @@ export default async function FeedPage() {
   const feed =
     entryAccess.level !== "NONE"
       ? await aggregateOperationalFeed({
-          organizationId: scope.organizationId,
+          organizationId,
           actorPersonId,
           now,
         })
       : await queryAssignedEntries({
-          organizationId: scope.organizationId,
+          organizationId,
           actorPersonId,
           now,
         }).then(async (assigned) => {
           const { tomorrowStart } = computeTodayWindow(now);
           const { from, to } = computeUpcomingWindow(now);
           const [habitsToday, recentHabitActivity] = await Promise.all([
-            queryActionableHabitsToday({ organizationId: scope.organizationId, actorPersonId, now }),
-            queryRecentHabitActivity({ organizationId: scope.organizationId, actorPersonId }),
+            queryActionableHabitsToday({ organizationId, actorPersonId, now }),
+            queryRecentHabitActivity({ organizationId, actorPersonId }),
           ]);
 
           return {
-            inbox: [] as FeedEntryItem[],
+            inbox: [],
             assigned,
             today: assigned.filter((entry) => entry.dueDate && entry.dueDate < tomorrowStart),
             upcoming: assigned.filter((entry) => entry.dueDate && entry.dueDate >= from && entry.dueDate < to),
@@ -329,9 +330,7 @@ export default async function FeedPage() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Recent Activity
         </h2>
-        <ActivityFeed
-          items={feed.recentActivity}
-        />
+        <ActivityFeed items={feed.recentActivity} />
       </div>
     </section>
   );

@@ -47,6 +47,7 @@ const ENTRY_SELF_SERVICE_ROLES = new Set<RoleType>([
   RoleType.PARENT_GUARDIAN,
   RoleType.ATHLETE,
 ]);
+const ENTRY_SELF_SERVICE_ROLE_LIST = Array.from(ENTRY_SELF_SERVICE_ROLES);
 
 /** Roles that may delete or manage entry lifecycle (soft-delete, restore). */
 const ENTRY_MANAGE_ROLES = new Set<RoleType>([RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR]);
@@ -139,7 +140,7 @@ export async function hasSelfServiceEntryRole(context: EntryAccessContext): Prom
     where: {
       organizationId: context.organizationId,
       personId: context.actorPersonId,
-      roleType: { in: [...ENTRY_SELF_SERVICE_ROLES] },
+      roleType: { in: ENTRY_SELF_SERVICE_ROLE_LIST },
     },
     select: { id: true },
   });
