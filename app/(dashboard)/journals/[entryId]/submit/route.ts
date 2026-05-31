@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeEntryActivity } from "@/lib/entries/service";
+import { parseJournalEntryPayload, serializeJournalEntryPayload } from "@/lib/entries/journal-payload";
 import { canSubmitJournal, resolveJournalAccessContext } from "@/lib/journals/access";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -31,6 +32,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       teamId: true,
       team: { select: { programId: true } },
       journalAssignmentId: true,
+      typePayloads: {
+        where: { entryType: EntryType.JOURNAL },
+        select: { payloadJson: true },
+        take: 1,
+      },
     },
   });
 
@@ -48,6 +54,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   }
 
   const submittedAt = new Date();
+  const existingPayload = parseJournalEntryPayload(journal.typePayloads[0]?.payloadJson ?? null);
+  const updatedPayload = { ...existingPayload, journalStatus: "FINAL" as const };
+
   await db.entry.update({
     where: { id: entryId },
     data: {
@@ -55,6 +64,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       completedAt: submittedAt,
       updatedByPersonId: scope.auth.personId,
       version: { increment: 1 },
+    },
+  });
+
+  await db.entryTypePayload.upsert({
+    where: { entryId_entryType: { entryId, entryType: EntryType.JOURNAL } },
+    update: {
+      payloadJson: serializeJournalEntryPayload(updatedPayload),
+      isActive: true,
+      archivedAt: null,
+    },
+    create: {
+      organizationId: scope.organizationId,
+      entryId,
+      entryType: EntryType.JOURNAL,
+      payloadJson: serializeJournalEntryPayload(updatedPayload),
+      isActive: true,
     },
   });
 
@@ -87,4 +112,3 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
   return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);
 }
-

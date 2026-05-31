@@ -3,6 +3,7 @@ import {
   AttendanceStatus,
   BookingStatus,
   ConsumableTransactionType,
+  EntryStatus,
   EntryListScope,
   EntryType,
   EventType,
@@ -685,6 +686,7 @@ export default async function DashboardPage() {
 
   let unifiedDashboardData: {
     myOpenTasks: Array<{ id: string; title: string; status: TaskStatus; dueAt: Date | null }>;
+    myDraftJournals: Array<{ id: string; title: string; updatedAt: Date }>;
     myUpcomingEvents: Array<{ id: string; title: string; startsAt: Date; eventType: EventType; team: { id: string; name: string } | null }>;
     myRecentDecisions: Array<{ id: string; title: string; updatedAt: Date }>;
     myActiveLists: Array<{ id: string; name: string; scope: EntryListScope }>;
@@ -715,6 +717,7 @@ export default async function DashboardPage() {
   try {
     const [
       myOpenTasks,
+      myDraftJournals,
       myUpcomingEvents,
       myRecentDecisions,
       myActiveLists,
@@ -740,6 +743,20 @@ export default async function DashboardPage() {
             },
             select: { id: true, title: true, status: true, dueAt: true },
             orderBy: [{ dueAt: "asc" }, { createdAt: "asc" }],
+            take: UNIFIED_SECTION_LIMIT,
+          })
+        : Promise.resolve([]),
+      actorPersonId
+        ? db.entry.findMany({
+            where: {
+              organizationId: scope.organizationId,
+              type: EntryType.JOURNAL,
+              status: EntryStatus.OPEN,
+              createdByPersonId: actorPersonId,
+              deletedAt: null,
+            },
+            select: { id: true, title: true, updatedAt: true },
+            orderBy: [{ updatedAt: "desc" }],
             take: UNIFIED_SECTION_LIMIT,
           })
         : Promise.resolve([]),
@@ -930,6 +947,7 @@ export default async function DashboardPage() {
 
     unifiedDashboardData = {
       myOpenTasks: sortOpenTasks(myOpenTasks),
+      myDraftJournals,
       myUpcomingEvents,
       myRecentDecisions,
       myActiveLists,
@@ -1008,6 +1026,26 @@ export default async function DashboardPage() {
                           ))}
                         </ul>
                       )}
+                  </div>
+                  <div>
+                    <p className="font-medium">My Draft Journals</p>
+                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                      Journals are only listed in My Work while they are your drafts; assignment/review journal workflows are deferred.
+                    </p>
+                    {unifiedDashboardData.myDraftJournals.length === 0
+                      ? renderEmptyList("No draft journals currently require action.")
+                      : (
+                          <ul className="mt-1 space-y-1">
+                            {unifiedDashboardData.myDraftJournals.map((journal) => (
+                              <li key={journal.id}>
+                                <Link href={`/journals/${journal.id}`} className="underline">
+                                  {journal.title}
+                                </Link>{" "}
+                                <span className="text-zinc-500 dark:text-zinc-400">({formatDateTime(journal.updatedAt)})</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                   </div>
                   <div>
                     <p className="font-medium">My Upcoming Events</p>
@@ -2495,10 +2533,14 @@ export default async function DashboardPage() {
               <h3 className="text-base font-medium">My Work</h3>
               <ul className="mt-2 space-y-1 text-sm">
                 <li>Open Tasks: {unifiedDashboardData.myOpenTasks.length}</li>
+                <li>My Draft Journals: {unifiedDashboardData.myDraftJournals.length}</li>
                 <li>Upcoming Events: {unifiedDashboardData.myUpcomingEvents.length}</li>
                 <li>Recent Decisions: {unifiedDashboardData.myRecentDecisions.length}</li>
                 <li>Active Lists: {unifiedDashboardData.myActiveLists.length}</li>
               </ul>
+              <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                Journal activity appears in Feed/Recent Activity; only authored draft journals appear in My Work until assignment/review workflows ship.
+              </p>
             </div>
             <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
               <h3 className="text-base font-medium">Team Activity</h3>

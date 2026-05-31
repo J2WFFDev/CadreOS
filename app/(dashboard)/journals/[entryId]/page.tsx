@@ -16,9 +16,9 @@ import {
 import {
   labelForJournalPayloadVisibility,
   labelForJournalWorkflowStatus,
-  mapEntryStatusToJournalWorkflowStatus,
 } from "@/lib/journals/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { labelForEntryStatus } from "@/lib/operational-feed/render";
 
 export const dynamic = "force-dynamic";
 
@@ -113,15 +113,26 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
 
   const isAuthor = scope.auth.personId === journal.createdByPersonId;
   const isAdmin = hasJournalAdminAccess(accessContext);
-  const canViewBody = isAuthor || isAdmin || journal.status === EntryStatus.DONE;
+  const journalPayload = parseJournalEntryPayload(journal.typePayloads[0]?.payloadJson ?? null);
+  const fallbackStatusFromEntry =
+    journal.status === EntryStatus.ARCHIVED
+      ? "ARCHIVED"
+      : journal.status === EntryStatus.DONE
+        ? "FINAL"
+        : "DRAFT";
+
+  // Arc 24D.7.1: prefer explicit journal payload status, but preserve compatibility
+  // for existing records that predate payload status transitions.
+  const journalStatus =
+    journalPayload.journalStatus === "DRAFT" && fallbackStatusFromEntry !== "DRAFT"
+      ? fallbackStatusFromEntry
+      : journalPayload.journalStatus;
+
+  const canViewBody = isAuthor || isAdmin || journalStatus === "FINAL";
   const canEditDraft = canEditJournalDraft(accessContext, journal);
   const canSubmitDraft = canSubmitJournal(accessContext, journal);
   const canArchive = canArchiveJournal(accessContext, journal);
-  const status = mapEntryStatusToJournalWorkflowStatus(journal.status);
-
-  // Arc 24D.7: journal payload metadata
-  const journalPayload = parseJournalEntryPayload(journal.typePayloads[0]?.payloadJson ?? null);
-  const isFinal = journal.status === EntryStatus.DONE;
+  const isFinal = journalStatus === "FINAL";
   const canReopen = isFinal && (isAuthor || isAdmin);
 
   return (
@@ -130,7 +141,7 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
         <BackLink href="/journals" label="Journals" />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-2xl font-semibold tracking-tight">{journal.title}</h2>
-          <span className="rounded-full border px-2.5 py-1 text-xs font-medium">{labelForJournalWorkflowStatus(status)}</span>
+          <span className="rounded-full border px-2.5 py-1 text-xs font-medium">{labelForJournalWorkflowStatus(journalStatus)}</span>
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {labelForJournalPayloadVisibility(journalPayload.journalVisibility)}
@@ -183,7 +194,7 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
           </div>
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Journal status</dt>
-            <dd>{labelForJournalWorkflowStatus(status)}</dd>
+            <dd>{labelForJournalWorkflowStatus(journalStatus)}</dd>
           </div>
         </dl>
       </section>
@@ -206,6 +217,10 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Last updated by</dt>
             <dd>{formatPersonName(journal.updatedBy)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Entry status</dt>
+            <dd>{labelForEntryStatus(journal.status)}</dd>
           </div>
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Source</dt>
@@ -237,7 +252,7 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
           </form>
         ) : null}
 
-        {canArchive && status !== "ARCHIVED" ? (
+        {canArchive && journalStatus !== "ARCHIVED" ? (
           <form action={`/journals/${journal.id}/archive`} method="post">
             <button type="submit" className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300">
               Archive journal

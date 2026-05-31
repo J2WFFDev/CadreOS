@@ -5,14 +5,15 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { canCreateJournal, canReadJournalEntry, resolveJournalAccessContext } from "@/lib/journals/access";
+import { parseJournalEntryPayload } from "@/lib/entries/journal-payload";
 import {
   hintForJournalVisibility,
   labelForJournalVisibility,
   labelForJournalWorkflowStatus,
-  mapEntryStatusToJournalWorkflowStatus,
 } from "@/lib/journals/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { db } from "@/lib/db";
+import { labelForEntryStatus } from "@/lib/operational-feed/render";
 import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,7 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
         teamId: string | null;
         team: { name: string; programId: string } | null;
         createdBy: { firstName: string; lastName: string };
+        typePayloads: Array<{ payloadJson: string | null }>;
       }>
     | null = null;
   let loadErrorMessage: string | null = null;
@@ -91,6 +93,11 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
         teamId: true,
         team: { select: { name: true, programId: true } },
         createdBy: { select: { firstName: true, lastName: true } },
+        typePayloads: {
+          where: { entryType: EntryType.JOURNAL },
+          select: { payloadJson: true },
+          take: 1,
+        },
       },
       take: JOURNAL_LIST_LIMIT,
     });
@@ -186,6 +193,7 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
               <tr>
                 <th className="px-4 py-3 font-medium">Journal</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Entry Status</th>
                 <th className="px-4 py-3 font-medium">Visibility</th>
                 <th className="px-4 py-3 font-medium">Author</th>
                 <th className="px-4 py-3 font-medium">Updated</th>
@@ -193,7 +201,17 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
             </thead>
             <tbody>
               {visibleJournals.map((journal) => {
-                const status = mapEntryStatusToJournalWorkflowStatus(journal.status);
+                const payload = parseJournalEntryPayload(journal.typePayloads[0]?.payloadJson ?? null);
+                const fallbackStatusFromEntry =
+                  journal.status === EntryStatus.ARCHIVED
+                    ? "ARCHIVED"
+                    : journal.status === EntryStatus.DONE
+                      ? "FINAL"
+                      : "DRAFT";
+                const journalStatus =
+                  payload.journalStatus === "DRAFT" && fallbackStatusFromEntry !== "DRAFT"
+                    ? fallbackStatusFromEntry
+                    : payload.journalStatus;
                 const authorName = `${journal.createdBy.firstName} ${journal.createdBy.lastName}`.trim() || "Unknown";
                 return (
                   <tr key={journal.id} className="border-b last:border-b-0">
@@ -203,7 +221,8 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
                       </Link>
                       {journal.team?.name ? <p className="text-xs text-zinc-500">Team: {journal.team.name}</p> : null}
                     </td>
-                    <td className="px-4 py-3">{labelForJournalWorkflowStatus(status)}</td>
+                    <td className="px-4 py-3">{labelForJournalWorkflowStatus(journalStatus)}</td>
+                    <td className="px-4 py-3">{labelForEntryStatus(journal.status)}</td>
                     <td className="px-4 py-3">
                       <p>{labelForJournalVisibility(journal.visibility)}</p>
                       <p className="text-xs text-zinc-500">{hintForJournalVisibility(journal.visibility)}</p>
