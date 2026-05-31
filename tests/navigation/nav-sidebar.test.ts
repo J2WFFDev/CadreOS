@@ -117,3 +117,17 @@ test("guardian and athlete can see GearOps without admin navigation", () => {
     assert.equal(keys.includes("ADMIN"), false);
   }
 });
+
+test("guardian and athlete hide staff-only EntryOps links", () => {
+  for (const role of ["GUARDIAN", "ATHLETE"] as const) {
+    const entryOpsGroup = getNavSidebarGroupsForUser(buildUser(role)).find((group) => group.key === "ENTRYOPS");
+    assert.ok(entryOpsGroup);
+
+    const hrefs = (entryOpsGroup?.items ?? []).map((item) => item.href);
+    assert.equal(hrefs.includes("/entries/inbox"), false);
+    assert.equal(hrefs.includes("/entries/review"), false);
+    assert.equal(hrefs.includes("/lists"), false);
+    assert.equal(hrefs.includes("/entries"), false);
+    assert.equal(hrefs.includes("/prompts"), false);
+  }
+});

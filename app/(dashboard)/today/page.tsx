@@ -3,10 +3,10 @@ import Link from "next/link";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { queryActionableHabitsToday, queryTodayEntries } from "@/lib/operational-feed";
+import { computeTodayWindow, queryActionableHabitsToday, queryAssignedEntries, queryTodayEntries } from "@/lib/operational-feed";
 import type { ActionableHabitItem } from "@/lib/operational-feed";
 import { formatDueDate, isOverdueFeedEntry, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
-import { resolveEntryAccess } from "@/lib/operational-entry";
+import { hasSelfServiceEntryRole, resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -80,7 +80,16 @@ export default async function TodayPage() {
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
   });
-  if (entryAccess.level === "NONE") {
+  const selfServiceAccess =
+    entryAccess.level === "NONE"
+      ? await hasSelfServiceEntryRole({
+          organizationId: scope.organizationId,
+          actorPersonId: scope.auth.personId,
+        })
+      : false;
+  const canCreateTasks = entryAccess.level !== "NONE";
+
+  if (entryAccess.level === "NONE" && !selfServiceAccess) {
     return (
       <section className="space-y-4">
         <PageHeader title="Today" description="Focus on work that needs attention today." />
@@ -91,10 +100,12 @@ export default async function TodayPage() {
 
   const now = new Date();
   const ctx = { organizationId: scope.organizationId, actorPersonId: scope.auth.personId, now };
-  const [entries, habitsToday] = await Promise.all([
-    queryTodayEntries(ctx),
-    queryActionableHabitsToday(ctx),
-  ]);
+  const { tomorrowStart } = computeTodayWindow(now);
+  const habitsToday = await queryActionableHabitsToday(ctx);
+  const entries =
+    entryAccess.level !== "NONE"
+      ? await queryTodayEntries(ctx)
+      : (await queryAssignedEntries(ctx)).filter((entry) => entry.dueDate && entry.dueDate < tomorrowStart);
 
   const hasAnything = entries.length > 0 || habitsToday.length > 0;
 
@@ -104,15 +115,21 @@ export default async function TodayPage() {
         title="Today"
         description="Tasks, events, decisions, journals, and habits due or active today."
         actions={
-          <Link href="/tasks/new?returnTo=%2Ftoday" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-            New task
-          </Link>
+          canCreateTasks ? (
+            <Link href="/tasks/new?returnTo=%2Ftoday" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+              New task
+            </Link>
+          ) : null
         }
       />
 
       {!hasAnything ? (
         <EmptyState
-          message="Nothing is overdue, due today, or scheduled for today — you're all caught up."
+          message={
+            canCreateTasks
+              ? "Nothing is overdue, due today, or scheduled for today — you're all caught up."
+              : "No assigned items are overdue or due today. Habit check-ins for your role still appear here."
+          }
           actionHref="/upcoming"
           actionLabel="Check upcoming"
         />

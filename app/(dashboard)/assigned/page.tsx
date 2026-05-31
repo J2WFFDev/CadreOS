@@ -5,7 +5,7 @@ import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { queryAssignedEntries } from "@/lib/operational-feed";
 import { formatDueDate, isOverdueFeedEntry, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
-import { resolveEntryAccess } from "@/lib/operational-entry";
+import { hasSelfServiceEntryRole, resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -40,8 +40,16 @@ export default async function AssignedPage() {
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
   });
+  const selfServiceAccess =
+    entryAccess.level === "NONE"
+      ? await hasSelfServiceEntryRole({
+          organizationId: scope.organizationId,
+          actorPersonId: scope.auth.personId,
+        })
+      : false;
+  const canCreateTasks = entryAccess.level !== "NONE";
 
-  if (entryAccess.level === "NONE") {
+  if (entryAccess.level === "NONE" && !selfServiceAccess) {
     return (
       <section className="space-y-4">
         <PageHeader title="My Work" description="Actionable work assigned to you." />
@@ -83,18 +91,24 @@ export default async function AssignedPage() {
             <Link href="/upcoming" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
               Upcoming
             </Link>
-            <Link href="/tasks/new?returnTo=%2Fassigned" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-              New task
-            </Link>
+            {canCreateTasks ? (
+              <Link href="/tasks/new?returnTo=%2Fassigned" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+                New task
+              </Link>
+            ) : null}
           </div>
         }
       />
 
       {entries.length === 0 ? (
         <EmptyState
-          message="No actionable work is assigned to you right now. Completed and archived items are excluded."
-          actionHref="/tasks/new?returnTo=%2Fassigned"
-          actionLabel="Create task"
+          message={
+            canCreateTasks
+              ? "No actionable work is assigned to you right now. Completed and archived items are excluded."
+              : "No assigned work is visible right now. Ask a coach or program staff member to assign work to you."
+          }
+          actionHref={canCreateTasks ? "/tasks/new?returnTo=%2Fassigned" : "/today"}
+          actionLabel={canCreateTasks ? "Create task" : "View today"}
         />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">

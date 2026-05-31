@@ -3,7 +3,14 @@ import { EntryStatus } from "@prisma/client";
 
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { aggregateOperationalFeed } from "@/lib/operational-feed";
+import {
+  aggregateOperationalFeed,
+  computeTodayWindow,
+  computeUpcomingWindow,
+  queryActionableHabitsToday,
+  queryAssignedEntries,
+  queryRecentHabitActivity,
+} from "@/lib/operational-feed";
 import {
   describeActivityAction,
   formatDueDate,
@@ -14,7 +21,7 @@ import {
   labelForEntryType,
 } from "@/lib/operational-feed/render";
 import type { ActionableHabitItem, FeedActivityItem, FeedEntryItem } from "@/lib/operational-feed/types";
-import { resolveEntryAccess } from "@/lib/operational-entry";
+import { hasSelfServiceEntryRole, resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -181,7 +188,15 @@ export default async function FeedPage() {
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
   });
-  if (entryAccess.level === "NONE") {
+  const selfServiceAccess =
+    entryAccess.level === "NONE"
+      ? await hasSelfServiceEntryRole({
+          organizationId: scope.organizationId,
+          actorPersonId: scope.auth.personId,
+        })
+      : false;
+
+  if (entryAccess.level === "NONE" && !selfServiceAccess) {
     return (
       <section className="space-y-4">
         <PageHeader title="Activity Feed" description="Recent changes and work history." />
@@ -192,41 +207,77 @@ export default async function FeedPage() {
 
   const now = new Date();
   const actorPersonId = scope.auth.personId;
+  const feed =
+    entryAccess.level !== "NONE"
+      ? await aggregateOperationalFeed({
+          organizationId: scope.organizationId,
+          actorPersonId,
+          now,
+        })
+      : await queryAssignedEntries({
+          organizationId: scope.organizationId,
+          actorPersonId,
+          now,
+        }).then(async (assigned) => {
+          const { tomorrowStart } = computeTodayWindow(now);
+          const { from, to } = computeUpcomingWindow(now);
+          const [habitsToday, recentHabitActivity] = await Promise.all([
+            queryActionableHabitsToday({ organizationId: scope.organizationId, actorPersonId, now }),
+            queryRecentHabitActivity({ organizationId: scope.organizationId, actorPersonId }),
+          ]);
 
-  const feed = await aggregateOperationalFeed({
-    organizationId: scope.organizationId,
-    actorPersonId,
-    now,
-  });
+          return {
+            inbox: [] as FeedEntryItem[],
+            assigned,
+            today: assigned.filter((entry) => entry.dueDate && entry.dueDate < tomorrowStart),
+            upcoming: assigned.filter((entry) => entry.dueDate && entry.dueDate >= from && entry.dueDate < to),
+            recentActivity: recentHabitActivity,
+            habitsToday,
+          };
+        });
 
   return (
     <section className="space-y-8">
       <PageHeader
         title="Activity Feed"
-        description="Changes, check-ins, and work history across your organization."
+        description={
+          entryAccess.level !== "NONE"
+            ? "Changes, check-ins, and work history across your organization."
+            : "Your assigned work, linked-athlete habit activity, and near-term schedule."
+        }
         actions={
           <div className="flex items-center gap-2">
-            <Link href="/entries/inbox" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              Inbox
-            </Link>
-            <Link href="/feed?quickCapture=1" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-              Quick capture
-            </Link>
+            {entryAccess.level !== "NONE" ? (
+              <>
+                <Link href="/entries/inbox" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                  Inbox
+                </Link>
+                <Link href="/feed?quickCapture=1" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+                  Quick capture
+                </Link>
+              </>
+            ) : null}
           </div>
         }
       />
 
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Inbox
-        </h2>
-        <FeedTable
-          entries={feed.inbox}
-          now={now}
-          showType
-          emptyMessage="No unprocessed inbox captures."
-        />
-      </div>
+      {entryAccess.level !== "NONE" ? (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Inbox
+          </h2>
+          <FeedTable
+            entries={feed.inbox}
+            now={now}
+            showType
+            emptyMessage="No unprocessed inbox captures."
+          />
+        </div>
+      ) : (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          Limited feed mode: only assigned work and linked-athlete habit activity are shown for your role.
+        </p>
+      )}
 
       {actorPersonId && (
         <div className="space-y-2">
@@ -278,7 +329,9 @@ export default async function FeedPage() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Recent Activity
         </h2>
-        <ActivityFeed items={feed.recentActivity} />
+        <ActivityFeed
+          items={feed.recentActivity}
+        />
       </div>
     </section>
   );

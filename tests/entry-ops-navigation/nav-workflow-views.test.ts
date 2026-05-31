@@ -214,17 +214,23 @@ test("NAV-012: EntryOps workflow items are visible to ADMIN role", () => {
   assert.ok(hrefs.includes("/feed"), "Activity Feed not visible to ADMIN");
 });
 
-test("NAV-012b: EntryOps workflow items are visible to ATHLETE role", () => {
+test("NAV-012b: Athlete EntryOps navigation is limited to assigned/schedule/feed views", () => {
   const groups = getNavSidebarGroupsForUser(buildUser("ATHLETE"));
   const entryOps = groups.find((g) => g.key === "ENTRYOPS");
   assert.ok(entryOps);
 
   const hrefs = entryOps.items.map((i) => i.href);
-  assert.ok(hrefs.includes("/entries/inbox"), "Inbox not visible to ATHLETE");
   assert.ok(hrefs.includes("/assigned"), "My Work not visible to ATHLETE");
   assert.ok(hrefs.includes("/today"), "Today not visible to ATHLETE");
   assert.ok(hrefs.includes("/upcoming"), "Upcoming not visible to ATHLETE");
-  assert.ok(hrefs.includes("/entries/review"), "Review not visible to ATHLETE");
+  assert.ok(hrefs.includes("/feed"), "Activity Feed not visible to ATHLETE");
+  assert.ok(hrefs.includes("/journals"), "Journals not visible to ATHLETE");
+  assert.ok(hrefs.includes("/habits"), "Habits not visible to ATHLETE");
+  assert.equal(hrefs.includes("/entries/inbox"), false, "Inbox must be hidden for ATHLETE");
+  assert.equal(hrefs.includes("/entries/review"), false, "Review must be hidden for ATHLETE");
+  assert.equal(hrefs.includes("/lists"), false, "Lists must be hidden for ATHLETE");
+  assert.equal(hrefs.includes("/entries"), false, "All entries must be hidden for ATHLETE");
+  assert.equal(hrefs.includes("/prompts"), false, "Prompt Library must be hidden for ATHLETE");
 });
 
 // ── NAV-013: PROMPT_LIBRARY_ROLES items still scoped correctly ─────────────

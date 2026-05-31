@@ -42,6 +42,12 @@ const ENTRY_READ_ROLES = new Set<RoleType>([
   RoleType.ASSISTANT_COACH,
 ]);
 
+/** Roles with self-service read needs (assigned/scheduled personal work views). */
+const ENTRY_SELF_SERVICE_ROLES = new Set<RoleType>([
+  RoleType.PARENT_GUARDIAN,
+  RoleType.ATHLETE,
+]);
+
 /** Roles that may delete or manage entry lifecycle (soft-delete, restore). */
 const ENTRY_MANAGE_ROLES = new Set<RoleType>([RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR]);
 
@@ -118,4 +124,25 @@ export async function canWriteEntries(context: EntryAccessContext): Promise<bool
 export async function canManageEntries(context: EntryAccessContext): Promise<boolean> {
   const result = await resolveEntryAccess(context);
   return meetsAccessLevel(result.level, "MANAGE");
+}
+
+/**
+ * Resolves whether the actor has a self-service role for limited entry views
+ * (assigned work and personal schedule slices).
+ */
+export async function hasSelfServiceEntryRole(context: EntryAccessContext): Promise<boolean> {
+  if (!context.actorPersonId) {
+    return false;
+  }
+
+  const assignment = await db.roleAssignment.findFirst({
+    where: {
+      organizationId: context.organizationId,
+      personId: context.actorPersonId,
+      roleType: { in: [...ENTRY_SELF_SERVICE_ROLES] },
+    },
+    select: { id: true },
+  });
+
+  return Boolean(assignment);
 }
