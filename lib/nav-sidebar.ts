@@ -23,11 +23,14 @@ export function getNavSidebarGroupsForUser(user: CurrentUser | null): readonly C
 
 export function isNavSidebarLinkActive(pathname: string, href: string): boolean {
   const isEntriesRoot = href === "/entries";
-  const isEntryInboxPath = pathname.startsWith("/entries/inbox");
+  const isEntrySubPath =
+    pathname.startsWith("/entries/inbox") ||
+    pathname.startsWith("/entries/review") ||
+    pathname.startsWith("/entries/schedule");
 
   return (
     pathname === href ||
-    (href !== "/dashboard" && pathname.startsWith(href + "/") && !(isEntriesRoot && isEntryInboxPath))
+    (href !== "/dashboard" && pathname.startsWith(href + "/") && !(isEntriesRoot && isEntrySubPath))
   );
 }
 

@@ -727,7 +727,52 @@ export function sanitizeActivityEntryTitle(action: string, entryType: EntryType,
 }
 
 /**
- * Aggregates the full operational feed for an organization and actor.
+ * Arc 24D.11: Review view types and query.
+ * Surfaces completed, cancelled, and archived entries for retrospective review.
+ */
+
+/** Completed or archived entry statuses shown in the Review view. */
+export const REVIEW_ENTRY_STATUSES = [
+  EntryStatus.DONE,
+  EntryStatus.CANCELLED,
+  EntryStatus.ARCHIVED,
+] as const satisfies EntryStatus[];
+
+/** Minimal entry projection used in the review list. */
+export type ReviewEntryItem = FeedEntryItem & {
+  updatedAt: Date;
+};
+
+const REVIEW_ENTRY_SELECT = {
+  ...FEED_ENTRY_SELECT,
+  updatedAt: true,
+} as const;
+
+/**
+ * Queries entries in DONE, CANCELLED, or ARCHIVED status for the Review view.
+ * Results are ordered by updatedAt descending (most recently actioned first).
+ * Optionally filtered by entry type.
+ */
+export async function queryReviewEntries(
+  ctx: FeedQueryContext,
+  options: { type?: EntryType } = {},
+): Promise<ReviewEntryItem[]> {
+  const entries = await db.entry.findMany({
+    where: {
+      organizationId: ctx.organizationId,
+      deletedAt: null,
+      status: { in: [...REVIEW_ENTRY_STATUSES] },
+      ...(options.type ? { type: options.type } : {}),
+    },
+    orderBy: [{ updatedAt: "desc" }],
+    select: REVIEW_ENTRY_SELECT,
+    take: 200,
+  });
+
+  return entries as ReviewEntryItem[];
+}
+
+/**
  * Runs all queries in parallel for efficiency.
  * Arc 24D.8: Also includes habit activity and actionable habits today.
  */

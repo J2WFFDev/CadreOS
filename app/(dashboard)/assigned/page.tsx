@@ -74,7 +74,7 @@ export default async function AssignedPage() {
     <section className="space-y-4">
       <PageHeader
         title="My Work"
-        description="Assigned items that are ready for action now."
+        description="Actionable items assigned to you, excluding completed and archived work."
         actions={
           <div className="flex items-center gap-2">
             <Link href="/today" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
@@ -92,7 +92,7 @@ export default async function AssignedPage() {
 
       {entries.length === 0 ? (
         <EmptyState
-          message="No actionable work is assigned to you."
+          message="No actionable work is assigned to you right now. Completed and archived items are excluded."
           actionHref="/tasks/new?returnTo=%2Fassigned"
           actionLabel="Create task"
         />

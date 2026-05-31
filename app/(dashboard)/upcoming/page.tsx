@@ -53,10 +53,22 @@ export default async function UpcomingPage() {
 
   return (
     <section className="space-y-4">
-      <PageHeader title="Upcoming" description="Future work due in the next 7 days." />
+      <PageHeader
+        title="Upcoming"
+        description="Tasks, events, decisions, and journals scheduled in the next 7 days."
+        actions={
+          <Link href="/tasks/new?returnTo=%2Fupcoming" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+            New task
+          </Link>
+        }
+      />
 
       {entries.length === 0 ? (
-        <EmptyState message="No upcoming items in the next 7 days." actionHref="/tasks/new?returnTo=%2Fupcoming" actionLabel="Create task" />
+        <EmptyState
+          message="Nothing is scheduled in the next 7 days. Add due dates to tasks, events, or decisions to see them here."
+          actionHref="/tasks/new?returnTo=%2Fupcoming"
+          actionLabel="Create task"
+        />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
           <table className="min-w-full text-left text-sm">

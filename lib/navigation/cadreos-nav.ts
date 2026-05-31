@@ -76,12 +76,6 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
         moduleKey: "dashboard",
       }),
       activeItem({
-        key: "FYP",
-        label: "FYP",
-        href: "/feed",
-        moduleKey: "dashboard",
-      }),
-      activeItem({
         key: "NOTIFICATIONS",
         label: "Notifications",
         href: "/notifications",
@@ -134,15 +128,15 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
     allowedRoles: WORKOPS_ROLES,
     items: [
       activeItem({
-        key: "ENTRY_ALL",
-        label: "All",
-        href: "/entries",
-        moduleKey: "entry",
-      }),
-      activeItem({
         key: "ENTRY_INBOX",
         label: "Inbox",
         href: "/entries/inbox",
+        moduleKey: "entry",
+      }),
+      activeItem({
+        key: "ENTRY_MY_WORK",
+        label: "My Work",
+        href: "/assigned",
         moduleKey: "entry",
       }),
       activeItem({
@@ -152,9 +146,33 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
         moduleKey: "entry",
       }),
       activeItem({
+        key: "ENTRY_UPCOMING",
+        label: "Upcoming",
+        href: "/upcoming",
+        moduleKey: "entry",
+      }),
+      activeItem({
+        key: "ENTRY_REVIEW",
+        label: "Review",
+        href: "/entries/review",
+        moduleKey: "entry",
+      }),
+      activeItem({
         key: "ENTRY_LISTS",
         label: "Lists",
         href: "/lists",
+        moduleKey: "entry",
+      }),
+      activeItem({
+        key: "ENTRY_ACTIVITY",
+        label: "Activity Feed",
+        href: "/feed",
+        moduleKey: "entry",
+      }),
+      activeItem({
+        key: "ENTRY_ALL",
+        label: "All",
+        href: "/entries",
         moduleKey: "entry",
       }),
       activeItem({
