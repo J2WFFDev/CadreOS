@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import { buildLegacyContextLinks } from "../../app/(dashboard)/entries/[entryId]/page";
+import { buildLegacyContextLinks } from "../../lib/entries/legacy-context";
 
 test("buildLegacyContextLinks returns source and follow-up links when present", () => {
   const links = buildLegacyContextLinks({

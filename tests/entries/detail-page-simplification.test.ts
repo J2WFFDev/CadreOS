@@ -13,6 +13,7 @@ function read(filePath: string) {
 test("entry detail page removes duplicate and legacy linking sections", () => {
   const source = read(detailPagePath);
 
+  // Intentional copy-level contract checks: these labels should not reappear in the normal detail UI.
   assert.equal(source.includes("Work inbox"), false);
   assert.equal(source.includes("Calendar-ready"), false);
   assert.equal(source.includes("Operational feed"), false);
