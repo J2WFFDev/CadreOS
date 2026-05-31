@@ -29,7 +29,7 @@ import {
   resolveJournalWorkflowStatus,
 } from "@/lib/journals/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { labelForActivityAction, labelForEntryStatus } from "@/lib/operational-feed/render";
+import { labelForActivityAction } from "@/lib/operational-feed/render";
 import { readFirstSearchParam } from "@/lib/entries/entry-detail-query-state";
 
 export const dynamic = "force-dynamic";
@@ -184,7 +184,7 @@ export default async function JournalDetailPage({
       limit: 8,
     }),
   ]);
-  const linkedOperationalRecordCount = relationshipItems.length + (journal.journalPromptId ? 1 : 0);
+  const linkedOperationalRecordCount = relationshipItems.length;
 
   return (
     <section className="space-y-4">
@@ -205,7 +205,7 @@ export default async function JournalDetailPage({
         {journal.journalPrompt ? (
           <article className="rounded-lg border bg-zinc-50 p-4 dark:bg-zinc-800">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold">Prompt response</h3>
+              <h4 className="text-sm font-semibold">Prompt response</h4>
               <Link href={`/prompts/${journal.journalPrompt.id}`} className="text-xs underline text-zinc-500">
                 View prompt
               </Link>
@@ -221,7 +221,7 @@ export default async function JournalDetailPage({
         ) : null}
 
         <article className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-          <h3 className="text-sm font-semibold">Journal body</h3>
+          <h4 className="text-sm font-semibold">Journal body</h4>
           {canViewBody ? (
             <p className="mt-2 whitespace-pre-wrap text-sm">{journal.content?.trim() ? journal.content : "No journal body captured."}</p>
           ) : (
@@ -290,10 +290,6 @@ export default async function JournalDetailPage({
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Last updated by</dt>
             <dd>{formatPersonName(journal.updatedBy)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Operational status</dt>
-            <dd>{labelForEntryStatus(journal.status)}</dd>
           </div>
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Source</dt>

@@ -85,7 +85,7 @@ The architecture keeps type-specific primary content intact:
 
 ## Standardization Implemented
 
-### `/entries/[entryId]` (Task / Note / Decision / Event entry wrapper)
+### `/entries/[entryId]` (Task / Note / Decision entry wrapper)
 
 - Added an explicit **Context** card in the side rail.
 - Moved context concerns (list, assignment, scope, visibility, relationships, linked operational records) into Context.

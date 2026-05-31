@@ -108,6 +108,8 @@ export default async function EventDetailsPage({
         startsAt: Date;
         endsAt: Date | null;
         location: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         program: { id: string; name: string };
         team:
           | {

@@ -429,42 +429,44 @@ export default async function HabitDetailPage({
             </ul>
           )}
         </div>
-        <h3 className="text-sm font-medium">Completion history</h3>
-        {habit.completions.length === 0 ? (
-          <EmptyState
-            message="No check-ins recorded yet."
-            actionHref={canCheckIn ? undefined : undefined}
-          />
-        ) : (
-          <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b bg-zinc-50 dark:bg-zinc-800/60">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Date</th>
-                  {trackingMode === "COUNT" ? <th className="px-4 py-3 font-medium">Count</th> : null}
-                  {showCompletionDetail ? <th className="px-4 py-3 font-medium">Note</th> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {habit.completions.map((completion) => (
-                  <tr key={completion.id} className="border-b last:border-b-0">
-                    <td className="px-4 py-3">{completion.completedOn.toISOString().slice(0, 10)}</td>
-                    {trackingMode === "COUNT" ? (
-                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                        {completion.countValue != null ? completion.countValue : <span className="text-zinc-400">—</span>}
-                      </td>
-                    ) : null}
-                    {showCompletionDetail ? (
-                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                        {completion.note ?? <span className="text-zinc-400">—</span>}
-                      </td>
-                    ) : null}
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <h3 className="text-sm font-medium">Completion history</h3>
+          {habit.completions.length === 0 ? (
+            <EmptyState
+              message="No check-ins recorded yet."
+              actionHref={canCheckIn ? undefined : undefined}
+            />
+          ) : (
+            <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
+              <table className="min-w-full text-left text-sm">
+                <thead className="border-b bg-zinc-50 dark:bg-zinc-800/60">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">Date</th>
+                    {trackingMode === "COUNT" ? <th className="px-4 py-3 font-medium">Count</th> : null}
+                    {showCompletionDetail ? <th className="px-4 py-3 font-medium">Note</th> : null}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {habit.completions.map((completion) => (
+                    <tr key={completion.id} className="border-b last:border-b-0">
+                      <td className="px-4 py-3">{completion.completedOn.toISOString().slice(0, 10)}</td>
+                      {trackingMode === "COUNT" ? (
+                        <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                          {completion.countValue != null ? completion.countValue : <span className="text-zinc-400">—</span>}
+                        </td>
+                      ) : null}
+                      {showCompletionDetail ? (
+                        <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                          {completion.note ?? <span className="text-zinc-400">—</span>}
+                        </td>
+                      ) : null}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
