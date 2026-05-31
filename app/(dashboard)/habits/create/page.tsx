@@ -3,14 +3,20 @@ import Link from "next/link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { canCreateHabit, resolveHabitAccessContext } from "@/lib/habits/access";
+import { getHabitCreateErrorMessage } from "@/lib/habits/create";
 import { MAX_HABIT_DESCRIPTION_LENGTH, MAX_HABIT_TITLE_LENGTH } from "@/lib/habits/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export default async function CreateHabitPage() {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+export default async function CreateHabitPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const scope = await getOrganizationScope();
+  const params = await searchParams;
+  const errorCode = Array.isArray(params.error) ? params.error[0] : params.error;
+  const createErrorMessage = getHabitCreateErrorMessage(errorCode ?? null);
 
   if (!scope.databaseReady || !scope.organizationId) {
     return (
@@ -64,6 +70,8 @@ export default async function CreateHabitPage() {
           </Link>
         }
       />
+
+      {createErrorMessage ? <ErrorMessage message={createErrorMessage} /> : null}
 
       <form method="POST" action="/habits/create/save" className="space-y-5 rounded-lg border bg-white p-6 dark:bg-zinc-900">
         <div className="space-y-1">
