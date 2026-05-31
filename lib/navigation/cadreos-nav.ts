@@ -130,7 +130,7 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
   },
   {
     key: "ENTRYOPS",
-    label: "WorkOps",
+    label: "EntryOps",
     allowedRoles: WORKOPS_ROLES,
     items: [
       activeItem({

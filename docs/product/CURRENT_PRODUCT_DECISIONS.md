@@ -2,10 +2,12 @@
 
 This document captures the current active product decisions and is the source of truth for present product direction.
 
-- Sidebar taxonomy uses **Home**, **MemberOps**, **WorkOps**, **FieldOps/ResourceOps**, **GearOps**, and **AdminOps**.
+- Sidebar taxonomy uses **Home**, **MemberOps**, **EntryOps**, **FieldOps/ResourceOps**, **GearOps**, and **AdminOps**.
 - **MemberOps** is the chosen name (not TeamOps or PeopleOps).
 - **Programs** and **Seasons** belong under **MemberOps**.
-- **WorkOps** is feed/filter/context-first (not type-first).
+- **EntryOps** is the current active module name for entries and remains feed/filter/context-first (not type-first).
+- **SignalOps** is a possible future product-facing name candidate, but no rebrand is active yet.
+- Final EntryOps/SignalOps naming decision is deferred to a later broader experience/rebrand arc.
 - **FieldOps** and **ResourceOps** are conceptually separate, but current `/field-ops` routes still contain ResourceOps infrastructure.
 - **GearOps** remains its own module.
 - **AdminOps** should not contain Programs or Seasons.
