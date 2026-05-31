@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeEntryActivity } from "@/lib/entries/service";
-import { parseJournalEntryPayload, serializeJournalEntryPayload } from "@/lib/entries/journal-payload";
 import { canSubmitJournal, resolveJournalAccessContext } from "@/lib/journals/access";
+import { saveJournalWorkflowStatus } from "@/lib/journals/workflow";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -54,8 +54,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   }
 
   const submittedAt = new Date();
-  const existingPayload = parseJournalEntryPayload(journal.typePayloads[0]?.payloadJson ?? null);
-  const updatedPayload = { ...existingPayload, journalStatus: "FINAL" as const };
 
   await db.entry.update({
     where: { id: entryId },
@@ -67,20 +65,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     },
   });
 
-  await db.entryTypePayload.upsert({
-    where: { entryId_entryType: { entryId, entryType: EntryType.JOURNAL } },
-    update: {
-      payloadJson: serializeJournalEntryPayload(updatedPayload),
-      isActive: true,
-      archivedAt: null,
-    },
-    create: {
-      organizationId: scope.organizationId,
-      entryId,
-      entryType: EntryType.JOURNAL,
-      payloadJson: serializeJournalEntryPayload(updatedPayload),
-      isActive: true,
-    },
+  await saveJournalWorkflowStatus({
+    organizationId: scope.organizationId,
+    entryId,
+    payloadJson: journal.typePayloads[0]?.payloadJson,
+    journalStatus: "FINAL",
   });
 
   // Arc 23C: Mark linked assignment as COMPLETED when athlete submits their response.

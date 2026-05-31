@@ -152,3 +152,7 @@ export function canArchiveJournal(context: JournalAccessContext, entry: JournalA
   if (entry.createdByPersonId === context.actorPersonId) return true;
   return hasJournalAdminAccess(context);
 }
+
+export function canRestoreJournal(context: JournalAccessContext, entry: JournalAccessEntry): boolean {
+  return canArchiveJournal(context, entry);
+}

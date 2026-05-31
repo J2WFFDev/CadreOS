@@ -10,6 +10,7 @@ import {
   hintForJournalVisibility,
   labelForJournalVisibility,
   labelForJournalWorkflowStatus,
+  resolveJournalWorkflowStatus,
 } from "@/lib/journals/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { db } from "@/lib/db";
@@ -193,7 +194,7 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
               <tr>
                 <th className="px-4 py-3 font-medium">Journal</th>
                 <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Entry Status</th>
+                <th className="px-4 py-3 font-medium">Operational Status</th>
                 <th className="px-4 py-3 font-medium">Visibility</th>
                 <th className="px-4 py-3 font-medium">Author</th>
                 <th className="px-4 py-3 font-medium">Updated</th>
@@ -202,16 +203,7 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
             <tbody>
               {visibleJournals.map((journal) => {
                 const payload = parseJournalEntryPayload(journal.typePayloads[0]?.payloadJson ?? null);
-                const fallbackStatusFromEntry =
-                  journal.status === EntryStatus.ARCHIVED
-                    ? "ARCHIVED"
-                    : journal.status === EntryStatus.DONE
-                      ? "FINAL"
-                      : "DRAFT";
-                const journalStatus =
-                  payload.journalStatus === "DRAFT" && fallbackStatusFromEntry !== "DRAFT"
-                    ? fallbackStatusFromEntry
-                    : payload.journalStatus;
+                const journalStatus = resolveJournalWorkflowStatus(payload.journalStatus, journal.status);
                 const authorName = `${journal.createdBy.firstName} ${journal.createdBy.lastName}`.trim() || "Unknown";
                 return (
                   <tr key={journal.id} className="border-b last:border-b-0">

@@ -92,6 +92,7 @@ test("labelForActivityAction returns human-readable labels for known actions", (
   assert.equal(labelForActivityAction("journal.submitted"), "Journal finalized");
   assert.equal(labelForActivityAction("journal.reopened"), "Journal reopened");
   assert.equal(labelForActivityAction("journal.archived"), "Journal archived");
+  assert.equal(labelForActivityAction("journal.restored"), "Journal restored");
 });
 
 test("labelForActivityAction falls back to raw action string for unknown actions", () => {

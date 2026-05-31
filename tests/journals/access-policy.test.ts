@@ -8,6 +8,7 @@ import {
   canCreateJournal,
   canEditJournalDraft,
   canReadJournalEntry,
+  canRestoreJournal,
   canSubmitJournal,
   hasJournalAdminAccess,
   type JournalAccessContext,
@@ -121,6 +122,16 @@ test("admin override allows read and archive", () => {
   assert.equal(hasJournalAdminAccess(context), true);
   assert.equal(canReadJournalEntry(context, entry), true);
   assert.equal(canArchiveJournal(context, entry), true);
+  assert.equal(canRestoreJournal(context, entry), true);
+});
+
+test("author can restore archived journal", () => {
+  const context = buildContext();
+  const entry = buildEntry({ status: EntryStatus.ARCHIVED });
+
+  assert.equal(canEditJournalDraft(context, entry), false);
+  assert.equal(canSubmitJournal(context, entry), false);
+  assert.equal(canRestoreJournal(context, entry), true);
 });
 
 test("journal creation requires athlete or admin context", () => {

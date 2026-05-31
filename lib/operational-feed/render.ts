@@ -91,6 +91,7 @@ const ACTIVITY_ACTION_LABELS: Record<string, string> = {
   "journal.submitted": "Journal finalized",
   "journal.reopened": "Journal reopened",
   "journal.archived": "Journal archived",
+  "journal.restored": "Journal restored",
   "journal.prompt_assigned": "Journal prompt assigned",
   "journal.prompt_response_submitted": "Journal prompt completed",
   "journal.prompt_assignment_cancelled": "Prompt assignment cancelled",

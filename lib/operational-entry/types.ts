@@ -149,6 +149,7 @@ export const ENTRY_ACTIVITY_ACTIONS = {
   JOURNAL_ARCHIVED: "journal.archived",
   // Arc 24D.7: reopen a Final journal back to Draft state
   JOURNAL_REOPENED: "journal.reopened",
+  JOURNAL_RESTORED: "journal.restored",
   // Arc 23C: Prompt assignment activity actions
   JOURNAL_PROMPT_ASSIGNED: "journal.prompt_assigned",
   JOURNAL_PROMPT_RESPONSE_SUBMITTED: "journal.prompt_response_submitted",

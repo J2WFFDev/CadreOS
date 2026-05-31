@@ -1,21 +1,9 @@
-/**
- * Arc 24D.7 — Journal Entry First-Class Workflow
- *
- * Reopen route: transitions a Final (DONE) journal back to Draft (OPEN) state,
- * allowing the author to continue editing. Preserves journal metadata.
- *
- * Only the journal author or an org admin may reopen a Final journal.
- */
-
 import { EntryStatus, EntryType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeEntryActivity } from "@/lib/entries/service";
-import {
-  hasJournalAdminAccess,
-  resolveJournalAccessContext,
-} from "@/lib/journals/access";
+import { canRestoreJournal, resolveJournalAccessContext } from "@/lib/journals/access";
 import { saveJournalWorkflowStatus } from "@/lib/journals/workflow";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -39,12 +27,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       id: true,
       type: true,
       status: true,
+      visibility: true,
       createdByPersonId: true,
       teamId: true,
       team: { select: { programId: true } },
       typePayloads: {
         where: { entryType: EntryType.JOURNAL },
-        select: { entryType: true, payloadJson: true },
+        select: { payloadJson: true },
         take: 1,
       },
     },
@@ -54,8 +43,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(new URL("/journals", request.url), 303);
   }
 
-  // Only Final (DONE) journals can be reopened
-  if (journal.status !== EntryStatus.DONE) {
+  if (journal.status !== EntryStatus.ARCHIVED) {
     return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);
   }
 
@@ -64,14 +52,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     actorPersonId: scope.auth.personId,
   });
 
-  // Only the author or an org admin may reopen
-  const isAuthor = scope.auth.personId === journal.createdByPersonId;
-  const isAdmin = hasJournalAdminAccess(accessContext);
-  if (!isAuthor && !isAdmin) {
+  if (!canRestoreJournal(accessContext, journal)) {
     return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);
   }
 
-  // Update entry status to OPEN (Draft) and update journal payload status
   await db.entry.update({
     where: { id: entryId },
     data: {
@@ -82,7 +66,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     },
   });
 
-  // Update the journal payload to reflect DRAFT status
   await saveJournalWorkflowStatus({
     organizationId: scope.organizationId,
     entryId,
@@ -94,8 +77,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     organizationId: scope.organizationId,
     entryId,
     actorPersonId: scope.auth.personId,
-    action: ENTRY_ACTIVITY_ACTIONS.JOURNAL_REOPENED,
-    metadata: { reopenedAt: new Date().toISOString() },
+    action: ENTRY_ACTIVITY_ACTIONS.JOURNAL_RESTORED,
+    metadata: { restoredAt: new Date().toISOString() },
   });
 
   return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);
