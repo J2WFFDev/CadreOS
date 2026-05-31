@@ -226,8 +226,8 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
           </div>
         </dl>
         <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-          Operational status reflects the underlying entry record state, while journal status tracks the editorial
-          lifecycle for draft, final, and archived journal content.
+          Operational status supports internal record handling, while journal status controls the draft, final, and
+          archive actions shown for this journal.
         </p>
       </section>
 

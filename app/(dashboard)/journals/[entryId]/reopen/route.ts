@@ -13,13 +13,10 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { writeEntryActivity } from "@/lib/entries/service";
 import {
-  parseJournalEntryPayload,
-  serializeJournalEntryPayload,
-} from "@/lib/entries/journal-payload";
-import {
   hasJournalAdminAccess,
   resolveJournalAccessContext,
 } from "@/lib/journals/access";
+import { saveJournalWorkflowStatus } from "@/lib/journals/workflow";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -75,10 +72,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   }
 
   // Update entry status to OPEN (Draft) and update journal payload status
-  const existingPayloadJson = journal.typePayloads[0]?.payloadJson ?? null;
-  const existingPayload = parseJournalEntryPayload(existingPayloadJson);
-  const updatedPayload = { ...existingPayload, journalStatus: "DRAFT" as const };
-
   await db.entry.update({
     where: { id: entryId },
     data: {
@@ -90,20 +83,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   });
 
   // Update the journal payload to reflect DRAFT status
-  await db.entryTypePayload.upsert({
-    where: { entryId_entryType: { entryId, entryType: EntryType.JOURNAL } },
-    update: {
-      payloadJson: serializeJournalEntryPayload(updatedPayload),
-      isActive: true,
-      archivedAt: null,
-    },
-    create: {
-      organizationId: scope.organizationId,
-      entryId,
-      entryType: EntryType.JOURNAL,
-      payloadJson: serializeJournalEntryPayload(updatedPayload),
-      isActive: true,
-    },
+  await saveJournalWorkflowStatus({
+    organizationId: scope.organizationId,
+    entryId,
+    payloadJson: journal.typePayloads[0]?.payloadJson,
+    journalStatus: "DRAFT",
   });
 
   await writeEntryActivity({
