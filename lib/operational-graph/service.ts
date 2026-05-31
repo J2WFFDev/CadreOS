@@ -23,6 +23,8 @@ async function nodeExists(organizationId: string, node: OperationalGraphNodeRef)
   switch (node.nodeType) {
     case "ENTRY":
       return Boolean(await db.entry.findFirst({ where: { id: node.nodeId, organizationId }, select: { id: true } }));
+    case "HABIT":
+      return Boolean(await db.habit.findFirst({ where: { id: node.nodeId, organizationId }, select: { id: true } }));
     case "PERSON":
       return Boolean(await db.person.findFirst({ where: { id: node.nodeId, organizationId }, select: { id: true } }));
     case "TEAM":
@@ -232,6 +234,19 @@ async function resolveOperationalNodeView(organizationId: string, node: Operatio
         title: entry ? `${entry.type}: ${entry.title}` : `Entry ${node.nodeId}`,
         subtitle: entry ? null : "Record unavailable",
         href: entry ? `/entries/${entry.id}` : null,
+      };
+    }
+    case "HABIT": {
+      const habit = await db.habit.findFirst({
+        where: { id: node.nodeId, organizationId },
+        select: { id: true, title: true, status: true },
+      });
+      return {
+        nodeType: node.nodeType,
+        nodeId: node.nodeId,
+        title: habit?.title ?? `Habit ${node.nodeId}`,
+        subtitle: habit?.status ?? null,
+        href: habit ? `/habits/${habit.id}` : null,
       };
     }
     case "PERSON": {

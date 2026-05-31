@@ -15,10 +15,14 @@ test("entry activity actions include Arc 22E notification-ready concepts", () =>
   assert.equal(ENTRY_ACTIVITY_ACTIONS.FOLLOW_UP_COMPLETED, "entry.follow_up_completed");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.ENTRY_COMPLETED, "entry.completed");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.ENTRY_ARCHIVED, "entry.archived");
+  assert.equal(ENTRY_ACTIVITY_ACTIONS.ENTRY_RELATIONSHIP_ADDED, "entry.relationship_added");
+  assert.equal(ENTRY_ACTIVITY_ACTIONS.ENTRY_RELATIONSHIP_REMOVED, "entry.relationship_removed");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.JOURNAL_DRAFT_CREATED, "journal.draft_created");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.JOURNAL_DRAFT_UPDATED, "journal.draft_updated");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.JOURNAL_SUBMITTED, "journal.submitted");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.JOURNAL_ARCHIVED, "journal.archived");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.JOURNAL_REOPENED, "journal.reopened");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.JOURNAL_RESTORED, "journal.restored");
+  assert.equal(ENTRY_ACTIVITY_ACTIONS.HABIT_RELATIONSHIP_ADDED, "habit.relationship_added");
+  assert.equal(ENTRY_ACTIVITY_ACTIONS.HABIT_RELATIONSHIP_REMOVED, "habit.relationship_removed");
 });

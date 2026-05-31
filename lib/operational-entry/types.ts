@@ -132,6 +132,8 @@ export const ENTRY_ACTIVITY_ACTIONS = {
   ENTRY_OBJECT_UNLINKED: "entry.object_link_removed",
   ENTRY_GRAPH_LINKED: "entry.graph_link_added",
   ENTRY_GRAPH_UNLINKED: "entry.graph_link_removed",
+  ENTRY_RELATIONSHIP_ADDED: "entry.relationship_added",
+  ENTRY_RELATIONSHIP_REMOVED: "entry.relationship_removed",
   FOLLOW_UP_CREATED: "entry.follow_up_created",
   FOLLOW_UP_ASSIGNED: "entry.follow_up_assigned",
   FOLLOW_UP_COMPLETED: "entry.follow_up_completed",
@@ -162,6 +164,8 @@ export const ENTRY_ACTIVITY_ACTIONS = {
   HABIT_PAUSED: "habit.paused",
   HABIT_RESUMED: "habit.resumed",
   HABIT_CHECKED_IN: "habit.checked_in",
+  HABIT_RELATIONSHIP_ADDED: "habit.relationship_added",
+  HABIT_RELATIONSHIP_REMOVED: "habit.relationship_removed",
   // Backward-compatible aliases used by older route/service code.
   CREATED: "entry.created",
   UPDATED: "entry.updated",

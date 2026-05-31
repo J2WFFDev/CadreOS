@@ -1,9 +1,18 @@
-import { EntryType } from "@prisma/client";
+import { EntryType, OperationalGraphNodeType } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
+import { RelationshipPanel } from "@/components/dashboard/relationship-panel";
 import { db } from "@/lib/db";
+import {
+  canWriteRelationshipSource,
+  FOUNDATION_RELATIONSHIP_TYPES,
+  isFoundationRelationshipNodeType,
+  labelForRelationshipDirection,
+  listFoundationRelationships,
+  searchRelationshipTargets,
+} from "@/lib/entry-relationships";
 import { parseJournalEntryPayload } from "@/lib/entries/journal-payload";
 import {
   canArchiveJournal,
@@ -21,6 +30,7 @@ import {
 } from "@/lib/journals/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { labelForEntryStatus } from "@/lib/operational-feed/render";
+import { readFirstSearchParam } from "@/lib/entries/entry-detail-query-state";
 
 export const dynamic = "force-dynamic";
 
@@ -34,8 +44,15 @@ function formatDateTimeUTC(value: Date): string {
   return `${value.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
-export default async function JournalDetailPage({ params }: { params: Promise<{ entryId: string }> }) {
+export default async function JournalDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ entryId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { entryId } = await params;
+  const resolvedSearchParams = await searchParams;
   const scope = await getOrganizationScope();
 
   if (!scope.databaseReady || !scope.organizationId) {
@@ -132,6 +149,33 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
       : isArchived
         ? " · Archived journals are preserved and must be restored before editing"
         : "";
+  const relationshipTargetTypeParam = readFirstSearchParam(resolvedSearchParams.relationshipTargetType);
+  const relationshipTargetType = isFoundationRelationshipNodeType(relationshipTargetTypeParam?.toUpperCase() ?? "")
+    ? relationshipTargetTypeParam!.toUpperCase()
+    : OperationalGraphNodeType.ENTRY;
+  const relationshipQuery = readFirstSearchParam(resolvedSearchParams.relationshipQuery)?.trim() ?? "";
+  const relationshipSource = { nodeType: OperationalGraphNodeType.ENTRY, nodeId: journal.id } as const;
+  const canCreateRelationships = await canWriteRelationshipSource({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+    source: relationshipSource,
+  });
+  const [relationshipItems, relationshipCandidates] = await Promise.all([
+    listFoundationRelationships({
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+      source: relationshipSource,
+      limit: 20,
+    }),
+    searchRelationshipTargets({
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+      source: relationshipSource,
+      targetNodeType: relationshipTargetType,
+      query: relationshipQuery,
+      limit: 8,
+    }),
+  ]);
 
   return (
     <section className="space-y-4">
@@ -230,6 +274,24 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
           archive actions shown for this journal.
         </p>
       </section>
+
+      <RelationshipPanel
+        sourceNodeType={OperationalGraphNodeType.ENTRY}
+        sourceNodeId={journal.id}
+        returnTo={`/journals/${journal.id}`}
+        searchPath={`/journals/${journal.id}`}
+        canCreate={canCreateRelationships}
+        searchTargetType={relationshipTargetType}
+        searchQuery={relationshipQuery}
+        relationshipItems={relationshipItems}
+        candidates={relationshipCandidates}
+        relationshipOptions={FOUNDATION_RELATIONSHIP_TYPES.map((value) => ({
+          value,
+          label: labelForRelationshipDirection(value, "OUTBOUND"),
+        }))}
+        searchTargetOptions={[OperationalGraphNodeType.ENTRY, OperationalGraphNodeType.HABIT]}
+        limitation="List relationships are hidden for now because list access is broader than relationship creation currently supports."
+      />
 
       <div className="flex flex-wrap gap-2">
         {canEditDraft ? (

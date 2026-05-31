@@ -218,6 +218,8 @@ export function deriveSafeHabitActivityText(action: string, habitTitle?: string)
   if (action === "habit.resumed") return `Habit resumed${title}`;
   if (action === "habit.completed") return `Habit completed${title}`;
   if (action === "habit.checked_in") return `Habit occurrence completed${title}`;
+  if (action === "habit.relationship_added") return `Habit relationship added${title}`;
+  if (action === "habit.relationship_removed") return `Habit relationship removed${title}`;
   return "Habit event";
 }
 

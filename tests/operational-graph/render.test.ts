@@ -9,12 +9,15 @@ import {
 
 test("labelForOperationalRelationshipType returns readable labels", () => {
   assert.equal(labelForOperationalRelationshipType("RELATED_TO"), "Related to");
+  assert.equal(labelForOperationalRelationshipType("BLOCKS"), "Blocks");
   assert.equal(labelForOperationalRelationshipType("BLOCKED_BY"), "Blocked by");
+  assert.equal(labelForOperationalRelationshipType("SUPPORTS"), "Supports");
   assert.equal(labelForOperationalRelationshipType("READINESS_FOR"), "Readiness for");
 });
 
 test("labelForOperationalNodeType returns readable labels", () => {
   assert.equal(labelForOperationalNodeType("ENTRY"), "Entry");
+  assert.equal(labelForOperationalNodeType("HABIT"), "Habit");
   assert.equal(labelForOperationalNodeType("RESOURCE_BOOKING"), "Reservation");
   assert.equal(labelForOperationalNodeType("GEAR_MAINTENANCE_LOG"), "Maintenance record");
 });

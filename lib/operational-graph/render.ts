@@ -2,6 +2,7 @@ import type { OperationalGraphNodeType, OperationalRelationshipType } from "@pri
 
 const NODE_TYPE_LABELS: Record<OperationalGraphNodeType, string> = {
   ENTRY: "Entry",
+  HABIT: "Habit",
   PERSON: "Person",
   TEAM: "Team",
   PROGRAM: "Program",
@@ -27,9 +28,14 @@ const NODE_TYPE_LABELS: Record<OperationalGraphNodeType, string> = {
 
 const RELATIONSHIP_LABELS: Record<OperationalRelationshipType, string> = {
   RELATED_TO: "Related to",
+  BLOCKS: "Blocks",
   BLOCKED_BY: "Blocked by",
+  FOLLOW_UP_FOR: "Follow-up for",
   FOLLOW_UP_TO: "Follow-up to",
   CREATED_FROM: "Created from",
+  SUPPORTS: "Supports",
+  REFERENCES: "References",
+  DUPLICATES: "Duplicates",
   IMPACTS: "Impacts",
   ASSIGNED_FOR: "Assigned for",
   OBSERVED_DURING: "Observed during",

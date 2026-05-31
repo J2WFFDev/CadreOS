@@ -1,0 +1,7 @@
+ALTER TYPE "OperationalGraphNodeType" ADD VALUE IF NOT EXISTS 'HABIT';
+
+ALTER TYPE "OperationalRelationshipType" ADD VALUE IF NOT EXISTS 'BLOCKS';
+ALTER TYPE "OperationalRelationshipType" ADD VALUE IF NOT EXISTS 'FOLLOW_UP_FOR';
+ALTER TYPE "OperationalRelationshipType" ADD VALUE IF NOT EXISTS 'SUPPORTS';
+ALTER TYPE "OperationalRelationshipType" ADD VALUE IF NOT EXISTS 'REFERENCES';
+ALTER TYPE "OperationalRelationshipType" ADD VALUE IF NOT EXISTS 'DUPLICATES';
