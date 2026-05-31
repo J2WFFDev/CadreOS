@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/dashboard/status-badge";
 import {
   canWriteRelationshipSource,
   FOUNDATION_RELATIONSHIP_TYPES,
+  type FoundationRelationshipNodeType,
   isFoundationRelationshipNodeType,
   labelForRelationshipDirection,
   listFoundationRelationships,
@@ -124,8 +125,10 @@ export default async function HabitDetailPage({
   const currentStreak = frequency ? computeCurrentStreak(completionDates, frequency) : null;
   const completionCount = computeCompletionCount(completionDates);
   const relationshipTargetTypeParam = readFirstSearchParam(resolvedSearchParams.relationshipTargetType);
-  const relationshipTargetType = isFoundationRelationshipNodeType(relationshipTargetTypeParam?.toUpperCase() ?? "")
-    ? relationshipTargetTypeParam!.toUpperCase()
+  const relationshipTargetType: FoundationRelationshipNodeType = isFoundationRelationshipNodeType(
+    relationshipTargetTypeParam?.toUpperCase() ?? "",
+  )
+    ? relationshipTargetTypeParam!.toUpperCase() as FoundationRelationshipNodeType
     : OperationalGraphNodeType.ENTRY;
   const relationshipQuery = readFirstSearchParam(resolvedSearchParams.relationshipQuery)?.trim() ?? "";
   const relationshipSource = { nodeType: OperationalGraphNodeType.HABIT, nodeId: habit.id } as const;

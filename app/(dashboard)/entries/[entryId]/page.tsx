@@ -17,6 +17,7 @@ import { db } from "@/lib/db";
 import {
   canWriteRelationshipSource,
   FOUNDATION_RELATIONSHIP_TYPES,
+  type FoundationRelationshipNodeType,
   isFoundationRelationshipNodeType,
   labelForRelationshipDirection,
   listFoundationRelationships,
@@ -400,8 +401,10 @@ export default async function EntryDetailPage({
     }),
   ]);
   const relationshipTargetTypeParam = readFirstSearchParam(resolvedSearchParams.relationshipTargetType);
-  const relationshipTargetType = isFoundationRelationshipNodeType(relationshipTargetTypeParam?.toUpperCase() ?? "")
-    ? relationshipTargetTypeParam!.toUpperCase()
+  const relationshipTargetType: FoundationRelationshipNodeType = isFoundationRelationshipNodeType(
+    relationshipTargetTypeParam?.toUpperCase() ?? "",
+  )
+    ? relationshipTargetTypeParam!.toUpperCase() as FoundationRelationshipNodeType
     : OperationalGraphNodeType.ENTRY;
   const relationshipQuery = readFirstSearchParam(resolvedSearchParams.relationshipQuery)?.trim() ?? "";
   const relationshipSource = { nodeType: OperationalGraphNodeType.ENTRY, nodeId: entry.id } as const;

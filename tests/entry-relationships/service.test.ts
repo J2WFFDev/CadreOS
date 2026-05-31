@@ -1,11 +1,14 @@
 import { strict as assert } from "node:assert";
-import test, { mock } from "node:test";
+import test from "node:test";
 
 import { db } from "../../lib/db";
 import { listFoundationRelationships, removeFoundationRelationship } from "../../lib/entry-relationships";
 
 test("listFoundationRelationships does not leak unreadable entry targets", async (t) => {
-  const findManyMock = mock.method(db.operationalRelationship, "findMany", async () => [
+  const originalFindMany = db.operationalRelationship.findMany;
+  const originalEntryFindFirst = db.entry.findFirst;
+
+  db.operationalRelationship.findMany = ((async () => [
     {
       id: "rel-1",
       fromNodeType: "ENTRY",
@@ -15,8 +18,8 @@ test("listFoundationRelationships does not leak unreadable entry targets", async
       relationshipType: "RELATED_TO",
       metadataJson: JSON.stringify({ note: "secret" }),
     },
-  ]);
-  const entryFindFirstMock = mock.method(db.entry, "findFirst", async () => ({
+  ]) as unknown) as typeof db.operationalRelationship.findMany;
+  db.entry.findFirst = ((async () => ({
     id: "hidden-entry",
     type: "TASK",
     title: "Hidden task",
@@ -25,11 +28,11 @@ test("listFoundationRelationships does not leak unreadable entry targets", async
     teamId: null,
     createdByPersonId: "person-1",
     team: null,
-  }));
+  })) as unknown) as typeof db.entry.findFirst;
 
   t.after(() => {
-    findManyMock.mock.restore();
-    entryFindFirstMock.mock.restore();
+    db.operationalRelationship.findMany = originalFindMany;
+    db.entry.findFirst = originalEntryFindFirst;
   });
 
   const items = await listFoundationRelationships({
@@ -42,10 +45,12 @@ test("listFoundationRelationships does not leak unreadable entry targets", async
 });
 
 test("removeFoundationRelationship returns null when no active relationship exists", async (t) => {
-  const findFirstMock = mock.method(db.operationalRelationship, "findFirst", async () => null);
+  const originalFindFirst = db.operationalRelationship.findFirst;
+
+  db.operationalRelationship.findFirst = ((async () => null) as unknown) as typeof db.operationalRelationship.findFirst;
 
   t.after(() => {
-    findFirstMock.mock.restore();
+    db.operationalRelationship.findFirst = originalFindFirst;
   });
 
   const result = await removeFoundationRelationship({

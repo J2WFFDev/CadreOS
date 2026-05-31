@@ -2,6 +2,7 @@ import Link from "next/link";
 import { OperationalGraphNodeType, OperationalRelationshipType } from "@prisma/client";
 
 import type {
+  FoundationRelationshipNodeType,
   FoundationRelationshipListItem,
   RelationshipSearchCandidate,
 } from "@/lib/entry-relationships";
@@ -51,17 +52,17 @@ export function RelationshipPanel({
   searchTargetOptions,
   limitation,
 }: {
-  sourceNodeType: OperationalGraphNodeType.ENTRY | OperationalGraphNodeType.HABIT;
+  sourceNodeType: FoundationRelationshipNodeType;
   sourceNodeId: string;
   returnTo: string;
   searchPath: string;
   canCreate: boolean;
-  searchTargetType: OperationalGraphNodeType.ENTRY | OperationalGraphNodeType.HABIT;
+  searchTargetType: FoundationRelationshipNodeType;
   searchQuery: string;
   relationshipItems: FoundationRelationshipListItem[];
   candidates: RelationshipSearchCandidate[];
   relationshipOptions: RelationshipOption[];
-  searchTargetOptions: Array<OperationalGraphNodeType.ENTRY | OperationalGraphNodeType.HABIT>;
+  searchTargetOptions: FoundationRelationshipNodeType[];
   limitation?: string | null;
 }) {
   return (

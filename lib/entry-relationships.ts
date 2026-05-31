@@ -53,8 +53,10 @@ const FOUNDATION_ENTRY_TYPES: EntryType[] = [
 
 type RelationshipDirection = "OUTBOUND" | "INBOUND";
 
-type RelationshipNodeRef = {
-  nodeType: OperationalGraphNodeType.ENTRY | OperationalGraphNodeType.HABIT;
+export type FoundationRelationshipNodeType = "ENTRY" | "HABIT";
+
+export type RelationshipNodeRef = {
+  nodeType: FoundationRelationshipNodeType;
   nodeId: string;
 };
 
@@ -90,8 +92,8 @@ export function isFoundationRelationshipType(value: string): value is Operationa
   return FOUNDATION_RELATIONSHIP_TYPES.includes(value as OperationalRelationshipType);
 }
 
-export function isFoundationRelationshipNodeType(value: string): value is RelationshipNodeRef["nodeType"] {
-  return FOUNDATION_RELATIONSHIP_TARGET_TYPES.includes(value as RelationshipNodeRef["nodeType"]);
+export function isFoundationRelationshipNodeType(value: string): value is FoundationRelationshipNodeType {
+  return FOUNDATION_RELATIONSHIP_TARGET_TYPES.includes(value as FoundationRelationshipNodeType);
 }
 
 function compareNodeRefs(left: RelationshipNodeRef, right: RelationshipNodeRef) {
@@ -807,8 +809,8 @@ export async function createFoundationRelationship(input: {
     actorPersonId: input.actorPersonId,
     action: "added",
     relationshipType: relationship.relationshipType,
-    from: { nodeType: relationship.fromNodeType, nodeId: relationship.fromNodeId },
-    to: { nodeType: relationship.toNodeType, nodeId: relationship.toNodeId },
+    from: { nodeType: relationship.fromNodeType as FoundationRelationshipNodeType, nodeId: relationship.fromNodeId },
+    to: { nodeType: relationship.toNodeType as FoundationRelationshipNodeType, nodeId: relationship.toNodeId },
     note,
   });
 
@@ -854,7 +856,7 @@ export async function removeFoundationRelationship(input: {
   const canWriteSource = await canWriteRelationshipSource({
     organizationId: input.organizationId,
     actorPersonId: input.actorPersonId,
-    source: { nodeType: relationship.fromNodeType, nodeId: relationship.fromNodeId },
+    source: { nodeType: relationship.fromNodeType as FoundationRelationshipNodeType, nodeId: relationship.fromNodeId },
   });
 
   if (!canWriteSource) {
@@ -871,8 +873,8 @@ export async function removeFoundationRelationship(input: {
     actorPersonId: input.actorPersonId,
     action: "removed",
     relationshipType: relationship.relationshipType,
-    from: { nodeType: relationship.fromNodeType, nodeId: relationship.fromNodeId },
-    to: { nodeType: relationship.toNodeType, nodeId: relationship.toNodeId },
+    from: { nodeType: relationship.fromNodeType as FoundationRelationshipNodeType, nodeId: relationship.fromNodeId },
+    to: { nodeType: relationship.toNodeType as FoundationRelationshipNodeType, nodeId: relationship.toNodeId },
     note: parseRelationshipNote(relationship.metadataJson),
   });
 
