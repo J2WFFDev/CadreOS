@@ -424,11 +424,6 @@ export default async function EntryDetailPage({
     select: {
       id: true,
       title: true,
-      status: true,
-      priority: true,
-      dueDate: true,
-      dueTime: true,
-      sourceTaskId: true,
     },
   });
   const [programs, teams] = await Promise.all([
@@ -998,6 +993,9 @@ export default async function EntryDetailPage({
       {hasLegacyContext ? (
         <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <h3 className="text-sm font-semibold">Legacy context (read-only)</h3>
+          <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+            Existing source and follow-up references are shown for continuity while new linking flows use Related Items / Context.
+          </p>
           <ul className="mt-2 space-y-2 text-sm">
             {entry.sourceTaskId ? (
               <li className="rounded-md border px-3 py-2">
