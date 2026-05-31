@@ -36,7 +36,7 @@ export type JournalPayloadVisibility = (typeof JOURNAL_PAYLOAD_VISIBILITY_VALUES
 // ── Payload shape ────────────────────────────────────────────────────────────
 
 export type JournalEntryPayload = {
-  /** Journal lifecycle status (mirrors Entry.status interpretation for journal context). */
+  /** Journal editorial lifecycle status (distinct from Entry.status operational state). */
   journalStatus: JournalPayloadStatus;
   /** Journal visibility rule stored in payload. Mapped to Entry.visibility on save. */
   journalVisibility: JournalPayloadVisibility;
