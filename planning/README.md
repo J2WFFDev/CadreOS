@@ -15,6 +15,7 @@ CadreOS is an **Athlete Program Operating System**.
 | **Arc 23E** | **Guardian-Safe Visibility and Feed Integration** | ✅ Complete |
 | **Arc 23I** | **Entry System Consolidation & Operational Coherence** | ✅ Complete |
 | **Arc 24D.10.4** | **Entry Type Consistency Framework** | ✅ Complete |
+| **Arc 24D.11** | **EntryOps Navigation, Views, and Review Loops** | ✅ Complete |
 | Arc 23F | Journal Version History and Trust/Audit Model | 🔜 Next |
 
 ## Planning Documents
@@ -93,6 +94,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Arc 23I Deferred Scope](./ARC_23I_DEFERRED_SCOPE.md)
 - [Arc 24D.10.4 Entry Type Consistency Framework](./ARC_24D_10_4_ENTRY_TYPE_CONSISTENCY_FRAMEWORK.md)
 - [Arc 24D.10.4 Entry Type Consistency Validation Checklist](./ARC_24D_10_4_ENTRY_VALIDATION_CHECKLIST.md)
+- [Arc 24D.11 EntryOps Navigation, Views, and Review Loops ✅ COMPLETE](./PHASE_24D11_ENTRYOPS_NAVIGATION.md)
 - [Arc 19A Unified Operational Entry Architecture (historical foundation)](./PHASE_19A_UNIFIED_OPERATIONAL_ENTRY_ARCHITECTURE.md)
 - [Arc 19B Unified Feed & Today View (historical foundation)](./PHASE_19B_UNIFIED_FEED_TODAY_VIEW.md)
 - [Arc 19C Quick Capture System (historical; remapped to Arc 22B)](./PHASE_19C_QUICK_CAPTURE_SYSTEM.md)

@@ -163,7 +163,7 @@ export default async function FeedPage() {
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <PageHeader title="My Work" description="Focus your inbox, current work, upcoming commitments, and recent activity." />
+        <PageHeader title="Activity Feed" description="Recent changes and work history." />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load the feed right now."} />
       </section>
     );
@@ -172,7 +172,7 @@ export default async function FeedPage() {
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="My Work" description="Focus your inbox, current work, upcoming commitments, and recent activity." />
+        <PageHeader title="Activity Feed" description="Recent changes and work history." />
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
@@ -184,7 +184,7 @@ export default async function FeedPage() {
   if (entryAccess.level === "NONE") {
     return (
       <section className="space-y-4">
-        <PageHeader title="My Work" description="Focus your inbox, current work, upcoming commitments, and recent activity." />
+        <PageHeader title="Activity Feed" description="Recent changes and work history." />
         <ErrorMessage message="You do not have permission to view work activity in this organization." />
       </section>
     );
@@ -202,8 +202,8 @@ export default async function FeedPage() {
   return (
     <section className="space-y-8">
       <PageHeader
-        title="My Work"
-        description="Reduce context switching between capture, planning, execution, and review."
+        title="Activity Feed"
+        description="Changes, check-ins, and work history across your organization."
         actions={
           <div className="flex items-center gap-2">
             <Link href="/entries/inbox" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
