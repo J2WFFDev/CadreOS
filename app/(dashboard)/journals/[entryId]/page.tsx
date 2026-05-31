@@ -29,7 +29,7 @@ import {
   resolveJournalWorkflowStatus,
 } from "@/lib/journals/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { labelForEntryStatus } from "@/lib/operational-feed/render";
+import { labelForActivityAction } from "@/lib/operational-feed/render";
 import { readFirstSearchParam } from "@/lib/entries/entry-detail-query-state";
 
 export const dynamic = "force-dynamic";
@@ -93,6 +93,16 @@ export default async function JournalDetailPage({
         where: { entryType: EntryType.JOURNAL },
         select: { entryType: true, payloadJson: true },
         take: 1,
+      },
+      activity: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          action: true,
+          createdAt: true,
+          actor: { select: { firstName: true, lastName: true } },
+        },
+        take: 30,
       },
     },
   });
@@ -174,6 +184,7 @@ export default async function JournalDetailPage({
       limit: 8,
     }),
   ]);
+  const linkedOperationalRecordCount = relationshipItems.length;
 
   return (
     <section className="space-y-4">
@@ -189,36 +200,68 @@ export default async function JournalDetailPage({
         </p>
       </div>
 
-      {journal.journalPrompt ? (
-        <article className="rounded-lg border bg-zinc-50 p-4 dark:bg-zinc-800">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold">Prompt response</h3>
-            <Link href={`/prompts/${journal.journalPrompt.id}`} className="text-xs underline text-zinc-500">
-              View prompt
-            </Link>
-          </div>
-          {journal.journalPrompt.category ? (
-            <p className="mt-0.5 text-xs text-zinc-500">{journal.journalPrompt.category}</p>
-          ) : null}
-          <p className="mt-2 text-sm font-medium">{journal.journalPrompt.title}</p>
-          <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-600 dark:text-zinc-400">
-            {journal.journalPrompt.promptText}
-          </p>
+      <section className="space-y-4">
+        <h3 className="text-sm font-semibold">Main Item</h3>
+        {journal.journalPrompt ? (
+          <article className="rounded-lg border bg-zinc-50 p-4 dark:bg-zinc-800">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-sm font-semibold">Prompt response</h4>
+              <Link href={`/prompts/${journal.journalPrompt.id}`} className="text-xs underline text-zinc-500">
+                View prompt
+              </Link>
+            </div>
+            {journal.journalPrompt.category ? (
+              <p className="mt-0.5 text-xs text-zinc-500">{journal.journalPrompt.category}</p>
+            ) : null}
+            <p className="mt-2 text-sm font-medium">{journal.journalPrompt.title}</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-600 dark:text-zinc-400">
+              {journal.journalPrompt.promptText}
+            </p>
+          </article>
+        ) : null}
+
+        <article className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <h4 className="text-sm font-semibold">Journal body</h4>
+          {canViewBody ? (
+            <p className="mt-2 whitespace-pre-wrap text-sm">{journal.content?.trim() ? journal.content : "No journal body captured."}</p>
+          ) : (
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">This journal body is hidden for your role in the current policy scope.</p>
+          )}
         </article>
-      ) : null}
+      </section>
 
-      <article className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <h3 className="text-sm font-semibold">Journal body</h3>
-        {canViewBody ? (
-          <p className="mt-2 whitespace-pre-wrap text-sm">{journal.content?.trim() ? journal.content : "No journal body captured."}</p>
-        ) : (
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">This journal body is hidden for your role in the current policy scope.</p>
-        )}
-      </article>
-
-      {/* Arc 24D.7: journal metadata section */}
       <section className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-        <h3 className="font-semibold">Journal metadata</h3>
+        <h3 className="font-semibold">Context</h3>
+        <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">List</dt>
+            <dd>Not assigned in journal workflow</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Relationships</dt>
+            <dd>{relationshipItems.length}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Scope</dt>
+            <dd>{journal.team?.name ? `Team: ${journal.team.name}` : "Organization journal scope"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Visibility</dt>
+            <dd>{labelForJournalPayloadVisibility(journalPayload.journalVisibility)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Assignment</dt>
+            <dd>{journal.journalAssignmentId ? "Assigned journal prompt" : "Unassigned journal entry"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Linked operational records</dt>
+            <dd>{linkedOperationalRecordCount}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
+        <h3 className="font-semibold">Metadata</h3>
         <dl className="mt-2 grid gap-2 sm:grid-cols-2">
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Journal date</dt>
@@ -236,16 +279,6 @@ export default async function JournalDetailPage({
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Journal status</dt>
             <dd>{labelForJournalWorkflowStatus(journalStatus)}</dd>
           </div>
-        </dl>
-      </section>
-
-      <section className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-        <h3 className="font-semibold">Entry metadata</h3>
-        <dl className="mt-2 grid gap-2 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Team scope</dt>
-            <dd>{journal.team?.name ?? "—"}</dd>
-          </div>
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Created</dt>
             <dd>{formatDateTimeUTC(journal.createdAt)}</dd>
@@ -259,18 +292,10 @@ export default async function JournalDetailPage({
             <dd>{formatPersonName(journal.updatedBy)}</dd>
           </div>
           <div>
-            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Operational status</dt>
-            <dd>{labelForEntryStatus(journal.status)}</dd>
-          </div>
-          <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Source</dt>
             <dd>{journal.journalPromptId ? "Prompted" : "Freeform"}</dd>
           </div>
         </dl>
-        <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-          Operational status supports internal record handling, while journal status controls the draft, final, and
-          archive actions shown for this journal.
-        </p>
       </section>
 
       <RelationshipPanel
@@ -290,6 +315,25 @@ export default async function JournalDetailPage({
         searchTargetOptions={[OperationalGraphNodeType.ENTRY, OperationalGraphNodeType.HABIT]}
         limitation="List relationships are hidden for now because list visibility is still broader than the conservative permission checks used for relationship linking."
       />
+
+      <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="text-sm font-semibold">Activity / history</h3>
+        {journal.activity.length === 0 ? (
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No activity recorded yet.</p>
+        ) : (
+          <ul className="mt-2 space-y-2 text-sm">
+            {journal.activity.map((activity) => (
+              <li key={activity.id} className="rounded-md border px-3 py-2">
+                <div className="font-medium">{labelForActivityAction(activity.action)}</div>
+                <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                  {formatDateTimeUTC(activity.createdAt)}
+                  {activity.actor ? ` · ${activity.actor.firstName} ${activity.actor.lastName}` : ""}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div className="flex flex-wrap gap-2">
         {canEditDraft ? (
