@@ -94,9 +94,9 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
       <section className="space-y-4">
         <PageHeader title="Prompt Library" description="Manage reusable journal prompts." />
         <EmptyState
-          message={loadErrorMessage ?? "Journal prompts are planned for a future EntryOps workflow."}
+          message={loadErrorMessage ?? "Journal prompts are planned for a future WorkOps workflow."}
           actionHref="/entries"
-          actionLabel="Back to EntryOps"
+          actionLabel="Back to WorkOps"
         />
       </section>
     );

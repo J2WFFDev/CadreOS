@@ -55,10 +55,10 @@ test("computeUpcomingWindow respects custom day count", () => {
   assert.equal(diffDays, 7);
 });
 
-test("computeUpcomingWindow uses 14 days by default", () => {
+test("computeUpcomingWindow uses 7 days by default", () => {
   const now = new Date("2026-05-26T08:00:00.000Z");
   const { from: f1, to: t1 } = computeUpcomingWindow(now);
-  const { from: f2, to: t2 } = computeUpcomingWindow(now, 14);
+  const { from: f2, to: t2 } = computeUpcomingWindow(now, 7);
 
   assert.equal(f1.toISOString(), f2.toISOString());
   assert.equal(t1.toISOString(), t2.toISOString());

@@ -133,8 +133,8 @@ test("buildDueWindowWhere returns from tomorrowStart for 'upcoming'", () => {
   const dueDate = (result as { dueDate: { gte: Date; lt: Date } }).dueDate;
   // from = tomorrowStart = 2026-05-28
   assert.equal(dueDate.gte.toISOString(), "2026-05-28T00:00:00.000Z");
-  // to = tomorrowStart + 14 days = 2026-06-11
-  assert.equal(dueDate.lt.toISOString(), "2026-06-11T00:00:00.000Z");
+  // to = tomorrowStart + 7 days = 2026-06-04
+  assert.equal(dueDate.lt.toISOString(), "2026-06-04T00:00:00.000Z");
 });
 
 // ── buildEntryOrderBy ────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import { EntryStatus } from "@prisma/client";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { aggregateOperationalFeed } from "@/lib/operational-feed";
-import { formatDueDate, isOverdueFeedEntry, labelForActivityAction, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
+import { describeActivityAction, formatDueDate, isOverdueFeedEntry, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
 import type { ActionableHabitItem, FeedActivityItem, FeedEntryItem } from "@/lib/operational-feed/types";
 import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -123,7 +123,7 @@ function HabitsTodayList({ habits }: { habits: ActionableHabitItem[] }) {
 
 function ActivityFeed({ items }: { items: FeedActivityItem[] }) {
   if (items.length === 0) {
-    return <p className="text-sm text-zinc-500 dark:text-zinc-400">No recent activity.</p>;
+    return <p className="text-sm text-zinc-500 dark:text-zinc-400">No recent work activity.</p>;
   }
 
   return (
@@ -133,7 +133,7 @@ function ActivityFeed({ items }: { items: FeedActivityItem[] }) {
           <span className="shrink-0 text-zinc-400 dark:text-zinc-500 text-xs tabular-nums">
             {item.createdAt.toISOString().slice(0, 16).replace("T", " ")}
           </span>
-          <span className="font-medium text-zinc-700 dark:text-zinc-300">{labelForActivityAction(item.action)}</span>
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">{describeActivityAction(item.action, item.entryType)}</span>
           <span className="text-zinc-500">—</span>
           <Link
             href={
@@ -159,7 +159,7 @@ export default async function FeedPage() {
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Feed" description="Operational feed — today, assigned, upcoming, and recent activity." />
+        <PageHeader title="My Work" description="Focus your inbox, current work, upcoming commitments, and recent activity." />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load the feed right now."} />
       </section>
     );
@@ -168,7 +168,7 @@ export default async function FeedPage() {
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Feed" description="Operational feed — today, assigned, upcoming, and recent activity." />
+        <PageHeader title="My Work" description="Focus your inbox, current work, upcoming commitments, and recent activity." />
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
@@ -180,8 +180,8 @@ export default async function FeedPage() {
   if (entryAccess.level === "NONE") {
     return (
       <section className="space-y-4">
-        <PageHeader title="Feed" description="Operational feed — today, assigned, upcoming, and recent activity." />
-        <ErrorMessage message="You do not have permission to view entry activity in this organization." />
+        <PageHeader title="My Work" description="Focus your inbox, current work, upcoming commitments, and recent activity." />
+        <ErrorMessage message="You do not have permission to view work activity in this organization." />
       </section>
     );
   }
@@ -198,8 +198,8 @@ export default async function FeedPage() {
   return (
     <section className="space-y-8">
       <PageHeader
-        title="Feed"
-        description="Operational feed — today, assigned, upcoming, and recent activity."
+        title="My Work"
+        description="Reduce context switching between capture, planning, execution, and review."
         actions={
           <div className="flex items-center gap-2">
             <Link href="/entries/inbox" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
@@ -227,7 +227,7 @@ export default async function FeedPage() {
       {actorPersonId && (
         <div className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Assigned to me
+            Assigned
           </h2>
           <FeedTable
             entries={feed.assigned}
@@ -240,7 +240,7 @@ export default async function FeedPage() {
 
       <div className="space-y-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Today &amp; Overdue
+          Today
         </h2>
         <FeedTable
           entries={feed.today}
@@ -260,13 +260,13 @@ export default async function FeedPage() {
 
       <div className="space-y-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Upcoming <span className="font-normal text-zinc-400 dark:text-zinc-500">(next 14 days)</span>
+          Upcoming <span className="font-normal text-zinc-400 dark:text-zinc-500">(next 7 days)</span>
         </h2>
         <FeedTable
           entries={feed.upcoming}
           now={now}
           showType
-          emptyMessage="No upcoming items in the next 14 days."
+          emptyMessage="No upcoming items in the next 7 days."
         />
       </div>
 

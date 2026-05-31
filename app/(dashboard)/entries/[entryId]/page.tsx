@@ -323,14 +323,15 @@ export default async function EntryDetailPage({
   const resolvedSearchParams = await searchParams;
   const routeError = Array.isArray(resolvedSearchParams.error) ? resolvedSearchParams.error[0] : resolvedSearchParams.error;
   const savedParam = Array.isArray(resolvedSearchParams.saved) ? resolvedSearchParams.saved[0] : resolvedSearchParams.saved;
+  const quickCapturedParam = Array.isArray(resolvedSearchParams.quickCaptured) ? resolvedSearchParams.quickCaptured[0] : resolvedSearchParams.quickCaptured;
   const warningParam = Array.isArray(resolvedSearchParams.warning) ? resolvedSearchParams.warning[0] : resolvedSearchParams.warning;
   const scope = await getOrganizationScope();
 
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">Entry</h2>
-        <ErrorMessage message={scope.errorMessage ?? "Unable to load entry details right now."} />
+        <h2 className="text-2xl font-semibold tracking-tight">Work Item</h2>
+        <ErrorMessage message={scope.errorMessage ?? "Unable to load work item details right now."} />
       </section>
     );
   }
@@ -338,7 +339,7 @@ export default async function EntryDetailPage({
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">Entry</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Work Item</h2>
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
@@ -355,9 +356,9 @@ export default async function EntryDetailPage({
   if (!canReadEntry) {
     return (
       <section className="space-y-4">
-        <BackLink href="/entries" label="All entries" />
-        <h2 className="text-2xl font-semibold tracking-tight">Entry</h2>
-        <ErrorMessage message="You do not have permission to view entry details in this organization." />
+        <BackLink href="/entries" label="All work" />
+        <h2 className="text-2xl font-semibold tracking-tight">Work Item</h2>
+        <ErrorMessage message="You do not have permission to view work item details in this organization." />
       </section>
     );
   }
@@ -370,8 +371,8 @@ export default async function EntryDetailPage({
   if (!entry) {
     return (
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">Entry</h2>
-        <ErrorMessage message="Entry not found in the active organization." />
+        <h2 className="text-2xl font-semibold tracking-tight">Work Item</h2>
+        <ErrorMessage message="Work item not found in the active organization." />
       </section>
     );
   }
@@ -497,15 +498,15 @@ export default async function EntryDetailPage({
   return (
     <section className="space-y-6">
       <div className="space-y-1">
-        <BackLink href="/entries" label="All entries" />
+        <BackLink href="/entries" label="All work" />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-2xl font-semibold tracking-tight">{entry.title}</h2>
           <div className="flex flex-wrap gap-2">
             <Link href="/entries/inbox" className="rounded-md border px-3 py-1.5 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              Entry inbox
+              Work inbox
             </Link>
             <Link href="/entries/schedule" className="rounded-md border px-3 py-1.5 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              Event schedule
+              Calendar-ready
             </Link>
             <Link href="/feed" className="rounded-md border px-3 py-1.5 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
               Operational feed
@@ -524,7 +525,12 @@ export default async function EntryDetailPage({
       ) : null}
       {savedParam && !routeError ? (
         <div className="rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-300">
-          Entry saved successfully.
+          Work item saved successfully.
+        </div>
+      ) : null}
+      {quickCapturedParam && !routeError ? (
+        <div className="rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-300">
+          Captured as a task and routed to your inbox. Add details below when you are ready.
         </div>
       ) : null}
       {warningParam ? (
@@ -559,7 +565,7 @@ export default async function EntryDetailPage({
       {detailConfig.guidance ? (
         <div
           role="note"
-          aria-label="Entry guidance"
+          aria-label="Work item guidance"
           className="rounded-md border border-sky-300 bg-sky-50 px-4 py-3 text-sm text-sky-800 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-200"
         >
           {detailConfig.guidance}
@@ -720,7 +726,7 @@ export default async function EntryDetailPage({
           <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
             <h3 className="text-sm font-semibold">Follow-up tasks (advanced workflow)</h3>
             {followUpEntries.length === 0 ? (
-              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No follow-ups created from this entry yet.</p>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No follow-up tasks created from this work item yet.</p>
             ) : (
               <div className="space-y-3">
                 <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
@@ -1097,12 +1103,12 @@ export default async function EntryDetailPage({
                 </fieldset>
               ) : null}
               <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-                Save entry
+                Save work item
               </button>
             </form>
           ) : (
             <div className="rounded-lg border bg-white p-4 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
-              Entry editing is unavailable for your role.
+              Work item editing is unavailable for your role.
             </div>
           )}
 
@@ -1159,18 +1165,18 @@ export default async function EntryDetailPage({
           {canEditEntry ? (
             <>
               <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-                <h3 className="font-semibold">Link entries</h3>
+                <h3 className="font-semibold">Link work items</h3>
                 <form action="/entries/link" method="post" className="mt-2 space-y-2">
                   <input type="hidden" name="fromEntryId" value={entry.id} />
                   <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
                   <input
                     name="toEntryId"
-                    placeholder="Target entry ID"
+                    placeholder="Target work item ID"
                     className="w-full rounded-md border px-3 py-2 text-sm"
-                    aria-label="Target entry ID"
+                    aria-label="Target work item ID"
                   />
                   <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                    Link entry
+                    Link work item
                   </button>
                 </form>
               </div>
@@ -1293,15 +1299,15 @@ export default async function EntryDetailPage({
       </section>
 
       <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-        <h3 className="text-sm font-semibold">Linked entries</h3>
+        <h3 className="text-sm font-semibold">Linked work items</h3>
         {linkedEntryRows.length === 0 ? (
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No linked entries yet.</p>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No linked work items yet.</p>
         ) : (
           <ul className="mt-2 space-y-2 text-sm">
             {linkedEntryRows.map((row) => (
               <li key={row.linkId} className="rounded-md border px-3 py-2">
                 {row.linked.deletedAt ? (
-                  <span>Linked entry unavailable</span>
+                  <span>Linked work item unavailable</span>
                 ) : (
                   <Link href={`/entries/${row.linked.id}`} className="underline">
                     {row.linked.type}: {row.linked.title}

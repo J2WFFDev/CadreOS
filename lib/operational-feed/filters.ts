@@ -98,7 +98,7 @@ export function buildDueWindowWhere(
     return { dueDate: { gte: todayStart, lt: tomorrowStart } };
   }
 
-  // "upcoming" — tomorrow through the default 14-day window
+  // "upcoming" — tomorrow through the default upcoming window
   const { from, to } = computeUpcomingWindow(now);
   return { dueDate: { gte: from, lt: to } };
 }

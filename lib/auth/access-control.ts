@@ -23,7 +23,7 @@ export type ModuleAccessDefinition = {
 const STAFF_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH"];
 const COACH_PLUS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH"];
 const MEMBEROPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH"];
-const ENTRYOPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "GUARDIAN", "ATHLETE"];
+const WORKOPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "GUARDIAN", "ATHLETE"];
 const FIELDOPS_RESOURCEOPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH"];
 const GEAROPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "GUARDIAN", "ATHLETE"];
 
@@ -42,9 +42,9 @@ export const MODULE_ACCESS_MAP: Record<ModuleKey, ModuleAccessDefinition> = {
   },
   entry: {
     key: "entry",
-    label: "EntryOps",
+    label: "WorkOps",
     path: "/entries",
-    allowedRoles: ENTRYOPS_ROLES,
+    allowedRoles: WORKOPS_ROLES,
   },
   journal: {
     key: "journal",

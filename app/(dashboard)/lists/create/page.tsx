@@ -27,7 +27,7 @@ export default async function CreateListPage({ searchParams }: { searchParams: P
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <PageHeader title="New List" description="Create a new entry list." />
+        <PageHeader title="New List" description="Create a new work list." />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load list creation right now."} />
       </section>
     );
@@ -36,7 +36,7 @@ export default async function CreateListPage({ searchParams }: { searchParams: P
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="New List" description="Create a new entry list." />
+        <PageHeader title="New List" description="Create a new work list." />
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
@@ -52,7 +52,7 @@ export default async function CreateListPage({ searchParams }: { searchParams: P
   if (entryAccess.level === "NONE" || entryAccess.level === "READ") {
     return (
       <section className="space-y-4">
-        <PageHeader title="New List" description="Create a new entry list." />
+        <PageHeader title="New List" description="Create a new work list." />
         <ErrorMessage message="You do not have permission to create lists." />
       </section>
     );
@@ -74,7 +74,7 @@ export default async function CreateListPage({ searchParams }: { searchParams: P
 
     return (
       <section className="space-y-4">
-        <PageHeader title="New List" description="Create a new entry list." />
+        <PageHeader title="New List" description="Create a new work list." />
         <ErrorMessage message={formatEntryListSetupIncompleteMessage()} />
       </section>
     );
@@ -95,7 +95,7 @@ export default async function CreateListPage({ searchParams }: { searchParams: P
 
   return (
     <section className="space-y-6">
-      <PageHeader title="New List" description="Create a new entry list." />
+      <PageHeader title="New List" description="Create a new work list." />
 
       {errorMsg ? <ErrorMessage message={errorMsg} /> : null}
 

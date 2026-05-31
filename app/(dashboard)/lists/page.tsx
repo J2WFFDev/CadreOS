@@ -25,7 +25,7 @@ export default async function ListsPage() {
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Entry Lists" description="Manage your personal and organizational entry lists." />
+        <PageHeader title="Work Lists" description="Manage your personal and organizational work lists." />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load lists right now."} />
       </section>
     );
@@ -34,7 +34,7 @@ export default async function ListsPage() {
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Entry Lists" description="Manage your personal and organizational entry lists." />
+        <PageHeader title="Work Lists" description="Manage your personal and organizational work lists." />
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
@@ -50,8 +50,8 @@ export default async function ListsPage() {
   if (entryAccess.level === "NONE") {
     return (
       <section className="space-y-4">
-        <PageHeader title="Entry Lists" description="Manage your personal and organizational entry lists." />
-        <ErrorMessage message="You do not have permission to view entry lists in this organization." />
+        <PageHeader title="Work Lists" description="Manage your personal and organizational work lists." />
+        <ErrorMessage message="You do not have permission to view work lists in this organization." />
       </section>
     );
   }
@@ -109,7 +109,7 @@ export default async function ListsPage() {
   return (
     <section className="space-y-6">
       <div className="flex items-start justify-between">
-        <PageHeader title="Entry Lists" description="Organize entries into personal, org, program, and team lists." />
+        <PageHeader title="Work Lists" description="Organize work into personal, org, program, and team lists." />
         {canWrite && !setupIncompleteMessage ? (
           <Link href="/lists/create" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
             New list
@@ -121,7 +121,7 @@ export default async function ListsPage() {
 
       {allLists.length === 0 ? (
         <EmptyState
-          message={setupIncompleteMessage || (canWrite ? "No lists yet. Create your first list to start organizing entries." : "No lists are available yet.")}
+          message={setupIncompleteMessage || (canWrite ? "No lists yet. Create your first list to start organizing work." : "No lists are available yet.")}
           {...(canWrite && !setupIncompleteMessage ? { actionHref: "/lists/create", actionLabel: "New list" } : {})}
         />
       ) : (
@@ -139,7 +139,7 @@ export default async function ListsPage() {
                       <tr>
                         <th className="px-4 py-2 text-left">Name</th>
                         <th className="px-4 py-2 text-left">Inbox</th>
-                        <th className="px-4 py-2 text-right">Entries</th>
+                        <th className="px-4 py-2 text-right">Work Items</th>
                         {canWrite ? <th className="px-4 py-2 text-right">Actions</th> : null}
                       </tr>
                     </thead>

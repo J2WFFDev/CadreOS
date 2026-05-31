@@ -21,7 +21,7 @@ export default async function AssignedPage() {
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Assigned to Me" description="Work items assigned to you." />
+        <PageHeader title="My Work" description="Actionable work assigned to you." />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load assigned items right now."} />
       </section>
     );
@@ -30,7 +30,7 @@ export default async function AssignedPage() {
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Assigned to Me" description="Work items assigned to you." />
+        <PageHeader title="My Work" description="Actionable work assigned to you." />
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
@@ -44,7 +44,7 @@ export default async function AssignedPage() {
   if (entryAccess.level === "NONE") {
     return (
       <section className="space-y-4">
-        <PageHeader title="Assigned to Me" description="Work items assigned to you." />
+        <PageHeader title="My Work" description="Actionable work assigned to you." />
         <ErrorMessage message="You do not have permission to view assigned work in this organization." />
       </section>
     );
@@ -53,7 +53,7 @@ export default async function AssignedPage() {
   if (!scope.auth.personId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Assigned to Me" description="Work items assigned to you." />
+        <PageHeader title="My Work" description="Actionable work assigned to you." />
         <EmptyState
           message="Your account is not linked to a person yet — assigned work cannot be shown."
           actionHref="/account/link-person"
@@ -73,8 +73,8 @@ export default async function AssignedPage() {
   return (
     <section className="space-y-4">
       <PageHeader
-        title="Assigned to Me"
-        description="Active work entries and follow-ups assigned to you."
+        title="My Work"
+        description="Assigned items that are ready for action now."
         actions={
           <div className="flex items-center gap-2">
             <Link href="/today" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
@@ -92,7 +92,7 @@ export default async function AssignedPage() {
 
       {entries.length === 0 ? (
         <EmptyState
-          message="No active items are assigned to you."
+          message="No actionable work is assigned to you."
           actionHref="/tasks/new?returnTo=%2Fassigned"
           actionLabel="Create task"
         />

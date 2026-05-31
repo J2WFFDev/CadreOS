@@ -163,7 +163,7 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
                   maxLength={160}
                   autoFocus
                   defaultValue={queryTitle}
-                  placeholder="Capture it fast…"
+                  placeholder="Capture what needs doing…"
                   className="w-full rounded-md border px-3 py-2 text-sm"
                 />
               </div>
@@ -190,7 +190,7 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
                     maxLength={4000}
                     defaultValue={queryDetails}
                     className="w-full rounded-md border px-3 py-2 text-sm"
-                    placeholder="Add optional detail, tags, or context."
+                    placeholder="Add optional context, notes, or next-step detail."
                   />
                 </div>
               ) : null}
@@ -253,12 +253,12 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
                 </p>
               ) : (
                 <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-300">
-                  Low-context captures are saved to Inbox for later routing.
+                  Quick Capture always creates a task and routes it to your Inbox for triage.
                 </p>
               )}
 
               <div className="flex items-center justify-between gap-3 pt-1">
-                <p className="text-xs text-zinc-500">Tip: Use ⌘/Ctrl + K to open quick capture.</p>
+                <p className="text-xs text-zinc-500">Tip: Capture now, then open the work item to convert or enrich it later.</p>
                 <button
                   type="submit"
                   disabled={isSubmitting}

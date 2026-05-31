@@ -112,6 +112,32 @@ export function labelForActivityAction(action: string): string {
   return ACTIVITY_ACTION_LABELS[action] ?? action;
 }
 
+const ACTIVITY_VERB_OVERRIDES: Record<string, string> = {
+  "entry.created": "Created",
+  "entry.updated": "Updated",
+  "entry.completed": "Completed",
+  "entry.task_completed": "Completed",
+  "entry.quick_add.task": "Captured",
+  "journal.submitted": "Submitted",
+  "habit.checked_in": "Completed",
+  "habit.completed": "Completed",
+};
+
+function nounForActivityType(entryType: EntryType | "HABIT"): string {
+  if (entryType === "HABIT") return "habit occurrence";
+  if (entryType === "JOURNAL") return "journal";
+  if (entryType === "DECISION") return "decision";
+  if (entryType === "EVENT") return "event";
+  if (entryType === "NOTE") return "note";
+  if (entryType === "TASK") return "task";
+  return "work item";
+}
+
+export function describeActivityAction(action: string, entryType: EntryType | "HABIT"): string {
+  const verb = ACTIVITY_VERB_OVERRIDES[action] ?? labelForActivityAction(action);
+  return `${verb} ${nounForActivityType(entryType)}`.trim();
+}
+
 // ── Date formatting helpers ─────────────────────────────────────────────────
 
 /**
