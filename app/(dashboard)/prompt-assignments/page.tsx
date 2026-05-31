@@ -169,9 +169,9 @@ export default async function PromptAssignmentsPage({
       <section className="space-y-4">
         <PageHeader title="Prompt Assignments" description="View and respond to assigned journal prompts." />
         <EmptyState
-          message={loadErrorMessage ?? "Prompt assignments are planned for a future EntryOps workflow."}
+          message={loadErrorMessage ?? "Prompt assignments are planned for a future WorkOps workflow."}
           actionHref="/entries"
-          actionLabel="Back to EntryOps"
+          actionLabel="Back to WorkOps"
         />
       </section>
     );

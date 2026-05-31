@@ -51,7 +51,7 @@ export default async function EntryEventSchedulePage({ searchParams }: { searchP
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Event Schedule" description="Upcoming event entries by calendar scope." />
+        <PageHeader title="Calendar-ready Work" description="Upcoming events grouped by calendar scope." />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load schedule right now."} />
       </section>
     );
@@ -60,7 +60,7 @@ export default async function EntryEventSchedulePage({ searchParams }: { searchP
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Event Schedule" description="Upcoming event entries by calendar scope." />
+        <PageHeader title="Calendar-ready Work" description="Upcoming events grouped by calendar scope." />
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
@@ -82,8 +82,8 @@ export default async function EntryEventSchedulePage({ searchParams }: { searchP
   if (entryAccess.level === "NONE") {
     return (
       <section className="space-y-4">
-        <PageHeader title="Event Schedule" description="Upcoming event entries by calendar scope." />
-        <ErrorMessage message="You do not have permission to view event entries in this organization." />
+        <PageHeader title="Calendar-ready Work" description="Upcoming events grouped by calendar scope." />
+        <ErrorMessage message="You do not have permission to view calendar-ready work in this organization." />
       </section>
     );
   }
@@ -152,15 +152,15 @@ export default async function EntryEventSchedulePage({ searchParams }: { searchP
   return (
     <section className="space-y-4">
       <PageHeader
-        title="Event Schedule"
-        description="Upcoming event entries by calendar scope."
+        title="Calendar-ready Work"
+        description="Review event work items by personal, organization, program, or team scope."
         actions={
           <div className="flex items-center gap-2">
             <Link href="/entries" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              All entries
+              All work
             </Link>
             <Link href="/entries/inbox" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              Entry inbox
+              Work inbox
             </Link>
           </div>
         }
@@ -222,7 +222,7 @@ export default async function EntryEventSchedulePage({ searchParams }: { searchP
       </form>
 
       {scheduleItems.length === 0 ? (
-        <EmptyState message="No event entries match the selected calendar scope." actionHref="/entries" actionLabel="Back to entries" />
+        <EmptyState message="No event work matches the selected calendar scope." actionHref="/entries" actionLabel="Back to work" />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
           <table className="min-w-full text-left text-sm">

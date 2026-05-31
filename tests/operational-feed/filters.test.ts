@@ -191,14 +191,14 @@ test("buildDueWindowWhere returns gte today-midnight and lt tomorrow-midnight fo
   assert.equal(where.dueDate.lt.toISOString(), "2026-05-28T00:00:00.000Z");
 });
 
-test("buildDueWindowWhere returns gte tomorrow-midnight and lt +14-days for 'upcoming'", () => {
+test("buildDueWindowWhere returns gte tomorrow-midnight and lt +7-days for 'upcoming'", () => {
   const now = new Date("2026-05-27T10:00:00.000Z");
   const result = buildDueWindowWhere("upcoming", now);
 
   assert.ok(result !== null && "dueDate" in result);
   const where = result as { dueDate: { gte: Date; lt: Date } };
   assert.equal(where.dueDate.gte.toISOString(), "2026-05-28T00:00:00.000Z");
-  assert.equal(where.dueDate.lt.toISOString(), "2026-06-11T00:00:00.000Z");
+  assert.equal(where.dueDate.lt.toISOString(), "2026-06-04T00:00:00.000Z");
 });
 
 test("buildDueWindowWhere 'overdue' and 'today' windows are adjacent (no gap or overlap)", () => {

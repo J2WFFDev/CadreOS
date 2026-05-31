@@ -33,7 +33,7 @@ const ALL_ROLES: readonly AppRole[] = [
 ];
 
 const MEMBEROPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH"];
-const ENTRYOPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "GUARDIAN", "ATHLETE"];
+const WORKOPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "GUARDIAN", "ATHLETE"];
 const PROMPT_LIBRARY_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "ATHLETE"];
 const FIELDOPS_RESOURCEOPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH"];
 const GEAROPS_ROLES: readonly AppRole[] = ["ADMIN", "PROGRAM_MANAGER", "COACH", "ASSISTANT_COACH", "GUARDIAN", "ATHLETE"];
@@ -130,8 +130,8 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
   },
   {
     key: "ENTRYOPS",
-    label: "EntryOps",
-    allowedRoles: ENTRYOPS_ROLES,
+    label: "WorkOps",
+    allowedRoles: WORKOPS_ROLES,
     items: [
       activeItem({
         key: "ENTRY_ALL",
@@ -168,7 +168,7 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
         label: "Journals",
         href: "/journals",
         moduleKey: "journal",
-        allowedRoles: ENTRYOPS_ROLES,
+        allowedRoles: WORKOPS_ROLES,
       }),
       activeItem({
         key: "ENTRY_PROMPTS",
@@ -182,7 +182,7 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
         label: "Prompt Assignments",
         href: "/prompt-assignments",
         moduleKey: "journal",
-        allowedRoles: ENTRYOPS_ROLES,
+        allowedRoles: WORKOPS_ROLES,
       }),
     ],
   },

@@ -73,6 +73,28 @@ const FEED_ENTRY_SELECT = {
   createdAt: true,
 } as const;
 
+function isActionableJournal(status: EntryStatus) {
+  return status === EntryStatus.IN_PROGRESS;
+}
+
+function isActionableMyWorkEntry(
+  entry: FeedEntryItem,
+  options: { requireScheduledSignalForEventAndDecision: boolean },
+) {
+  if (entry.type === EntryType.JOURNAL) {
+    return isActionableJournal(entry.status);
+  }
+
+  if (
+    options.requireScheduledSignalForEventAndDecision &&
+    (entry.type === EntryType.EVENT || entry.type === EntryType.DECISION)
+  ) {
+    return Boolean(entry.dueDate);
+  }
+
+  return true;
+}
+
 // ── DB query functions ──────────────────────────────────────────────────────
 
 /**
@@ -83,7 +105,7 @@ export async function queryTodayEntries(ctx: FeedQueryContext): Promise<FeedEntr
   const now = ctx.now ?? new Date();
   const { tomorrowStart } = computeTodayWindow(now);
 
-  return db.entry.findMany({
+  const entries = await db.entry.findMany({
     where: {
       organizationId: ctx.organizationId,
       type: { in: [...ACTIVE_OPERATIONAL_TYPES] },
@@ -95,6 +117,10 @@ export async function queryTodayEntries(ctx: FeedQueryContext): Promise<FeedEntr
     select: FEED_ENTRY_SELECT,
     take: 100,
   });
+
+  return entries.filter((entry) =>
+    isActionableMyWorkEntry(entry, { requireScheduledSignalForEventAndDecision: false }),
+  );
 }
 
 /**
@@ -108,11 +134,11 @@ export async function queryTodayEntries(ctx: FeedQueryContext): Promise<FeedEntr
 export async function queryAssignedEntries(ctx: FeedQueryContext): Promise<FeedEntryItem[]> {
   if (!ctx.actorPersonId) return [];
 
-  return db.entry.findMany({
+  const entries = await db.entry.findMany({
     where: {
       organizationId: ctx.organizationId,
       deletedAt: null,
-      type: { not: EntryType.JOURNAL },
+      type: { in: [...ACTIVE_OPERATIONAL_TYPES] },
       status: { in: [...ACTIVE_FEED_STATUSES] },
       OR: [
         { assignedToPersonId: ctx.actorPersonId },
@@ -130,6 +156,10 @@ export async function queryAssignedEntries(ctx: FeedQueryContext): Promise<FeedE
     select: FEED_ENTRY_SELECT,
     take: 50,
   });
+
+  return entries.filter((entry) =>
+    isActionableMyWorkEntry(entry, { requireScheduledSignalForEventAndDecision: true }),
+  );
 }
 
 /**
@@ -175,7 +205,7 @@ export async function queryUpcomingEntries(ctx: FeedQueryContext): Promise<FeedE
   const now = ctx.now ?? new Date();
   const { from, to } = computeUpcomingWindow(now, ctx.upcomingDays);
 
-  return db.entry.findMany({
+  const entries = await db.entry.findMany({
     where: {
       organizationId: ctx.organizationId,
       type: { in: [...ACTIVE_OPERATIONAL_TYPES] },
@@ -187,6 +217,10 @@ export async function queryUpcomingEntries(ctx: FeedQueryContext): Promise<FeedE
     select: FEED_ENTRY_SELECT,
     take: 100,
   });
+
+  return entries.filter((entry) =>
+    isActionableMyWorkEntry(entry, { requireScheduledSignalForEventAndDecision: false }),
+  );
 }
 
 /**

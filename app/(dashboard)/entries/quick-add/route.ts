@@ -157,7 +157,7 @@ export async function POST(request: Request) {
         requestUrl: request.url,
         returnTo,
         values: redirectValues,
-        error: "Enter a title or details to capture this entry.",
+        error: "Enter a title or details to capture this work item.",
         openQuickCapture: true,
       }),
       303,
@@ -177,7 +177,7 @@ export async function POST(request: Request) {
         requestUrl: request.url,
         returnTo,
         values: redirectValues,
-        error: "No linked organization person is available for entry attribution.",
+        error: "No linked organization person is available for work attribution.",
         openQuickCapture: true,
       }),
       303,
@@ -218,7 +218,7 @@ export async function POST(request: Request) {
         requestUrl: request.url,
         returnTo,
         values: redirectValues,
-        error: "You do not have permission to create this entry.",
+        error: "You do not have permission to create this work item.",
         openQuickCapture: true,
       }),
       303,
@@ -367,6 +367,7 @@ export async function POST(request: Request) {
     }
 
     const destination = new URL(`/entries/${createdEntry.id}`, request.url);
+    destination.searchParams.set("quickCaptured", "1");
     if (listAssignmentWarning) {
       destination.searchParams.set("warning", listAssignmentWarning);
     }

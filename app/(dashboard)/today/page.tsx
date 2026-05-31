@@ -21,7 +21,7 @@ export default async function TodayPage() {
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Today" description="Focus on due and overdue work." />
+        <PageHeader title="Today" description="Focus on work that needs attention today." />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load today view right now."} />
       </section>
     );
@@ -30,7 +30,7 @@ export default async function TodayPage() {
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Today" description="Focus on due and overdue work." />
+        <PageHeader title="Today" description="Focus on work that needs attention today." />
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
@@ -42,7 +42,7 @@ export default async function TodayPage() {
   if (entryAccess.level === "NONE") {
     return (
       <section className="space-y-4">
-        <PageHeader title="Today" description="Focus on due and overdue work." />
+        <PageHeader title="Today" description="Focus on work that needs attention today." />
         <ErrorMessage message="You do not have permission to view today work items in this organization." />
       </section>
     );
@@ -55,7 +55,7 @@ export default async function TodayPage() {
     <section className="space-y-4">
       <PageHeader
         title="Today"
-        description="Overdue and due-today operational items."
+        description="Actionable tasks, events, decisions, and journals due today or overdue."
         actions={
           <Link href="/tasks/new?returnTo=%2Ftoday" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
             New task
@@ -116,4 +116,3 @@ export default async function TodayPage() {
     </section>
   );
 }
-

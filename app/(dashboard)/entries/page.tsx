@@ -33,7 +33,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <PageHeader title="All Entries" description="Unified notes, tasks, events, and decisions." />
+        <PageHeader title="All Work Items" description="Unified tasks, notes, events, decisions, habits, and journals." />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load entries right now."} />
       </section>
     );
@@ -42,7 +42,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="All Entries" description="Unified notes, tasks, events, and decisions." />
+        <PageHeader title="All Work Items" description="Unified tasks, notes, events, decisions, habits, and journals." />
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
@@ -56,8 +56,8 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   if (entryAccess.level === "NONE") {
     return (
       <section className="space-y-4">
-        <PageHeader title="All Entries" description="Unified notes, tasks, events, and decisions." />
-        <ErrorMessage message="You do not have permission to view entries in this organization." />
+        <PageHeader title="All Work Items" description="Unified tasks, notes, events, decisions, habits, and journals." />
+        <ErrorMessage message="You do not have permission to view work items in this organization." />
       </section>
     );
   }
@@ -126,18 +126,21 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   return (
     <section className="space-y-4">
       <PageHeader
-        title="All Entries"
-        description="Unified notes, tasks, events, and decisions."
+        title="All Work Items"
+        description="Browse and organize your active and archived work."
         actions={
           <div className="flex items-center gap-2">
             <Link href="/entries/inbox" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
               Inbox
             </Link>
             <Link href="/entries/schedule" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              Event schedule
+              Calendar-ready
             </Link>
             <Link href="/assigned" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              Assigned to me
+              My work
+            </Link>
+            <Link href="/upcoming" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Upcoming
             </Link>
             <Link href="/entries?quickCapture=1" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
               Quick capture
@@ -213,7 +216,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
               <option value="all">Any date</option>
               <option value="overdue">Overdue</option>
               <option value="today">Due today</option>
-              <option value="upcoming">Upcoming (14 days)</option>
+              <option value="upcoming">Upcoming (7 days)</option>
               <option value="no_date">No due date</option>
             </select>
           </div>
@@ -248,7 +251,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
       </form>
 
       {entries.length === 0 ? (
-        <EmptyState message="No entries match the current filters." actionHref="/dashboard" actionLabel="Back to dashboard" />
+        <EmptyState message="No work items match the current filters." actionHref="/dashboard" actionLabel="Back to dashboard" />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
           <table className="min-w-full text-left text-sm">

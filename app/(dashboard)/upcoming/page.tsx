@@ -21,7 +21,7 @@ export default async function UpcomingPage() {
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Upcoming" description="Look ahead at scheduled operational items." />
+        <PageHeader title="Upcoming" description="Look ahead at scheduled work." />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load upcoming items right now."} />
       </section>
     );
@@ -30,7 +30,7 @@ export default async function UpcomingPage() {
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Upcoming" description="Look ahead at scheduled operational items." />
+        <PageHeader title="Upcoming" description="Look ahead at scheduled work." />
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
@@ -42,7 +42,7 @@ export default async function UpcomingPage() {
   if (entryAccess.level === "NONE") {
     return (
       <section className="space-y-4">
-        <PageHeader title="Upcoming" description="Look ahead at scheduled operational items." />
+        <PageHeader title="Upcoming" description="Look ahead at scheduled work." />
         <ErrorMessage message="You do not have permission to view upcoming work items in this organization." />
       </section>
     );
@@ -53,10 +53,10 @@ export default async function UpcomingPage() {
 
   return (
     <section className="space-y-4">
-      <PageHeader title="Upcoming" description="Future operational items due in the next 14 days." />
+      <PageHeader title="Upcoming" description="Future work due in the next 7 days." />
 
       {entries.length === 0 ? (
-        <EmptyState message="No upcoming items in the next 14 days." actionHref="/tasks/new?returnTo=%2Fupcoming" actionLabel="Create task" />
+        <EmptyState message="No upcoming items in the next 7 days." actionHref="/tasks/new?returnTo=%2Fupcoming" actionLabel="Create task" />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
           <table className="min-w-full text-left text-sm">
@@ -94,4 +94,3 @@ export default async function UpcomingPage() {
     </section>
   );
 }
-

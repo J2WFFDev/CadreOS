@@ -9,10 +9,10 @@ import type { EntryPriority, EntryStatus, EntryType } from "@prisma/client";
 // ── Active operational types ────────────────────────────────────────────────
 
 /**
- * Entry types eligible for the Today and Upcoming sections.
- * These are actionable, time-bounded operational items.
+ * Entry types eligible for My Work sections.
+ * Includes actionable tasks plus scheduled/reviewable work objects.
  */
-export const ACTIVE_OPERATIONAL_TYPES = ["TASK", "FOLLOW_UP", "READINESS_ITEM"] as const;
+export const ACTIVE_OPERATIONAL_TYPES = ["TASK", "FOLLOW_UP", "READINESS_ITEM", "EVENT", "DECISION", "JOURNAL"] as const;
 
 export type ActiveOperationalType = (typeof ACTIVE_OPERATIONAL_TYPES)[number];
 
@@ -22,7 +22,7 @@ export const ACTIVE_FEED_STATUSES = ["OPEN", "IN_PROGRESS"] as const satisfies E
 export type ActiveFeedStatus = (typeof ACTIVE_FEED_STATUSES)[number];
 
 /** Default number of days ahead to include in the upcoming window. */
-export const DEFAULT_UPCOMING_DAYS = 14;
+export const DEFAULT_UPCOMING_DAYS = 7;
 
 // ── Feed item projections ───────────────────────────────────────────────────
 

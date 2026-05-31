@@ -17,8 +17,8 @@ export default async function EntryInboxPage() {
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Entry Inbox" description="Unprocessed low-context captures queued for triage." />
-        <ErrorMessage message={scope.errorMessage ?? "Unable to load the entry inbox right now."} />
+        <PageHeader title="Work Inbox" description="Captured items waiting to be clarified and organized." />
+        <ErrorMessage message={scope.errorMessage ?? "Unable to load the work inbox right now."} />
       </section>
     );
   }
@@ -26,7 +26,7 @@ export default async function EntryInboxPage() {
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Entry Inbox" description="Unprocessed low-context captures queued for triage." />
+        <PageHeader title="Work Inbox" description="Captured items waiting to be clarified and organized." />
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
@@ -39,8 +39,8 @@ export default async function EntryInboxPage() {
   if (entryAccess.level === "NONE") {
     return (
       <section className="space-y-4">
-        <PageHeader title="Entry Inbox" description="Unprocessed low-context captures queued for triage." />
-        <ErrorMessage message="You do not have permission to view the entry inbox in this organization." />
+        <PageHeader title="Work Inbox" description="Captured items waiting to be clarified and organized." />
+        <ErrorMessage message="You do not have permission to view the work inbox in this organization." />
       </section>
     );
   }
@@ -75,8 +75,8 @@ export default async function EntryInboxPage() {
   return (
     <section className="space-y-4">
       <PageHeader
-        title="Entry Inbox"
-        description="Unprocessed low-context captures queued for triage."
+        title="Work Inbox"
+        description="Quick captures land here so you can organize and enrich them later."
         actions={
           <Link href="/entries?quickCapture=1" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
             Quick capture
@@ -85,7 +85,7 @@ export default async function EntryInboxPage() {
       />
 
       {rows.length === 0 ? (
-        <EmptyState message="No unprocessed inbox entries." actionHref="/feed?quickCapture=1" actionLabel="Capture entry" />
+        <EmptyState message="No unprocessed work in inbox." actionHref="/feed?quickCapture=1" actionLabel="Capture work" />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
           <table className="min-w-full text-left text-sm">
@@ -108,7 +108,7 @@ export default async function EntryInboxPage() {
                         {entry.title}
                       </Link>
                     ) : (
-                      <span className="text-zinc-500">Entry unavailable</span>
+                      <span className="text-zinc-500">Work item unavailable</span>
                     )}
                   </td>
                   <td className="px-4 py-3">{entry ? labelForEntryType(entry.type) : "—"}</td>

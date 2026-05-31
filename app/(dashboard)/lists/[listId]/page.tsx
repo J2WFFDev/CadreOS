@@ -18,7 +18,7 @@ export default async function ListDetailPage({ params }: { params: Promise<{ lis
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <PageHeader title="List" description="Entry list details." />
+        <PageHeader title="List" description="Work list details." />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load list right now."} />
       </section>
     );
@@ -27,7 +27,7 @@ export default async function ListDetailPage({ params }: { params: Promise<{ lis
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="List" description="Entry list details." />
+        <PageHeader title="List" description="Work list details." />
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
@@ -43,8 +43,8 @@ export default async function ListDetailPage({ params }: { params: Promise<{ lis
   if (entryAccess.level === "NONE") {
     return (
       <section className="space-y-4">
-        <PageHeader title="List" description="Entry list details." />
-        <ErrorMessage message="You do not have permission to view entries." />
+        <PageHeader title="List" description="Work list details." />
+        <ErrorMessage message="You do not have permission to view work items." />
       </section>
     );
   }
@@ -102,7 +102,7 @@ export default async function ListDetailPage({ params }: { params: Promise<{ lis
       </div>
 
       {entries.length === 0 ? (
-        <EmptyState message="No entries in this list. Assign entries to this list from Entry Detail." />
+        <EmptyState message="No work items in this list. Assign work items to this list from Work Item detail." />
       ) : (
         <div className="overflow-hidden rounded-lg border">
           <table className="w-full text-sm">
