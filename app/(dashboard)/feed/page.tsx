@@ -4,7 +4,15 @@ import { EntryStatus } from "@prisma/client";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { aggregateOperationalFeed } from "@/lib/operational-feed";
-import { describeActivityAction, formatDueDate, isOverdueFeedEntry, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
+import {
+  describeActivityAction,
+  formatDueDate,
+  hrefForActivityItem,
+  isOverdueFeedEntry,
+  labelForEntryPriority,
+  labelForEntryStatus,
+  labelForEntryType,
+} from "@/lib/operational-feed/render";
 import type { ActionableHabitItem, FeedActivityItem, FeedEntryItem } from "@/lib/operational-feed/types";
 import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -105,15 +113,17 @@ function HabitsTodayList({ habits }: { habits: ActionableHabitItem[] }) {
               <span className="text-xs text-zinc-400">{habit.frequency.charAt(0) + habit.frequency.slice(1).toLowerCase()}</span>
             ) : null}
           </div>
-          {!habit.completedToday ? (
+          {!habit.completedToday && habit.canCheckIn ? (
             <form method="POST" action={`/habits/${habit.id}/check-in`} className="shrink-0">
               <input type="hidden" name="completedOn" value={new Date().toISOString().slice(0, 10)} />
               <button type="submit" className="rounded-md border px-2 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
                 Check in
               </button>
             </form>
-          ) : (
+          ) : habit.completedToday ? (
             <span className="text-xs text-green-600 dark:text-green-400 shrink-0">Done</span>
+          ) : (
+            <span className="text-xs text-zinc-400 shrink-0">View</span>
           )}
         </li>
       ))}
@@ -136,13 +146,7 @@ function ActivityFeed({ items }: { items: FeedActivityItem[] }) {
           <span className="font-medium text-zinc-700 dark:text-zinc-300">{describeActivityAction(item.action, item.entryType)}</span>
           <span className="text-zinc-500">—</span>
           <Link
-            href={
-              item.entryType === "HABIT"
-                ? `/habits/${item.entryId}`
-                : item.entryType === "JOURNAL"
-                  ? `/journals/${item.entryId}`
-                  : `/entries/${item.entryId}`
-            }
+            href={hrefForActivityItem(item.entryId, item.entryType)}
             className="underline text-zinc-700 dark:text-zinc-300 truncate"
           >
             {item.entryTitle}

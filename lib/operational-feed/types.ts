@@ -43,11 +43,14 @@ export type FeedEntryItem = {
 };
 
 /** A single entry activity record in the feed. */
+export type FeedActivityEntryType = EntryType | "HABIT_ACTIVITY";
+
+/** A single entry activity record in the feed. */
 export type FeedActivityItem = {
   id: string;
   entryId: string;
   entryTitle: string;
-  entryType: EntryType | "HABIT";
+  entryType: FeedActivityEntryType;
   action: string;
   actorPersonId: string | null;
   createdAt: Date;
@@ -65,6 +68,7 @@ export type ActionableHabitItem = {
   targetCount: number | null;
   targetUnit: string | null;
   completedToday: boolean;
+  canCheckIn: boolean;
 };
 
 // ── Query context ───────────────────────────────────────────────────────────

@@ -54,6 +54,15 @@ export function normalizeCompletedOn(date: Date): Date {
   return d;
 }
 
+export function parseHabitCountValue(raw: string | null | undefined): number | null {
+  const value = typeof raw === "string" ? raw.trim() : "";
+  if (!value) return null;
+  if (!/^\d+$/.test(value)) return null;
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
 /**
  * Given a sorted-ascending list of completedOn dates and a frequency,
  * compute the current streak (consecutive periods from today backwards).
@@ -219,4 +228,3 @@ export function normalizeTrackingMode(raw: string): HabitTrackingMode {
   if (raw === "NOTES") return HabitTrackingMode.NOTES;
   return HabitTrackingMode.CHECKOFF;
 }
-
