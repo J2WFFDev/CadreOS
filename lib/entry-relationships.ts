@@ -104,6 +104,7 @@ export function parseRelationshipTargetNodeType(value: string | null | undefined
 }
 
 function compareNodeRefs(left: RelationshipNodeRef, right: RelationshipNodeRef) {
+  // Keep symmetric relationship pairs in a stable order so one stored row can serve both directions.
   return `${left.nodeType}:${left.nodeId}`.localeCompare(`${right.nodeType}:${right.nodeId}`);
 }
 
