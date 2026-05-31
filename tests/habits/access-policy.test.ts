@@ -7,11 +7,13 @@ import type { HabitAccessContext, HabitRecord } from "../../lib/habits/access";
 import {
   canArchiveHabit,
   canCheckInHabit,
+  canCompleteHabit,
   canCreateHabit,
   canEditHabit,
   canPauseHabit,
   canReadCompletionDetail,
   canReadHabit,
+  canRestoreHabit,
   hasHabitAdminAccess,
 } from "../../lib/habits/access";
 
@@ -279,4 +281,76 @@ test("coach cannot read completion detail — summary only", () => {
   const habit = buildHabit({ athletePersonId: "athlete-1" });
   const ctx = buildContext({ actorPersonId: "coach-1", assignments: [coachAssignment] });
   assert.equal(canReadCompletionDetail(ctx, habit), false);
+});
+
+// ── Arc 24D.8: canCompleteHabit ───────────────────────────────────────────────
+
+test("admin can complete an active habit", () => {
+  assert.equal(canCompleteHabit(buildContext({ assignments: [adminAssignment] }), buildHabit()), true);
+});
+
+test("creator can complete their own active habit", () => {
+  assert.equal(canCompleteHabit(buildContext({}), buildHabit()), true);
+});
+
+test("cannot complete an already-completed habit", () => {
+  const habit = buildHabit({ status: HabitStatus.COMPLETED });
+  assert.equal(canCompleteHabit(buildContext({ assignments: [adminAssignment] }), habit), false);
+});
+
+test("cannot complete an archived habit", () => {
+  const habit = buildHabit({ status: HabitStatus.ARCHIVED });
+  assert.equal(canCompleteHabit(buildContext({ assignments: [adminAssignment] }), habit), false);
+});
+
+test("unrelated athlete cannot complete another's habit", () => {
+  const habit = buildHabit({ createdByPersonId: "other" });
+  assert.equal(canCompleteHabit(buildContext({ assignments: [athleteAssignment] }), habit), false);
+});
+
+// ── Arc 24D.8: canRestoreHabit ────────────────────────────────────────────────
+
+test("admin can restore a completed habit", () => {
+  const habit = buildHabit({ status: HabitStatus.COMPLETED });
+  assert.equal(canRestoreHabit(buildContext({ assignments: [adminAssignment] }), habit), true);
+});
+
+test("admin can restore an archived habit", () => {
+  const habit = buildHabit({ status: HabitStatus.ARCHIVED });
+  assert.equal(canRestoreHabit(buildContext({ assignments: [adminAssignment] }), habit), true);
+});
+
+test("creator can restore their own completed habit", () => {
+  const habit = buildHabit({ status: HabitStatus.COMPLETED });
+  assert.equal(canRestoreHabit(buildContext({}), habit), true);
+});
+
+test("creator can restore their own archived habit", () => {
+  const habit = buildHabit({ status: HabitStatus.ARCHIVED });
+  assert.equal(canRestoreHabit(buildContext({}), habit), true);
+});
+
+test("cannot restore an already-active habit", () => {
+  assert.equal(canRestoreHabit(buildContext({ assignments: [adminAssignment] }), buildHabit()), false);
+});
+
+// ── Arc 24D.8: canPauseHabit COMPLETED guard ──────────────────────────────────
+
+test("cannot pause a completed habit", () => {
+  const habit = buildHabit({ status: HabitStatus.COMPLETED });
+  assert.equal(canPauseHabit(buildContext({ assignments: [adminAssignment] }), habit), false);
+});
+
+// ── Arc 24D.8: canCheckInHabit COMPLETED guard ────────────────────────────────
+
+test("cannot check in to a completed habit", () => {
+  const habit = buildHabit({ athletePersonId: "actor-1", status: HabitStatus.COMPLETED });
+  assert.equal(canCheckInHabit(buildContext({}), habit), false);
+});
+
+// ── Arc 24D.8: canArchiveHabit COMPLETED guard ────────────────────────────────
+
+test("admin can archive a completed habit (COMPLETED is not blocked by archive)", () => {
+  const habit = buildHabit({ status: HabitStatus.COMPLETED });
+  assert.equal(canArchiveHabit(buildContext({ assignments: [adminAssignment] }), habit), true);
 });

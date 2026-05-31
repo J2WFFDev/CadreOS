@@ -3,7 +3,12 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { canEditHabit, resolveHabitAccessContext } from "@/lib/habits/access";
-import { MAX_HABIT_DESCRIPTION_LENGTH, MAX_HABIT_TITLE_LENGTH, normalizeCompletedOn } from "@/lib/habits/policy";
+import {
+  MAX_HABIT_DESCRIPTION_LENGTH,
+  MAX_HABIT_TITLE_LENGTH,
+  normalizeCompletedOn,
+  normalizeTrackingMode,
+} from "@/lib/habits/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 function normalizeFrequency(raw: string): HabitFrequency | null {
@@ -53,6 +58,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
   const startDateRaw = String(formData.get("startDate") ?? "").trim();
   const endDateRaw = String(formData.get("endDate") ?? "").trim();
   const scheduleId = String(formData.get("scheduleId") ?? "").trim() || null;
+  const trackingModeRaw = String(formData.get("trackingMode") ?? "").trim();
+  const targetCountRaw = String(formData.get("targetCount") ?? "").trim();
+  const targetUnit = String(formData.get("targetUnit") ?? "").trim() || null;
 
   if (!title || !athletePersonId) {
     return NextResponse.redirect(new URL(`/habits/${habitId}/edit`, request.url), 303);
@@ -77,6 +85,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
   const frequency = normalizeFrequency(frequencyRaw);
   const startDate = startDateRaw ? new Date(startDateRaw) : null;
   const endDate = endDateRaw ? new Date(endDateRaw) : null;
+  const trackingMode = normalizeTrackingMode(trackingModeRaw);
+  const targetCount = targetCountRaw ? parseInt(targetCountRaw, 10) || null : null;
 
   await db.habit.update({
     where: { id: habitId },
@@ -85,6 +95,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
       description,
       athletePersonId,
       assignedToTeamId,
+      trackingMode: trackingMode ?? undefined,
+      targetCount,
+      targetUnit,
     },
   });
 
@@ -115,6 +128,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
     // Clear the schedule if frequency was removed
     await db.habitSchedule.delete({ where: { id: scheduleId } });
   }
+
+  await db.habitActivity.create({
+    data: {
+      organizationId: scope.organizationId,
+      habitId,
+      action: "habit.updated",
+      actorPersonId: scope.auth.personId,
+    },
+  });
 
   return NextResponse.redirect(new URL(`/habits/${habitId}`, request.url), 303);
 }

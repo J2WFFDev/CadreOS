@@ -9,10 +9,12 @@ import { StatusBadge } from "@/components/dashboard/status-badge";
 import {
   canArchiveHabit,
   canCheckInHabit,
+  canCompleteHabit,
   canEditHabit,
   canPauseHabit,
   canReadCompletionDetail,
   canReadHabit,
+  canRestoreHabit,
   resolveHabitAccessContext,
 } from "@/lib/habits/access";
 import {
@@ -21,6 +23,7 @@ import {
   computeCurrentStreak,
   labelForHabitFrequency,
   labelForHabitStatus,
+  labelForHabitTrackingMode,
   MAX_CHECKIN_NOTE_LENGTH,
 } from "@/lib/habits/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -53,6 +56,10 @@ export default async function HabitDetailPage({ params }: { params: Promise<{ ha
       createdByPersonId: true,
       archivedAt: true,
       pausedAt: true,
+      completedAt: true,
+      trackingMode: true,
+      targetCount: true,
+      targetUnit: true,
       createdAt: true,
       updatedAt: true,
       athlete: { select: { firstName: true, lastName: true } },
@@ -64,7 +71,7 @@ export default async function HabitDetailPage({ params }: { params: Promise<{ ha
       },
       completions: {
         orderBy: { completedOn: "desc" },
-        select: { id: true, completedOn: true, note: true, athletePersonId: true },
+        select: { id: true, completedOn: true, note: true, athletePersonId: true, countValue: true },
       },
     },
   });
@@ -91,6 +98,8 @@ export default async function HabitDetailPage({ params }: { params: Promise<{ ha
   const canArchive = canArchiveHabit(accessContext, habitRecord);
   const canPause = canPauseHabit(accessContext, habitRecord);
   const canCheckIn = canCheckInHabit(accessContext, habitRecord);
+  const canComplete = canCompleteHabit(accessContext, habitRecord);
+  const canRestore = canRestoreHabit(accessContext, habitRecord);
   const showCompletionDetail = canReadCompletionDetail(accessContext, habitRecord);
 
   const completionDates = habit.completions.map((c) => c.completedOn);
@@ -100,6 +109,7 @@ export default async function HabitDetailPage({ params }: { params: Promise<{ ha
 
   const athleteName = `${habit.athlete.firstName} ${habit.athlete.lastName}`.trim() || "Unknown";
   const creatorName = `${habit.createdBy.firstName} ${habit.createdBy.lastName}`.trim() || "Unknown";
+  const trackingMode = habit.trackingMode;
 
   return (
     <section className="space-y-6">
@@ -128,14 +138,31 @@ export default async function HabitDetailPage({ params }: { params: Promise<{ ha
                 </button>
               </form>
             ) : null}
+            {canComplete ? (
+              <form method="POST" action={`/habits/${habit.id}/complete`} className="inline">
+                <button
+                  type="submit"
+                  className="rounded-md border border-teal-200 px-3 py-1.5 text-sm text-teal-700 hover:bg-teal-50 dark:border-teal-900 dark:text-teal-400 dark:hover:bg-teal-900/20"
+                >
+                  Mark complete
+                </button>
+              </form>
+            ) : null}
+            {canRestore ? (
+              <form method="POST" action={`/habits/${habit.id}/restore`} className="inline">
+                <button
+                  type="submit"
+                  className="rounded-md border border-blue-200 px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                >
+                  Restore
+                </button>
+              </form>
+            ) : null}
             {canArchive ? (
               <form method="POST" action={`/habits/${habit.id}/archive`} className="inline">
                 <button
                   type="submit"
                   className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20"
-                  onClick={(e) => {
-                    if (!confirm("Archive this habit? Completions will be preserved.")) e.preventDefault();
-                  }}
                 >
                   Archive
                 </button>
@@ -163,6 +190,16 @@ export default async function HabitDetailPage({ params }: { params: Promise<{ ha
             <div>
               <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Team</dt>
               <dd className="mt-1 text-sm">{habit.assignedToTeam.name}</dd>
+            </div>
+          ) : null}
+          <div>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Tracking</dt>
+            <dd className="mt-1 text-sm">{labelForHabitTrackingMode(trackingMode ?? "CHECKOFF")}</dd>
+          </div>
+          {trackingMode === "COUNT" && habit.targetCount ? (
+            <div>
+              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Target</dt>
+              <dd className="mt-1 text-sm">{habit.targetCount}{habit.targetUnit ? ` ${habit.targetUnit}` : ""}</dd>
             </div>
           ) : null}
           {frequency ? (
@@ -197,6 +234,12 @@ export default async function HabitDetailPage({ params }: { params: Promise<{ ha
             <div>
               <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Current streak</dt>
               <dd className="mt-1 text-sm font-semibold">{currentStreak} {frequency === "DAILY" ? "day(s)" : frequency === "WEEKLY" ? "week(s)" : ""}</dd>
+            </div>
+          ) : null}
+          {habit.completedAt ? (
+            <div>
+              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Completed on</dt>
+              <dd className="mt-1 text-sm text-zinc-500">{habit.completedAt.toISOString().slice(0, 10)}</dd>
             </div>
           ) : null}
           <div>
@@ -239,6 +282,21 @@ export default async function HabitDetailPage({ params }: { params: Promise<{ ha
                 />
               </div>
             </div>
+            {trackingMode === "COUNT" ? (
+              <div className="space-y-1">
+                <label htmlFor="countValue" className="block text-sm font-medium">
+                  Count value {habit.targetUnit ? `(${habit.targetUnit})` : ""} <span className="text-zinc-400">(optional)</span>
+                </label>
+                <input
+                  id="countValue"
+                  name="countValue"
+                  type="number"
+                  min={0}
+                  placeholder={habit.targetCount ? String(habit.targetCount) : ""}
+                  className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
+                />
+              </div>
+            ) : null}
             <div className="flex justify-end">
               <button type="submit" className="rounded-md bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black">
                 Record check-in
@@ -262,6 +320,7 @@ export default async function HabitDetailPage({ params }: { params: Promise<{ ha
               <thead className="border-b bg-zinc-50 dark:bg-zinc-800/60">
                 <tr>
                   <th className="px-4 py-3 font-medium">Date</th>
+                  {trackingMode === "COUNT" ? <th className="px-4 py-3 font-medium">Count</th> : null}
                   {showCompletionDetail ? <th className="px-4 py-3 font-medium">Note</th> : null}
                 </tr>
               </thead>
@@ -269,6 +328,11 @@ export default async function HabitDetailPage({ params }: { params: Promise<{ ha
                 {habit.completions.map((completion) => (
                   <tr key={completion.id} className="border-b last:border-b-0">
                     <td className="px-4 py-3">{completion.completedOn.toISOString().slice(0, 10)}</td>
+                    {trackingMode === "COUNT" ? (
+                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                        {completion.countValue != null ? completion.countValue : <span className="text-zinc-400">—</span>}
+                      </td>
+                    ) : null}
                     {showCompletionDetail ? (
                       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                         {completion.note ?? <span className="text-zinc-400">—</span>}

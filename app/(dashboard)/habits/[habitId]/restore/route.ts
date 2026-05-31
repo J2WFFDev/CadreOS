@@ -1,8 +1,11 @@
+// Arc 24D.8: Restore Habit route.
+// Restores an ARCHIVED or COMPLETED habit back to ACTIVE.
+
 import { HabitStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { canArchiveHabit, resolveHabitAccessContext } from "@/lib/habits/access";
+import { canRestoreHabit, resolveHabitAccessContext } from "@/lib/habits/access";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export async function POST(request: Request, { params }: { params: Promise<{ habitId: string }> }) {
@@ -31,15 +34,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
     actorPersonId: scope.auth.personId,
   });
 
-  if (!canArchiveHabit(accessContext, habit)) {
+  if (!canRestoreHabit(accessContext, habit)) {
     return NextResponse.redirect(new URL(`/habits/${habitId}`, request.url), 303);
   }
 
   await db.habit.update({
     where: { id: habitId },
     data: {
-      status: HabitStatus.ARCHIVED,
-      archivedAt: new Date(),
+      status: HabitStatus.ACTIVE,
+      archivedAt: null,
+      completedAt: null,
     },
   });
 
@@ -47,7 +51,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
     data: {
       organizationId: scope.organizationId,
       habitId,
-      action: "habit.archived",
+      action: "habit.restored",
       actorPersonId: scope.auth.personId,
     },
   });

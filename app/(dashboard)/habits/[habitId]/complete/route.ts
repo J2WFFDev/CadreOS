@@ -1,8 +1,12 @@
+// Arc 24D.8: Complete Habit lifecycle route.
+// Marks the Habit itself as COMPLETED — distinct from completing an occurrence.
+// A COMPLETED habit no longer appears in My Work and no new check-ins are accepted.
+
 import { HabitStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { canArchiveHabit, resolveHabitAccessContext } from "@/lib/habits/access";
+import { canCompleteHabit, resolveHabitAccessContext } from "@/lib/habits/access";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export async function POST(request: Request, { params }: { params: Promise<{ habitId: string }> }) {
@@ -31,15 +35,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
     actorPersonId: scope.auth.personId,
   });
 
-  if (!canArchiveHabit(accessContext, habit)) {
+  if (!canCompleteHabit(accessContext, habit)) {
     return NextResponse.redirect(new URL(`/habits/${habitId}`, request.url), 303);
   }
 
   await db.habit.update({
     where: { id: habitId },
     data: {
-      status: HabitStatus.ARCHIVED,
-      archivedAt: new Date(),
+      status: HabitStatus.COMPLETED,
+      completedAt: new Date(),
     },
   });
 
@@ -47,7 +51,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
     data: {
       organizationId: scope.organizationId,
       habitId,
-      action: "habit.archived",
+      action: "habit.completed",
       actorPersonId: scope.auth.personId,
     },
   });

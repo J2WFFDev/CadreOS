@@ -777,8 +777,9 @@ model Organization {
   entries                      Entry[]
   journalPrompts               JournalPrompt[]
   journalAssignments           JournalAssignment[]
-  // Arc 23D: Habit back-relations
+  // Arc 23D / 24D.8: Habit back-relations
   habits                       Habit[]
+  habitActivities              HabitActivity[]
   entryLists                   EntryList[]
   entryLinks                   EntryLink[]
   entryActivities              EntryActivity[]
@@ -2729,7 +2730,7 @@ model JournalAssignment {
   @@index([organizationId, status, dueAt])
 }
 
-// ── Arc 23D: Habit Model, Recurrence, and Completion Tracking ────────────────
+// ── Arc 23D / Arc 24D.8: Habit Model, Recurrence, and Completion Tracking ────
 
 enum HabitFrequency {
   DAILY
@@ -2740,24 +2741,49 @@ enum HabitFrequency {
 enum HabitStatus {
   ACTIVE
   PAUSED
+  // Arc 24D.8: COMPLETED marks the habit lifecycle as intentionally finished (distinct from archived).
+  COMPLETED
   ARCHIVED
+}
+
+// Arc 24D.8: Tracking mode — how a check-in is recorded.
+enum HabitTrackingMode {
+  CHECKOFF // simple done/not-done
+  COUNT    // numeric value (e.g. reps, pages, minutes)
+  NOTES    // freeform note required
 }
 
 // Arc 23D: Habit — a recurring behavior or check-in target tracked over time.
 // May be self-defined by an athlete or assigned by staff/coach.
+// Arc 24D.8: Extended with tracking mode, derived/placeholder fields, and activity relation.
 model Habit {
-  id                String      @id @default(cuid())
+  id                String             @id @default(cuid())
   organizationId    String
   title             String
   description       String?
   athletePersonId   String
   assignedToTeamId  String?
-  status            HabitStatus @default(ACTIVE)
+  status            HabitStatus        @default(ACTIVE)
   createdByPersonId String
   archivedAt        DateTime?
   pausedAt          DateTime?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  completedAt       DateTime?          // Arc 24D.8: when the habit lifecycle was marked COMPLETED
+
+  // Arc 24D.8: Tracking fields
+  trackingMode      HabitTrackingMode  @default(CHECKOFF)
+  targetCount       Int?               // target reps/pages/minutes for COUNT mode
+  targetUnit        String?            // label for the count unit, e.g. "reps", "minutes"
+  allowCompletionNote Boolean          @default(true)
+
+  // Arc 24D.8: Future-ready / derived placeholders (not computed in this arc)
+  nextOccurrenceDate DateTime?         // calendar-readiness: next scheduled occurrence
+  lastCompletedAt    DateTime?         // updated on each successful check-in
+  lastOccurrenceDate DateTime?         // most recent occurrence date (schedule-driven)
+  longestStreak      Int?              // placeholder for future streak engine
+  completionRate     Float?            // placeholder for future analytics (0.0–1.0)
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   athlete        Person            @relation("HabitAthlete", fields: [athletePersonId], references: [id], onDelete: Restrict)
@@ -2765,6 +2791,7 @@ model Habit {
   createdBy      Person            @relation("HabitCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Restrict)
   schedules      HabitSchedule[]
   completions    HabitCompletion[]
+  activities     HabitActivity[]   // Arc 24D.8: activity log for feed events
 
   @@index([organizationId, athletePersonId, status])
   @@index([organizationId, status, createdAt])
@@ -2778,6 +2805,7 @@ model HabitSchedule {
   id         String         @id @default(cuid())
   habitId    String
   frequency  HabitFrequency
+  interval   Int?           // Arc 24D.8: every N periods (e.g. every 2 weeks); placeholder
   daysOfWeek String?        // JSON array, e.g. ["MON","WED","FRI"], used for WEEKLY frequency
   startDate  DateTime
   endDate    DateTime?
@@ -2792,13 +2820,17 @@ model HabitSchedule {
 // Arc 23D: HabitCompletion — a dated check-in record for a Habit.
 // Unique on (habitId, completedOn) to prevent duplicate same-day completions.
 // completedOn is stored as start-of-day UTC for consistent deduplication.
+// Arc 24D.8: Added completedBy, countValue, updatedAt.
 model HabitCompletion {
   id              String   @id @default(cuid())
   habitId         String
   athletePersonId String
   completedOn     DateTime // normalized to start-of-day UTC
   note            String?
+  completedBy     String?  // Arc 24D.8: personId of who recorded the check-in (may differ from athlete)
+  countValue      Int?     // Arc 24D.8: numeric value when trackingMode = COUNT
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   habit   Habit  @relation(fields: [habitId], references: [id], onDelete: Cascade)
   athlete Person @relation("HabitCompletionAthlete", fields: [athletePersonId], references: [id], onDelete: Restrict)
@@ -2806,4 +2838,22 @@ model HabitCompletion {
   @@unique([habitId, completedOn])
   @@index([habitId, completedOn])
   @@index([athletePersonId, completedOn])
+}
+
+// Arc 24D.8: HabitActivity — lightweight audit/feed log for Habit lifecycle events.
+// Used to surface habit events in the Activity Feed without coupling to EntryActivity.
+model HabitActivity {
+  id             String   @id @default(cuid())
+  organizationId String
+  habitId        String
+  action         String   // e.g. "habit.created", "habit.checked_in", "habit.paused"
+  actorPersonId  String?
+  metadata       String?  // optional JSON for future extensibility
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  habit        Habit        @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([habitId, createdAt])
 }

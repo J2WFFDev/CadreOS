@@ -38,7 +38,7 @@ test("sanitizeActivityEntryTitle maps prompt actions to specific safe labels for
 test("sanitizeActivityEntryTitle sanitizes HABIT entries as a defensive guard", () => {
   assert.equal(
     sanitizeActivityEntryTitle("habit.checked_in", EntryType.HABIT, "Morning stretching routine"),
-    "Habit check-in recorded",
+    "Habit occurrence completed",
   );
   assert.equal(
     sanitizeActivityEntryTitle("habit.assigned", EntryType.HABIT, "Private athlete habit title"),

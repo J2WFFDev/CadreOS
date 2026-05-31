@@ -15,6 +15,7 @@ export type StatusBadgeVariant =
   | "open"         // Entry OPEN — blue
   | "in_progress"  // Entry IN_PROGRESS — blue
   | "done"         // Entry DONE / Journal SUBMITTED — green
+  | "completed"    // Habit COMPLETED — teal
   | "paused"       // Habit PAUSED — yellow
   | "draft"        // Journal DRAFT — zinc
   | "cancelled"    // Entry CANCELLED — zinc
@@ -31,6 +32,8 @@ const VARIANT_CLASSES: Record<StatusBadgeVariant, string> = {
     "inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   done:
     "inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  completed:
+    "inline-block rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
   paused:
     "inline-block rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
   draft:

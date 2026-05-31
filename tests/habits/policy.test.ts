@@ -1,19 +1,22 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import { HabitFrequency } from "@prisma/client";
+import { HabitFrequency, HabitStatus } from "@prisma/client";
 
 import {
   badgeVariantForHabitStatus,
   computeCompletionCount,
   computeCurrentStreak,
   deriveSafeHabitActivityText,
+  isHabitActionableToday,
   labelForHabitFrequency,
   labelForHabitStatus,
+  labelForHabitTrackingMode,
   MAX_CHECKIN_NOTE_LENGTH,
   MAX_HABIT_DESCRIPTION_LENGTH,
   MAX_HABIT_TITLE_LENGTH,
   normalizeCompletedOn,
+  normalizeTrackingMode,
 } from "../../lib/habits/policy";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -204,10 +207,160 @@ test("deriveSafeHabitActivityText returns safe label for habit.resumed", () => {
 });
 
 test("deriveSafeHabitActivityText returns safe label for habit.checked_in", () => {
-  assert.equal(deriveSafeHabitActivityText("habit.checked_in"), "Habit check-in recorded");
+  assert.equal(deriveSafeHabitActivityText("habit.checked_in"), "Habit occurrence completed");
 });
 
 test("deriveSafeHabitActivityText falls back to generic label for unknown action", () => {
   assert.equal(deriveSafeHabitActivityText("unknown.habit.action"), "Habit event");
   assert.equal(deriveSafeHabitActivityText(""), "Habit event");
+});
+
+// ── Arc 24D.8: labelForHabitStatus COMPLETED ──────────────────────────────────
+
+test("labelForHabitStatus returns Completed for COMPLETED", () => {
+  assert.equal(labelForHabitStatus("COMPLETED"), "Completed");
+});
+
+test("badgeVariantForHabitStatus returns completed for COMPLETED", () => {
+  assert.equal(badgeVariantForHabitStatus("COMPLETED"), "completed");
+});
+
+// ── Arc 24D.8: deriveSafeHabitActivityText with habitTitle ────────────────────
+
+test("deriveSafeHabitActivityText includes title when provided for habit.created", () => {
+  assert.equal(deriveSafeHabitActivityText("habit.created", "Dry fire practice"), "Habit created: Dry fire practice");
+});
+
+test("deriveSafeHabitActivityText includes title when provided for habit.checked_in", () => {
+  assert.equal(deriveSafeHabitActivityText("habit.checked_in", "Morning stretching"), "Habit occurrence completed: Morning stretching");
+});
+
+test("deriveSafeHabitActivityText includes title when provided for habit.paused", () => {
+  assert.equal(deriveSafeHabitActivityText("habit.paused", "Weekly gear check"), "Habit paused: Weekly gear check");
+});
+
+test("deriveSafeHabitActivityText returns safe label for habit.completed without title", () => {
+  assert.equal(deriveSafeHabitActivityText("habit.completed"), "Habit completed");
+});
+
+test("deriveSafeHabitActivityText returns safe label for habit.restored without title", () => {
+  assert.equal(deriveSafeHabitActivityText("habit.restored"), "Habit restored");
+});
+
+// ── Arc 24D.8: labelForHabitTrackingMode ──────────────────────────────────────
+
+test("labelForHabitTrackingMode returns Check-off for CHECKOFF", () => {
+  assert.equal(labelForHabitTrackingMode("CHECKOFF"), "Check-off");
+});
+
+test("labelForHabitTrackingMode returns Count for COUNT", () => {
+  assert.equal(labelForHabitTrackingMode("COUNT"), "Count");
+});
+
+test("labelForHabitTrackingMode returns Notes for NOTES", () => {
+  assert.equal(labelForHabitTrackingMode("NOTES"), "Notes");
+});
+
+// ── Arc 24D.8: normalizeTrackingMode ─────────────────────────────────────────
+
+test("normalizeTrackingMode returns CHECKOFF for CHECKOFF", () => {
+  assert.equal(normalizeTrackingMode("CHECKOFF"), "CHECKOFF");
+});
+
+test("normalizeTrackingMode returns COUNT for COUNT", () => {
+  assert.equal(normalizeTrackingMode("COUNT"), "COUNT");
+});
+
+test("normalizeTrackingMode returns NOTES for NOTES", () => {
+  assert.equal(normalizeTrackingMode("NOTES"), "NOTES");
+});
+
+test("normalizeTrackingMode defaults to CHECKOFF for unknown input", () => {
+  assert.equal(normalizeTrackingMode("UNKNOWN"), "CHECKOFF");
+  assert.equal(normalizeTrackingMode(""), "CHECKOFF");
+});
+
+// ── Arc 24D.8: isHabitActionableToday ────────────────────────────────────────
+
+const TODAY = new Date("2026-05-31T00:00:00.000Z"); // Saturday
+
+function makeActionableInput(overrides: Partial<Parameters<typeof isHabitActionableToday>[0]> = {}): Parameters<typeof isHabitActionableToday>[0] {
+  return {
+    status: HabitStatus.ACTIVE,
+    scheduleFrequency: HabitFrequency.DAILY,
+    scheduleDaysOfWeek: null,
+    scheduleStartDate: null,
+    scheduleEndDate: null,
+    todayDate: TODAY,
+    ...overrides,
+  };
+}
+
+test("isHabitActionableToday returns false for PAUSED habit", () => {
+  assert.equal(isHabitActionableToday(makeActionableInput({ status: HabitStatus.PAUSED })), false);
+});
+
+test("isHabitActionableToday returns false for ARCHIVED habit", () => {
+  assert.equal(isHabitActionableToday(makeActionableInput({ status: HabitStatus.ARCHIVED })), false);
+});
+
+test("isHabitActionableToday returns false for COMPLETED habit", () => {
+  assert.equal(isHabitActionableToday(makeActionableInput({ status: HabitStatus.COMPLETED })), false);
+});
+
+test("isHabitActionableToday returns true for ACTIVE DAILY habit with no schedule boundaries", () => {
+  assert.equal(isHabitActionableToday(makeActionableInput()), true);
+});
+
+test("isHabitActionableToday returns false when today is before startDate", () => {
+  assert.equal(
+    isHabitActionableToday(makeActionableInput({ scheduleStartDate: new Date("2026-06-01T00:00:00.000Z") })),
+    false,
+  );
+});
+
+test("isHabitActionableToday returns false when today is after endDate", () => {
+  assert.equal(
+    isHabitActionableToday(makeActionableInput({ scheduleEndDate: new Date("2026-05-30T00:00:00.000Z") })),
+    false,
+  );
+});
+
+test("isHabitActionableToday returns true for WEEKLY habit on a matching day (SUN)", () => {
+  // TODAY = 2026-05-31 = Sunday (SUN)
+  assert.equal(
+    isHabitActionableToday(makeActionableInput({
+      scheduleFrequency: HabitFrequency.WEEKLY,
+      scheduleDaysOfWeek: "MON,WED,SUN",
+    })),
+    true,
+  );
+});
+
+test("isHabitActionableToday returns false for WEEKLY habit on a non-matching day", () => {
+  // TODAY = 2026-05-31 = Sunday, schedule only has MON,WED
+  assert.equal(
+    isHabitActionableToday(makeActionableInput({
+      scheduleFrequency: HabitFrequency.WEEKLY,
+      scheduleDaysOfWeek: "MON,WED",
+    })),
+    false,
+  );
+});
+
+test("isHabitActionableToday returns true for WEEKLY habit with no daysOfWeek restriction", () => {
+  assert.equal(
+    isHabitActionableToday(makeActionableInput({
+      scheduleFrequency: HabitFrequency.WEEKLY,
+      scheduleDaysOfWeek: null,
+    })),
+    true,
+  );
+});
+
+test("isHabitActionableToday returns true for ACTIVE habit with no schedule (null frequency)", () => {
+  assert.equal(
+    isHabitActionableToday(makeActionableInput({ scheduleFrequency: null })),
+    true,
+  );
 });

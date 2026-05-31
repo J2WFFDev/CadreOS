@@ -1,4 +1,4 @@
-import { HabitFrequency, HabitStatus } from "@prisma/client";
+import { HabitFrequency, HabitStatus, HabitTrackingMode } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -34,6 +34,9 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
       athletePersonId: true,
       assignedToTeamId: true,
       createdByPersonId: true,
+      trackingMode: true,
+      targetCount: true,
+      targetUnit: true,
       schedules: { orderBy: { createdAt: "asc" }, take: 1, select: { id: true, frequency: true, daysOfWeek: true, startDate: true, endDate: true } },
     },
   });
@@ -85,7 +88,7 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
     <section className="space-y-4">
       <PageHeader
         title="Edit Habit"
-        description="Update this habit's title, description, cadence, or assignment."
+        description="Update this habit's title, description, tracking mode, cadence, or assignment."
         actions={
           <Link href={`/habits/${habitId}`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
             Cancel
@@ -153,6 +156,48 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
             ))}
           </select>
         </div>
+
+        <fieldset className="space-y-3 rounded-md border p-4">
+          <legend className="px-1 text-sm font-medium">Tracking mode</legend>
+
+          <div className="space-y-1">
+            <label htmlFor="trackingMode" className="block text-sm font-medium">How is completion tracked?</label>
+            <select
+              id="trackingMode"
+              name="trackingMode"
+              defaultValue={habit.trackingMode ?? HabitTrackingMode.CHECKOFF}
+              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
+            >
+              <option value={HabitTrackingMode.CHECKOFF}>Checkoff — mark as done</option>
+              <option value={HabitTrackingMode.COUNT}>Count — track a numeric value</option>
+              <option value={HabitTrackingMode.NOTES}>Notes — log a free-text entry</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label htmlFor="targetCount" className="block text-sm font-medium">Target count <span className="text-zinc-400">(optional, Count mode)</span></label>
+              <input
+                id="targetCount"
+                name="targetCount"
+                type="number"
+                min={1}
+                defaultValue={habit.targetCount ?? ""}
+                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="targetUnit" className="block text-sm font-medium">Unit <span className="text-zinc-400">(optional, e.g. reps, minutes)</span></label>
+              <input
+                id="targetUnit"
+                name="targetUnit"
+                type="text"
+                defaultValue={habit.targetUnit ?? ""}
+                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
+              />
+            </div>
+          </div>
+        </fieldset>
 
         <fieldset className="space-y-3 rounded-md border p-4">
           <legend className="px-1 text-sm font-medium">Recurrence / Cadence</legend>

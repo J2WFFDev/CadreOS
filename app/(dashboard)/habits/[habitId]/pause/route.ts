@@ -43,10 +43,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
       where: { id: habitId },
       data: { status: HabitStatus.ACTIVE, pausedAt: null },
     });
+    await db.habitActivity.create({
+      data: {
+        organizationId: scope.organizationId,
+        habitId,
+        action: "habit.resumed",
+        actorPersonId: scope.auth.personId,
+      },
+    });
   } else if (!resume && habit.status === HabitStatus.ACTIVE) {
     await db.habit.update({
       where: { id: habitId },
       data: { status: HabitStatus.PAUSED, pausedAt: new Date() },
+    });
+    await db.habitActivity.create({
+      data: {
+        organizationId: scope.organizationId,
+        habitId,
+        action: "habit.paused",
+        actorPersonId: scope.auth.personId,
+      },
     });
   }
 

@@ -7,13 +7,14 @@
  * exported for testing. Async DB functions are the runtime API.
  */
 
-import { EntryStatus, EntryType, InboxItemStatus } from "@prisma/client";
+import { EntryStatus, EntryType, HabitStatus, InboxItemStatus } from "@prisma/client";
 
 import { db } from "@/lib/db";
-import { deriveSafeHabitActivityText } from "@/lib/habits/policy";
+import { deriveSafeHabitActivityText, isHabitActionableToday } from "@/lib/habits/policy";
 import { deriveSafeJournalActivityText } from "@/lib/journals/policy";
 import { ACTIVE_FEED_STATUSES, ACTIVE_OPERATIONAL_TYPES, DEFAULT_UPCOMING_DAYS } from "./types";
 import type {
+  ActionableHabitItem,
   FeedActivityItem,
   FeedEntryItem,
   FeedQueryContext,
@@ -225,6 +226,109 @@ export async function queryRecentActivity(
 }
 
 /**
+ * Arc 24D.8: Queries the most recent HabitActivity records for the organization.
+ * Maps habitId onto the entryId field (with entryType: "HABIT") for unified
+ * rendering through the existing FeedActivityItem pipeline.
+ */
+export async function queryRecentHabitActivity(
+  ctx: Pick<FeedQueryContext, "organizationId">,
+  limit = 20,
+): Promise<FeedActivityItem[]> {
+  const activities = await db.habitActivity.findMany({
+    where: { organizationId: ctx.organizationId },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      habitId: true,
+      action: true,
+      actorPersonId: true,
+      createdAt: true,
+      habit: { select: { title: true } },
+    },
+    take: limit,
+  });
+
+  return activities.map((a) => ({
+    id: a.id,
+    entryId: a.habitId,
+    entryTitle: deriveSafeHabitActivityText(a.action, a.habit.title),
+    entryType: "HABIT" as const,
+    action: a.action,
+    actorPersonId: a.actorPersonId,
+    createdAt: a.createdAt,
+  }));
+}
+
+/**
+ * Arc 24D.8: Queries ACTIVE habits for the organization and filters them to
+ * those that are actionable today (per isHabitActionableToday). Also marks
+ * whether the habit has already been checked in today.
+ */
+export async function queryActionableHabitsToday(ctx: FeedQueryContext): Promise<ActionableHabitItem[]> {
+  const now = ctx.now ?? new Date();
+  const { todayStart, tomorrowStart } = computeTodayWindow(now);
+
+  const habits = await db.habit.findMany({
+    where: {
+      organizationId: ctx.organizationId,
+      status: HabitStatus.ACTIVE,
+    },
+    select: {
+      id: true,
+      title: true,
+      trackingMode: true,
+      targetCount: true,
+      targetUnit: true,
+      schedules: {
+        orderBy: { createdAt: "asc" },
+        take: 1,
+        select: {
+          frequency: true,
+          daysOfWeek: true,
+          startDate: true,
+          endDate: true,
+        },
+      },
+      completions: {
+        where: {
+          completedOn: { gte: todayStart, lt: tomorrowStart },
+        },
+        select: { id: true },
+        take: 1,
+      },
+    },
+  });
+
+  const result: ActionableHabitItem[] = [];
+  for (const habit of habits) {
+    const schedule = habit.schedules[0] ?? null;
+    const actionable = isHabitActionableToday(
+      {
+        status: HabitStatus.ACTIVE,
+        scheduleFrequency: schedule?.frequency ?? null,
+        scheduleDaysOfWeek: schedule?.daysOfWeek ?? null,
+        scheduleStartDate: schedule?.startDate ?? null,
+        scheduleEndDate: schedule?.endDate ?? null,
+        todayDate: now,
+      },
+    );
+    if (!actionable) continue;
+
+    result.push({
+      id: habit.id,
+      title: habit.title,
+      frequency: schedule?.frequency ?? null,
+      trackingMode: habit.trackingMode ?? null,
+      targetCount: habit.targetCount,
+      targetUnit: habit.targetUnit,
+      completedToday: habit.completions.length > 0,
+    });
+  }
+
+  return result;
+}
+
+/**
  * Sanitizes activity title text for feed rendering.
  * Journal entries are always replaced with safe generic labels so sensitive
  * journal body/title content never leaks into broad activity surfaces.
@@ -245,16 +349,24 @@ export function sanitizeActivityEntryTitle(action: string, entryType: EntryType,
 
 /**
  * Aggregates the full operational feed for an organization and actor.
- * Runs all four queries in parallel for efficiency.
+ * Runs all queries in parallel for efficiency.
+ * Arc 24D.8: Also includes habit activity and actionable habits today.
  */
 export async function aggregateOperationalFeed(ctx: FeedQueryContext): Promise<OperationalFeedResult> {
-  const [inbox, today, assigned, upcoming, recentActivity] = await Promise.all([
+  const [inbox, today, assigned, upcoming, entryActivity, habitActivity, habitsToday] = await Promise.all([
     queryInboxEntries(ctx),
     queryTodayEntries(ctx),
     queryAssignedEntries(ctx),
     queryUpcomingEntries(ctx),
     queryRecentActivity(ctx),
+    queryRecentHabitActivity(ctx),
+    queryActionableHabitsToday(ctx),
   ]);
 
-  return { inbox, today, assigned, upcoming, recentActivity };
+  // Merge entry and habit activity, sort by createdAt desc, take top 20.
+  const allActivity = [...entryActivity, ...habitActivity].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  ).slice(0, 20);
+
+  return { inbox, today, assigned, upcoming, recentActivity: allActivity, habitsToday };
 }
