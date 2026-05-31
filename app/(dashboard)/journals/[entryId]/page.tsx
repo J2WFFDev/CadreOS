@@ -1,4 +1,4 @@
-import { EntryStatus, EntryType } from "@prisma/client";
+import { EntryType } from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
@@ -126,6 +126,12 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
   const isArchived = journalStatus === "ARCHIVED";
   const canReopen = isFinal && (isAuthor || isAdmin);
   const canRestore = isArchived && canRestoreJournal(accessContext, journal);
+  const lifecycleSummary =
+    isFinal
+      ? " · Final journals are read-only until reopened"
+      : isArchived
+        ? " · Archived journals are preserved and must be restored before editing"
+        : "";
 
   return (
     <section className="space-y-4">
@@ -137,8 +143,7 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {labelForJournalPayloadVisibility(journalPayload.journalVisibility)}
-          {isFinal ? " · Final journals are read-only until reopened" : ""}
-          {isArchived ? " · Archived journals are preserved and must be restored before editing" : ""}
+          {lifecycleSummary}
         </p>
       </div>
 
@@ -237,7 +242,7 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
         {canSubmitDraft ? (
           <form action={`/journals/${journal.id}/submit`} method="post">
             <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              Submit final
+              Submit Final
             </button>
           </form>
         ) : null}
@@ -245,7 +250,7 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
         {canReopen ? (
           <form action={`/journals/${journal.id}/reopen`} method="post">
             <button type="submit" className="rounded-md border border-amber-400 px-3 py-1.5 text-sm text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300">
-              Reopen journal
+              Reopen Journal
             </button>
           </form>
         ) : null}

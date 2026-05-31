@@ -21,11 +21,12 @@ export function resolveJournalWorkflowStatus(
   entryStatus: EntryStatus,
 ): JournalWorkflowStatus {
   const fallbackStatus = mapEntryStatusToJournalWorkflowStatus(entryStatus);
-  if ((journalStatus ?? "DRAFT") === "DRAFT" && fallbackStatus !== "DRAFT") {
+  const normalizedJournalStatus = journalStatus ?? "DRAFT";
+  if (normalizedJournalStatus === "DRAFT" && fallbackStatus !== "DRAFT") {
     return fallbackStatus;
   }
 
-  return (journalStatus ?? "DRAFT") as JournalWorkflowStatus;
+  return normalizedJournalStatus as JournalWorkflowStatus;
 }
 
 export function labelForJournalWorkflowStatus(status: JournalWorkflowStatus): string {
