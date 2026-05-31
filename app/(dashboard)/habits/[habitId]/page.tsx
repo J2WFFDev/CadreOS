@@ -10,10 +10,9 @@ import { StatusBadge } from "@/components/dashboard/status-badge";
 import {
   canWriteRelationshipSource,
   FOUNDATION_RELATIONSHIP_TYPES,
-  type FoundationRelationshipNodeType,
-  isFoundationRelationshipNodeType,
   labelForRelationshipDirection,
   listFoundationRelationships,
+  parseRelationshipTargetNodeType,
   searchRelationshipTargets,
 } from "@/lib/entry-relationships";
 import { readFirstSearchParam } from "@/lib/entries/entry-detail-query-state";
@@ -125,11 +124,7 @@ export default async function HabitDetailPage({
   const currentStreak = frequency ? computeCurrentStreak(completionDates, frequency) : null;
   const completionCount = computeCompletionCount(completionDates);
   const relationshipTargetTypeParam = readFirstSearchParam(resolvedSearchParams.relationshipTargetType);
-  const relationshipTargetType: FoundationRelationshipNodeType = isFoundationRelationshipNodeType(
-    relationshipTargetTypeParam?.toUpperCase() ?? "",
-  )
-    ? relationshipTargetTypeParam!.toUpperCase() as FoundationRelationshipNodeType
-    : OperationalGraphNodeType.ENTRY;
+  const relationshipTargetType = parseRelationshipTargetNodeType(relationshipTargetTypeParam);
   const relationshipQuery = readFirstSearchParam(resolvedSearchParams.relationshipQuery)?.trim() ?? "";
   const relationshipSource = { nodeType: OperationalGraphNodeType.HABIT, nodeId: habit.id } as const;
   const [relationshipItems, relationshipCandidates, canCreateRelationships] = await Promise.all([

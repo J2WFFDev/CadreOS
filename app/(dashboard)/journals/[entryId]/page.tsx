@@ -8,10 +8,9 @@ import { db } from "@/lib/db";
 import {
   canWriteRelationshipSource,
   FOUNDATION_RELATIONSHIP_TYPES,
-  type FoundationRelationshipNodeType,
-  isFoundationRelationshipNodeType,
   labelForRelationshipDirection,
   listFoundationRelationships,
+  parseRelationshipTargetNodeType,
   searchRelationshipTargets,
 } from "@/lib/entry-relationships";
 import { parseJournalEntryPayload } from "@/lib/entries/journal-payload";
@@ -151,11 +150,7 @@ export default async function JournalDetailPage({
         ? " · Archived journals are preserved and must be restored before editing"
         : "";
   const relationshipTargetTypeParam = readFirstSearchParam(resolvedSearchParams.relationshipTargetType);
-  const relationshipTargetType: FoundationRelationshipNodeType = isFoundationRelationshipNodeType(
-    relationshipTargetTypeParam?.toUpperCase() ?? "",
-  )
-    ? relationshipTargetTypeParam!.toUpperCase() as FoundationRelationshipNodeType
-    : OperationalGraphNodeType.ENTRY;
+  const relationshipTargetType = parseRelationshipTargetNodeType(relationshipTargetTypeParam);
   const relationshipQuery = readFirstSearchParam(resolvedSearchParams.relationshipQuery)?.trim() ?? "";
   const relationshipSource = { nodeType: OperationalGraphNodeType.ENTRY, nodeId: journal.id } as const;
   const canCreateRelationships = await canWriteRelationshipSource({

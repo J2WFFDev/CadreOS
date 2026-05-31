@@ -27,7 +27,7 @@ import {
   writeEntryActivity,
 } from "@/lib/operational-entry";
 
-export const FOUNDATION_RELATIONSHIP_TYPES: OperationalRelationshipType[] = [
+export const FOUNDATION_RELATIONSHIP_TYPES = [
   OperationalRelationshipType.RELATED_TO,
   OperationalRelationshipType.BLOCKS,
   OperationalRelationshipType.BLOCKED_BY,
@@ -36,7 +36,9 @@ export const FOUNDATION_RELATIONSHIP_TYPES: OperationalRelationshipType[] = [
   OperationalRelationshipType.SUPPORTS,
   OperationalRelationshipType.REFERENCES,
   OperationalRelationshipType.DUPLICATES,
-];
+ ] as const satisfies readonly OperationalRelationshipType[];
+
+export type FoundationRelationshipType = (typeof FOUNDATION_RELATIONSHIP_TYPES)[number];
 
 export const FOUNDATION_RELATIONSHIP_TARGET_TYPES: OperationalGraphNodeType[] = [
   OperationalGraphNodeType.ENTRY,
@@ -88,12 +90,17 @@ export type FoundationRelationshipListItem = {
 
 export type RelationshipSearchCandidate = RelationshipNodeSummary;
 
-export function isFoundationRelationshipType(value: string): value is OperationalRelationshipType {
-  return FOUNDATION_RELATIONSHIP_TYPES.includes(value as OperationalRelationshipType);
+export function isFoundationRelationshipType(value: string): value is FoundationRelationshipType {
+  return FOUNDATION_RELATIONSHIP_TYPES.includes(value as FoundationRelationshipType);
 }
 
 export function isFoundationRelationshipNodeType(value: string): value is FoundationRelationshipNodeType {
   return FOUNDATION_RELATIONSHIP_TARGET_TYPES.includes(value as FoundationRelationshipNodeType);
+}
+
+export function parseRelationshipTargetNodeType(value: string | null | undefined): FoundationRelationshipNodeType {
+  const normalized = value?.toUpperCase() ?? "";
+  return isFoundationRelationshipNodeType(normalized) ? normalized : OperationalGraphNodeType.ENTRY;
 }
 
 function compareNodeRefs(left: RelationshipNodeRef, right: RelationshipNodeRef) {
@@ -128,7 +135,7 @@ export function normalizeFoundationRelationship(input: {
   return input;
 }
 
-const OUTBOUND_RELATIONSHIP_LABELS: Record<OperationalRelationshipType, string> = {
+const OUTBOUND_RELATIONSHIP_LABELS: Record<FoundationRelationshipType, string> = {
   RELATED_TO: "Related to",
   BLOCKS: "Blocks",
   BLOCKED_BY: "Blocked by",
@@ -137,14 +144,9 @@ const OUTBOUND_RELATIONSHIP_LABELS: Record<OperationalRelationshipType, string> 
   SUPPORTS: "Supports",
   REFERENCES: "References",
   DUPLICATES: "Duplicate with",
-  FOLLOW_UP_TO: "Follow-up to",
-  IMPACTS: "Impacts",
-  ASSIGNED_FOR: "Assigned for",
-  OBSERVED_DURING: "Observed during",
-  READINESS_FOR: "Readiness for",
 };
 
-const INBOUND_RELATIONSHIP_LABELS: Record<OperationalRelationshipType, string> = {
+const INBOUND_RELATIONSHIP_LABELS: Record<FoundationRelationshipType, string> = {
   RELATED_TO: "Related to",
   BLOCKS: "Blocked by",
   BLOCKED_BY: "Blocks",
@@ -153,15 +155,10 @@ const INBOUND_RELATIONSHIP_LABELS: Record<OperationalRelationshipType, string> =
   SUPPORTS: "Supported by",
   REFERENCES: "Referenced by",
   DUPLICATES: "Duplicate with",
-  FOLLOW_UP_TO: "Has follow-up",
-  IMPACTS: "Impacted by",
-  ASSIGNED_FOR: "Assigned from",
-  OBSERVED_DURING: "Observed item",
-  READINESS_FOR: "Readiness item",
 };
 
 export function labelForRelationshipDirection(
-  relationshipType: OperationalRelationshipType,
+  relationshipType: FoundationRelationshipType,
   direction: RelationshipDirection,
 ): string {
   return direction === "OUTBOUND"

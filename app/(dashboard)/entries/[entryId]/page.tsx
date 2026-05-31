@@ -17,10 +17,9 @@ import { db } from "@/lib/db";
 import {
   canWriteRelationshipSource,
   FOUNDATION_RELATIONSHIP_TYPES,
-  type FoundationRelationshipNodeType,
-  isFoundationRelationshipNodeType,
   labelForRelationshipDirection,
   listFoundationRelationships,
+  parseRelationshipTargetNodeType,
   searchRelationshipTargets,
 } from "@/lib/entry-relationships";
 import { getEntryDetailConfig } from "@/lib/entries/detail-config";
@@ -401,11 +400,7 @@ export default async function EntryDetailPage({
     }),
   ]);
   const relationshipTargetTypeParam = readFirstSearchParam(resolvedSearchParams.relationshipTargetType);
-  const relationshipTargetType: FoundationRelationshipNodeType = isFoundationRelationshipNodeType(
-    relationshipTargetTypeParam?.toUpperCase() ?? "",
-  )
-    ? relationshipTargetTypeParam!.toUpperCase() as FoundationRelationshipNodeType
-    : OperationalGraphNodeType.ENTRY;
+  const relationshipTargetType = parseRelationshipTargetNodeType(relationshipTargetTypeParam);
   const relationshipQuery = readFirstSearchParam(resolvedSearchParams.relationshipQuery)?.trim() ?? "";
   const relationshipSource = { nodeType: OperationalGraphNodeType.ENTRY, nodeId: entry.id } as const;
   const [relationshipItems, relationshipCandidates, canCreateRelationships] = await Promise.all([
