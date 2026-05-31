@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import test from "node:test";
 
 import type { AppRole, CurrentUser } from "../../lib/auth/current-user-types";
+import { MODULE_ACCESS_MAP } from "../../lib/auth/access-control";
 import { CADREOS_NAV_GROUPS } from "../../lib/navigation/cadreos-nav";
 import {
   APPROVED_CADREOS_GROUP_ITEMS,
@@ -49,6 +50,15 @@ test("sidebar groups all have labels and ordered child items", () => {
     assert.ok(group.label.length > 0, "Group missing label");
     assert.ok(group.items.length > 0, `Group "${group.label}" has no items`);
   }
+});
+
+test("entry module naming remains EntryOps in navigation and access metadata", () => {
+  const entryGroup = CADREOS_NAV_GROUPS.find((group) => group.key === "ENTRYOPS");
+  assert.ok(entryGroup);
+  assert.equal(entryGroup.label, "EntryOps");
+  assert.equal(entryGroup.label.includes("WorkOps"), false);
+
+  assert.equal(MODULE_ACCESS_MAP.entry.label, "EntryOps");
 });
 
 test("planned items stay non-clickable and preserve their future routes", () => {

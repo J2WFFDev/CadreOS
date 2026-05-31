@@ -42,7 +42,7 @@ export const MODULE_ACCESS_MAP: Record<ModuleKey, ModuleAccessDefinition> = {
   },
   entry: {
     key: "entry",
-    label: "WorkOps",
+    label: "EntryOps",
     path: "/entries",
     allowedRoles: WORKOPS_ROLES,
   },
