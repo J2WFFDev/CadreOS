@@ -15,6 +15,11 @@ import { db } from "@/lib/db";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import { EXPIRING_SOON_WINDOW_DAYS, getExpirationState } from "@/lib/member-ops-qualifications";
 import {
+  formatMemberOpsOptionalFeatureUnavailableMessage,
+  formatMemberOpsPeopleSetupIncompleteMessage,
+  logMemberOpsPeopleSchemaIssue,
+} from "@/lib/member-ops-schema-guard";
+import {
   matchesMemberAssignmentFilter,
   isDefaultVisibleMemberLifecycleStatus,
   MEMBER_LIFECYCLE_STATUS_LABELS,
@@ -256,6 +261,7 @@ export default async function PeoplePage({
         };
       }>
     | null = null;
+  let peopleLoadErrorMessage: string | null = null;
   let organizationPrograms: Array<{ id: string; name: string; teams: Array<{ id: string; name: string }> }> = [];
   let organizationSeasons: Array<{ id: string; name: string; startDate: Date | null; endDate: Date | null }> = [];
 
@@ -390,7 +396,21 @@ export default async function PeoplePage({
         ),
       ),
     }));
-  } catch {
+  } catch (error) {
+    const schemaIssue = logMemberOpsPeopleSchemaIssue("people.list", error, {
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+    });
+    peopleLoadErrorMessage = schemaIssue
+      ? formatMemberOpsPeopleSetupIncompleteMessage(schemaIssue)
+      : "Unable to load members right now. Please try again later.";
+    if (!schemaIssue) {
+      console.error("[people.page] Failed to load people list", {
+        organizationId: scope.organizationId,
+        actorPersonId: scope.auth.personId,
+        error,
+      });
+    }
     people = null;
   }
 
@@ -398,7 +418,7 @@ export default async function PeoplePage({
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Members</h2>
-        <ErrorMessage message="Unable to load members right now. Please try again later." />
+        <ErrorMessage message={peopleLoadErrorMessage ?? "Unable to load members right now. Please try again later."} />
       </section>
     );
   }
@@ -562,8 +582,13 @@ export default async function PeoplePage({
     .map((status) => `${MEMBER_LIFECYCLE_STATUS_LABELS[status]} ${lifecycleCounts[status] ?? 0}`)
     .join(" · ");
   const visiblePersonIds = filteredPeople.map((person) => person.id);
-  const [visibleQualificationExpirations, visibleCertificationExpirations] = visiblePersonIds.length
-    ? await Promise.all([
+  let visibleQualificationExpirations: Array<{ expirationDate: Date | null }> = [];
+  let visibleCertificationExpirations: Array<{ expirationDate: Date | null }> = [];
+  let readinessSetupMessage: string | null = null;
+
+  if (visiblePersonIds.length > 0) {
+    try {
+      [visibleQualificationExpirations, visibleCertificationExpirations] = await Promise.all([
         db.personQualification.findMany({
           where: {
             organizationId: scope.organizationId,
@@ -580,8 +605,29 @@ export default async function PeoplePage({
           },
           select: { expirationDate: true },
         }),
-      ])
-    : [[], []];
+      ]);
+    } catch (error) {
+      const schemaIssue = logMemberOpsPeopleSchemaIssue("people.readiness.expirations", error, {
+        organizationId: scope.organizationId,
+        actorPersonId: scope.auth.personId,
+        visiblePersonCount: visiblePersonIds.length,
+      });
+      readinessSetupMessage = schemaIssue
+        ? formatMemberOpsOptionalFeatureUnavailableMessage(
+            "Qualification and certification summaries",
+            schemaIssue,
+          )
+        : "Qualification and certification summaries are temporarily unavailable right now.";
+      if (!schemaIssue) {
+        console.error("[people.page] Failed to load readiness expiration summaries", {
+          organizationId: scope.organizationId,
+          actorPersonId: scope.auth.personId,
+          visiblePersonCount: visiblePersonIds.length,
+          error,
+        });
+      }
+    }
+  }
   const visibleExpiringQualifications = visibleQualificationExpirations.filter(
     (assignment) => getExpirationState(assignment.expirationDate) === "expiringSoon",
   ).length;
@@ -638,12 +684,18 @@ export default async function PeoplePage({
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Active members with no roster membership in current scope: {activePeopleWithoutRosterMembership}.
             </p>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              Qualification expirations in current scope over the next {EXPIRING_SOON_WINDOW_DAYS} days: {visibleExpiringQualifications} · Qualification expired: {visibleExpiredQualifications}.
-            </p>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              Certification expirations in current scope over the next {EXPIRING_SOON_WINDOW_DAYS} days: {visibleExpiringCertifications} · Certification expired: {visibleExpiredCertifications}.
-            </p>
+            {readinessSetupMessage ? (
+              <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">{readinessSetupMessage}</p>
+            ) : (
+              <>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                  Qualification expirations in current scope over the next {EXPIRING_SOON_WINDOW_DAYS} days: {visibleExpiringQualifications} · Qualification expired: {visibleExpiredQualifications}.
+                </p>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                  Certification expirations in current scope over the next {EXPIRING_SOON_WINDOW_DAYS} days: {visibleExpiringCertifications} · Certification expired: {visibleExpiredCertifications}.
+                </p>
+              </>
+            )}
             {canViewGuardianRelationshipDetails ? (
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                 Athlete profiles with no guardian relationship in current scope: {scopedAthletesMissingGuardianLinkage}.
