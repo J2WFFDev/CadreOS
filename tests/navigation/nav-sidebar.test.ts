@@ -13,8 +13,11 @@ import {
 import {
   NAV_SIDEBAR_GROUPS,
   getNavSidebarGroupsForUser,
+  isNavSidebarGroupExpanded,
   isNavSidebarGroupActive,
   isNavSidebarLinkActive,
+  NAV_SIDEBAR_GROUP_STATE_STORAGE_KEY,
+  parseNavSidebarGroupState,
 } from "../../lib/nav-sidebar";
 
 function buildUser(role: AppRole): CurrentUser {
@@ -91,6 +94,47 @@ test("isNavSidebarGroupActive: active when a child route matches", () => {
   assert.equal(isNavSidebarGroupActive("/gear-ops", gearOpsGroup), true);
   assert.equal(isNavSidebarGroupActive("/gear-ops/items", gearOpsGroup), true);
   assert.equal(isNavSidebarGroupActive("/programs", gearOpsGroup), false);
+});
+
+test("sidebar group state storage key stays stable", () => {
+  assert.equal(NAV_SIDEBAR_GROUP_STATE_STORAGE_KEY, "cadreos.nav-sidebar.group-state.v1");
+});
+
+test("parseNavSidebarGroupState ignores malformed and unknown values", () => {
+  assert.deepEqual(parseNavSidebarGroupState(null, NAV_SIDEBAR_GROUPS), {});
+  assert.deepEqual(parseNavSidebarGroupState("not-json", NAV_SIDEBAR_GROUPS), {});
+
+  assert.deepEqual(
+    parseNavSidebarGroupState(
+      JSON.stringify({
+        GEAROPS: false,
+        MEMBEROPS: true,
+        UNKNOWN: false,
+        HOME: "collapsed",
+      }),
+      NAV_SIDEBAR_GROUPS,
+    ),
+    {
+      GEAROPS: false,
+      MEMBEROPS: true,
+    },
+  );
+});
+
+test("isNavSidebarGroupExpanded auto-expands the active section", () => {
+  const gearOpsGroup = NAV_SIDEBAR_GROUPS.find((group) => group.key === "GEAROPS");
+  assert.ok(gearOpsGroup);
+
+  assert.equal(isNavSidebarGroupExpanded("/gear-ops/items", gearOpsGroup, { GEAROPS: false }), true);
+});
+
+test("isNavSidebarGroupExpanded respects persisted state for inactive sections", () => {
+  const gearOpsGroup = NAV_SIDEBAR_GROUPS.find((group) => group.key === "GEAROPS");
+  assert.ok(gearOpsGroup);
+
+  assert.equal(isNavSidebarGroupExpanded("/dashboard", gearOpsGroup, { GEAROPS: false }), false);
+  assert.equal(isNavSidebarGroupExpanded("/dashboard", gearOpsGroup, { GEAROPS: true }), true);
+  assert.equal(isNavSidebarGroupExpanded("/dashboard", gearOpsGroup, {}), true);
 });
 
 test("role-based group visibility matches the approved persona matrix", () => {
