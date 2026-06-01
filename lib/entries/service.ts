@@ -91,6 +91,7 @@ export async function upsertEntryFromTask(input: {
     description: string | null;
     status: TaskStatus;
     priority?: EntryPriority;
+    tags?: string[];
     assigneePersonId: string;
     createdByPersonId: string;
     dueAt: Date | null;
@@ -105,6 +106,7 @@ export async function upsertEntryFromTask(input: {
       type: EntryType.TASK,
       title: input.task.title,
       content: input.task.description,
+      tags: input.task.tags ?? [],
       createdByPersonId: input.task.createdByPersonId,
       assignedToPersonId: input.task.assigneePersonId,
       visibility: EntryVisibility.STAFF_ONLY,
@@ -120,6 +122,7 @@ export async function upsertEntryFromTask(input: {
     update: {
       title: input.task.title,
       content: input.task.description,
+      ...(input.task.tags ? { tags: input.task.tags } : {}),
       assignedToPersonId: input.task.assigneePersonId,
       status: projection.status,
       ...(input.task.priority ? { priority: input.task.priority } : {}),
@@ -129,7 +132,7 @@ export async function upsertEntryFromTask(input: {
       completedAt: input.task.status === TaskStatus.DONE ? new Date() : null,
       version: { increment: 1 },
     },
-    select: { id: true, type: true },
+    select: { id: true, type: true, tags: true },
   });
 }
 

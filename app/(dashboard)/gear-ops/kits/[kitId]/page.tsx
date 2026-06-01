@@ -7,6 +7,10 @@ import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
 import { formatGearOpsDateTime, formatGearOpsEnum, getGearLifecycleBadgeClass } from "@/lib/gear-ops";
 import {
+  deriveGearKitTaskSuggestions,
+  listGearWorkflowTasksForObject,
+} from "@/lib/gear-ops-workflows";
+import {
   computeKitCompleteness,
   computeKitReadiness,
   deriveStaticKitAvailabilityStatus,
@@ -17,6 +21,7 @@ import {
   labelForKitReadiness,
   type GearKitComponentSnapshot,
 } from "@/lib/gear-kit";
+import { formatDateTime, getTaskStatusBadgeClassName } from "@/lib/follow-up-tasks";
 import { resolveInventoryOpsReadAccess } from "@/lib/inventory-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { isSchemaUnavailableError } from "@/lib/workflows";
@@ -210,6 +215,17 @@ export default async function InventoryKitDetailPage({
     custodyStatus: kit.custodyStatus,
     lastInspectionStatus: kit.lastInspectionStatus,
   });
+  const workflowSuggestions = deriveGearKitTaskSuggestions({
+    missingRequiredCount: completeness.missingRequiredCount,
+    outOfServiceCount: completeness.outOfServiceCount,
+    lastInspectionStatus: kit.lastInspectionStatus,
+  });
+  const linkedWorkflowTasks = await listGearWorkflowTasksForObject({
+    organizationId: scope.organizationId,
+    targetType: "INVENTORY_KIT",
+    targetId: kit.id,
+    includeResolved: true,
+  });
 
   const custodyBadge = getKitCustodyStatusBadgeClass(kit.custodyStatus);
   const readinessBadge = getKitReadinessBadgeClass(readiness);
@@ -377,6 +393,72 @@ export default async function InventoryKitDetailPage({
           >
             Print label
           </Link>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <h3 className="text-lg font-medium">EntryOps workflow actions</h3>
+          {workflowSuggestions.length === 0 ? (
+            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+              No recommended GearOps workflow tasks are currently suggested for this kit.
+            </p>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {workflowSuggestions.map((suggestion) => (
+                <article key={`${suggestion.templateKey}-${suggestion.eventKind}`} className="rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-medium text-zinc-900 dark:text-zinc-100">{suggestion.actionLabel}</p>
+                      <p className="mt-1 text-zinc-600 dark:text-zinc-400">{suggestion.reason}</p>
+                    </div>
+                    <form action="/gear-ops/workflows/create" method="POST">
+                      <input type="hidden" name="subjectType" value="INVENTORY_KIT" />
+                      <input type="hidden" name="subjectId" value={kit.id} />
+                      <input type="hidden" name="templateKey" value={suggestion.templateKey} />
+                      <input type="hidden" name="eventKind" value={suggestion.eventKind} />
+                      <input type="hidden" name="returnTo" value={`/gear-ops/kits/${kit.id}`} />
+                      <button
+                        type="submit"
+                        className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                      >
+                        Create task
+                      </button>
+                    </form>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <h3 className="text-lg font-medium">Linked EntryOps tasks</h3>
+          {linkedWorkflowTasks.length === 0 ? (
+            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+              No EntryOps tasks are currently linked to this kit.
+            </p>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {linkedWorkflowTasks.map((task) => (
+                <article key={task.taskId} className="rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <Link href={`/tasks/${task.taskId}?returnTo=${encodeURIComponent(`/gear-ops/kits/${kit.id}`)}`} className="font-medium underline">
+                        {task.title}
+                      </Link>
+                      <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+                        Assignee: {task.assigneeName} · Due: {formatDateTime(task.dueAt)}
+                      </p>
+                    </div>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getTaskStatusBadgeClassName(task.status)}`}>
+                      {formatGearOpsEnum(task.status)}
+                    </span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

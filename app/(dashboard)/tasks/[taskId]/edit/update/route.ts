@@ -439,6 +439,18 @@ export async function POST(
             },
           });
         }
+        if (existingTask?.status && existingTask.status !== parsed.data.status && parsed.data.status === TaskStatus.DONE && entry.tags.includes("gear-ops")) {
+          await writeEntryActivity({
+            organizationId: organizationId,
+            entryId: entry.id,
+            actorPersonId: scope.auth.personId,
+            action: ENTRY_ACTIVITY_ACTIONS.GEAR_TASK_COMPLETED,
+            metadata: {
+              sourceTaskId: updatedTask.id,
+              completedAt: new Date().toISOString(),
+            },
+          });
+        }
         await writeFollowUpTaskEntryRuntimeRef({
           organizationId: organizationId,
           task: {

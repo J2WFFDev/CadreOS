@@ -19,6 +19,10 @@ import { GearPendingDashboardCard } from "@/components/gear-ops/pending-dashboar
 import { GearQuickActionGrid, type GearQuickAction } from "@/components/gear-ops/quick-action-card";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
+import {
+  countOpenGearWorkflowTasksByCategory,
+  listOpenGearWorkflowTasks,
+} from "@/lib/gear-ops-workflows";
 import { formatGearOpsDateTime, formatGearOpsEnum } from "@/lib/gear-ops";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { toneToBoxClass } from "@/lib/gear-ops-ui";
@@ -99,6 +103,10 @@ export default async function GearOpsDashboardPage() {
     gearItem: { id: string; name: string };
     checkedOutBy: { id: string; firstName: string; lastName: string };
   }> = [];
+  let openMaintenanceWorkflowTasks = 0;
+  let openMissingWorkflowTasks = 0;
+  let openDamageWorkflowTasks = 0;
+  let recentWorkflowTasks: Awaited<ReturnType<typeof listOpenGearWorkflowTasks>> = [];
   let queryErrorMessage = "Unable to load GearOps dashboard metrics right now. Please try again later.";
 
   try {
@@ -295,6 +303,13 @@ export default async function GearOpsDashboardPage() {
       // Reservation counts remain at their default 0 values — dashboard continues to load.
     }
 
+    [openMaintenanceWorkflowTasks, openMissingWorkflowTasks, openDamageWorkflowTasks, recentWorkflowTasks] = await Promise.all([
+      countOpenGearWorkflowTasksByCategory({ organizationId: scope.organizationId, category: "maintenance" }),
+      countOpenGearWorkflowTasksByCategory({ organizationId: scope.organizationId, category: "missing" }),
+      countOpenGearWorkflowTasksByCategory({ organizationId: scope.organizationId, category: "damage" }),
+      listOpenGearWorkflowTasks({ organizationId: scope.organizationId, limit: 5 }),
+    ]);
+
     summary = {
       totalCategories,
       totalItems,
@@ -361,6 +376,55 @@ export default async function GearOpsDashboardPage() {
           </p>
         </div>
       ) : null}
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <h3 className="text-lg font-semibold">EntryOps workflow visibility</h3>
+          <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+              <dt className="font-medium text-zinc-900 dark:text-zinc-100">Open maintenance tasks</dt>
+              <dd className="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{openMaintenanceWorkflowTasks}</dd>
+            </div>
+            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+              <dt className="font-medium text-zinc-900 dark:text-zinc-100">Open missing-item tasks</dt>
+              <dd className="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{openMissingWorkflowTasks}</dd>
+            </div>
+            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+              <dt className="font-medium text-zinc-900 dark:text-zinc-100">Open damage-review tasks</dt>
+              <dd className="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{openDamageWorkflowTasks}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <h3 className="text-lg font-semibold">Recent linked workflow tasks</h3>
+          {recentWorkflowTasks.length === 0 ? (
+            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+              No open GearOps workflow tasks are currently linked into EntryOps.
+            </p>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {recentWorkflowTasks.map((task) => (
+                <article key={task.taskId} className="rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <Link href={`/tasks/${task.taskId}?returnTo=${encodeURIComponent("/gear-ops")}`} className="font-medium underline">
+                        {task.title}
+                      </Link>
+                      <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+                        {task.assigneeName} · Updated {formatGearOpsDateTime(task.updatedAt)}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                      {formatGearOpsEnum(task.status)}
+                    </span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Quick-action area for field operators */}
       <div className="space-y-2">
