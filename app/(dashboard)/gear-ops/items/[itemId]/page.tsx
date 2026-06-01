@@ -354,7 +354,7 @@ export default async function GearOpsItemDetailsPage({
 
   let reservations: Array<{
     id: string;
-    gearItemId: string;
+    gearItemId: string | null;
     mode: GearReservationMode;
     status: GearReservationStatus;
     approvalStatus: import("@prisma/client").ApprovalStatus;

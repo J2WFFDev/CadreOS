@@ -141,17 +141,21 @@ export default async function GearOpsReservationsPage() {
                   {formatGearOpsEnum(reservation.workflowStatus)} · {formatGearOpsEnum(reservation.status)}
                 </p>
                 <Link
-                  href={`/gear-ops/items/${reservation.gearItem.id}`}
+                  href={`/gear-ops/items/${reservation.gearItem?.id}`}
                   className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
                 >
                   View item
                 </Link>
               </div>
               <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-                Item:{" "}
-                <Link href={`/gear-ops/items/${reservation.gearItem.id}`} className="underline">
-                  {reservation.gearItem.name}
-                </Link>
+                {reservation.gearItem ? (
+                  <>
+                    Item:{" "}
+                    <Link href={`/gear-ops/items/${reservation.gearItem.id}`} className="underline">
+                      {reservation.gearItem.name}
+                    </Link>
+                  </>
+                ) : null}
                 {reservation.inventoryKit ? (
                   <>
                     {" · "}Kit:{" "}
@@ -207,7 +211,7 @@ export default async function GearOpsReservationsPage() {
                   </ul>
                 </div>
               ) : null}
-              {reservation.status === GearReservationStatus.PENDING_REVIEW ? (
+              {reservation.status === GearReservationStatus.PENDING_REVIEW && reservation.gearItem ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <form action={`/gear-ops/items/${reservation.gearItem.id}/reservations/${reservation.id}/status`} method="post">
                     <input type="hidden" name="status" value="ACTIVE" />
