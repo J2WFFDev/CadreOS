@@ -79,6 +79,29 @@ test("reservation metrics degrade safely when reservation schema is unavailable"
   });
 });
 
+test("reservation metrics do not crash when no dynamic kit reservations exist", async () => {
+  const result = await loadGearReservationDashboardMetrics(
+    {
+      organizationId: "org_123",
+      gearItemWhere: {
+        organizationId: "org_123",
+        OR: [{ programId: { in: ["program_1"] } }],
+      },
+    },
+    {
+      gearReservationCount: (async () => 0) as typeof import("@/lib/db").db.gearReservation.count,
+    },
+  );
+
+  assert.deepEqual(result, {
+    activeReservations: 0,
+    activeHolds: 0,
+    upcomingReservations: 0,
+    conflictingReservations: 0,
+    unavailableReason: null,
+  });
+});
+
 test("workflow metrics do not crash when no linked EntryOps tasks exist", async () => {
   const result = await loadGearWorkflowDashboardMetrics(
     {
@@ -170,4 +193,33 @@ test("dashboard summary returns zero counts for empty data", () => {
     consumableNetDelta30d: 0,
     readinessConcerns: 0,
   });
+});
+
+test("dashboard readiness concerns exclude open checkouts from warning totals", () => {
+  const summary = buildGearDashboardSummary({
+    core: {
+      totalCategories: 1,
+      totalItems: 4,
+      durableItems: 3,
+      consumableItems: 1,
+      activeAvailableItems: 2,
+      assignedOrCheckedOutItems: 2,
+      maintenanceItems: 1,
+      conditionConcernItems: 1,
+      activeAssignmentRecords: 1,
+      openCheckoutRecords: 5,
+      lowAvailabilityConsumablesCount: 1,
+      consumableUsageUnits30d: 0,
+      consumableReplenishmentUnits30d: 0,
+      consumableNetDelta30d: 0,
+    },
+    reservations: {
+      activeReservations: 0,
+      activeHolds: 0,
+      upcomingReservations: 0,
+      conflictingReservations: 0,
+    },
+  });
+
+  assert.equal(summary.readinessConcerns, 3);
 });
