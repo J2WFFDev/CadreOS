@@ -56,7 +56,7 @@ import {
   buildSupportedTaskSourceNoteVisibilityWhere,
   SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
 } from "@/lib/operational-visibility";
-import { formatDateInputValue } from "@/lib/workflows";
+import { formatDateInputValue, isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -218,6 +218,7 @@ export default async function PersonDetailsPage({
       </section>
     );
   }
+  const organizationId = scope.organizationId;
 
   const actorRoleContext = await resolveActorRoleContext({
     organizationId: scope.organizationId,
@@ -380,17 +381,87 @@ export default async function PersonDetailsPage({
     requiredQualifications: Array<{ qualification: { id: string; name: string } }>;
     requiredCertifications: Array<{ certification: { id: string; name: string } }>;
   }> = [];
+  let optionalMemberOpsRelationsUnavailable = false;
+  const loadScopedProgramsAndTeams = async () =>
+    Promise.all([
+      db.program.findMany({
+        where: {
+          organizationId,
+          ...(staffScopeResolution.allowAllStaffScope
+            ? {}
+            : {
+                OR: [
+                  ...(staffScopeResolution.allowedProgramIds.length > 0
+                    ? [{ id: { in: staffScopeResolution.allowedProgramIds } }]
+                    : []),
+                  ...(staffScopeResolution.allowedTeamIds.length > 0
+                    ? [{ teams: { some: { id: { in: staffScopeResolution.allowedTeamIds } } } }]
+                    : []),
+                ],
+              }),
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+        orderBy: [{ name: "asc" }],
+      }),
+      db.team.findMany({
+        where: {
+          organizationId,
+          ...(staffScopeResolution.allowAllStaffScope
+            ? {}
+            : {
+                OR: [
+                  ...(staffScopeResolution.allowedTeamIds.length > 0
+                    ? [{ id: { in: staffScopeResolution.allowedTeamIds } }]
+                    : []),
+                  ...(staffScopeResolution.allowedProgramIds.length > 0
+                    ? [{ programId: { in: staffScopeResolution.allowedProgramIds } }]
+                    : []),
+                ],
+              }),
+        },
+        select: {
+          id: true,
+          name: true,
+          program: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: [{ program: { name: "asc" } }, { name: "asc" }],
+      }),
+    ]);
   const guardianAccess = await resolveGuardianRelationshipAccess({
-    organizationId: scope.organizationId,
+    organizationId,
     actorPersonId: scope.auth.personId,
   });
   const canViewGuardianRelationshipDetails = guardianAccess.canViewGuardianRelationshipDetails;
   const canEditGuardianLinkageWhereSupported = guardianAccess.canEditGuardianLinkageWhereSupported;
 
-  await ensureStaffingRoleFoundation(scope.organizationId);
-
   try {
-    [person, programs, teams, qualificationDefinitions, certificationDefinitions, eligibilityDefinitions, staffingRoles] = await Promise.all([
+    await ensureStaffingRoleFoundation(organizationId);
+  } catch (error) {
+    if (isSchemaUnavailableError(error)) {
+      optionalMemberOpsRelationsUnavailable = true;
+    } else {
+      queryFailed = true;
+    }
+  }
+
+  if (!queryFailed) {
+    try {
+    const [
+      loadedPerson,
+      [loadedPrograms, loadedTeams],
+      loadedQualificationDefinitions,
+      loadedCertificationDefinitions,
+      loadedEligibilityDefinitions,
+      loadedStaffingRoles,
+    ] = await Promise.all([
       db.person.findFirst({
         where: {
           id: personId,
@@ -555,63 +626,14 @@ export default async function PersonDetailsPage({
                 },
               },
             },
-            orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-          },
-        },
-      }),
-      db.program.findMany({
-        where: {
-          organizationId: scope.organizationId,
-          ...(staffScopeResolution.allowAllStaffScope
-            ? {}
-            : {
-                OR: [
-                  ...(staffScopeResolution.allowedProgramIds.length > 0
-                    ? [{ id: { in: staffScopeResolution.allowedProgramIds } }]
-                    : []),
-                  ...(staffScopeResolution.allowedTeamIds.length > 0
-                    ? [{ teams: { some: { id: { in: staffScopeResolution.allowedTeamIds } } } }]
-                    : []),
-                ],
-              }),
-        },
-        select: {
-          id: true,
-          name: true,
-        },
-        orderBy: [{ name: "asc" }],
-      }),
-      db.team.findMany({
-        where: {
-          organizationId: scope.organizationId,
-          ...(staffScopeResolution.allowAllStaffScope
-            ? {}
-            : {
-                OR: [
-                  ...(staffScopeResolution.allowedTeamIds.length > 0
-                    ? [{ id: { in: staffScopeResolution.allowedTeamIds } }]
-                    : []),
-                  ...(staffScopeResolution.allowedProgramIds.length > 0
-                    ? [{ programId: { in: staffScopeResolution.allowedProgramIds } }]
-                    : []),
-                ],
-              }),
-        },
-        select: {
-          id: true,
-          name: true,
-          program: {
-            select: {
-              id: true,
-              name: true,
+              orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
             },
-          },
         },
-        orderBy: [{ program: { name: "asc" } }, { name: "asc" }],
       }),
+      loadScopedProgramsAndTeams(),
       db.qualificationDefinition.findMany({
         where: {
-          organizationId: scope.organizationId,
+            organizationId: scope.organizationId,
           active: true,
         },
         select: {
@@ -688,8 +710,93 @@ export default async function PersonDetailsPage({
         orderBy: [{ category: "asc" }, { name: "asc" }],
       }),
     ]);
-  } catch {
-    queryFailed = true;
+    person = loadedPerson;
+    programs = loadedPrograms;
+    teams = loadedTeams;
+    qualificationDefinitions = loadedQualificationDefinitions;
+    certificationDefinitions = loadedCertificationDefinitions;
+    eligibilityDefinitions = loadedEligibilityDefinitions;
+    staffingRoles = loadedStaffingRoles;
+    } catch (error) {
+      if (!isSchemaUnavailableError(error)) {
+        queryFailed = true;
+      } else {
+        optionalMemberOpsRelationsUnavailable = true;
+
+        try {
+          const fallbackPerson = await db.person.findFirst({
+            where: {
+              id: personId,
+              organizationId: scope.organizationId,
+            },
+            include: {
+              roles: {
+                include: {
+                  program: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                  team: {
+                    select: {
+                      id: true,
+                      name: true,
+                      program: {
+                        select: {
+                          id: true,
+                          name: true,
+                        },
+                      },
+                    },
+                  },
+                },
+                orderBy: [{ scopeType: "asc" }, { roleType: "asc" }, { createdAt: "asc" }],
+              },
+              roster: {
+                include: {
+                  team: {
+                    select: {
+                      id: true,
+                      name: true,
+                      program: {
+                        select: {
+                          id: true,
+                          name: true,
+                        },
+                      },
+                    },
+                  },
+                  season: {
+                    select: { id: true, name: true },
+                  },
+                },
+                orderBy: {
+                  createdAt: "desc",
+                },
+              },
+            },
+          });
+
+          if (fallbackPerson) {
+            person = {
+              ...fallbackPerson,
+              guardianLinks: [],
+              athleteLinks: [],
+              qualifications: [],
+              certifications: [],
+              staffingAssignments: [],
+            };
+          } else {
+            person = null;
+          }
+
+          [programs, teams] = await loadScopedProgramsAndTeams();
+        } catch {
+          queryFailed = true;
+        }
+      }
+    }
   }
 
   if (queryFailed) {
@@ -1103,6 +1210,13 @@ export default async function PersonDetailsPage({
           Staffing foundation
         </Link>
       </div>
+      {optionalMemberOpsRelationsUnavailable ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
+          <p className="text-sm text-amber-900 dark:text-amber-200">
+            Optional MemberOps detail relations are temporarily unavailable. Core person details remain available.
+          </p>
+        </div>
+      ) : null}
 
       {moveSuccess ? (
         <div className="rounded-lg border border-green-300 bg-green-50 p-4 dark:border-green-700 dark:bg-green-950/40">
