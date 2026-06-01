@@ -4,7 +4,7 @@ export const MEMBER_LIFECYCLE_STATUS_LABELS: Record<MemberLifecycleStatus, strin
   [MemberLifecycleStatus.PROSPECT]: "Prospect",
   [MemberLifecycleStatus.ACTIVE]: "Active",
   [MemberLifecycleStatus.INACTIVE]: "Inactive",
-  [MemberLifecycleStatus.ARCHIVED]: "Archived",
+  [MemberLifecycleStatus.ARCHIVED]: "Former Member (Archived)",
   [MemberLifecycleStatus.ALUMNI]: "Alumni",
 };
 
