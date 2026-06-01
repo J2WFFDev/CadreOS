@@ -55,6 +55,8 @@ export default async function EditInventoryKitPage({
     id: string;
     name: string;
     description: string | null;
+    category: string | null;
+    notes: string | null;
     kitType: import("@prisma/client").GearKitType;
     isActive: boolean;
   } | null = null;
@@ -63,7 +65,7 @@ export default async function EditInventoryKitPage({
   try {
     kit = await db.inventoryKit.findFirst({
       where: { id: kitId, organizationId: scope.organizationId },
-      select: { id: true, name: true, description: true, kitType: true, isActive: true },
+      select: { id: true, name: true, description: true, category: true, notes: true, kitType: true, isActive: true },
     });
   } catch (error) {
     if (isSchemaUnavailableError(error)) {
@@ -141,6 +143,31 @@ export default async function EditInventoryKitPage({
               rows={3}
               maxLength={500}
               defaultValue={kit.description ?? ""}
+              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:bg-zinc-800 dark:text-zinc-50"
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="category" className="block text-sm font-medium text-zinc-900 dark:text-zinc-50">
+              Category
+            </label>
+            <input
+              id="category"
+              name="category"
+              maxLength={80}
+              defaultValue={kit.category ?? ""}
+              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:bg-zinc-800 dark:text-zinc-50"
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="notes" className="block text-sm font-medium text-zinc-900 dark:text-zinc-50">
+              Notes
+            </label>
+            <textarea
+              id="notes"
+              name="notes"
+              rows={3}
+              maxLength={1000}
+              defaultValue={kit.notes ?? ""}
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:bg-zinc-800 dark:text-zinc-50"
             />
           </div>

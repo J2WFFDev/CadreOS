@@ -401,8 +401,82 @@ export default async function GearOpsItemDetailsPage({
     createdAt: Date;
     actor: { id: string; firstName: string; lastName: string } | null;
   }> = [];
+  let parentAssemblies: Array<{
+    id: string;
+    relationshipType: string;
+    notes: string | null;
+    parentGearItem: { id: string; name: string };
+  }> = [];
+  let childAssemblies: Array<{
+    id: string;
+    relationshipType: string;
+    notes: string | null;
+    childGearItem: { id: string; name: string };
+  }> = [];
+  let kitMemberships: Array<{
+    id: string;
+    name: string;
+    category: string | null;
+    isActive: boolean;
+  }> = [];
 
   if (item) {
+    try {
+      const [parentRows, childRows, kitRows] = await Promise.all([
+        db.gearAssembly.findMany({
+          where: {
+            organizationId: scope.organizationId,
+            childGearItemId: item.id,
+            isActive: true,
+          },
+          select: {
+            id: true,
+            relationshipType: true,
+            notes: true,
+            parentGearItem: { select: { id: true, name: true } },
+          },
+          orderBy: [{ createdAt: "asc" }],
+        }),
+        db.gearAssembly.findMany({
+          where: {
+            organizationId: scope.organizationId,
+            parentGearItemId: item.id,
+            isActive: true,
+          },
+          select: {
+            id: true,
+            relationshipType: true,
+            notes: true,
+            childGearItem: { select: { id: true, name: true } },
+          },
+          orderBy: [{ createdAt: "asc" }],
+        }),
+        db.inventoryKit.findMany({
+          where: {
+            organizationId: scope.organizationId,
+            items: {
+              some: {
+                gearItemId: item.id,
+                removedAt: null,
+              },
+            },
+          },
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            isActive: true,
+          },
+          orderBy: [{ name: "asc" }],
+        }),
+      ]);
+      parentAssemblies = parentRows;
+      childAssemblies = childRows;
+      kitMemberships = kitRows;
+    } catch {
+      // optional display panels only
+    }
+
     try {
       reservations = await db.gearReservation.findMany({
         where: {
@@ -558,6 +632,7 @@ export default async function GearOpsItemDetailsPage({
   const rapidNowInputValue = formatDateTimeInputValue(new Date());
   const primaryCheckout = currentCheckouts[0] ?? null;
   const primaryAssignment = currentAssignments[0] ?? null;
+  const hasAssemblyLinks = parentAssemblies.length > 0 || childAssemblies.length > 0;
   const rapidActions = resolveMobileInventoryActions({
     itemId: gearItem.id,
     inventoryType: gearItem.inventoryType,
@@ -1048,6 +1123,77 @@ export default async function GearOpsItemDetailsPage({
         </div>
       ) : null}
       {reservationError ? <ErrorMessage message={reservationError} /> : null}
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <article className="space-y-2 rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-sm font-medium">Assembly relationships</h3>
+            <Link
+              href={`/gear-ops/items/${item.id}/assemblies`}
+              className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Manage
+            </Link>
+          </div>
+          {!hasAssemblyLinks ? (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">No parent or child assembly links.</p>
+          ) : (
+            <div className="space-y-2 text-sm">
+              {parentAssemblies.length > 0 ? (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">Parent asset</p>
+                  <ul className="mt-1 space-y-1">
+                    {parentAssemblies.map((assembly) => (
+                      <li key={assembly.id}>
+                        <Link href={`/gear-ops/items/${assembly.parentGearItem.id}`} className="underline">
+                          {assembly.parentGearItem.name}
+                        </Link>
+                        <span className="text-zinc-500"> · {formatGearOpsEnum(assembly.relationshipType)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {childAssemblies.length > 0 ? (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">Child assets</p>
+                  <ul className="mt-1 space-y-1">
+                    {childAssemblies.map((assembly) => (
+                      <li key={assembly.id}>
+                        <Link href={`/gear-ops/items/${assembly.childGearItem.id}`} className="underline">
+                          {assembly.childGearItem.name}
+                        </Link>
+                        <span className="text-zinc-500"> · {formatGearOpsEnum(assembly.relationshipType)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </article>
+
+        <article className="space-y-2 rounded-lg border bg-white p-4 dark:bg-zinc-900">
+          <h3 className="text-sm font-medium">Member of kit(s)</h3>
+          {kitMemberships.length === 0 ? (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">This item is not currently in a static kit.</p>
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {kitMemberships.map((kit) => (
+                <li key={kit.id}>
+                  <Link href={`/gear-ops/kits/${kit.id}`} className="underline">
+                    {kit.name}
+                  </Link>
+                  <span className="text-zinc-500">
+                    {kit.category ? ` · ${kit.category}` : ""}
+                    {!kit.isActive ? " · Inactive" : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+      </div>
 
       <div id="rapid-ops" className="space-y-3 rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <div className="flex flex-wrap items-start justify-between gap-3">

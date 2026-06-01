@@ -130,6 +130,8 @@ export type CreateInventoryKitInput = {
   organizationId: string;
   name: string;
   description?: string | null;
+  category?: string | null;
+  notes?: string | null;
   ownerPersonId?: string | null;
   kitType?: import("@prisma/client").GearKitType;
 };
@@ -160,6 +162,8 @@ export type UpdateInventoryKitInput = {
   kitId: string;
   name?: string;
   description?: string | null;
+  category?: string | null;
+  notes?: string | null;
   ownerPersonId?: string | null;
   kitType?: import("@prisma/client").GearKitType;
   isActive?: boolean;
@@ -189,6 +193,9 @@ export type CheckInKitInput = {
   isPartial?: boolean;
   /** IDs of child gearItems being returned when isPartial is true. */
   partialChildGearItemIds?: string[];
+  missingGearItemIds?: string[];
+  damagedGearItemIds?: string[];
+  maintenanceGearItemIds?: string[];
 };
 
 /** Input for assigning a kit to a person, team, or event. */
@@ -234,6 +241,8 @@ export type InventoryKitSummary = {
   id: string;
   name: string;
   description: string | null;
+  category: string | null;
+  notes: string | null;
   kitType: import("@prisma/client").GearKitType;
   isActive: boolean;
   readinessLabel: import("@prisma/client").GearKitReadinessLabel;

@@ -37,6 +37,8 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const name = (formData.get("name") as string | null)?.trim() ?? "";
   const description = (formData.get("description") as string | null)?.trim() || null;
+  const category = (formData.get("category") as string | null)?.trim() || null;
+  const notes = (formData.get("notes") as string | null)?.trim() || null;
   const ownerPersonId = (formData.get("ownerPersonId") as string | null)?.trim() || null;
   const kitTypeRaw = (formData.get("kitType") as string | null)?.trim() || null;
   const kitType =
@@ -52,6 +54,8 @@ export async function POST(request: Request) {
     organizationId: organizationId,
     name,
     description,
+    category,
+    notes,
     ownerPersonId,
     kitType,
   });

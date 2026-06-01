@@ -12,6 +12,34 @@ import { isSchemaUnavailableError } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
+function deriveListStaticAvailability(input: {
+  readinessLabel: string;
+  custodyStatus: string;
+}) {
+  if (
+    input.custodyStatus === "CHECKED_OUT" ||
+    input.custodyStatus === "RESERVED" ||
+    input.custodyStatus === "IN_MAINTENANCE" ||
+    input.readinessLabel === "OUT_OF_SERVICE" ||
+    input.readinessLabel === "MISSING_COMPONENTS" ||
+    input.readinessLabel === "CONFLICT"
+  ) {
+    return "UNAVAILABLE";
+  }
+
+  if (
+    input.readinessLabel === "INCOMPLETE" ||
+    input.readinessLabel === "LIMITED_USE" ||
+    input.readinessLabel === "MAINTENANCE_NEEDED" ||
+    input.readinessLabel === "NEEDS_INSPECTION" ||
+    input.readinessLabel === "READY_WITH_WARNING"
+  ) {
+    return "INCOMPLETE";
+  }
+
+  return "AVAILABLE";
+}
+
 export default async function InventoryKitsPage() {
   const scope = await getOrganizationScope();
 
@@ -131,6 +159,7 @@ export default async function InventoryKitsPage() {
                       {kit.description ? (
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">{kit.description}</p>
                       ) : null}
+                      {kit.category ? <p className="text-sm text-zinc-500">Category: {kit.category}</p> : null}
                       {kit.owner ? (
                         <p className="text-sm text-zinc-500 dark:text-zinc-500">
                           Owner:{" "}
@@ -142,6 +171,17 @@ export default async function InventoryKitsPage() {
                     </div>
                     <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
                       {kit.itemCount} {kit.itemCount === 1 ? "item" : "items"}
+                    </span>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                        deriveListStaticAvailability(kit) === "AVAILABLE"
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+                          : deriveListStaticAvailability(kit) === "INCOMPLETE"
+                            ? "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+                            : "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200"
+                      }`}
+                    >
+                      {deriveListStaticAvailability(kit)}
                     </span>
                   </div>
                 </article>
