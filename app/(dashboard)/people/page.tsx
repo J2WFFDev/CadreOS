@@ -605,6 +605,9 @@ export default async function PeoplePage({
             <Link href="/people/qualifications" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
               Qualification foundation
             </Link>
+            <Link href="/people/staffing" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Staffing foundation
+            </Link>
             <Link href="/people/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
               New member
             </Link>

@@ -4,6 +4,9 @@ import {
   MemberLifecycleStatus,
   QualificationAssignmentStatus,
   RoleType,
+  StaffingAssignmentStatus,
+  StaffingCoverageType,
+  StaffingRoleCategory,
   ScopeType,
 } from "@prisma/client";
 import Link from "next/link";
@@ -30,6 +33,15 @@ import {
   resolveQualificationAssignmentStatus,
   summarizeEligibility,
 } from "@/lib/member-ops-qualifications";
+import {
+  ensureStaffingRoleFoundation,
+  isCoachingStaffingCategory,
+  isVolunteerStaffingCategory,
+  resolveStaffingQualificationCompatibility,
+  STAFFING_ASSIGNMENT_STATUS_LABELS,
+  STAFFING_COVERAGE_TYPE_LABELS,
+  STAFFING_ROLE_CATEGORY_LABELS,
+} from "@/lib/member-ops-staffing";
 import { isUnresolvedTaskStatus } from "@/lib/follow-up-tasks";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import {
@@ -116,6 +128,13 @@ function getStatusBadgeClasses(tone: "green" | "amber" | "red" | "zinc" | "blue"
 const ASSIGNMENT_SCOPE_OPTIONS = [
   { value: ScopeType.PROGRAM, label: "Program scope" },
   { value: ScopeType.TEAM, label: "Team scope" },
+] as const;
+
+const STAFFING_COVERAGE_OPTIONS = [
+  StaffingCoverageType.PRACTICE,
+  StaffingCoverageType.MATCH,
+  StaffingCoverageType.CLINIC,
+  StaffingCoverageType.MEETING,
 ] as const;
 
 function matchesScopedTeamOrProgram(
@@ -310,6 +329,25 @@ export default async function PersonDetailsPage({
             issuingOrganization: string | null;
           };
         }>;
+        staffingAssignments: Array<{
+          id: string;
+          status: StaffingAssignmentStatus;
+          startDate: Date | null;
+          endDate: Date | null;
+          createdAt: Date;
+          updatedAt: Date;
+          staffingRole: {
+            id: string;
+            key: string | null;
+            name: string;
+            category: StaffingRoleCategory;
+            requiredQualificationType: string | null;
+            requiredQualificationName: string | null;
+          };
+          program: { id: string; name: string } | null;
+          team: { id: string; name: string; program: { id: string; name: string } | null } | null;
+          coverage: Array<{ coverageType: StaffingCoverageType }>;
+        }>;
       }
     | null = null;
   let programs: Array<{ id: string; name: string }> = [];
@@ -323,6 +361,14 @@ export default async function PersonDetailsPage({
     id: string;
     name: string;
     issuingOrganization: string | null;
+  }> = [];
+  let staffingRoles: Array<{
+    id: string;
+    name: string;
+    category: StaffingRoleCategory;
+    requiredQualificationType: string | null;
+    requiredQualificationName: string | null;
+    active: boolean;
   }> = [];
   let eligibilityDefinitions: Array<{
     id: string;
@@ -341,8 +387,10 @@ export default async function PersonDetailsPage({
   const canViewGuardianRelationshipDetails = guardianAccess.canViewGuardianRelationshipDetails;
   const canEditGuardianLinkageWhereSupported = guardianAccess.canEditGuardianLinkageWhereSupported;
 
+  await ensureStaffingRoleFoundation(scope.organizationId);
+
   try {
-    [person, programs, teams, qualificationDefinitions, certificationDefinitions, eligibilityDefinitions] = await Promise.all([
+    [person, programs, teams, qualificationDefinitions, certificationDefinitions, eligibilityDefinitions, staffingRoles] = await Promise.all([
       db.person.findFirst({
         where: {
           id: personId,
@@ -468,6 +516,47 @@ export default async function PersonDetailsPage({
             },
             orderBy: [{ certification: { name: "asc" } }],
           },
+          staffingAssignments: {
+            include: {
+              staffingRole: {
+                select: {
+                  id: true,
+                  key: true,
+                  name: true,
+                  category: true,
+                  requiredQualificationType: true,
+                  requiredQualificationName: true,
+                },
+              },
+              program: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              team: {
+                select: {
+                  id: true,
+                  name: true,
+                  program: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+              coverage: {
+                select: {
+                  coverageType: true,
+                },
+                orderBy: {
+                  coverageType: "asc",
+                },
+              },
+            },
+            orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+          },
         },
       }),
       db.program.findMany({
@@ -583,6 +672,21 @@ export default async function PersonDetailsPage({
         },
         orderBy: [{ name: "asc" }],
       }),
+      db.staffingRole.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          active: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          requiredQualificationType: true,
+          requiredQualificationName: true,
+          active: true,
+        },
+        orderBy: [{ category: "asc" }, { name: "asc" }],
+      }),
     ]);
   } catch {
     queryFailed = true;
@@ -649,6 +753,8 @@ export default async function PersonDetailsPage({
   const qualificationSuccess = readSearchParam(resolvedSearchParams, "qualificationSuccess");
   const certificationError = readSearchParam(resolvedSearchParams, "certificationError");
   const certificationSuccess = readSearchParam(resolvedSearchParams, "certificationSuccess");
+  const staffingError = readSearchParam(resolvedSearchParams, "staffingError");
+  const staffingSuccess = readSearchParam(resolvedSearchParams, "staffingSuccess");
 
   const selectedScopeTypeParam = readSearchParam(resolvedSearchParams, "scopeType");
   const selectedScopeType =
@@ -738,6 +844,35 @@ export default async function PersonDetailsPage({
       expirationState,
     };
   });
+  const visibleStaffingAssignments = staffScopeResolution.allowAllStaffScope
+    ? person.staffingAssignments
+    : person.staffingAssignments.filter((assignment) =>
+        matchesScopedTeamOrProgram(
+          staffScopeResolution,
+          assignment.team?.id ?? null,
+          assignment.program?.id ?? assignment.team?.program?.id ?? null,
+        ),
+      );
+  const staffingAssignmentsWithCompatibility = visibleStaffingAssignments.map((assignment) => ({
+    ...assignment,
+    compatibility: resolveStaffingQualificationCompatibility({
+      requiredQualificationType: assignment.staffingRole.requiredQualificationType,
+      requiredQualificationName: assignment.staffingRole.requiredQualificationName,
+      personQualifications: qualificationAssignments,
+      personCertifications: certificationAssignments,
+    }),
+  }));
+  const coachingStaffingAssignments = staffingAssignmentsWithCompatibility.filter((assignment) =>
+    isCoachingStaffingCategory(assignment.staffingRole.category),
+  );
+  const volunteerStaffingAssignments = staffingAssignmentsWithCompatibility.filter((assignment) =>
+    isVolunteerStaffingCategory(assignment.staffingRole.category),
+  );
+  const staffingHistory = [...staffingAssignmentsWithCompatibility].sort(
+    (left, right) => right.updatedAt.getTime() - left.updatedAt.getTime(),
+  );
+  const defaultStaffingRoleId =
+    staffingRoles.find((role) => role.active)?.id ?? "";
   const eligibilitySummary = summarizeEligibility(
     eligibilityDefinitions,
     qualificationAssignments,
@@ -964,6 +1099,9 @@ export default async function PersonDetailsPage({
         <Link href="/people/qualifications" className="ml-2 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
           Qualification foundation
         </Link>
+        <Link href="/people/staffing" className="ml-2 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+          Staffing foundation
+        </Link>
       </div>
 
       {moveSuccess ? (
@@ -989,6 +1127,16 @@ export default async function PersonDetailsPage({
       {certificationError ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
           <p className="text-sm text-amber-900 dark:text-amber-200">{certificationError}</p>
+        </div>
+      ) : null}
+      {staffingSuccess ? (
+        <div className="rounded-lg border border-green-300 bg-green-50 p-4 dark:border-green-700 dark:bg-green-950/40">
+          <p className="text-sm text-green-900 dark:text-green-200">{staffingSuccess}</p>
+        </div>
+      ) : null}
+      {staffingError ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
+          <p className="text-sm text-amber-900 dark:text-amber-200">{staffingError}</p>
         </div>
       ) : null}
 
@@ -1246,6 +1394,201 @@ export default async function PersonDetailsPage({
             ))}
           </ul>
         )}
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-lg font-medium">Staffing and volunteer assignments</h3>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Foundation staffing tracking for coaching, volunteer, and operational assignments with qualification compatibility.
+            </p>
+          </div>
+          <Link href="/people/staffing" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Manage staffing model
+          </Link>
+        </div>
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          Active staff: {staffingAssignmentsWithCompatibility.filter((assignment) => assignment.status === StaffingAssignmentStatus.ACTIVE).length} ·
+          Coaching roles: {coachingStaffingAssignments.length} · Volunteer roles: {volunteerStaffingAssignments.length}
+        </p>
+
+        <form action={`/people/${person.id}/staffing/create`} method="post" className="mt-4 grid gap-3 rounded-md border p-3 lg:grid-cols-2">
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Staffing role</span>
+            <select name="staffingRoleId" defaultValue={defaultStaffingRoleId} className="w-full rounded-md border px-3 py-2">
+              {staffingRoles.length === 0 ? <option value="">No staffing roles available</option> : null}
+              {staffingRoles.map((role) => (
+                <option key={role.id} value={role.id}>
+                  {role.name} · {STAFFING_ROLE_CATEGORY_LABELS[role.category]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Status</span>
+            <select name="status" defaultValue={StaffingAssignmentStatus.ACTIVE} className="w-full rounded-md border px-3 py-2">
+              {Object.values(StaffingAssignmentStatus).map((status) => (
+                <option key={status} value={status}>
+                  {STAFFING_ASSIGNMENT_STATUS_LABELS[status]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Program (optional)</span>
+            <select name="programId" className="w-full rounded-md border px-3 py-2">
+              <option value="">Organization scope</option>
+              {programs.map((program) => (
+                <option key={program.id} value={program.id}>
+                  {program.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Team (optional)</span>
+            <select name="teamId" className="w-full rounded-md border px-3 py-2">
+              <option value="">No team scope</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.program.name} · {team.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Start date</span>
+            <input type="date" name="startDate" className="w-full rounded-md border px-3 py-2" />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">End date</span>
+            <input type="date" name="endDate" className="w-full rounded-md border px-3 py-2" />
+          </label>
+          <fieldset className="space-y-1 text-sm lg:col-span-2">
+            <legend className="font-medium">Event staffing foundation</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {STAFFING_COVERAGE_OPTIONS.map((coverageType) => (
+                <label key={coverageType} className="flex items-center gap-2">
+                  <input type="checkbox" name="coverageTypes" value={coverageType} />
+                  {STAFFING_COVERAGE_TYPE_LABELS[coverageType]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <div className="lg:col-span-2">
+            <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+              Assign staffing role
+            </button>
+          </div>
+        </form>
+
+        <div className="mt-4 space-y-3">
+          {staffingAssignmentsWithCompatibility.length === 0 ? (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">No staffing assignments yet.</p>
+          ) : (
+            staffingAssignmentsWithCompatibility.map((assignment) => (
+              <div key={assignment.id} className="rounded-md border p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium">{assignment.staffingRole.name}</p>
+                  <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                    assignment.status === StaffingAssignmentStatus.ACTIVE
+                      ? getStatusBadgeClasses("green")
+                      : assignment.status === StaffingAssignmentStatus.PENDING
+                        ? getStatusBadgeClasses("amber")
+                        : assignment.status === StaffingAssignmentStatus.SUSPENDED
+                          ? getStatusBadgeClasses("red")
+                          : getStatusBadgeClasses("zinc")
+                  }`}>
+                    {STAFFING_ASSIGNMENT_STATUS_LABELS[assignment.status]}
+                  </span>
+                  <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                    assignment.compatibility.tone === "green"
+                      ? getStatusBadgeClasses("green")
+                      : assignment.compatibility.tone === "amber"
+                        ? getStatusBadgeClasses("amber")
+                        : assignment.compatibility.tone === "red"
+                          ? getStatusBadgeClasses("red")
+                          : getStatusBadgeClasses("zinc")
+                  }`}>
+                    Qualification: {assignment.compatibility.statusLabel}
+                  </span>
+                </div>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  {STAFFING_ROLE_CATEGORY_LABELS[assignment.staffingRole.category]}
+                  {assignment.team
+                    ? ` · Team: ${assignment.team.name}${assignment.team.program?.name ? ` (${assignment.team.program.name})` : ""}`
+                    : assignment.program
+                      ? ` · Program: ${assignment.program.name}`
+                      : " · Organization scope"}
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Requirement: {assignment.compatibility.requirementLabel} · Start: {formatOptionalDate(assignment.startDate)} · End: {formatOptionalDate(assignment.endDate)}
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Coverage: {assignment.coverage.length === 0 ? "Not set" : assignment.coverage.map((item) => STAFFING_COVERAGE_TYPE_LABELS[item.coverageType]).join(" · ")}
+                </p>
+                <div className="mt-2 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
+                  <form action={`/people/${person.id}/staffing/${assignment.id}/update`} method="post" className="grid gap-2 sm:grid-cols-3">
+                    <select name="status" defaultValue={assignment.status} className="rounded-md border px-2 py-1 text-xs">
+                      {Object.values(StaffingAssignmentStatus).map((status) => (
+                        <option key={status} value={status}>
+                          {STAFFING_ASSIGNMENT_STATUS_LABELS[status]}
+                        </option>
+                      ))}
+                    </select>
+                    <input type="date" name="endDate" defaultValue={formatDateInputValue(assignment.endDate)} className="rounded-md border px-2 py-1 text-xs" />
+                    <button type="submit" className="rounded-md border px-2 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                      Update assignment
+                    </button>
+                    <fieldset className="col-span-3 grid gap-1 sm:grid-cols-2">
+                      {STAFFING_COVERAGE_OPTIONS.map((coverageType) => (
+                        <label key={`${assignment.id}-${coverageType}`} className="flex items-center gap-1 text-xs">
+                          <input
+                            type="checkbox"
+                            name="coverageTypes"
+                            value={coverageType}
+                            defaultChecked={assignment.coverage.some((item) => item.coverageType === coverageType)}
+                          />
+                          {STAFFING_COVERAGE_TYPE_LABELS[coverageType]}
+                        </label>
+                      ))}
+                    </fieldset>
+                  </form>
+                  <form action={`/people/${person.id}/staffing/${assignment.id}/delete`} method="post">
+                    <button type="submit" className="rounded-md border border-red-300 px-3 py-1.5 text-xs text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950/40">
+                      Remove staffing assignment
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="text-lg font-medium">Staffing assignment history</h3>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Assignment history preserves staffing, volunteer, and coaching role transitions.
+        </p>
+        <div className="mt-3 space-y-2 text-sm">
+          {staffingHistory.length === 0 ? (
+            <p className="text-zinc-600 dark:text-zinc-400">No staffing assignment history yet.</p>
+          ) : (
+            staffingHistory.map((assignment) => (
+              <div key={`history-${assignment.id}`} className="rounded-md border p-3">
+                <p className="font-medium">{assignment.staffingRole.name}</p>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  {STAFFING_ASSIGNMENT_STATUS_LABELS[assignment.status]} · Updated{" "}
+                  <time dateTime={assignment.updatedAt.toISOString()}>
+                    {lifecycleDateTimeFormatter.format(assignment.updatedAt)}
+                  </time>
+                </p>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       <div id="assign-role" className="rounded-lg border bg-white p-4 dark:bg-zinc-900">

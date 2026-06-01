@@ -42,6 +42,7 @@ CadreOS is an **Athlete Program Operating System**.
 - [Arc 26A MemberOps RC1 Gap Assessment and Capability Audit](./ARC_26A_MEMBEROPS_RC1_GAP_ASSESSMENT_AND_CAPABILITY_AUDIT.md)
 - [Arc 26B Member Lifecycle and Household Foundation](./ARC_26B_MEMBER_LIFECYCLE_AND_HOUSEHOLD_FOUNDATION.md)
 - [Arc 26C Qualifications, Certifications, and Eligibility Foundation](./ARC_26C_QUALIFICATIONS_CERTIFICATIONS_ELIGIBILITY_FOUNDATION.md)
+- [Arc 26D Volunteer, Coach, and Staffing Management Foundation](./ARC_26D_VOLUNTEER_COACH_STAFFING_MANAGEMENT_FOUNDATION.md)
 - [Phase 17A MemberOps / Roster Lifecycle Architecture and Boundaries](./PHASE_17A_ROSTER_MEMBER_LIFECYCLE_ARCHITECTURE_BOUNDARIES.md)
 - [Phase 17A Validation Checklist](./PHASE_17A_VALIDATION_CHECKLIST.md)
 - [Phase 17G Guardian Relationship Maintenance Workflow](./PHASE_17G_GUARDIAN_RELATIONSHIP_MAINTENANCE.md)
