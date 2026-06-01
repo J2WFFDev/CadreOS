@@ -8,6 +8,7 @@ import {
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { deriveReservationWorkflowStatus } from "@/lib/gear-reservation-foundation";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { resolveActorPersonId } from "@/lib/user-account";
@@ -105,8 +106,31 @@ export async function POST(
       return NextResponse.redirect(buildRedirectUrl(request.url, itemId, nextStatus, "No organization person is available for reservation updates yet."), 303);
     }
 
+    const access = await resolveGearOpsReadAccess({
+      organizationId,
+      actorPersonId,
+      workflow: "gear-ops.reservation-status.scope-check",
+    });
+
+    if (!access.allowed) {
+      return NextResponse.redirect(
+        buildRedirectUrl(
+          request.url,
+          itemId,
+          nextStatus,
+          access.denialMessage ?? "You do not have access to update this reservation.",
+        ),
+        303,
+      );
+    }
+
     const reservation = await db.gearReservation.findFirst({
-      where: { id: reservationId, gearItemId: itemId, organizationId: organizationId },
+      where: {
+        id: reservationId,
+        gearItemId: itemId,
+        organizationId: organizationId,
+        gearItem: { AND: [access.where] },
+      },
       select: { id: true, gearItemId: true },
     });
 

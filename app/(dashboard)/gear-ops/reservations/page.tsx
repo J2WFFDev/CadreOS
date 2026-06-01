@@ -7,7 +7,7 @@ import { GearOpsSchemaWarning } from "@/components/gear-ops/schema-warning";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
 import { formatGearOpsDateTime, formatGearOpsEnum } from "@/lib/gear-ops";
-import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
+import { buildGearReservationVisibilityWhere, resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { getGearOpsSchemaStatus } from "@/lib/gear-ops-schema-status";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -70,7 +70,10 @@ export default async function GearOpsReservationsPage() {
   }
 
   const reservations = await db.gearReservation.findMany({
-    where: { organizationId: scope.organizationId },
+    where: buildGearReservationVisibilityWhere({
+      organizationId: scope.organizationId,
+      gearItemWhere: access.where,
+    }),
     select: {
       id: true,
       status: true,
