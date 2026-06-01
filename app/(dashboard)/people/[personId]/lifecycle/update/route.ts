@@ -21,7 +21,7 @@ const lifecycleStatusUpdateSchema = z.object({
     .trim()
     .max(300, "Lifecycle reason must be 300 characters or less.")
     .optional()
-    .transform((value) => (value && value.length > 0 ? value : null)),
+    .transform((value) => value || null),
 });
 
 function buildErrorRedirectUrl(requestUrl: string, personId: string, error: string) {

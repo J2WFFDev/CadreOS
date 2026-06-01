@@ -46,6 +46,20 @@ function hasSearchParam(searchParams: SearchParams, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(searchParams, key);
 }
 
+function pluralize(count: number, singular: string): string {
+  return `${count} ${singular}${count === 1 ? "" : "s"}`;
+}
+
+const lifecycleDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+const TERMINAL_MEMBER_LIFECYCLE_STATUSES = new Set<MemberLifecycleStatus>([
+  MemberLifecycleStatus.ARCHIVED,
+  MemberLifecycleStatus.FORMER,
+]);
+
 function formatEnumLabel(value: string) {
   return value
     .replaceAll("_", " ")
@@ -724,7 +738,7 @@ export default async function PersonDetailsPage({
               ? "font-medium text-green-700 dark:text-green-400"
               : person.lifecycleStatus === MemberLifecycleStatus.PROSPECT
                 ? "font-medium text-blue-700 dark:text-blue-400"
-                : person.lifecycleStatus === MemberLifecycleStatus.ARCHIVED || person.lifecycleStatus === MemberLifecycleStatus.FORMER
+                : TERMINAL_MEMBER_LIFECYCLE_STATUSES.has(person.lifecycleStatus)
                   ? "font-medium text-red-700 dark:text-red-400"
                   : "font-medium text-zinc-700 dark:text-zinc-300"
             }>
@@ -732,8 +746,16 @@ export default async function PersonDetailsPage({
           </span>
         </p>
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Last status change: {person.lifecycleStatusChangedAt.toLocaleString()}.
-          {person.lifecycleStatusReason ? ` Reason: ${person.lifecycleStatusReason}` : ""}
+          <span className="font-medium">Last status change:</span>{" "}
+          <time dateTime={person.lifecycleStatusChangedAt.toISOString()}>
+            {lifecycleDateTimeFormatter.format(person.lifecycleStatusChangedAt)}
+          </time>
+          {person.lifecycleStatusReason ? (
+            <>
+              {" "}
+              <span className="font-medium">Reason:</span> {person.lifecycleStatusReason}
+            </>
+          ) : null}
         </p>
         {hasLifecycleRosterReadinessGap ? (
           <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
@@ -765,33 +787,39 @@ export default async function PersonDetailsPage({
           <p className="mt-2 text-sm text-red-600">{lifecycleError}</p>
         ) : null}
         <form action={`/people/${person.id}/lifecycle/update`} method="post" className="mt-3 space-y-2">
-          <label htmlFor="lifecycleStatus" className="text-sm font-medium">
-            Lifecycle status
-          </label>
-          <label htmlFor="lifecycleReason" className="text-sm font-medium">
-            Lifecycle reason (optional)
-          </label>
+          <div className="grid gap-2 md:grid-cols-2">
+            <div className="space-y-1">
+              <label htmlFor="lifecycleStatus" className="text-sm font-medium">
+                Lifecycle status
+              </label>
+              <select
+                id="lifecycleStatus"
+                name="lifecycleStatus"
+                defaultValue={person.lifecycleStatus}
+                className="w-full rounded-md border px-3 py-1.5 text-sm"
+              >
+                {Object.values(MemberLifecycleStatus).map((status) => (
+                  <option key={status} value={status}>
+                    {MEMBER_LIFECYCLE_STATUS_LABELS[status]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="lifecycleReason" className="text-sm font-medium">
+                Lifecycle reason (optional)
+              </label>
+              <input
+                id="lifecycleReason"
+                name="lifecycleReason"
+                defaultValue={person.lifecycleStatusReason ?? ""}
+                className="w-full rounded-md border px-3 py-1.5 text-sm"
+                placeholder="Reason for status change"
+                maxLength={300}
+              />
+            </div>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              id="lifecycleStatus"
-              name="lifecycleStatus"
-              defaultValue={person.lifecycleStatus}
-              className="rounded-md border px-3 py-1.5 text-sm"
-            >
-              {Object.values(MemberLifecycleStatus).map((status) => (
-                <option key={status} value={status}>
-                  {MEMBER_LIFECYCLE_STATUS_LABELS[status]}
-                </option>
-              ))}
-            </select>
-            <input
-              id="lifecycleReason"
-              name="lifecycleReason"
-              defaultValue={person.lifecycleStatusReason ?? ""}
-              className="min-w-80 flex-1 rounded-md border px-3 py-1.5 text-sm"
-              placeholder="Reason for status change"
-              maxLength={300}
-            />
             <button
               type="submit"
               className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black"
@@ -836,7 +864,7 @@ export default async function PersonDetailsPage({
             </p>
           </form>
         ) : null}
-        {person.lifecycleStatus !== MemberLifecycleStatus.FORMER && person.lifecycleStatus !== MemberLifecycleStatus.ARCHIVED ? (
+        {!TERMINAL_MEMBER_LIFECYCLE_STATUSES.has(person.lifecycleStatus) ? (
           <form action={`/people/${person.id}/archive`} method="post" className="mt-3">
             <input type="hidden" name="confirm" value="1" />
             <button
@@ -1009,8 +1037,7 @@ export default async function PersonDetailsPage({
           Guardian portal visibility, messaging, notifications, and communications remain deferred.
         </p>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-          Household snapshot: {person.athleteLinks.length} linked guardian{person.athleteLinks.length === 1 ? "" : "s"} ·{" "}
-          {person.guardianLinks.length} linked athlete{person.guardianLinks.length === 1 ? "" : "s"}.
+          Household snapshot: as athlete/member {pluralize(person.athleteLinks.length, "linked guardian")} · as guardian {pluralize(person.guardianLinks.length, "linked athlete")}.
         </p>
         {canEditGuardianLinkageWhereSupported ? (
           <Link

@@ -107,9 +107,9 @@ export async function POST(
         organizationId: organizationId,
       },
       data: {
-        lifecycleStatus: MemberLifecycleStatus.FORMER,
+        lifecycleStatus: MemberLifecycleStatus.ARCHIVED,
         lifecycleStatusChangedAt: new Date(),
-        lifecycleStatusReason: "Archived through lifecycle workflow (mapped to Former Member).",
+        lifecycleStatusReason: "Archived through lifecycle workflow.",
       },
       select: {
         lifecycleStatus: true,

@@ -249,6 +249,7 @@ export async function getOperationalHistory(input: {
   };
 
   if (input.personId) {
+    const escapedPersonId = escapeJsonContainsValue(input.personId);
     auditWhere.OR = [
       {
         entityType: "person",
@@ -257,10 +258,10 @@ export async function getOperationalHistory(input: {
       {
         entityType: "athleteGuardianRelationship",
         OR: [
-          { beforeJson: { contains: `"athletePersonId":"${input.personId}"` } },
-          { beforeJson: { contains: `"guardianPersonId":"${input.personId}"` } },
-          { afterJson: { contains: `"athletePersonId":"${input.personId}"` } },
-          { afterJson: { contains: `"guardianPersonId":"${input.personId}"` } },
+          { beforeJson: { contains: `"athletePersonId":"${escapedPersonId}"` } },
+          { beforeJson: { contains: `"guardianPersonId":"${escapedPersonId}"` } },
+          { afterJson: { contains: `"athletePersonId":"${escapedPersonId}"` } },
+          { afterJson: { contains: `"guardianPersonId":"${escapedPersonId}"` } },
         ],
       },
     ];
@@ -797,7 +798,12 @@ function buildAuditSummary(action: string, beforeJson: string | null, afterJson:
     const fromStatus = typeof before?.lifecycleStatus === "string" ? before.lifecycleStatus : null;
     const toStatus = typeof after?.lifecycleStatus === "string" ? after.lifecycleStatus : null;
     const reason = typeof after?.lifecycleStatusReason === "string" ? after.lifecycleStatusReason : null;
-    return [fromStatus && toStatus ? `Status: ${formatEnumLabel(fromStatus)} → ${formatEnumLabel(toStatus)}` : null, reason ? `Reason: ${reason}` : null]
+    return [
+      fromStatus && toStatus
+        ? `Status: ${formatEnumLabel(fromStatus)} → ${formatEnumLabel(toStatus)}`
+        : null,
+      reason ? `Reason: ${reason}` : null,
+    ]
       .filter(Boolean)
       .join(" · ");
   }
@@ -808,9 +814,27 @@ function buildAuditSummary(action: string, beforeJson: string | null, afterJson:
   const roleBefore = typeof before?.guardianRole === "string" ? before.guardianRole : null;
 
   return [
-    typeBefore && relationshipType ? `Relationship: ${formatEnumLabel(typeBefore)} → ${formatEnumLabel(relationshipType)}` : relationshipType ? `Relationship: ${formatEnumLabel(relationshipType)}` : null,
-    roleBefore && guardianRole ? `Guardian role: ${formatEnumLabel(roleBefore)} → ${formatEnumLabel(guardianRole)}` : guardianRole ? `Guardian role: ${formatEnumLabel(guardianRole)}` : null,
+    formatAuditTransitionLabel("Relationship", typeBefore, relationshipType),
+    formatAuditTransitionLabel("Guardian role", roleBefore, guardianRole),
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+function escapeJsonContainsValue(value: string): string {
+  // Audit before/after JSON is stored as escaped JSON strings; this escapes user-controlled content
+  // before composing JSON fragment contains filters to avoid malformed query fragments.
+  return value.replace(/[\\"]/g, (matchedChar) => (matchedChar === "\\" ? "\\\\" : "\\\""));
+}
+
+function formatAuditTransitionLabel(label: string, before: string | null, after: string | null): string | null {
+  if (before && after) {
+    return `${label}: ${formatEnumLabel(before)} → ${formatEnumLabel(after)}`;
+  }
+
+  if (after) {
+    return `${label}: ${formatEnumLabel(after)}`;
+  }
+
+  return null;
 }

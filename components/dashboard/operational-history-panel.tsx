@@ -11,6 +11,7 @@ const KIND_LABELS: Record<OperationalHistoryItem["kind"], string> = {
   event: "Event",
   roster: "Roster",
   assignment: "Assignment",
+  audit: "Audit",
 };
 
 const KIND_BADGE_CLASS_NAMES: Record<OperationalHistoryItem["kind"], string> = {
@@ -20,6 +21,7 @@ const KIND_BADGE_CLASS_NAMES: Record<OperationalHistoryItem["kind"], string> = {
   event: "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300",
   roster: "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200",
   assignment: "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/40 dark:text-fuchsia-300",
+  audit: "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300",
 };
 
 export function OperationalHistoryPanel(props: {
