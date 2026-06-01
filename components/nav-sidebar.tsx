@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 import type { CurrentUser } from "@/lib/auth/current-user-types";
 import {
@@ -13,6 +13,34 @@ import {
   NAV_SIDEBAR_GROUP_STATE_STORAGE_KEY,
   parseNavSidebarGroupState,
 } from "@/lib/nav-sidebar";
+
+const NAV_SIDEBAR_GROUP_STATE_EVENT = "cadreos:nav-sidebar-group-state-changed";
+
+function subscribeToNavSidebarGroupState(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const handleStorageChange = (event: Event) => {
+    if (
+      event instanceof StorageEvent &&
+      event.key !== null &&
+      event.key !== NAV_SIDEBAR_GROUP_STATE_STORAGE_KEY
+    ) {
+      return;
+    }
+
+    onStoreChange();
+  };
+
+  window.addEventListener("storage", handleStorageChange);
+  window.addEventListener(NAV_SIDEBAR_GROUP_STATE_EVENT, handleStorageChange);
+
+  return () => {
+    window.removeEventListener("storage", handleStorageChange);
+    window.removeEventListener(NAV_SIDEBAR_GROUP_STATE_EVENT, handleStorageChange);
+  };
+}
 
 function renderNotificationBadge(href: string, unreadNotificationCount: number, className: string) {
   if (href !== "/notifications" || unreadNotificationCount <= 0) {
@@ -36,8 +64,22 @@ export function NavSidebar({
   const pathname = usePathname();
   const groups = useMemo(() => getNavSidebarGroupsForUser(currentUser), [currentUser]);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [groupState, setGroupState] = useState<Record<string, boolean>>({});
-  const [hasLoadedGroupState, setHasLoadedGroupState] = useState(false);
+  const rawGroupState = useSyncExternalStore(
+    subscribeToNavSidebarGroupState,
+    () => {
+      if (typeof window === "undefined") {
+        return null;
+      }
+
+      try {
+        return window.localStorage.getItem(NAV_SIDEBAR_GROUP_STATE_STORAGE_KEY);
+      } catch {
+        return null;
+      }
+    },
+    () => null,
+  );
+  const groupState = useMemo(() => parseNavSidebarGroupState(rawGroupState, groups), [groups, rawGroupState]);
   const activeItemLabel = useMemo(
     () =>
       groups
@@ -45,29 +87,6 @@ export function NavSidebar({
         .find((item) => item.status === "active" && isNavSidebarLinkActive(pathname, item.href))?.label ?? "Navigation",
     [groups, pathname],
   );
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    try {
-      setGroupState(parseNavSidebarGroupState(window.localStorage.getItem(NAV_SIDEBAR_GROUP_STATE_STORAGE_KEY), groups));
-    } catch {
-      setGroupState({});
-    }
-    setHasLoadedGroupState(true);
-  }, [groups]);
-
-  useEffect(() => {
-    if (!hasLoadedGroupState || typeof window === "undefined") {
-      return;
-    }
-
-    try {
-      window.localStorage.setItem(NAV_SIDEBAR_GROUP_STATE_STORAGE_KEY, JSON.stringify(groupState));
-    } catch {}
-  }, [groupState, hasLoadedGroupState]);
 
   return (
     <nav
@@ -110,12 +129,22 @@ export function NavSidebar({
                   type="button"
                   aria-controls={groupPanelId}
                   aria-expanded={isGroupExpanded}
-                  onClick={() =>
-                    setGroupState((currentState) => ({
-                      ...currentState,
-                      [group.key]: !(currentState[group.key] ?? true),
-                    }))
-                  }
+                  onClick={() => {
+                    if (typeof window === "undefined") {
+                      return;
+                    }
+
+                    try {
+                      window.localStorage.setItem(
+                        NAV_SIDEBAR_GROUP_STATE_STORAGE_KEY,
+                        JSON.stringify({
+                          ...groupState,
+                          [group.key]: !(groupState[group.key] ?? true),
+                        }),
+                      );
+                      window.dispatchEvent(new Event(NAV_SIDEBAR_GROUP_STATE_EVENT));
+                    } catch {}
+                  }}
                   className={
                     isGroupActive
                       ? "mb-1 flex w-full items-center justify-between rounded-md bg-zinc-100 px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
