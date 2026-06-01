@@ -17,14 +17,27 @@ type GearItemFormValues = {
   gearCategoryId: string;
   inventoryType: string;
   programId: string;
+  manufacturer: string;
+  model: string;
   assetId: string;
   sku: string;
   serialNumber: string;
   barcodeValue: string;
+  qrCodeValue: string;
+  unitType: string;
   quantityOnHand: string;
   quantityMin: string;
   lifecycleStatus: string;
+  availabilityStatus: string;
   conditionStatus: string;
+  inventoryCondition: string;
+  ownerType: string;
+  ownerRecordType: string;
+  ownerRecordId: string;
+  ownershipNotes: string;
+  custodyPersonId: string;
+  locationId: string;
+  storageLocationText: string;
   notes: string;
 };
 
@@ -71,14 +84,27 @@ export async function POST(
     gearCategoryId: getStringField(formData, "gearCategoryId"),
     inventoryType: getStringField(formData, "inventoryType"),
     programId: getStringField(formData, "programId"),
+    manufacturer: getStringField(formData, "manufacturer"),
+    model: getStringField(formData, "model"),
     assetId: getStringField(formData, "assetId"),
     sku: getStringField(formData, "sku"),
     serialNumber: getStringField(formData, "serialNumber"),
     barcodeValue: getStringField(formData, "barcodeValue"),
+    qrCodeValue: getStringField(formData, "qrCodeValue"),
+    unitType: getStringField(formData, "unitType"),
     quantityOnHand: getStringField(formData, "quantityOnHand"),
     quantityMin: getStringField(formData, "quantityMin"),
     lifecycleStatus: getStringField(formData, "lifecycleStatus"),
+    availabilityStatus: getStringField(formData, "availabilityStatus"),
     conditionStatus: getStringField(formData, "conditionStatus"),
+    inventoryCondition: getStringField(formData, "inventoryCondition"),
+    ownerType: getStringField(formData, "ownerType"),
+    ownerRecordType: getStringField(formData, "ownerRecordType"),
+    ownerRecordId: getStringField(formData, "ownerRecordId"),
+    ownershipNotes: getStringField(formData, "ownershipNotes"),
+    custodyPersonId: getStringField(formData, "custodyPersonId"),
+    locationId: getStringField(formData, "locationId"),
+    storageLocationText: getStringField(formData, "storageLocationText"),
     notes: getStringField(formData, "notes"),
   };
 
@@ -131,10 +157,21 @@ export async function POST(
           sku: fieldErrors.sku?.[0],
           serialNumber: fieldErrors.serialNumber?.[0],
           barcodeValue: fieldErrors.barcodeValue?.[0],
+          qrCodeValue: fieldErrors.qrCodeValue?.[0],
+          unitType: fieldErrors.unitType?.[0],
           quantityOnHand: fieldErrors.quantityOnHand?.[0],
           quantityMin: fieldErrors.quantityMin?.[0],
           lifecycleStatus: fieldErrors.lifecycleStatus?.[0],
+          availabilityStatus: fieldErrors.availabilityStatus?.[0],
           conditionStatus: fieldErrors.conditionStatus?.[0],
+          inventoryCondition: fieldErrors.inventoryCondition?.[0],
+          ownerType: fieldErrors.ownerType?.[0],
+          ownerRecordType: fieldErrors.ownerRecordType?.[0],
+          ownerRecordId: fieldErrors.ownerRecordId?.[0],
+          ownershipNotes: fieldErrors.ownershipNotes?.[0],
+          custodyPersonId: fieldErrors.custodyPersonId?.[0],
+          locationId: fieldErrors.locationId?.[0],
+          storageLocationText: fieldErrors.storageLocationText?.[0],
           notes: fieldErrors.notes?.[0],
         },
         error: "Please correct the highlighted fields.",
@@ -195,6 +232,52 @@ export async function POST(
       }
     }
 
+    if (parsed.data.custodyPersonId) {
+      const custodyPerson = await db.person.findFirst({
+        where: {
+          id: parsed.data.custodyPersonId,
+          organizationId: organizationId,
+        },
+        select: { id: true },
+      });
+
+      if (!custodyPerson) {
+        return NextResponse.redirect(
+          buildErrorRedirectUrl(request.url, itemId, {
+            values,
+            fieldErrors: {
+              custodyPersonId: "The selected custodian does not exist in this organization.",
+            },
+            error: "Custodian not found in this organization.",
+          }),
+          303,
+        );
+      }
+    }
+
+    if (parsed.data.locationId) {
+      const location = await db.inventoryLocation.findFirst({
+        where: {
+          id: parsed.data.locationId,
+          organizationId: organizationId,
+        },
+        select: { id: true },
+      });
+
+      if (!location) {
+        return NextResponse.redirect(
+          buildErrorRedirectUrl(request.url, itemId, {
+            values,
+            fieldErrors: {
+              locationId: "The selected location does not exist in this organization.",
+            },
+            error: "Location not found in this organization.",
+          }),
+          303,
+        );
+      }
+    }
+
     const suppliedAssetId = values.assetId.trim().toUpperCase();
     const updated = await db.gearItem.updateMany({
       where: {
@@ -206,16 +289,29 @@ export async function POST(
         gearCategoryId: parsed.data.gearCategoryId,
         inventoryType: parsed.data.inventoryType,
         programId: parsed.data.programId,
+        manufacturer: parsed.data.manufacturer,
+        model: parsed.data.model,
         // Only update assetId when the admin explicitly supplies one; leave existing value
         // unchanged if the field was submitted empty (empty string = no change).
         ...(suppliedAssetId ? { assetId: suppliedAssetId } : {}),
         sku: parsed.data.sku,
         serialNumber: parsed.data.serialNumber,
         barcodeValue: parsed.data.barcodeValue,
+        qrCodeValue: parsed.data.qrCodeValue,
+        unitType: parsed.data.unitType,
         quantityOnHand: parsed.data.quantityOnHand,
         quantityMin: parsed.data.quantityMin,
         lifecycleStatus: parsed.data.lifecycleStatus,
+        availabilityStatus: parsed.data.availabilityStatus,
         conditionStatus: parsed.data.conditionStatus,
+        inventoryCondition: parsed.data.inventoryCondition,
+        ownerType: parsed.data.ownerType,
+        ownerRecordType: parsed.data.ownerRecordType,
+        ownerRecordId: parsed.data.ownerRecordId,
+        ownershipNotes: parsed.data.ownershipNotes,
+        custodyPersonId: parsed.data.custodyPersonId,
+        locationId: parsed.data.locationId,
+        storageLocationText: parsed.data.storageLocationText,
         notes: parsed.data.notes,
       },
     });

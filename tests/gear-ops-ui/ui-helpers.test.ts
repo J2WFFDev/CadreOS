@@ -299,9 +299,33 @@ test("QUARANTINED lifecycle → MAINTENANCE signal", () => {
   );
 });
 
-test("RETIRED lifecycle → MAINTENANCE signal", () => {
+test("RETIRED lifecycle → RETIRED signal", () => {
   assert.equal(
     deriveAvailabilitySignal({ lifecycleStatus: "RETIRED", hasOpenCheckout: false, hasActiveAssignment: false }),
+    "RETIRED",
+  );
+});
+
+test("NEEDS_INSPECTION readiness → INSPECTION_NEEDED signal", () => {
+  assert.equal(
+    deriveAvailabilitySignal({
+      lifecycleStatus: "ACTIVE",
+      hasOpenCheckout: false,
+      hasActiveAssignment: false,
+      readinessState: "NEEDS_INSPECTION",
+    }),
+    "INSPECTION_NEEDED",
+  );
+});
+
+test("OUT_OF_SERVICE inventory condition → MAINTENANCE signal", () => {
+  assert.equal(
+    deriveAvailabilitySignal({
+      lifecycleStatus: "ACTIVE",
+      hasOpenCheckout: false,
+      hasActiveAssignment: false,
+      inventoryCondition: "OUT_OF_SERVICE",
+    }),
     "MAINTENANCE",
   );
 });
@@ -471,13 +495,15 @@ test("getAvailabilitySignalLabel returns readable text for all signals", () => {
   assert.equal(getAvailabilitySignalLabel("RESERVED"), "Reserved");
   assert.equal(getAvailabilitySignalLabel("HELD"), "Held");
   assert.equal(getAvailabilitySignalLabel("CHECKED_OUT"), "Checked out");
+  assert.equal(getAvailabilitySignalLabel("INSPECTION_NEEDED"), "Inspection needed");
+  assert.equal(getAvailabilitySignalLabel("RETIRED"), "Retired");
   assert.equal(getAvailabilitySignalLabel("ASSIGNED"), "Assigned");
   assert.equal(getAvailabilitySignalLabel("MAINTENANCE"), "Out of service");
   assert.equal(getAvailabilitySignalLabel("UNAVAILABLE"), "Unavailable");
 });
 
 test("getAvailabilitySignalChipClass returns non-empty class strings for all signals", () => {
-  const signals: GearAvailabilitySignal[] = ["AVAILABLE", "RESERVED", "HELD", "CHECKED_OUT", "ASSIGNED", "MAINTENANCE", "UNAVAILABLE"];
+  const signals: GearAvailabilitySignal[] = ["AVAILABLE", "RESERVED", "HELD", "CHECKED_OUT", "INSPECTION_NEEDED", "RETIRED", "ASSIGNED", "MAINTENANCE", "UNAVAILABLE"];
   const classes = signals.map(getAvailabilitySignalChipClass);
   classes.forEach((cls) => assert.ok(cls.length > 0, "Chip class must be non-empty"));
   assert.ok(getAvailabilitySignalChipClass("RESERVED").includes("violet"));

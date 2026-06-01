@@ -18,6 +18,7 @@ import type {
   GearConditionStatus,
   GearInventoryType,
   GearItemLifecycleStatus,
+  InventoryConditionStatus,
   InventoryReadinessState,
 } from "@prisma/client";
 
@@ -329,6 +330,8 @@ export type GearAvailabilitySignal =
   | "RESERVED"
   | "HELD"
   | "CHECKED_OUT"
+  | "INSPECTION_NEEDED"
+  | "RETIRED"
   | "ASSIGNED"
   | "MAINTENANCE"
   | "UNAVAILABLE";
@@ -339,22 +342,31 @@ export function deriveAvailabilitySignal({
   hasActiveAssignment,
   hasActiveReservation = false,
   hasActiveHold = false,
+  readinessState = null,
+  inventoryCondition = null,
 }: {
   lifecycleStatus: GearItemLifecycleStatus;
   hasOpenCheckout: boolean;
   hasActiveAssignment: boolean;
   hasActiveReservation?: boolean;
   hasActiveHold?: boolean;
+  readinessState?: InventoryReadinessState | null;
+  inventoryCondition?: InventoryConditionStatus | null;
 }): GearAvailabilitySignal {
+  if (lifecycleStatus === "RETIRED" || lifecycleStatus === "LOST") {
+    return "RETIRED";
+  }
+
   if (
     lifecycleStatus === "MAINTENANCE" ||
     lifecycleStatus === "QUARANTINED" ||
-    lifecycleStatus === "RETIRED" ||
-    lifecycleStatus === "LOST"
+    inventoryCondition === "NEEDS_MAINTENANCE" ||
+    inventoryCondition === "OUT_OF_SERVICE"
   ) {
     return "MAINTENANCE";
   }
 
+  if (readinessState === "NEEDS_INSPECTION") return "INSPECTION_NEEDED";
   if (hasOpenCheckout) return "CHECKED_OUT";
   if (hasActiveAssignment) return "ASSIGNED";
   if (hasActiveReservation || lifecycleStatus === "RESERVED") return "RESERVED";
@@ -374,6 +386,10 @@ export function getAvailabilitySignalLabel(signal: GearAvailabilitySignal): stri
       return "Held";
     case "CHECKED_OUT":
       return "Checked out";
+    case "INSPECTION_NEEDED":
+      return "Inspection needed";
+    case "RETIRED":
+      return "Retired";
     case "ASSIGNED":
       return "Assigned";
     case "MAINTENANCE":
@@ -393,6 +409,10 @@ export function getAvailabilitySignalChipClass(signal: GearAvailabilitySignal): 
       return "bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-200";
     case "CHECKED_OUT":
       return "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200";
+    case "INSPECTION_NEEDED":
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200";
+    case "RETIRED":
+      return "bg-slate-100 text-slate-800 dark:bg-slate-900/40 dark:text-slate-200";
     case "ASSIGNED":
       return "bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200";
     case "MAINTENANCE":

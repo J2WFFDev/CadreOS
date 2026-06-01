@@ -1,4 +1,11 @@
-import { GearConditionStatus, GearInventoryType, GearItemLifecycleStatus } from "@prisma/client";
+import {
+  GearConditionStatus,
+  GearInventoryType,
+  GearItemLifecycleStatus,
+  InventoryAvailabilityStatus,
+  InventoryConditionStatus,
+  InventoryOwnerType,
+} from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
@@ -90,10 +97,12 @@ export default async function NewGearItemPage({
 
   let categories: Array<{ id: string; name: string; inventoryType: GearInventoryType }> | null = null;
   let programs: Array<{ id: string; name: string }> | null = null;
+  let locations: Array<{ id: string; name: string; locationCode: string | null }> | null = null;
+  let people: Array<{ id: string; firstName: string; lastName: string }> | null = null;
   let queryErrorMessage = "Unable to load gear item creation options right now. Please try again later.";
 
   try {
-    [categories, programs] = await Promise.all([
+    [categories, programs, locations, people] = await Promise.all([
       db.gearCategory.findMany({
         where: { organizationId: scope.organizationId },
         select: { id: true, name: true, inventoryType: true },
@@ -104,6 +113,16 @@ export default async function NewGearItemPage({
         select: { id: true, name: true },
         orderBy: [{ name: "asc" }],
       }),
+      db.inventoryLocation.findMany({
+        where: { organizationId: scope.organizationId, isActive: true },
+        select: { id: true, name: true, locationCode: true },
+        orderBy: [{ name: "asc" }],
+      }),
+      db.person.findMany({
+        where: { organizationId: scope.organizationId },
+        select: { id: true, firstName: true, lastName: true },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      }),
     ]);
   } catch (error) {
     if (isSchemaUnavailableError(error)) {
@@ -111,7 +130,7 @@ export default async function NewGearItemPage({
     }
   }
 
-  if (!categories || !programs) {
+  if (!categories || !programs || !locations || !people) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">New gear item</h2>
@@ -145,7 +164,20 @@ export default async function NewGearItemPage({
   const quantityOnHand = readSearchParam(resolvedSearchParams, "quantityOnHand");
   const quantityMin = readSearchParam(resolvedSearchParams, "quantityMin");
   const lifecycleStatus = readSearchParam(resolvedSearchParams, "lifecycleStatus");
+  const availabilityStatus = readSearchParam(resolvedSearchParams, "availabilityStatus");
   const conditionStatus = readSearchParam(resolvedSearchParams, "conditionStatus");
+  const inventoryCondition = readSearchParam(resolvedSearchParams, "inventoryCondition");
+  const manufacturer = readSearchParam(resolvedSearchParams, "manufacturer");
+  const model = readSearchParam(resolvedSearchParams, "model");
+  const qrCodeValue = readSearchParam(resolvedSearchParams, "qrCodeValue");
+  const unitType = readSearchParam(resolvedSearchParams, "unitType");
+  const ownerType = readSearchParam(resolvedSearchParams, "ownerType");
+  const ownerRecordType = readSearchParam(resolvedSearchParams, "ownerRecordType");
+  const ownerRecordId = readSearchParam(resolvedSearchParams, "ownerRecordId");
+  const ownershipNotes = readSearchParam(resolvedSearchParams, "ownershipNotes");
+  const custodyPersonId = readSearchParam(resolvedSearchParams, "custodyPersonId");
+  const locationId = readSearchParam(resolvedSearchParams, "locationId");
+  const storageLocationText = readSearchParam(resolvedSearchParams, "storageLocationText");
   const notes = readSearchParam(resolvedSearchParams, "notes");
   const generalError = readSearchParam(resolvedSearchParams, "error");
 
@@ -223,6 +255,17 @@ export default async function NewGearItemPage({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1">
+            <label htmlFor="manufacturer" className="text-sm font-medium">Manufacturer (optional)</label>
+            <input id="manufacturer" name="manufacturer" defaultValue={manufacturer} className="w-full rounded-md border px-3 py-2 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="model" className="text-sm font-medium">Model (optional)</label>
+            <input id="model" name="model" defaultValue={model} className="w-full rounded-md border px-3 py-2 text-sm" />
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
             <label htmlFor="lifecycleStatus" className="text-sm font-medium">
               Lifecycle status
             </label>
@@ -245,7 +288,7 @@ export default async function NewGearItemPage({
 
           <div className="space-y-1">
             <label htmlFor="conditionStatus" className="text-sm font-medium">
-              Condition status <span className="text-zinc-500">(durable items)</span>
+              Legacy condition status <span className="text-zinc-500">(compatibility)</span>
             </label>
             <select
               id="conditionStatus"
@@ -263,6 +306,36 @@ export default async function NewGearItemPage({
             {readSearchParam(resolvedSearchParams, "conditionStatusError") ? (
               <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "conditionStatusError")}</p>
             ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label htmlFor="inventoryCondition" className="text-sm font-medium">Condition</label>
+            <select
+              id="inventoryCondition"
+              name="inventoryCondition"
+              defaultValue={inventoryCondition}
+              className="w-full rounded-md border px-3 py-2 text-sm"
+            >
+              <option value="">No condition recorded</option>
+              {Object.values(InventoryConditionStatus).map((status) => (
+                <option key={status} value={status}>{formatGearOpsEnum(status)}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="availabilityStatus" className="text-sm font-medium">Availability status</label>
+            <select
+              id="availabilityStatus"
+              name="availabilityStatus"
+              defaultValue={availabilityStatus || InventoryAvailabilityStatus.AVAILABLE}
+              className="w-full rounded-md border px-3 py-2 text-sm"
+            >
+              {Object.values(InventoryAvailabilityStatus).map((status) => (
+                <option key={status} value={status}>{formatGearOpsEnum(status)}</option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -354,6 +427,17 @@ export default async function NewGearItemPage({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1">
+            <label htmlFor="qrCodeValue" className="text-sm font-medium">QR code value (optional)</label>
+            <input id="qrCodeValue" name="qrCodeValue" defaultValue={qrCodeValue} className="w-full rounded-md border px-3 py-2 text-sm font-mono" />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="unitType" className="text-sm font-medium">Unit type (optional)</label>
+            <input id="unitType" name="unitType" defaultValue={unitType} placeholder="ea, box, round, pack" className="w-full rounded-md border px-3 py-2 text-sm" />
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
             <label htmlFor="quantityOnHand" className="text-sm font-medium">
               Quantity on hand
             </label>
@@ -388,6 +472,60 @@ export default async function NewGearItemPage({
               <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "quantityMinError")}</p>
             ) : null}
           </div>
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="ownerType" className="text-sm font-medium">Owner type (optional)</label>
+          <select id="ownerType" name="ownerType" defaultValue={ownerType} className="w-full rounded-md border px-3 py-2 text-sm">
+            <option value="">No owner type</option>
+            {Object.values(InventoryOwnerType).map((value) => (
+              <option key={value} value={value}>{formatGearOpsEnum(value)}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label htmlFor="ownerRecordType" className="text-sm font-medium">Owner record type (optional)</label>
+            <input id="ownerRecordType" name="ownerRecordType" defaultValue={ownerRecordType} placeholder="Program, Team, Member..." className="w-full rounded-md border px-3 py-2 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="ownerRecordId" className="text-sm font-medium">Owner record ID (optional)</label>
+            <input id="ownerRecordId" name="ownerRecordId" defaultValue={ownerRecordId} className="w-full rounded-md border px-3 py-2 text-sm font-mono" />
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="ownershipNotes" className="text-sm font-medium">Ownership notes (optional)</label>
+          <textarea id="ownershipNotes" name="ownershipNotes" defaultValue={ownershipNotes} rows={2} className="w-full rounded-md border px-3 py-2 text-sm" />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label htmlFor="custodyPersonId" className="text-sm font-medium">Custodian (optional)</label>
+            <select id="custodyPersonId" name="custodyPersonId" defaultValue={custodyPersonId} className="w-full rounded-md border px-3 py-2 text-sm">
+              <option value="">No custodian</option>
+              {people.map((person) => (
+                <option key={person.id} value={person.id}>{person.firstName} {person.lastName}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="locationId" className="text-sm font-medium">Storage location</label>
+            <select id="locationId" name="locationId" defaultValue={locationId} className="w-full rounded-md border px-3 py-2 text-sm">
+              <option value="">No location selected</option>
+              {locations.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.name}{location.locationCode ? ` (${location.locationCode})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="storageLocationText" className="text-sm font-medium">Storage location notes (optional)</label>
+          <input id="storageLocationText" name="storageLocationText" defaultValue={storageLocationText} className="w-full rounded-md border px-3 py-2 text-sm" />
         </div>
 
         <div className="space-y-1">

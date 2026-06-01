@@ -24,6 +24,9 @@ import {
   GearReservationStatus,
   GearReportGroup,
   MemberLifecycleStatus,
+  InventoryAvailabilityStatus,
+  InventoryConditionStatus,
+  InventoryOwnerType,
   PrecheckStatus,
   Prisma,
   RoleType,
@@ -57,6 +60,9 @@ const MAX_GEAR_NOTES_LENGTH = 4000;
 const MAX_SKU_LENGTH = 100;
 const MAX_SERIAL_NUMBER_LENGTH = 100;
 const MAX_BARCODE_VALUE_LENGTH = 160;
+const MAX_OWNER_RECORD_TYPE_LENGTH = 80;
+const MAX_OWNER_RECORD_ID_LENGTH = 160;
+const MAX_UNIT_TYPE_LENGTH = 40;
 const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DATETIME_LOCAL_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
 
@@ -772,6 +778,14 @@ export const gearItemWorkflowSchema = z
       message: "Inventory type must be DURABLE or CONSUMABLE.",
     }),
     programId: z.string().trim(),
+    manufacturer: z
+      .string()
+      .trim()
+      .max(MAX_NAME_LENGTH, `Manufacturer must be ${MAX_NAME_LENGTH} characters or less.`),
+    model: z
+      .string()
+      .trim()
+      .max(MAX_NAME_LENGTH, `Model must be ${MAX_NAME_LENGTH} characters or less.`),
     sku: z
       .string()
       .trim()
@@ -784,12 +798,43 @@ export const gearItemWorkflowSchema = z
       .string()
       .trim()
       .max(MAX_BARCODE_VALUE_LENGTH, `Barcode/QR value must be ${MAX_BARCODE_VALUE_LENGTH} characters or less.`),
+    qrCodeValue: z
+      .string()
+      .trim()
+      .max(MAX_BARCODE_VALUE_LENGTH, `QR code value must be ${MAX_BARCODE_VALUE_LENGTH} characters or less.`),
+    unitType: z
+      .string()
+      .trim()
+      .max(MAX_UNIT_TYPE_LENGTH, `Unit type must be ${MAX_UNIT_TYPE_LENGTH} characters or less.`),
     quantityOnHand: z.string().trim(),
     quantityMin: z.string().trim(),
     lifecycleStatus: z.nativeEnum(GearItemLifecycleStatus, {
       message: "Lifecycle status must use an existing status value.",
     }),
+    availabilityStatus: z.nativeEnum(InventoryAvailabilityStatus, {
+      message: "Availability status must use an existing availability value.",
+    }),
     conditionStatus: z.string().trim(),
+    inventoryCondition: z.string().trim(),
+    ownerType: z.string().trim(),
+    ownerRecordType: z
+      .string()
+      .trim()
+      .max(MAX_OWNER_RECORD_TYPE_LENGTH, `Owner record type must be ${MAX_OWNER_RECORD_TYPE_LENGTH} characters or less.`),
+    ownerRecordId: z
+      .string()
+      .trim()
+      .max(MAX_OWNER_RECORD_ID_LENGTH, `Owner record ID must be ${MAX_OWNER_RECORD_ID_LENGTH} characters or less.`),
+    ownershipNotes: z
+      .string()
+      .trim()
+      .max(MAX_GEAR_NOTES_LENGTH, `Ownership notes must be ${MAX_GEAR_NOTES_LENGTH} characters or less.`),
+    custodyPersonId: z.string().trim(),
+    locationId: z.string().trim(),
+    storageLocationText: z
+      .string()
+      .trim()
+      .max(MAX_NAME_LENGTH, `Storage location must be ${MAX_NAME_LENGTH} characters or less.`),
     notes: z
       .string()
       .trim()
@@ -827,6 +872,28 @@ export const gearItemWorkflowSchema = z
       }
     }
 
+    if (value.inventoryCondition.length > 0) {
+      const valid = Object.values(InventoryConditionStatus) as string[];
+      if (!valid.includes(value.inventoryCondition)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["inventoryCondition"],
+          message: "Inventory condition must use an existing condition value.",
+        });
+      }
+    }
+
+    if (value.ownerType.length > 0) {
+      const valid = Object.values(InventoryOwnerType) as string[];
+      if (!valid.includes(value.ownerType)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["ownerType"],
+          message: "Owner type must use an existing owner value.",
+        });
+      }
+    }
+
     if (value.barcodeValue.length > 0) {
       const barcodeValidation = validateInventoryCodeValue(value.barcodeValue);
       if (!barcodeValidation.valid) {
@@ -843,16 +910,32 @@ export const gearItemWorkflowSchema = z
     gearCategoryId: value.gearCategoryId,
     inventoryType: value.inventoryType,
     programId: value.programId.length === 0 ? null : value.programId,
+    manufacturer: value.manufacturer.length === 0 ? null : value.manufacturer,
+    model: value.model.length === 0 ? null : value.model,
     sku: value.sku.length === 0 ? null : value.sku,
     serialNumber: value.serialNumber.length === 0 ? null : value.serialNumber,
     barcodeValue: value.barcodeValue.length === 0 ? null : value.barcodeValue,
+    qrCodeValue: value.qrCodeValue.length === 0 ? null : value.qrCodeValue,
+    unitType: value.unitType.length === 0 ? null : value.unitType,
     quantityOnHand: value.quantityOnHand.length === 0 ? 0 : Number(value.quantityOnHand),
     quantityMin: value.quantityMin.length === 0 ? null : Number(value.quantityMin),
     lifecycleStatus: value.lifecycleStatus,
+    availabilityStatus: value.availabilityStatus,
     conditionStatus:
       value.conditionStatus.length === 0
         ? null
         : (value.conditionStatus as GearConditionStatus),
+    inventoryCondition:
+      value.inventoryCondition.length === 0
+        ? null
+        : (value.inventoryCondition as InventoryConditionStatus),
+    ownerType: value.ownerType.length === 0 ? null : (value.ownerType as InventoryOwnerType),
+    ownerRecordType: value.ownerRecordType.length === 0 ? null : value.ownerRecordType,
+    ownerRecordId: value.ownerRecordId.length === 0 ? null : value.ownerRecordId,
+    ownershipNotes: value.ownershipNotes.length === 0 ? null : value.ownershipNotes,
+    custodyPersonId: value.custodyPersonId.length === 0 ? null : value.custodyPersonId,
+    locationId: value.locationId.length === 0 ? null : value.locationId,
+    storageLocationText: value.storageLocationText.length === 0 ? null : value.storageLocationText,
     notes: value.notes.length === 0 ? null : value.notes,
   }));
 

@@ -77,7 +77,7 @@ test("kits readiness lists missing tables for shared screens", () => {
   assert.ok(status.pendingActions.some((entry) => entry.startsWith("Create missing tables:")));
 });
 
-test("item-creation readiness requires the shared Program lookup table but not unrelated location columns", () => {
+test("item-creation readiness requires Program table and reports only missing tables when GearItem columns are complete", () => {
   const status = evaluateGearOpsSchemaStatus({
     scope: "item-creation",
     availableTables: ["GearCategory", "GearItem"],
@@ -91,13 +91,26 @@ test("item-creation readiness requires the shared Program lookup table but not u
           "gearCategoryId",
           "name",
           "inventoryType",
+          "manufacturer",
+          "model",
           "sku",
           "serialNumber",
+          "qrCodeValue",
+          "unitType",
           "quantityOnHand",
           "quantityMin",
           "lifecycleStatus",
+          "availabilityStatus",
           "conditionStatus",
+          "inventoryCondition",
           "barcodeValue",
+          "ownerType",
+          "ownerRecordType",
+          "ownerRecordId",
+          "ownershipNotes",
+          "custodyPersonId",
+          "locationId",
+          "storageLocationText",
           "notes",
         ]),
       ],

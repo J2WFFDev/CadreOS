@@ -8,6 +8,7 @@
 
 import type {
   GearItemLifecycleStatus,
+  InventoryOwnerType,
   InventoryMovementType,
   InventoryOwnershipType,
   InventoryReadinessState,
@@ -17,6 +18,7 @@ import type {
 
 export {
   GearItemLifecycleStatus,
+  InventoryOwnerType,
   InventoryMovementType,
   InventoryOwnershipType,
   InventoryReadinessState,
@@ -387,4 +389,17 @@ export function labelForOwnershipType(ownershipType: InventoryOwnershipType): st
     DONATED: "Donated",
   };
   return labels[ownershipType];
+}
+
+export function labelForInventoryOwnerType(ownerType: InventoryOwnerType): string {
+  const labels: Record<InventoryOwnerType, string> = {
+    ORGANIZATION: "Organization",
+    PROGRAM: "Program",
+    TEAM: "Team",
+    MEMBER: "Member",
+    GUARDIAN: "Guardian",
+    SPONSOR: "Sponsor",
+    DONOR: "Donor",
+  };
+  return labels[ownerType];
 }

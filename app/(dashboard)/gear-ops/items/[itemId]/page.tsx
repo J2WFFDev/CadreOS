@@ -7,6 +7,8 @@ import {
   GearConditionStatus,
   GearInventoryType,
   GearItemLifecycleStatus,
+  InventoryAvailabilityStatus,
+  InventoryConditionStatus,
   Prisma,
   type GearMaintenanceType,
   type InventoryMovementType,
@@ -42,6 +44,7 @@ import {
 } from "@/lib/gear-reservations";
 import {
   labelForMovementType,
+  labelForInventoryOwnerType,
   labelForOwnershipType,
 } from "@/lib/inventory-ops";
 import {
@@ -137,8 +140,20 @@ export default async function GearOpsItemDetailsPage({
         inventoryType: GearInventoryType;
         lifecycleStatus: GearItemLifecycleStatus;
         conditionStatus: GearConditionStatus | null;
+        inventoryCondition: InventoryConditionStatus | null;
+        availabilityStatus: InventoryAvailabilityStatus;
         readinessState: InventoryReadinessState | null;
         ownershipType: import("@prisma/client").InventoryOwnershipType | null;
+        ownerType: import("@prisma/client").InventoryOwnerType | null;
+        ownerRecordType: string | null;
+        ownerRecordId: string | null;
+        ownershipNotes: string | null;
+        manufacturer: string | null;
+        model: string | null;
+        qrCodeValue: string | null;
+        unitType: string | null;
+        storageLocationText: string | null;
+        custodyPerson: { id: string; firstName: string; lastName: string } | null;
         barcodeValue: string | null;
         sku: string | null;
         serialNumber: string | null;
@@ -220,8 +235,20 @@ export default async function GearOpsItemDetailsPage({
     inventoryType: true,
     lifecycleStatus: true,
     conditionStatus: true,
+    inventoryCondition: true,
+    availabilityStatus: true,
     readinessState: true,
     ownershipType: true,
+    ownerType: true,
+    ownerRecordType: true,
+    ownerRecordId: true,
+    ownershipNotes: true,
+    manufacturer: true,
+    model: true,
+    qrCodeValue: true,
+    unitType: true,
+    storageLocationText: true,
+    custodyPerson: { select: { id: true, firstName: true, lastName: true } },
     barcodeValue: true,
     sku: true,
     serialNumber: true,
@@ -544,6 +571,10 @@ export default async function GearOpsItemDetailsPage({
   const readinessConcernCount =
     (gearItem.lifecycleStatus === GearItemLifecycleStatus.MAINTENANCE ? 1 : 0) +
     ((gearItem.conditionStatus === GearConditionStatus.POOR || gearItem.conditionStatus === GearConditionStatus.DAMAGED)
+      ? 1
+      : 0) +
+    ((gearItem.inventoryCondition === InventoryConditionStatus.NEEDS_MAINTENANCE ||
+      gearItem.inventoryCondition === InventoryConditionStatus.OUT_OF_SERVICE)
       ? 1
       : 0) +
     (currentCheckouts.length > 0 ? 1 : 0) +
@@ -990,6 +1021,8 @@ export default async function GearOpsItemDetailsPage({
                 hasActiveAssignment: currentAssignments.length > 0,
                 hasActiveReservation: reservationSummary.currentReservedCount > 0,
                 hasActiveHold: reservationSummary.currentHeldCount > 0,
+                readinessState: item.readinessState,
+                inventoryCondition: item.inventoryCondition,
               })}
             />
             <GearLifecycleBadge status={item.lifecycleStatus} />
@@ -1139,10 +1172,17 @@ export default async function GearOpsItemDetailsPage({
           </dd>
         </div>
         <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Manufacturer / Model</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">
+            {item.manufacturer ?? "—"} / {item.model ?? "—"}
+          </dd>
+        </div>
+        <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Stock</dt>
           <dd className="text-zinc-600 dark:text-zinc-400">
             On hand: {item.quantityOnHand}
             {item.inventoryType === GearInventoryType.CONSUMABLE ? ` · Min: ${item.quantityMin ?? "—"}` : ""}
+            {item.unitType ? ` · Unit: ${item.unitType}` : ""}
           </dd>
         </div>
         <div>
@@ -1158,6 +1198,7 @@ export default async function GearOpsItemDetailsPage({
                 {item.location.locationCode ? ` (${item.location.locationCode})` : ""}
               </Link>
             ) : "—"}
+            {item.storageLocationText ? ` · ${item.storageLocationText}` : ""}
           </dd>
         </div>
         <div>
@@ -1174,12 +1215,39 @@ export default async function GearOpsItemDetailsPage({
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Ownership</dt>
           <dd className="text-zinc-600 dark:text-zinc-400">
             {item.ownershipType ? labelForOwnershipType(item.ownershipType) : "—"}
+            {item.ownerType ? ` · ${labelForInventoryOwnerType(item.ownerType)}` : ""}
+            {item.ownerRecordType ? ` · ${item.ownerRecordType}` : ""}
+            {item.ownerRecordId ? ` (${item.ownerRecordId})` : ""}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Custodian</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">
+            {item.custodyPerson ? (
+              <Link href={`/people/${item.custodyPerson.id}`} className="underline">
+                {item.custodyPerson.firstName} {item.custodyPerson.lastName}
+              </Link>
+            ) : "—"}
           </dd>
         </div>
         <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Barcode / QR</dt>
-          <dd className="font-mono text-zinc-600 dark:text-zinc-400">{item.barcodeValue ?? "—"}</dd>
+          <dd className="font-mono text-zinc-600 dark:text-zinc-400">
+            {item.barcodeValue ?? "—"} / {item.qrCodeValue ?? "—"}
+          </dd>
         </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Condition / Availability</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">
+            {item.inventoryCondition ? formatGearOpsEnum(item.inventoryCondition) : "—"} / {formatGearOpsEnum(item.availabilityStatus)}
+          </dd>
+        </div>
+        {item.ownershipNotes ? (
+          <div>
+            <dt className="font-medium text-zinc-900 dark:text-zinc-50">Ownership notes</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">{item.ownershipNotes}</dd>
+          </div>
+        ) : null}
       </dl>
 
       <dl className="grid gap-3 rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900 sm:grid-cols-2 lg:grid-cols-4">

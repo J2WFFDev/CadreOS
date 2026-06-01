@@ -106,6 +106,8 @@ export function GearAvailabilityBanner({
     RESERVED: "info",
     HELD: "info",
     CHECKED_OUT: "info",
+    INSPECTION_NEEDED: "warning",
+    RETIRED: "danger",
     ASSIGNED: "info",
     MAINTENANCE: "warning",
     UNAVAILABLE: "danger",
