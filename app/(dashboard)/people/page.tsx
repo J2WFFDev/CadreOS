@@ -33,6 +33,7 @@ import { selectSeededOrCurrentSeason } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 type SearchParams = Record<string, string | string[] | undefined>;
+const PEOPLE_LOAD_ERROR_MESSAGE = "Unable to load members right now. Please try again later.";
 
 function readSearchParam(searchParams: SearchParams, key: string): string {
   const value = searchParams[key];
@@ -403,7 +404,7 @@ export default async function PeoplePage({
     });
     peopleLoadErrorMessage = schemaIssue
       ? formatMemberOpsPeopleSetupIncompleteMessage(schemaIssue)
-      : "Unable to load members right now. Please try again later.";
+      : PEOPLE_LOAD_ERROR_MESSAGE;
     if (!schemaIssue) {
       console.error("[people.page] Failed to load people list", {
         organizationId: scope.organizationId,
@@ -418,7 +419,7 @@ export default async function PeoplePage({
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Members</h2>
-        <ErrorMessage message={peopleLoadErrorMessage ?? "Unable to load members right now. Please try again later."} />
+        <ErrorMessage message={peopleLoadErrorMessage ?? PEOPLE_LOAD_ERROR_MESSAGE} />
       </section>
     );
   }
