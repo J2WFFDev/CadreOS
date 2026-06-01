@@ -261,8 +261,9 @@ export function isVolunteerStaffingCategory(category: StaffingRoleCategory | str
 
 export function dateInputToNullableDate(value: string): Date | null {
   const normalized = value.trim();
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
-  if (!normalized) {
+  if (!normalized || !datePattern.test(normalized)) {
     return null;
   }
 
@@ -272,7 +273,21 @@ export function dateInputToNullableDate(value: string): Date | null {
     return null;
   }
 
-  return new Date(Date.UTC(year, month - 1, day));
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+
+  const parsedDate = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    parsedDate.getUTCFullYear() !== year ||
+    parsedDate.getUTCMonth() !== month - 1 ||
+    parsedDate.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsedDate;
 }
 
 export function buildStaffingAssignmentAuditPayload(input: {

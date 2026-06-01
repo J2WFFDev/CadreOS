@@ -91,5 +91,6 @@ test("resolveStaffingQualificationCompatibility resolves pending qualifications"
 test("dateInputToNullableDate parses ISO date and ignores invalid", () => {
   assert.equal(dateInputToNullableDate("2026-06-01")?.toISOString(), "2026-06-01T00:00:00.000Z");
   assert.equal(dateInputToNullableDate("invalid"), null);
+  assert.equal(dateInputToNullableDate("2026-13-99"), null);
   assert.equal(dateInputToNullableDate(""), null);
 });

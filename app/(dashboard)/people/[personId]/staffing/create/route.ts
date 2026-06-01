@@ -179,19 +179,20 @@ export async function POST(
         startDate: parsedStartDate,
         endDate: parsedEndDate,
         status: statusRaw as StaffingAssignmentStatus,
-        coverage: coverageTypes.length
-          ? {
-              create: coverageTypes.map((coverageType) => ({
-                organizationId: scope.organizationId,
-                coverageType,
-              })),
-            }
-          : undefined,
-      },
-      include: {
-        coverage: { select: { coverageType: true } },
       },
     });
+
+    if (coverageTypes.length > 0) {
+      await db.staffingAssignmentCoverage.createMany({
+        data: coverageTypes.map((coverageType) => ({
+          organizationId: scope.organizationId!,
+          staffingAssignmentId: assignment.id,
+          coverageType,
+        })),
+      });
+    }
+
+    const assignmentCoverage = coverageTypes;
 
     await writeAuditEvent({
       organizationId: scope.organizationId,
@@ -210,7 +211,7 @@ export async function POST(
           teamId: assignment.teamId,
           startDate: assignment.startDate,
           endDate: assignment.endDate,
-          coverage: assignment.coverage.map((item) => item.coverageType),
+          coverage: assignmentCoverage,
         }),
       ),
       metadataJson: JSON.stringify({
