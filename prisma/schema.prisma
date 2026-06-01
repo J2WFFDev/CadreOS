@@ -14,8 +14,10 @@ enum OrgStatus {
 
 enum MemberLifecycleStatus {
   PROSPECT
+  APPLICANT
   ACTIVE
   INACTIVE
+  FORMER
   ARCHIVED
   ALUMNI
 }
@@ -213,6 +215,12 @@ enum ScopeType {
 enum RelationshipType {
   PARENT
   GUARDIAN
+}
+
+enum GuardianRelationshipRole {
+  PRIMARY_GUARDIAN
+  SECONDARY_GUARDIAN
+  EMERGENCY_CONTACT
 }
 
 // FieldOps enums
@@ -956,6 +964,8 @@ model Person {
   id              String                @id @default(cuid())
   organizationId  String
   lifecycleStatus MemberLifecycleStatus @default(ACTIVE)
+  lifecycleStatusChangedAt DateTime     @default(now())
+  lifecycleStatusReason    String?
   firstName       String
   lastName        String
   email           String?
@@ -1079,6 +1089,7 @@ model AthleteGuardianRelationship {
   athletePersonId  String
   guardianPersonId String
   relationshipType RelationshipType
+  guardianRole     GuardianRelationshipRole @default(PRIMARY_GUARDIAN)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 

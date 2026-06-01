@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { writeAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
@@ -19,8 +20,9 @@ function buildErrorRedirectUrl(
     values: {
       guardianPersonId: string;
       relationshipType: string;
+      guardianRole: string;
     };
-    fieldErrors?: Partial<Record<"guardianPersonId" | "relationshipType", string>>;
+    fieldErrors?: Partial<Record<"guardianPersonId" | "relationshipType" | "guardianRole", string>>;
     error?: string;
   },
 ) {
@@ -28,6 +30,7 @@ function buildErrorRedirectUrl(
 
   url.searchParams.set("guardianPersonId", input.values.guardianPersonId);
   url.searchParams.set("relationshipType", input.values.relationshipType);
+  url.searchParams.set("guardianRole", input.values.guardianRole);
 
   if (input.fieldErrors?.guardianPersonId) {
     url.searchParams.set("guardianPersonIdError", input.fieldErrors.guardianPersonId);
@@ -35,6 +38,10 @@ function buildErrorRedirectUrl(
 
   if (input.fieldErrors?.relationshipType) {
     url.searchParams.set("relationshipTypeError", input.fieldErrors.relationshipType);
+  }
+
+  if (input.fieldErrors?.guardianRole) {
+    url.searchParams.set("guardianRoleError", input.fieldErrors.guardianRole);
   }
 
   if (input.error) {
@@ -73,6 +80,7 @@ export async function POST(
   const values = {
     guardianPersonId: getStringField(formData, "guardianPersonId"),
     relationshipType: getStringField(formData, "relationshipType"),
+    guardianRole: getStringField(formData, "guardianRole"),
   };
 
   if (!scope.databaseReady) {
@@ -107,6 +115,7 @@ export async function POST(
         fieldErrors: {
           guardianPersonId: fieldErrors.guardianPersonId?.[0],
           relationshipType: fieldErrors.relationshipType?.[0],
+          guardianRole: fieldErrors.guardianRole?.[0],
         },
         error: "Please correct the highlighted fields.",
       }),
@@ -168,6 +177,10 @@ export async function POST(
       },
       select: {
         id: true,
+        athletePersonId: true,
+        guardianPersonId: true,
+        relationshipType: true,
+        guardianRole: true,
       },
     });
 
@@ -227,6 +240,7 @@ export async function POST(
       select: {
         id: true,
         relationshipType: true,
+        guardianRole: true,
       },
     });
 
@@ -246,14 +260,42 @@ export async function POST(
       );
     }
 
-    await db.athleteGuardianRelationship.update({
+    const updatedRelationship = await db.athleteGuardianRelationship.update({
       where: {
         id: relationship.id,
       },
       data: {
         guardianPersonId: guardian.id,
         relationshipType: parsed.data.relationshipType,
+        guardianRole: parsed.data.guardianRole,
       },
+      select: {
+        id: true,
+        athletePersonId: true,
+        guardianPersonId: true,
+        relationshipType: true,
+        guardianRole: true,
+      },
+    });
+
+    await writeAuditEvent({
+      organizationId,
+      actorPersonId: scope.auth.personId,
+      action: "guardianRelationship.update",
+      entityType: "athleteGuardianRelationship",
+      entityId: updatedRelationship.id,
+      beforeJson: JSON.stringify({
+        athletePersonId: relationship.athletePersonId,
+        guardianPersonId: relationship.guardianPersonId,
+        relationshipType: relationship.relationshipType,
+        guardianRole: relationship.guardianRole,
+      }),
+      afterJson: JSON.stringify({
+        athletePersonId: updatedRelationship.athletePersonId,
+        guardianPersonId: updatedRelationship.guardianPersonId,
+        relationshipType: updatedRelationship.relationshipType,
+        guardianRole: updatedRelationship.guardianRole,
+      }),
     });
 
     const successUrl = new URL(`/people/${person.id}/guardians`, request.url);

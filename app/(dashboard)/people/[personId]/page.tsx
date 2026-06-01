@@ -190,6 +190,8 @@ export default async function PersonDetailsPage({
         email: string | null;
         phone: string | null;
         lifecycleStatus: MemberLifecycleStatus;
+        lifecycleStatusChangedAt: Date;
+        lifecycleStatusReason: string | null;
         roles: Array<{
           id: string;
           roleType: string;
@@ -200,11 +202,13 @@ export default async function PersonDetailsPage({
         guardianLinks: Array<{
           id: string;
           relationshipType: string;
+          guardianRole: string;
           athlete: { id: string; firstName: string; lastName: string };
         }>;
         athleteLinks: Array<{
           id: string;
           relationshipType: string;
+          guardianRole: string;
           guardian: {
             id: string;
             firstName: string;
@@ -720,12 +724,16 @@ export default async function PersonDetailsPage({
               ? "font-medium text-green-700 dark:text-green-400"
               : person.lifecycleStatus === MemberLifecycleStatus.PROSPECT
                 ? "font-medium text-blue-700 dark:text-blue-400"
-                : person.lifecycleStatus === MemberLifecycleStatus.ARCHIVED
+                : person.lifecycleStatus === MemberLifecycleStatus.ARCHIVED || person.lifecycleStatus === MemberLifecycleStatus.FORMER
                   ? "font-medium text-red-700 dark:text-red-400"
                   : "font-medium text-zinc-700 dark:text-zinc-300"
             }>
             {MEMBER_LIFECYCLE_STATUS_LABELS[person.lifecycleStatus]}
           </span>
+        </p>
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          Last status change: {person.lifecycleStatusChangedAt.toLocaleString()}.
+          {person.lifecycleStatusReason ? ` Reason: ${person.lifecycleStatusReason}` : ""}
         </p>
         {hasLifecycleRosterReadinessGap ? (
           <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
@@ -760,6 +768,9 @@ export default async function PersonDetailsPage({
           <label htmlFor="lifecycleStatus" className="text-sm font-medium">
             Lifecycle status
           </label>
+          <label htmlFor="lifecycleReason" className="text-sm font-medium">
+            Lifecycle reason (optional)
+          </label>
           <div className="flex flex-wrap items-center gap-2">
             <select
               id="lifecycleStatus"
@@ -773,6 +784,14 @@ export default async function PersonDetailsPage({
                 </option>
               ))}
             </select>
+            <input
+              id="lifecycleReason"
+              name="lifecycleReason"
+              defaultValue={person.lifecycleStatusReason ?? ""}
+              className="min-w-80 flex-1 rounded-md border px-3 py-1.5 text-sm"
+              placeholder="Reason for status change"
+              maxLength={300}
+            />
             <button
               type="submit"
               className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black"
@@ -782,7 +801,10 @@ export default async function PersonDetailsPage({
           </div>
         </form>
         {(person.lifecycleStatus === MemberLifecycleStatus.PROSPECT ||
+          person.lifecycleStatus === MemberLifecycleStatus.APPLICANT ||
           person.lifecycleStatus === MemberLifecycleStatus.INACTIVE ||
+          person.lifecycleStatus === MemberLifecycleStatus.FORMER ||
+          person.lifecycleStatus === MemberLifecycleStatus.ARCHIVED ||
           person.lifecycleStatus === MemberLifecycleStatus.ALUMNI) ? (
           <form action={`/people/${person.id}/activate`} method="post" className="mt-3">
             <input type="hidden" name="confirm" value="1" />
@@ -799,6 +821,7 @@ export default async function PersonDetailsPage({
         ) : null}
         {(person.lifecycleStatus === MemberLifecycleStatus.ACTIVE ||
           person.lifecycleStatus === MemberLifecycleStatus.PROSPECT ||
+          person.lifecycleStatus === MemberLifecycleStatus.APPLICANT ||
           person.lifecycleStatus === MemberLifecycleStatus.ALUMNI) ? (
           <form action={`/people/${person.id}/inactive`} method="post" className="mt-3">
             <input type="hidden" name="confirm" value="1" />
@@ -813,7 +836,7 @@ export default async function PersonDetailsPage({
             </p>
           </form>
         ) : null}
-        {person.lifecycleStatus !== MemberLifecycleStatus.ARCHIVED ? (
+        {person.lifecycleStatus !== MemberLifecycleStatus.FORMER && person.lifecycleStatus !== MemberLifecycleStatus.ARCHIVED ? (
           <form action={`/people/${person.id}/archive`} method="post" className="mt-3">
             <input type="hidden" name="confirm" value="1" />
             <button
@@ -979,11 +1002,15 @@ export default async function PersonDetailsPage({
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Guardian / athlete relationships</h3>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-          Relationship type is shown for each athlete/guardian link. Primary/emergency indicators and contact-permission
-          notes are deferred and not yet modeled in this phase.
+          Household foundation is represented through linked guardian/athlete records. Relationship type and guardian role
+          are shown for each link.
         </p>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
           Guardian portal visibility, messaging, notifications, and communications remain deferred.
+        </p>
+        <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+          Household snapshot: {person.athleteLinks.length} linked guardian{person.athleteLinks.length === 1 ? "" : "s"} ·{" "}
+          {person.guardianLinks.length} linked athlete{person.guardianLinks.length === 1 ? "" : "s"}.
         </p>
         {canEditGuardianLinkageWhereSupported ? (
           <Link
@@ -1023,7 +1050,8 @@ export default async function PersonDetailsPage({
                 <ul className="mt-1 list-disc pl-5">
                   {person.guardianLinks.map((link) => (
                     <li key={link.id}>
-                      {link.athlete.firstName} {link.athlete.lastName} · Relationship: {formatEnumLabel(link.relationshipType)}
+                      {link.athlete.firstName} {link.athlete.lastName} · Relationship: {formatEnumLabel(link.relationshipType)} · Guardian role:{" "}
+                      {formatEnumLabel(link.guardianRole)}
                       {canEditGuardianLinkageWhereSupported ? (
                         <>
                           {" "}
@@ -1045,7 +1073,8 @@ export default async function PersonDetailsPage({
                 <ul className="mt-1 list-disc pl-5">
                   {person.athleteLinks.map((link) => (
                     <li key={link.id}>
-                      {link.guardian.firstName} {link.guardian.lastName} · Relationship: {formatEnumLabel(link.relationshipType)} ·{" "}
+                      {link.guardian.firstName} {link.guardian.lastName} · Relationship: {formatEnumLabel(link.relationshipType)} · Guardian role:{" "}
+                      {formatEnumLabel(link.guardianRole)} ·{" "}
                       {link.guardian._count.userAccounts === 0
                         ? "Guardian account link missing"
                         : link.guardian.roles.length === 0
@@ -1115,14 +1144,14 @@ export default async function PersonDetailsPage({
       <OperationalHistoryPanel
         id="operational-history"
         title="Operational history"
-        description="Recent person-linked activity derived from tasks, notes, attendance, roster membership, and role assignment context."
+        description="Recent person-linked activity derived from lifecycle transitions, guardian relationship changes, tasks, notes, attendance, roster membership, and role assignment context."
         emptyMessage="No recent person-linked operational history was found in the current review window."
         items={personOperationalHistory}
         action={{ href: `/tasks?assigneePersonId=${person.id}`, label: "Open assigned tasks" }}
         footer={
           <>
             Person history includes items where this person is the assignee, creator/author, participant, or direct
-            roster/role subject when that context is derivable from current records.
+            roster/role/lifecycle subject when that context is derivable from current records.
           </>
         }
       />

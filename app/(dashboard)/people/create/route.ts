@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { writeAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
@@ -118,7 +119,28 @@ export async function POST(request: Request) {
         email: parsed.data.email,
         phone: parsed.data.phone,
         lifecycleStatus: parsed.data.lifecycleStatus,
+        lifecycleStatusChangedAt: new Date(),
+        lifecycleStatusReason: "Initial lifecycle status set during member creation.",
       },
+      select: {
+        id: true,
+        lifecycleStatus: true,
+        lifecycleStatusChangedAt: true,
+        lifecycleStatusReason: true,
+      },
+    });
+
+    await writeAuditEvent({
+      organizationId,
+      actorPersonId: scope.auth.personId,
+      action: "person.lifecycle.create",
+      entityType: "person",
+      entityId: person.id,
+      afterJson: JSON.stringify({
+        lifecycleStatus: person.lifecycleStatus,
+        lifecycleStatusChangedAt: person.lifecycleStatusChangedAt.toISOString(),
+        lifecycleStatusReason: person.lifecycleStatusReason,
+      }),
     });
 
     return NextResponse.redirect(new URL(`/people/${person.id}`, request.url), 303);

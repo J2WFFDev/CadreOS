@@ -1,6 +1,7 @@
 import { MemberLifecycleStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { writeAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
@@ -14,8 +15,10 @@ import {
 const ARCHIVABLE_STATUSES = new Set<MemberLifecycleStatus>([
   MemberLifecycleStatus.ACTIVE,
   MemberLifecycleStatus.PROSPECT,
+  MemberLifecycleStatus.APPLICANT,
   MemberLifecycleStatus.INACTIVE,
   MemberLifecycleStatus.ALUMNI,
+  MemberLifecycleStatus.FORMER,
 ]);
 
 function buildErrorRedirectUrl(requestUrl: string, personId: string, error: string) {
@@ -76,6 +79,7 @@ export async function POST(
       select: {
         id: true,
         lifecycleStatus: true,
+        lifecycleStatusReason: true,
       },
     });
 
@@ -91,20 +95,44 @@ export async function POST(
         buildErrorRedirectUrl(
           request.url,
           personId,
-          `This person cannot be archived from their current status (${person.lifecycleStatus}). Only Active, Prospect, Inactive, or Alumni members can be archived.`,
+          `This person cannot be archived from their current status (${person.lifecycleStatus}). Only Active, Prospect, Applicant, Inactive, Alumni, or Former members can be archived.`,
         ),
         303,
       );
     }
 
-    await db.person.update({
+    const updatedPerson = await db.person.update({
       where: {
         id: personId,
         organizationId: organizationId,
       },
       data: {
-        lifecycleStatus: MemberLifecycleStatus.ARCHIVED,
+        lifecycleStatus: MemberLifecycleStatus.FORMER,
+        lifecycleStatusChangedAt: new Date(),
+        lifecycleStatusReason: "Archived through lifecycle workflow (mapped to Former Member).",
       },
+      select: {
+        lifecycleStatus: true,
+        lifecycleStatusChangedAt: true,
+        lifecycleStatusReason: true,
+      },
+    });
+
+    await writeAuditEvent({
+      organizationId,
+      actorPersonId: scope.auth.personId,
+      action: "person.lifecycle.archive",
+      entityType: "person",
+      entityId: person.id,
+      beforeJson: JSON.stringify({
+        lifecycleStatus: person.lifecycleStatus,
+        lifecycleStatusReason: person.lifecycleStatusReason,
+      }),
+      afterJson: JSON.stringify({
+        lifecycleStatus: updatedPerson.lifecycleStatus,
+        lifecycleStatusChangedAt: updatedPerson.lifecycleStatusChangedAt.toISOString(),
+        lifecycleStatusReason: updatedPerson.lifecycleStatusReason,
+      }),
     });
 
     return NextResponse.redirect(new URL(`/people/${personId}`, request.url), 303);

@@ -154,6 +154,7 @@ export default async function PersonGuardiansPage({
         athleteLinks: Array<{
           id: string;
           relationshipType: string;
+          guardianRole: string;
           guardian: {
             id: string;
             firstName: string;
@@ -165,6 +166,7 @@ export default async function PersonGuardiansPage({
         guardianLinks: Array<{
           id: string;
           relationshipType: string;
+          guardianRole: string;
           athlete: {
             id: string;
             firstName: string;
@@ -213,6 +215,7 @@ export default async function PersonGuardiansPage({
           select: {
             id: true,
             relationshipType: true,
+            guardianRole: true,
             guardian: {
               select: {
                 id: true,
@@ -229,6 +232,7 @@ export default async function PersonGuardiansPage({
           select: {
             id: true,
             relationshipType: true,
+            guardianRole: true,
             athlete: {
               select: {
                 id: true,
@@ -322,8 +326,7 @@ export default async function PersonGuardiansPage({
         <>
           <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Relationship type is modeled as Parent or Guardian. Primary/emergency indicators and contact-permission
-              notes are deferred and not yet modeled in this phase.
+              Relationship type and guardian role are modeled for each linked athlete/guardian record.
             </p>
             {canEditGuardianLinkageWhereSupported ? (
               <Link
@@ -352,7 +355,9 @@ export default async function PersonGuardiansPage({
                         {link.guardian.firstName} {link.guardian.lastName}
                       </Link>
                     </p>
-                    <p className="text-zinc-600 dark:text-zinc-400">Relationship type: {formatEnumLabel(link.relationshipType)}</p>
+                    <p className="text-zinc-600 dark:text-zinc-400">
+                      Relationship type: {formatEnumLabel(link.relationshipType)} · Guardian role: {formatEnumLabel(link.guardianRole)}
+                    </p>
                     <p className="text-zinc-600 dark:text-zinc-400">Email: {link.guardian.email ?? "No email on file"}</p>
                     <p className="text-zinc-600 dark:text-zinc-400">Phone: {link.guardian.phone ?? "No phone on file"}</p>
                     {canEditGuardianLinkageWhereSupported ? (
@@ -382,7 +387,9 @@ export default async function PersonGuardiansPage({
                         {link.athlete.firstName} {link.athlete.lastName}
                       </Link>
                     </p>
-                    <p className="text-zinc-600 dark:text-zinc-400">Relationship type: {formatEnumLabel(link.relationshipType)}</p>
+                    <p className="text-zinc-600 dark:text-zinc-400">
+                      Relationship type: {formatEnumLabel(link.relationshipType)} · Guardian role: {formatEnumLabel(link.guardianRole)}
+                    </p>
                     <p className="text-zinc-600 dark:text-zinc-400">Email: {link.athlete.email ?? "No email on file"}</p>
                     <p className="text-zinc-600 dark:text-zinc-400">Phone: {link.athlete.phone ?? "No phone on file"}</p>
                     {canEditGuardianLinkageWhereSupported ? (
