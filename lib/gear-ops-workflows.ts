@@ -13,9 +13,9 @@ import {
   GearKitReadinessLabel,
   GearMaintenanceDueStatus,
   GearReservationStatus,
+  GearInspectionDueStatus,
   InventoryReadinessState,
   TaskStatus,
-  type GearInspectionDueStatus,
 } from "@prisma/client";
 
 import { db } from "@/lib/db";
@@ -293,8 +293,8 @@ export function deriveGearItemTaskSuggestions(input: {
   }
 
   if (
-    input.inspectionDueStatus === "OVERDUE" ||
-    input.inspectionDueStatus === "DUE"
+    input.inspectionDueStatus === GearInspectionDueStatus.OVERDUE ||
+    input.inspectionDueStatus === GearInspectionDueStatus.DUE
   ) {
     push({
       templateKey: "CONDITION_INSPECTION",
@@ -349,7 +349,10 @@ export function deriveGearKitTaskSuggestions(input: {
     });
   }
 
-  if (input.lastInspectionStatus === "FAILED" || input.lastInspectionStatus === "INCOMPLETE") {
+  if (
+    input.lastInspectionStatus === GearKitInspectionStatus.FAILED ||
+    input.lastInspectionStatus === GearKitInspectionStatus.INCOMPLETE
+  ) {
     suggestions.push({
       templateKey: "CONDITION_INSPECTION",
       eventKind: "INSPECTION_FAILURE",
@@ -863,7 +866,7 @@ export async function createGearWorkflowTask(input: {
         ...(maintenance
           ? [
               `Latest maintenance log: ${formatEnumLabel(maintenance.maintenanceType)} at ${formatDateLine(maintenance.performedAt)}`,
-              `Maintenance notes: ${maintenance.notes}`,
+              `Maintenance notes: ${maintenance.notes ?? "—"}`,
             ]
           : []),
       ],
