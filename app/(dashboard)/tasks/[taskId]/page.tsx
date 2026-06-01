@@ -4,6 +4,7 @@ import { EntryPriority, NoteVisibility, RoleType, TaskStatus } from "@prisma/cli
 import { BackLink } from "@/components/dashboard/back-link";
 import { getInternalCommunicationEventClassification } from "@/lib/communication-classification";
 import { db } from "@/lib/db";
+import { resolveEntryObjectLinkViews } from "@/lib/entries/object-links";
 import { getFollowUpTaskEntryRuntimeSummary } from "@/lib/entry-runtime";
 import { formatDateTime, formatEnumLabel, getTaskStatusBadgeClassName, isTaskOverdue } from "@/lib/follow-up-tasks";
 import {
@@ -125,6 +126,12 @@ export default async function TaskDetailPage({
           priority: EntryPriority;
           parentEntryId: string | null;
           parentEntry: { id: string; title: string; deletedAt: Date | null } | null;
+          objectLinks: Array<{
+            id: string;
+            targetType: import("@prisma/client").EntryObjectLinkTargetType;
+            targetId: string;
+            createdAt: Date;
+          }>;
         } | null;
       }
     | null = null;
@@ -189,6 +196,11 @@ export default async function TaskDetailPage({
              priority: true,
              parentEntryId: true,
              parentEntry: { select: { id: true, title: true, deletedAt: true } },
+             objectLinks: {
+               orderBy: { createdAt: "desc" },
+               select: { id: true, targetType: true, targetId: true, createdAt: true },
+               take: 12,
+             },
            },
          },
       },
@@ -337,6 +349,13 @@ export default async function TaskDetailPage({
   const entryDetailHref = task.entry ? `/entries/${task.entry.id}` : null;
   const sourceEntryHref =
     task.entry?.parentEntry && !task.entry.parentEntry.deletedAt ? `/entries/${task.entry.parentEntry.id}` : null;
+  const linkedGearObjects = task.entry
+    ? await resolveEntryObjectLinkViews({
+        organizationId: scope.organizationId,
+        links: task.entry.objectLinks.filter((link) => ["GEAR_ITEM", "INVENTORY_KIT", "GEAR_CHECKOUT", "GEAR_ASSIGNMENT", "GEAR_MAINTENANCE_LOG"].includes(link.targetType)),
+        canViewTargetDetails: true,
+      })
+    : [];
   let entryRuntimeSummary: Awaited<ReturnType<typeof getFollowUpTaskEntryRuntimeSummary>> | null = null;
   let entryRuntimeSummaryUnavailable = false;
 
@@ -610,6 +629,29 @@ export default async function TaskDetailPage({
         <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-300">
           {task.description ?? "No description provided."}
         </p>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <h3 className="text-lg font-semibold">GearOps links</h3>
+        {linkedGearObjects.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            No GearOps records are currently linked to this task.
+          </p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {linkedGearObjects.map((link) => (
+              <article key={link.id} className="rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+                <p className="font-medium text-zinc-900 dark:text-zinc-100">{link.title}</p>
+                <p className="mt-1 text-zinc-600 dark:text-zinc-400">{link.subtitle ?? formatEnumLabel(link.targetType)}</p>
+                {link.href ? (
+                  <Link href={link.href} className="mt-2 inline-flex text-sm underline">
+                    Open linked record
+                  </Link>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
