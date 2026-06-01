@@ -64,7 +64,7 @@ Validated against existing relationship model and guardian-access helpers:
 
 ### 3) Qualification Validation
 
-Validated qualification/certification/eligibility foundations for:
+Validation covers qualification/certification/eligibility foundations for:
 
 - assignment
 - expiration handling
@@ -73,7 +73,7 @@ Validated qualification/certification/eligibility foundations for:
 
 ### 4) Staffing Validation
 
-Validated staffing foundation coverage for:
+Validation covers staffing foundation coverage for:
 
 - coach assignments
 - volunteer assignments
@@ -82,7 +82,7 @@ Validated staffing foundation coverage for:
 
 ### 5) Permission Validation
 
-Validated and reinforced role boundaries:
+Validation enforces role boundaries:
 
 - Athletes cannot access MemberOps/admin mutation actions.
 - Guardians cannot access unrelated athletes.
@@ -92,7 +92,7 @@ Validated and reinforced role boundaries:
 
 ### 6) Dashboard Validation
 
-Reviewed dashboard/member surfaces for role relevance:
+Validation reviews dashboard/member surfaces for role relevance:
 
 - Athletes and guardians remain excluded from staff-only MemberOps module navigation.
 - Staff roles retain MemberOps views aligned to scope.
