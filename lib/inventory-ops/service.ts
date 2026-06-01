@@ -672,14 +672,29 @@ export async function checkInKit(input: CheckInKitInput) {
         });
       }
 
-      if (damagedGearItemIds.size > 0 || maintenanceGearItemIds.size > 0) {
+      if (damagedGearItemIds.size > 0) {
         await tx.gearItem.updateMany({
           where: {
             organizationId: input.organizationId,
-            id: { in: Array.from(new Set([...damagedGearItemIds, ...maintenanceGearItemIds])) },
+            id: { in: [...damagedGearItemIds] },
           },
           data: {
             conditionStatus: "DAMAGED",
+            readinessState: "MAINTENANCE_REQUIRED",
+          },
+        });
+      }
+
+      const maintenanceOnlyItemIds = [...maintenanceGearItemIds].filter(
+        (itemId) => !damagedGearItemIds.has(itemId),
+      );
+      if (maintenanceOnlyItemIds.length > 0) {
+        await tx.gearItem.updateMany({
+          where: {
+            organizationId: input.organizationId,
+            id: { in: maintenanceOnlyItemIds },
+          },
+          data: {
             readinessState: "MAINTENANCE_REQUIRED",
           },
         });

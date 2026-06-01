@@ -27,9 +27,10 @@ export async function POST(
   if (!scope.organizationId) {
     return new Response("No organization context.", { status: 400 });
   }
+  const organizationId = scope.organizationId;
 
   const access = await resolveInventoryOpsWriteAccess({
-    organizationId: scope.organizationId,
+    organizationId,
     actorPersonId: scope.auth.personId,
     workflow: "inventory-ops.kits.reserve",
   });
@@ -47,12 +48,24 @@ export async function POST(
   const windowStartAt = windowStartAtRaw ? new Date(windowStartAtRaw) : null;
   const windowEndAt = windowEndAtRaw ? new Date(windowEndAtRaw) : null;
 
-  if (!reservedForPersonId || !windowStartAt || !windowEndAt || Number.isNaN(windowStartAt.getTime()) || Number.isNaN(windowEndAt.getTime()) || windowEndAt <= windowStartAt) {
+  const hasValidPerson = Boolean(reservedForPersonId);
+  const hasValidDates =
+    Boolean(windowStartAt) &&
+    Boolean(windowEndAt) &&
+    !Number.isNaN(windowStartAt?.getTime()) &&
+    !Number.isNaN(windowEndAt?.getTime());
+  const hasValidTimeWindow =
+    Boolean(windowStartAt && windowEndAt) &&
+    (windowEndAt?.getTime() ?? 0) > (windowStartAt?.getTime() ?? 0);
+
+  if (!hasValidPerson || !hasValidDates || !hasValidTimeWindow) {
     redirect(`/gear-ops/kits/${kitId}/reserve`);
   }
+  const windowStart = windowStartAt as Date;
+  const windowEnd = windowEndAt as Date;
 
   const requestedByPersonId = await resolveActorPersonId({
-    organizationId: scope.organizationId,
+    organizationId,
     clerkUserId: scope.auth.clerkUserId,
     preferredPersonId: scope.auth.personId,
   });
@@ -62,7 +75,7 @@ export async function POST(
   }
 
   const kit = await db.inventoryKit.findFirst({
-    where: { id: kitId, organizationId: scope.organizationId },
+    where: { id: kitId, organizationId },
     select: {
       id: true,
       items: {
@@ -97,7 +110,7 @@ export async function POST(
 
       const reservation = await tx.gearReservation.create({
         data: {
-          organizationId: scope.organizationId,
+          organizationId,
           gearItemId: member.gearItem.id,
           inventoryKitId: kit.id,
           requestedByPersonId,
@@ -117,10 +130,10 @@ export async function POST(
           requestSourceRole: "STAFF",
           createdByPersonId: requestedByPersonId,
           quantityRequested: 1,
-          windowStartAt,
-          windowEndAt,
-          requestedStartAt: windowStartAt,
-          expectedReturnAt: windowEndAt,
+          windowStartAt: windowStart,
+          windowEndAt: windowEnd,
+          requestedStartAt: windowStart,
+          expectedReturnAt: windowEnd,
           notes,
           conflictSummary,
         },
@@ -129,7 +142,7 @@ export async function POST(
       await tx.gearReservationApproval.createMany({
         data: [
           {
-            organizationId: scope.organizationId,
+            organizationId,
             reservationId: reservation.id,
             approvalType: GearReservationApprovalType.AVAILABILITY,
             approvalStatus:
@@ -144,7 +157,7 @@ export async function POST(
             isAutomated: true,
           },
           {
-            organizationId: scope.organizationId,
+            organizationId,
             reservationId: reservation.id,
             approvalType: GearReservationApprovalType.CONDITION,
             approvalStatus: hasOutOfService
@@ -161,7 +174,7 @@ export async function POST(
 
       await tx.inventoryMovement.create({
         data: {
-          organizationId: scope.organizationId,
+          organizationId,
           gearItemId: member.gearItem.id,
           movementType: InventoryMovementType.RESERVED,
           actorPersonId: requestedByPersonId,

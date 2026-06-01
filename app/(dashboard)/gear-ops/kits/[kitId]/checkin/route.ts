@@ -68,15 +68,15 @@ export async function POST(
     expectedGearItemIds.length > 0
       ? expectedGearItemIds.filter((itemId) => !returnedGearItemIds.includes(itemId))
       : [];
-  const hasExpectedSelection = expectedGearItemIds.length > 0;
+  const isReturnValidationMode = expectedGearItemIds.length > 0;
 
   await checkInKit({
     organizationId: scope.organizationId,
     kitId,
     actorPersonId: scope.auth.personId,
     notes,
-    isPartial: hasExpectedSelection ? returnedGearItemIds.length !== expectedGearItemIds.length : undefined,
-    partialChildGearItemIds: hasExpectedSelection ? returnedGearItemIds : undefined,
+    isPartial: isReturnValidationMode ? returnedGearItemIds.length !== expectedGearItemIds.length : undefined,
+    partialChildGearItemIds: isReturnValidationMode ? returnedGearItemIds : undefined,
     missingGearItemIds,
     damagedGearItemIds,
     maintenanceGearItemIds,
