@@ -109,7 +109,7 @@ export async function POST(
     const access = await resolveGearOpsReadAccess({
       organizationId,
       actorPersonId,
-      workflow: "gear-ops.reservation-status.update",
+      workflow: "gear-ops.reservation-status.scope-check",
     });
 
     if (!access.allowed) {

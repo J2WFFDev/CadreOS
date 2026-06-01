@@ -93,53 +93,53 @@
 
 ## Manual validation checklist (GEAR-ROLE-001 through GEAR-ROLE-050)
 
-- [ ] GEAR-ROLE-001
-- [ ] GEAR-ROLE-002
-- [ ] GEAR-ROLE-003
-- [ ] GEAR-ROLE-004
-- [ ] GEAR-ROLE-005
-- [ ] GEAR-ROLE-006
-- [ ] GEAR-ROLE-007
-- [ ] GEAR-ROLE-008
-- [ ] GEAR-ROLE-009
-- [ ] GEAR-ROLE-010
-- [ ] GEAR-ROLE-011
-- [ ] GEAR-ROLE-012
-- [ ] GEAR-ROLE-013
-- [ ] GEAR-ROLE-014
-- [ ] GEAR-ROLE-015
-- [ ] GEAR-ROLE-016
-- [ ] GEAR-ROLE-017
-- [ ] GEAR-ROLE-018
-- [ ] GEAR-ROLE-019
-- [ ] GEAR-ROLE-020
-- [ ] GEAR-ROLE-021
-- [ ] GEAR-ROLE-022
-- [ ] GEAR-ROLE-023
-- [ ] GEAR-ROLE-024
-- [ ] GEAR-ROLE-025
-- [ ] GEAR-ROLE-026
-- [ ] GEAR-ROLE-027
-- [ ] GEAR-ROLE-028
-- [ ] GEAR-ROLE-029
-- [ ] GEAR-ROLE-030
-- [ ] GEAR-ROLE-031
-- [ ] GEAR-ROLE-032
-- [ ] GEAR-ROLE-033
-- [ ] GEAR-ROLE-034
-- [ ] GEAR-ROLE-035
-- [ ] GEAR-ROLE-036
-- [ ] GEAR-ROLE-037
-- [ ] GEAR-ROLE-038
-- [ ] GEAR-ROLE-039
-- [ ] GEAR-ROLE-040
-- [ ] GEAR-ROLE-041
-- [ ] GEAR-ROLE-042
-- [ ] GEAR-ROLE-043
-- [ ] GEAR-ROLE-044
-- [ ] GEAR-ROLE-045
-- [ ] GEAR-ROLE-046
-- [ ] GEAR-ROLE-047
-- [ ] GEAR-ROLE-048
-- [ ] GEAR-ROLE-049
-- [ ] GEAR-ROLE-050
+- [ ] GEAR-ROLE-001 — Athlete cannot open staff-only GearOps inventory detail views.
+- [ ] GEAR-ROLE-002 — Guardian cannot open staff-only GearOps inventory detail views.
+- [ ] GEAR-ROLE-003 — Coach can access in-scope GearOps dashboard.
+- [ ] GEAR-ROLE-004 — GearOps admin can access in-scope GearOps dashboard.
+- [ ] GEAR-ROLE-005 — Program admin can access in-scope GearOps dashboard.
+- [ ] GEAR-ROLE-006 — Organization admin can access full GearOps dashboard.
+- [ ] GEAR-ROLE-007 — Coach sees only in-scope inventory rows.
+- [ ] GEAR-ROLE-008 — Program admin sees only in-scope program inventory.
+- [ ] GEAR-ROLE-009 — Organization admin sees cross-program inventory.
+- [ ] GEAR-ROLE-010 — Reservation list excludes out-of-scope items.
+- [ ] GEAR-ROLE-011 — Reservation list includes in-scope static kit reservations.
+- [ ] GEAR-ROLE-012 — Reservation list includes in-scope dynamic kit reservations.
+- [ ] GEAR-ROLE-013 — Coach can create reservation for in-scope item.
+- [ ] GEAR-ROLE-014 — Coach cannot create reservation for out-of-scope item.
+- [ ] GEAR-ROLE-015 — GearOps admin can create reservation for in-scope item.
+- [ ] GEAR-ROLE-016 — Program admin can create reservation for program-scoped item.
+- [ ] GEAR-ROLE-017 — Organization admin can create reservation across org scope.
+- [ ] GEAR-ROLE-018 — Reservation request persists request source role attribution.
+- [ ] GEAR-ROLE-019 — Guardian-required category reservation creates guardian approval row.
+- [ ] GEAR-ROLE-020 — Pending review reservation creates coach/admin approval row.
+- [ ] GEAR-ROLE-021 — Coach can approve pending review reservation in scope.
+- [ ] GEAR-ROLE-022 — Coach cannot approve pending review reservation out of scope.
+- [ ] GEAR-ROLE-023 — Program admin can approve pending review reservation in scope.
+- [ ] GEAR-ROLE-024 — Organization admin can approve pending review reservation globally.
+- [ ] GEAR-ROLE-025 — Deny action creates denial approval record with actor attribution.
+- [ ] GEAR-ROLE-026 — Approval action creates approval record with actor attribution.
+- [ ] GEAR-ROLE-027 — Reservation approval updates workflow status correctly.
+- [ ] GEAR-ROLE-028 — Reservation release updates release actor and release timestamp.
+- [ ] GEAR-ROLE-029 — Reservation fulfillment writes fulfillment timestamp.
+- [ ] GEAR-ROLE-030 — Reservation release writes inventory movement history entry.
+- [ ] GEAR-ROLE-031 — Checkout from approved reservation updates checkout state.
+- [ ] GEAR-ROLE-032 — Check-in/return updates reservation return workflow state.
+- [ ] GEAR-ROLE-033 — Return with issue enters inspection-needed workflow state.
+- [ ] GEAR-ROLE-034 — Inspection result can trigger maintenance follow-up.
+- [ ] GEAR-ROLE-035 — Maintenance log creation captures performer and notes.
+- [ ] GEAR-ROLE-036 — Maintenance completion updates item readiness/condition state.
+- [ ] GEAR-ROLE-037 — Return-to-service route restores service-ready lifecycle state.
+- [ ] GEAR-ROLE-038 — Static kit checkout records kit custody event.
+- [ ] GEAR-ROLE-039 — Static kit check-in records kit custody return event.
+- [ ] GEAR-ROLE-040 — Static kit return captures missing item issue.
+- [ ] GEAR-ROLE-041 — Static kit return captures damaged item issue.
+- [ ] GEAR-ROLE-042 — Dynamic kit allocation supports partial allocation status.
+- [ ] GEAR-ROLE-043 — Dynamic kit allocation flags unable-to-allocate scenarios.
+- [ ] GEAR-ROLE-044 — Dynamic kit return validation captures missing item issue.
+- [ ] GEAR-ROLE-045 — Dynamic kit return validation captures damaged item issue.
+- [ ] GEAR-ROLE-046 — Custody history is hidden for out-of-scope users.
+- [ ] GEAR-ROLE-047 — Reservation details are hidden for out-of-scope users.
+- [ ] GEAR-ROLE-048 — Maintenance records are hidden for out-of-scope users.
+- [ ] GEAR-ROLE-049 — Dashboard reservation widgets respect role/scoped visibility.
+- [ ] GEAR-ROLE-050 — RC1 role matrix and workflow matrix match implemented behavior.
