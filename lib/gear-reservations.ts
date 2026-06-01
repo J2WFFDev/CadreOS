@@ -10,7 +10,7 @@ import type {
 
 export type GearReservationSnapshot = {
   id: string;
-  gearItemId: string;
+  gearItemId: string | null;
   mode: GearReservationMode;
   status: GearReservationStatus;
   approvalStatus: ApprovalStatus;

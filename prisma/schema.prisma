@@ -757,6 +757,27 @@ enum GearKitCustodyEventType {
   PARTIAL_RETURN
 }
 
+// ── Arc 25D: GearOps Dynamic Kit Allocation and Inventory Pools ───────────────
+
+enum DynamicKitAllocationStatus {
+  FULLY_ALLOCATED
+  PARTIALLY_ALLOCATED
+  UNABLE_TO_ALLOCATE
+}
+
+enum DynamicKitReturnIssue {
+  MISSING_ITEM
+  WRONG_ITEM_RETURNED
+  DAMAGED_ITEM
+}
+
+enum DynamicKitActivityType {
+  ALLOCATION
+  DEALLOCATION
+  RESERVATION_ASSIGNED
+  RETURN_VALIDATED
+}
+
 model Organization {
   id        String    @id @default(cuid())
   name      String
@@ -836,6 +857,14 @@ model Organization {
   notificationReadStates       NotificationReadState[]
   notificationPreferences      NotificationPreference[]
   notificationDigests          NotificationDigest[]
+  // Arc 25D: Dynamic Kit Allocation and Inventory Pools
+  dynamicKitDefinitions        DynamicKitDefinition[]
+  dynamicKitRequirements       DynamicKitRequirement[]
+  inventoryPools               InventoryPool[]
+  inventoryPoolMemberships     InventoryPoolMembership[]
+  dynamicKitAllocations        DynamicKitAllocation[]
+  dynamicKitAllocationItems    DynamicKitAllocationItem[]
+  dynamicKitActivityLogs       DynamicKitActivityLog[]
 }
 
 model Program {
@@ -1015,6 +1044,8 @@ model Person {
   habitCompletions                     HabitCompletion[]             @relation("HabitCompletionAthlete")
   // Arc 24D.4: Personal entry lists owned by this person
   ownedEntryLists                      EntryList[]                   @relation("EntryListOwner")
+  // Arc 25D: Dynamic Kit Allocation actor
+  dynamicKitAllocations                DynamicKitAllocation[]        @relation("DynamicKitAllocationActor")
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
@@ -1717,6 +1748,8 @@ model GearCategory {
   eventGearRequirements         EventGearRequirement[]
   categoryFields                GearCategoryField[]
   eventGearRequirementTemplates EventGearRequirementTemplate[]
+  // Arc 25D: Dynamic kit requirements referencing this category
+  dynamicKitRequirements        DynamicKitRequirement[]
 
   @@unique([organizationId, name])
   @@index([organizationId, inventoryType])
@@ -1776,6 +1809,9 @@ model GearItem {
   scanEvents                  InventoryScanEvent[]
   inventoryAuditResults       InventoryAuditResult[]
   inventoryAuditDiscrepancies InventoryAuditDiscrepancy[]
+  // Arc 25D: Inventory pool memberships and dynamic kit allocation items
+  poolMemberships             InventoryPoolMembership[]
+  dynamicKitAllocationItems   DynamicKitAllocationItem[]
 
   @@unique([organizationId, serialNumber])
   @@unique([organizationId, assetId])
@@ -1858,8 +1894,10 @@ model GearCheckout {
 model GearReservation {
   id                  String                 @id @default(cuid())
   organizationId      String
-  gearItemId          String
+  gearItemId          String?
   inventoryKitId      String?
+  // Arc 25D: dynamic kit definition reference (mutually exclusive with static kit / item)
+  dynamicKitDefinitionId String?
   programId           String?
   reservedForPersonId String?
   reservedForTeamId   String?
@@ -1890,20 +1928,24 @@ model GearReservation {
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  gearItem      GearItem     @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
-  inventoryKit  InventoryKit? @relation(fields: [inventoryKitId], references: [id], onDelete: SetNull)
-  program       Program?     @relation(fields: [programId], references: [id], onDelete: SetNull)
-  reservedFor   Person?      @relation("GearReservationReservedFor", fields: [reservedForPersonId], references: [id], onDelete: SetNull)
-  reservedTeam  Team?        @relation(fields: [reservedForTeamId], references: [id], onDelete: SetNull)
-  reservedEvent Event?       @relation(fields: [reservedForEventId], references: [id], onDelete: SetNull)
-  requestedBy   Person       @relation("GearReservationRequestedBy", fields: [requestedByPersonId], references: [id], onDelete: Restrict)
-  approvedBy    Person?      @relation("GearReservationApprovedBy", fields: [approvedByPersonId], references: [id], onDelete: SetNull)
-  releasedBy    Person?      @relation("GearReservationReleasedBy", fields: [releasedByPersonId], references: [id], onDelete: SetNull)
-  approvals     GearReservationApproval[]
+  organization       Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  gearItem           GearItem?             @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  inventoryKit       InventoryKit?         @relation(fields: [inventoryKitId], references: [id], onDelete: SetNull)
+  // Arc 25D: dynamic kit definition and allocation
+  dynamicKitDefinition DynamicKitDefinition? @relation(fields: [dynamicKitDefinitionId], references: [id], onDelete: SetNull)
+  dynamicKitAllocation DynamicKitAllocation?
+  program            Program?              @relation(fields: [programId], references: [id], onDelete: SetNull)
+  reservedFor        Person?               @relation("GearReservationReservedFor", fields: [reservedForPersonId], references: [id], onDelete: SetNull)
+  reservedTeam       Team?                 @relation(fields: [reservedForTeamId], references: [id], onDelete: SetNull)
+  reservedEvent      Event?                @relation(fields: [reservedForEventId], references: [id], onDelete: SetNull)
+  requestedBy        Person                @relation("GearReservationRequestedBy", fields: [requestedByPersonId], references: [id], onDelete: Restrict)
+  approvedBy         Person?               @relation("GearReservationApprovedBy", fields: [approvedByPersonId], references: [id], onDelete: SetNull)
+  releasedBy         Person?               @relation("GearReservationReleasedBy", fields: [releasedByPersonId], references: [id], onDelete: SetNull)
+  approvals          GearReservationApproval[]
 
+  // Note: gearItemId is nullable (Arc 25D) so this index is sparse — dynamic kit reservations
+  // (where gearItemId is null) are excluded. Static item reservations are still indexed.
   @@index([organizationId, gearItemId, status])
-  @@index([organizationId, windowStartAt, status])
   @@index([organizationId, windowEndAt, status])
   @@index([organizationId, reservedForPersonId, status])
   @@index([organizationId, reservedForTeamId, status])
@@ -1911,6 +1953,7 @@ model GearReservation {
   @@index([organizationId, purpose, status])
   @@index([organizationId, workflowStatus, windowStartAt])
   @@index([organizationId, inventoryKitId, status])
+  @@index([organizationId, dynamicKitDefinitionId, status])
 }
 
 model GearAssembly {
@@ -2955,4 +2998,165 @@ model HabitActivity {
 
   @@index([organizationId, createdAt])
   @@index([habitId, createdAt])
+}
+
+// ── Arc 25D: Dynamic Kit Definitions ─────────────────────────────────────────
+
+// DynamicKitDefinition — requirements-based kit template. Unlike InventoryKit
+// (which holds specific items), this describes what a kit *needs*, and the
+// allocation engine selects available inventory at reservation time.
+model DynamicKitDefinition {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  category       String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization  Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  requirements  DynamicKitRequirement[]
+  allocations   DynamicKitAllocation[]
+  reservations  GearReservation[]
+
+  @@index([organizationId, active])
+  @@index([organizationId, name])
+}
+
+// DynamicKitRequirement — one line item in a dynamic kit's required inventory list.
+// Identifies items by inventory type and/or category; does not pin specific records.
+model DynamicKitRequirement {
+  id               String            @id @default(cuid())
+  organizationId   String
+  kitDefinitionId  String
+  inventoryType    GearInventoryType
+  gearCategoryId   String?
+  categoryLabel    String?           // free-text fallback label when category not linked
+  quantityRequired Int               @default(1)
+  notes            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  organization    Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  kitDefinition   DynamicKitDefinition   @relation(fields: [kitDefinitionId], references: [id], onDelete: Cascade)
+  gearCategory    GearCategory?          @relation(fields: [gearCategoryId], references: [id], onDelete: SetNull)
+  allocationItems DynamicKitAllocationItem[]
+
+  @@index([organizationId, kitDefinitionId])
+  @@index([organizationId, gearCategoryId])
+}
+
+// ── Arc 25D: Inventory Pools ──────────────────────────────────────────────────
+
+// InventoryPool — a named collection of eligible GearItems for dynamic allocation.
+// Examples: Magazine Pool, Radio Pool, Rifle Pool, Case Pool.
+// Items may participate in multiple pools.
+model InventoryPool {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  memberships  InventoryPoolMembership[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, active])
+}
+
+// InventoryPoolMembership — links a GearItem to an InventoryPool.
+// An item may participate in multiple pools simultaneously.
+model InventoryPoolMembership {
+  id             String   @id @default(cuid())
+  organizationId String
+  poolId         String
+  gearItemId     String
+  addedAt        DateTime @default(now())
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  pool         InventoryPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  gearItem     GearItem      @relation(fields: [gearItemId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, gearItemId])
+  @@index([organizationId, poolId])
+  @@index([organizationId, gearItemId])
+}
+
+// ── Arc 25D: Allocation Engine ────────────────────────────────────────────────
+
+// DynamicKitAllocation — the result of running the allocation engine against a
+// DynamicKitDefinition. Linked 1:1 to a GearReservation when created through
+// the reservation workflow.
+model DynamicKitAllocation {
+  id              String                     @id @default(cuid())
+  organizationId  String
+  kitDefinitionId String
+  reservationId   String?                    @unique
+  actorPersonId   String
+  status          DynamicKitAllocationStatus
+  notes           String?
+  allocatedAt     DateTime                   @default(now())
+  deallocatedAt   DateTime?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  organization  Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  kitDefinition DynamicKitDefinition       @relation(fields: [kitDefinitionId], references: [id], onDelete: Restrict)
+  reservation   GearReservation?           @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  actor         Person                     @relation("DynamicKitAllocationActor", fields: [actorPersonId], references: [id], onDelete: Restrict)
+  items         DynamicKitAllocationItem[]
+  activityLogs  DynamicKitActivityLog[]
+
+  @@index([organizationId, kitDefinitionId, status])
+  @@index([organizationId, status])
+}
+
+// DynamicKitAllocationItem — an individual GearItem selected by the allocation
+// engine to fulfill one requirement line of a DynamicKitAllocation.
+model DynamicKitAllocationItem {
+  id             String                 @id @default(cuid())
+  organizationId String
+  allocationId   String
+  gearItemId     String
+  requirementId  String?
+  returnIssue    DynamicKitReturnIssue?
+  returnNotes    String?
+  returnedAt     DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  allocation   DynamicKitAllocation   @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  gearItem     GearItem               @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  requirement  DynamicKitRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, allocationId])
+  @@index([organizationId, gearItemId])
+}
+
+// ── Arc 25D: Activity History ─────────────────────────────────────────────────
+
+// DynamicKitActivityLog — immutable append-only log for dynamic kit operations:
+// allocation, deallocation, reservation assignment, and return validation.
+model DynamicKitActivityLog {
+  id             String                 @id @default(cuid())
+  organizationId String
+  activityType   DynamicKitActivityType
+  allocationId   String?
+  reservationId  String?
+  actorPersonId  String?
+  notes          String?
+  metadata       String?                // optional JSON for extensibility
+  occurredAt     DateTime               @default(now())
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  allocation   DynamicKitAllocation? @relation(fields: [allocationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, activityType, occurredAt])
+  @@index([organizationId, allocationId])
+  @@index([organizationId, reservationId])
 }

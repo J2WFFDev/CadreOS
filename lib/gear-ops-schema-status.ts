@@ -15,6 +15,7 @@ export type GearOpsSchemaScope =
   | "item-detail"
   | "reservation-creation"
   | "kits"
+  | "dynamic-kits"
   | "reports"
   | "event-templates"
   | "audits"
@@ -398,6 +399,51 @@ const KIT_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
   [{ table: "InventoryKitItem", columns: INVENTORY_KIT_LIST_ITEM_COLUMNS }],
 );
 
+const DYNAMIC_KIT_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
+  [
+    {
+      table: "DynamicKitDefinition",
+      columns: ["id", "organizationId", "name", "description", "category", "active", "createdAt", "updatedAt"],
+    },
+  ],
+  [
+    {
+      table: "DynamicKitRequirement",
+      columns: ["id", "organizationId", "kitDefinitionId", "inventoryType", "gearCategoryId", "categoryLabel", "quantityRequired", "notes"],
+    },
+  ],
+  [
+    {
+      table: "InventoryPool",
+      columns: ["id", "organizationId", "name", "description", "active", "createdAt", "updatedAt"],
+    },
+  ],
+  [
+    {
+      table: "InventoryPoolMembership",
+      columns: ["id", "organizationId", "poolId", "gearItemId", "addedAt"],
+    },
+  ],
+  [
+    {
+      table: "DynamicKitAllocation",
+      columns: ["id", "organizationId", "kitDefinitionId", "reservationId", "actorPersonId", "status", "notes", "allocatedAt", "deallocatedAt"],
+    },
+  ],
+  [
+    {
+      table: "DynamicKitAllocationItem",
+      columns: ["id", "organizationId", "allocationId", "gearItemId", "requirementId", "returnIssue", "returnNotes", "returnedAt"],
+    },
+  ],
+  [
+    {
+      table: "DynamicKitActivityLog",
+      columns: ["id", "organizationId", "activityType", "allocationId", "reservationId", "actorPersonId", "notes", "metadata", "occurredAt"],
+    },
+  ],
+);
+
 const REPORT_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements([
   { table: "GearCategory", columns: GEAR_CATEGORY_BASIC_COLUMNS },
   {
@@ -483,6 +529,7 @@ const GEAR_OPS_SCHEMA_REQUIREMENTS: Record<GearOpsSchemaScope, GearOpsSchemaRequ
   "item-detail": ITEM_DETAIL_REQUIREMENTS,
   "reservation-creation": RESERVATION_CREATION_REQUIREMENTS,
   kits: KIT_REQUIREMENTS,
+  "dynamic-kits": DYNAMIC_KIT_REQUIREMENTS,
   reports: REPORT_REQUIREMENTS,
   "event-templates": EVENT_TEMPLATE_REQUIREMENTS,
   audits: AUDIT_REQUIREMENTS,

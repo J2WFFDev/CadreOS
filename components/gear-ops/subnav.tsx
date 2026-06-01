@@ -4,9 +4,10 @@ import Link from "next/link";
  * GearOps subnav — semantic groups make it easier to locate field vs. admin links.
  *
  * Groups:
- * - Field ops: Overview, Items, Scan/Mobile, Kits
+ * - Field ops: Overview, Items, Scan/Mobile, Kits, Dynamic Kits
  * - Event/planning: Reports, Event Templates
  * - Locations & audit: Locations, Audits, Labels
+ * - Inventory: Pools
  * - Admin: Categories, Admin
  */
 
@@ -16,12 +17,14 @@ type SubnavKey =
   | "reservations"
   | "scan"
   | "kits"
+  | "dynamic-kits"
   | "bulk"
   | "reports"
   | "event-templates"
   | "locations"
   | "audits"
   | "labels"
+  | "pools"
   | "categories"
   | "admin";
 
@@ -39,6 +42,7 @@ const GEAR_OPS_GROUPS: SubnavGroup[] = [
       { href: "/gear-ops/reservations", label: "Reservations", key: "reservations" },
       { href: "/gear-ops/scan", label: "Scan", key: "scan" },
       { href: "/gear-ops/kits", label: "Kits", key: "kits" },
+      { href: "/gear-ops/dynamic-kits", label: "Dynamic Kits", key: "dynamic-kits" },
       { href: "/gear-ops/bulk", label: "Bulk Ops", key: "bulk" },
     ],
   },
@@ -55,6 +59,12 @@ const GEAR_OPS_GROUPS: SubnavGroup[] = [
       { href: "/gear-ops/locations", label: "Locations", key: "locations" },
       { href: "/gear-ops/audits", label: "Audits", key: "audits" },
       { href: "/gear-ops/labels", label: "Labels", key: "labels" },
+    ],
+  },
+  {
+    label: "Inventory",
+    links: [
+      { href: "/gear-ops/pools", label: "Pools", key: "pools" },
     ],
   },
   {
