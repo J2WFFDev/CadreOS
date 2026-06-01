@@ -19,6 +19,7 @@ import {
   GearItemLifecycleStatus,
   GearMaintenanceFrequency,
   GearMaintenanceType,
+  GuardianRelationshipRole,
   GearReservationMode,
   GearReservationPurpose,
   GearReservationStatus,
@@ -179,10 +180,14 @@ export const guardianRelationshipWorkflowSchema = z
     relationshipType: z.nativeEnum(RelationshipType, {
       message: "Relationship type must use an existing relationship value.",
     }),
+    guardianRole: z.nativeEnum(GuardianRelationshipRole, {
+      message: "Guardian role must use an existing role value.",
+    }),
   })
   .transform((value) => ({
     guardianPersonId: value.guardianPersonId,
     relationshipType: value.relationshipType,
+    guardianRole: value.guardianRole,
   }));
 
 export const teamWorkflowSchema = z.object({

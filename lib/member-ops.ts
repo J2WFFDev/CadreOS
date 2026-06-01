@@ -2,8 +2,10 @@ import { MemberLifecycleStatus, RoleType } from "@prisma/client";
 
 export const MEMBER_LIFECYCLE_STATUS_LABELS: Record<MemberLifecycleStatus, string> = {
   [MemberLifecycleStatus.PROSPECT]: "Prospect",
-  [MemberLifecycleStatus.ACTIVE]: "Active",
-  [MemberLifecycleStatus.INACTIVE]: "Inactive",
+  [MemberLifecycleStatus.APPLICANT]: "Applicant",
+  [MemberLifecycleStatus.ACTIVE]: "Active Member",
+  [MemberLifecycleStatus.INACTIVE]: "Inactive Member",
+  [MemberLifecycleStatus.FORMER]: "Former Member",
   [MemberLifecycleStatus.ARCHIVED]: "Former Member (Archived)",
   [MemberLifecycleStatus.ALUMNI]: "Alumni",
 };
@@ -11,6 +13,7 @@ export const MEMBER_LIFECYCLE_STATUS_LABELS: Record<MemberLifecycleStatus, strin
 export const MEMBER_LIFECYCLE_DEFAULT_VISIBLE_STATUSES = [
   MemberLifecycleStatus.ACTIVE,
   MemberLifecycleStatus.PROSPECT,
+  MemberLifecycleStatus.APPLICANT,
 ] as const;
 
 const defaultVisibleLifecycleStatusSet = new Set<MemberLifecycleStatus>(MEMBER_LIFECYCLE_DEFAULT_VISIBLE_STATUSES);

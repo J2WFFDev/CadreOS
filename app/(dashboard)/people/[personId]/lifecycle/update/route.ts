@@ -2,6 +2,7 @@ import { MemberLifecycleStatus, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { writeAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
@@ -15,6 +16,12 @@ const lifecycleStatusUpdateSchema = z.object({
   lifecycleStatus: z.nativeEnum(MemberLifecycleStatus, {
     message: "Lifecycle status must use an existing status value.",
   }),
+  lifecycleReason: z
+    .string()
+    .trim()
+    .max(300, "Lifecycle reason must be 300 characters or less.")
+    .optional()
+    .transform((value) => value || null),
 });
 
 function buildErrorRedirectUrl(requestUrl: string, personId: string, error: string) {
@@ -32,6 +39,7 @@ export async function POST(
   const formData = await request.formData();
   const values = {
     lifecycleStatus: getStringField(formData, "lifecycleStatus"),
+    lifecycleReason: getStringField(formData, "lifecycleReason"),
   };
 
   if (!scope.databaseReady) {
@@ -68,7 +76,11 @@ export async function POST(
         id: personId,
         organizationId,
       },
-      select: { id: true },
+      select: {
+        id: true,
+        lifecycleStatus: true,
+        lifecycleStatusReason: true,
+      },
     });
 
     if (!person) {
@@ -78,14 +90,41 @@ export async function POST(
       );
     }
 
-    await db.person.update({
+    const updatedPerson = await db.person.update({
       where: {
         id: person.id,
         organizationId,
       },
       data: {
         lifecycleStatus: parsed.data.lifecycleStatus,
+        lifecycleStatusChangedAt: new Date(),
+        lifecycleStatusReason: parsed.data.lifecycleReason,
       },
+      select: {
+        lifecycleStatus: true,
+        lifecycleStatusChangedAt: true,
+        lifecycleStatusReason: true,
+      },
+    });
+
+    await writeAuditEvent({
+      organizationId,
+      actorPersonId: scope.auth.personId,
+      action: "person.lifecycle.update",
+      entityType: "person",
+      entityId: person.id,
+      beforeJson: JSON.stringify({
+        lifecycleStatus: person.lifecycleStatus,
+        lifecycleStatusReason: person.lifecycleStatusReason,
+      }),
+      afterJson: JSON.stringify({
+        lifecycleStatus: updatedPerson.lifecycleStatus,
+        lifecycleStatusChangedAt: updatedPerson.lifecycleStatusChangedAt.toISOString(),
+        lifecycleStatusReason: updatedPerson.lifecycleStatusReason,
+      }),
+      metadataJson: JSON.stringify({
+        transitionType: "manual_update",
+      }),
     });
 
     return NextResponse.redirect(new URL(`/people/${personId}`, request.url), 303);

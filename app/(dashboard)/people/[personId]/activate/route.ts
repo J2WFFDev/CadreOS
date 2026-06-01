@@ -1,6 +1,7 @@
 import { MemberLifecycleStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { writeAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
@@ -13,8 +14,11 @@ import {
 
 const ACTIVATABLE_STATUSES = new Set<MemberLifecycleStatus>([
   MemberLifecycleStatus.PROSPECT,
+  MemberLifecycleStatus.APPLICANT,
   MemberLifecycleStatus.INACTIVE,
   MemberLifecycleStatus.ALUMNI,
+  MemberLifecycleStatus.FORMER,
+  MemberLifecycleStatus.ARCHIVED,
 ]);
 
 function buildErrorRedirectUrl(requestUrl: string, personId: string, error: string) {
@@ -75,6 +79,7 @@ export async function POST(
       select: {
         id: true,
         lifecycleStatus: true,
+        lifecycleStatusReason: true,
       },
     });
 
@@ -90,20 +95,44 @@ export async function POST(
         buildErrorRedirectUrl(
           request.url,
           personId,
-          `This person cannot be activated from their current status (${person.lifecycleStatus}). Only Prospect, Inactive, or Alumni members can be activated.`,
+          `This person cannot be activated from their current status (${person.lifecycleStatus}). Only Prospect, Applicant, Inactive, Alumni, Former, or Archived members can be activated.`,
         ),
         303,
       );
     }
 
-    await db.person.update({
+    const updatedPerson = await db.person.update({
       where: {
         id: personId,
         organizationId: organizationId,
       },
       data: {
         lifecycleStatus: MemberLifecycleStatus.ACTIVE,
+        lifecycleStatusChangedAt: new Date(),
+        lifecycleStatusReason: "Activated member from lifecycle workflow.",
       },
+      select: {
+        lifecycleStatus: true,
+        lifecycleStatusChangedAt: true,
+        lifecycleStatusReason: true,
+      },
+    });
+
+    await writeAuditEvent({
+      organizationId,
+      actorPersonId: scope.auth.personId,
+      action: "person.lifecycle.activate",
+      entityType: "person",
+      entityId: person.id,
+      beforeJson: JSON.stringify({
+        lifecycleStatus: person.lifecycleStatus,
+        lifecycleStatusReason: person.lifecycleStatusReason,
+      }),
+      afterJson: JSON.stringify({
+        lifecycleStatus: updatedPerson.lifecycleStatus,
+        lifecycleStatusChangedAt: updatedPerson.lifecycleStatusChangedAt.toISOString(),
+        lifecycleStatusReason: updatedPerson.lifecycleStatusReason,
+      }),
     });
 
     return NextResponse.redirect(new URL(`/people/${personId}`, request.url), 303);

@@ -1,4 +1,4 @@
-import { RelationshipType } from "@prisma/client";
+import { GuardianRelationshipRole, RelationshipType } from "@prisma/client";
 
 import { BackLink } from "@/components/dashboard/back-link";
 import { ErrorMessage } from "@/components/dashboard/error-message";
@@ -173,6 +173,7 @@ export default async function EditPersonGuardianRelationshipPage({
     | {
         id: string;
         relationshipType: string;
+        guardianRole: string;
         guardianPersonId: string;
         guardian: { id: string; firstName: string; lastName: string; email: string | null };
       }
@@ -223,6 +224,7 @@ export default async function EditPersonGuardianRelationshipPage({
           id: true,
           guardianPersonId: true,
           relationshipType: true,
+          guardianRole: true,
           guardian: {
             select: {
               id: true,
@@ -316,6 +318,9 @@ export default async function EditPersonGuardianRelationshipPage({
   const relationshipType = hasSearchParam(resolvedSearchParams, "relationshipType")
     ? readSearchParam(resolvedSearchParams, "relationshipType")
     : relationship.relationshipType;
+  const guardianRole = hasSearchParam(resolvedSearchParams, "guardianRole")
+    ? readSearchParam(resolvedSearchParams, "guardianRole")
+    : relationship.guardianRole;
   const generalError = readSearchParam(resolvedSearchParams, "error");
 
   return (
@@ -382,6 +387,27 @@ export default async function EditPersonGuardianRelationshipPage({
           </select>
           {readSearchParam(resolvedSearchParams, "relationshipTypeError") ? (
             <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "relationshipTypeError")}</p>
+          ) : null}
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="guardianRole" className="text-sm font-medium">
+            Guardian role
+          </label>
+          <select
+            id="guardianRole"
+            name="guardianRole"
+            defaultValue={guardianRole}
+            className="w-full rounded-md border px-3 py-2 text-sm"
+          >
+            {Object.values(GuardianRelationshipRole).map((value) => (
+              <option key={value} value={value}>
+                {formatEnumLabel(value)}
+              </option>
+            ))}
+          </select>
+          {readSearchParam(resolvedSearchParams, "guardianRoleError") ? (
+            <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "guardianRoleError")}</p>
           ) : null}
         </div>
 

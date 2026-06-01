@@ -28,7 +28,7 @@ type OperationalHistoryContext = {
 
 export type OperationalHistoryItem = {
   id: string;
-  kind: "task" | "note" | "attendance" | "event" | "roster" | "assignment";
+  kind: "task" | "note" | "attendance" | "event" | "roster" | "assignment" | "audit";
   href: string;
   title: string;
   changeLabel: string;
@@ -232,7 +232,42 @@ export async function getOperationalHistory(input: {
     eventWhere.AND = eventAnd;
   }
 
-  const [tasks, notes, attendanceRecords, events, rosterMemberships, roleAssignments] = await Promise.all([
+  const auditWhere: Prisma.AuditEventWhereInput = {
+    organizationId: input.organizationId,
+    createdAt: { gte: changedSince },
+    action: {
+      in: [
+        "person.lifecycle.create",
+        "person.lifecycle.update",
+        "person.lifecycle.activate",
+        "person.lifecycle.inactive",
+        "person.lifecycle.archive",
+        "guardianRelationship.create",
+        "guardianRelationship.update",
+      ],
+    },
+  };
+
+  if (input.personId) {
+    const escapedPersonId = escapeJsonContainsValue(input.personId);
+    auditWhere.OR = [
+      {
+        entityType: "person",
+        entityId: input.personId,
+      },
+      {
+        entityType: "athleteGuardianRelationship",
+        OR: [
+          { beforeJson: { contains: `"athletePersonId":"${escapedPersonId}"` } },
+          { beforeJson: { contains: `"guardianPersonId":"${escapedPersonId}"` } },
+          { afterJson: { contains: `"athletePersonId":"${escapedPersonId}"` } },
+          { afterJson: { contains: `"guardianPersonId":"${escapedPersonId}"` } },
+        ],
+      },
+    ];
+  }
+
+  const [tasks, notes, attendanceRecords, events, rosterMemberships, roleAssignments, auditEvents] = await Promise.all([
     db.followUpTask.findMany({
       where: {
         ...taskWhere,
@@ -386,6 +421,24 @@ export async function getOperationalHistory(input: {
           orderBy: [{ updatedAt: "desc" }],
           take: 50,
         }),
+    input.personId
+      ? db.auditEvent.findMany({
+          where: auditWhere,
+          select: {
+            id: true,
+            action: true,
+            entityType: true,
+            entityId: true,
+            actor: { select: { id: true, firstName: true, lastName: true } },
+            beforeJson: true,
+            afterJson: true,
+            metadataJson: true,
+            createdAt: true,
+          },
+          orderBy: [{ createdAt: "desc" }],
+          take: 50,
+        })
+      : Promise.resolve([]),
   ]);
 
   const items: Array<OperationalHistoryItem | null> = [
@@ -662,6 +715,38 @@ export async function getOperationalHistory(input: {
         INTERNAL_NOTIFICATION_CANDIDATE_TYPE.ASSIGNMENT_UPDATE_AWARENESS,
       ),
     })),
+    ...auditEvents.map((event) => ({
+      id: `audit-${event.id}`,
+      kind: "audit" as const,
+      href: input.personId ? `/people/${input.personId}#operational-history` : "/people",
+      title:
+        event.action.startsWith("person.lifecycle")
+          ? "Lifecycle state change"
+          : "Guardian relationship change",
+      changeLabel: formatEnumLabel(event.action.replaceAll(".", "_")),
+      changedAt: event.createdAt,
+      summary: buildAuditSummary(event.action, event.beforeJson, event.afterJson),
+      contexts: compactContexts([
+        buildContext("Entity", event.entityType, null),
+        input.personId ? buildContext("Person", input.personId, `/people/${input.personId}`) : null,
+      ]),
+      actor: event.actor
+        ? {
+            label: "Actor",
+            name: `${event.actor.firstName} ${event.actor.lastName}`,
+            href: `/people/${event.actor.id}`,
+          }
+        : {
+            label: "Actor",
+            name: null,
+            href: null,
+          },
+      unresolvedLabel: null,
+      communicationClassification: getInternalCommunicationEventClassification(
+        INTERNAL_COMMUNICATION_EVENT_CATEGORY.INFORMATIONAL_OPERATIONAL_EVENT,
+      ),
+      notificationCandidateEvaluation: getInternalNotificationCandidateEvaluation(null),
+    })),
   ];
 
   return items
@@ -690,4 +775,66 @@ function dedupeContexts(items: OperationalHistoryContext[]) {
 
 function isUnresolvedTaskStatus(value: string) {
   return value === TaskStatus.OPEN || value === TaskStatus.IN_PROGRESS || value === TaskStatus.BLOCKED;
+}
+
+function parseAuditJson(value: string | null): Record<string, unknown> | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return typeof parsed === "object" && parsed ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildAuditSummary(action: string, beforeJson: string | null, afterJson: string | null): string {
+  const before = parseAuditJson(beforeJson);
+  const after = parseAuditJson(afterJson);
+
+  if (action.startsWith("person.lifecycle")) {
+    const fromStatus = typeof before?.lifecycleStatus === "string" ? before.lifecycleStatus : null;
+    const toStatus = typeof after?.lifecycleStatus === "string" ? after.lifecycleStatus : null;
+    const reason = typeof after?.lifecycleStatusReason === "string" ? after.lifecycleStatusReason : null;
+    return [
+      fromStatus && toStatus
+        ? `Status: ${formatEnumLabel(fromStatus)} → ${formatEnumLabel(toStatus)}`
+        : null,
+      reason ? `Reason: ${reason}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  const relationshipType = typeof after?.relationshipType === "string" ? after.relationshipType : null;
+  const guardianRole = typeof after?.guardianRole === "string" ? after.guardianRole : null;
+  const typeBefore = typeof before?.relationshipType === "string" ? before.relationshipType : null;
+  const roleBefore = typeof before?.guardianRole === "string" ? before.guardianRole : null;
+
+  return [
+    formatAuditTransitionLabel("Relationship", typeBefore, relationshipType),
+    formatAuditTransitionLabel("Guardian role", roleBefore, guardianRole),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function escapeJsonContainsValue(value: string): string {
+  // Audit before/after JSON is stored as escaped JSON strings; this escapes user-controlled content
+  // before composing JSON fragment contains filters to avoid malformed query fragments.
+  return value.replace(/[\\"]/g, (matchedChar) => (matchedChar === "\\" ? "\\\\" : "\\\""));
+}
+
+function formatAuditTransitionLabel(label: string, before: string | null, after: string | null): string | null {
+  if (before && after) {
+    return `${label}: ${formatEnumLabel(before)} → ${formatEnumLabel(after)}`;
+  }
+
+  if (after) {
+    return `${label}: ${formatEnumLabel(after)}`;
+  }
+
+  return null;
 }

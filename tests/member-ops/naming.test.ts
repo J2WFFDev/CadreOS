@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import { MemberLifecycleStatus, RoleType } from "@prisma/client";
+import { GuardianRelationshipRole, MemberLifecycleStatus, RelationshipType, RoleType } from "@prisma/client";
 
 import {
   matchesMemberAssignmentFilter,
@@ -17,7 +17,7 @@ import {
   MEMBEROPS_TEAM_ROLE_TYPES,
   resolveMemberAssignmentFilter,
 } from "../../lib/member-ops";
-import { memberMoveWorkflowSchema, rosterMembershipWorkflowSchema } from "../../lib/workflows";
+import { guardianRelationshipWorkflowSchema, memberMoveWorkflowSchema, rosterMembershipWorkflowSchema } from "../../lib/workflows";
 
 test("memberops naming rules distinguish user, person, member, and membership", () => {
   assert.match(MEMBEROPS_NAMING_RULES.user, /login\/auth/i);
@@ -79,22 +79,39 @@ test("member move workflow accepts valid roster role types", () => {
   assert.equal(parsed.success, true);
 });
 
-test("lifecycle labels use prospect/alumni language", () => {
+test("lifecycle labels cover applicant and former states", () => {
   assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.PROSPECT], "Prospect");
+  assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.APPLICANT], "Applicant");
+  assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.ACTIVE], "Active Member");
+  assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.INACTIVE], "Inactive Member");
+  assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.FORMER], "Former Member");
   assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.ALUMNI], "Alumni");
   assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.ARCHIVED], "Former Member (Archived)");
 });
 
-test("default roster visibility includes active and prospect only", () => {
+test("default roster visibility includes active, prospect, and applicant", () => {
   assert.deepEqual(MEMBER_LIFECYCLE_DEFAULT_VISIBLE_STATUSES, [
     MemberLifecycleStatus.ACTIVE,
     MemberLifecycleStatus.PROSPECT,
+    MemberLifecycleStatus.APPLICANT,
   ]);
   assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.ACTIVE), true);
   assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.PROSPECT), true);
+  assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.APPLICANT), true);
   assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.INACTIVE), false);
+  assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.FORMER), false);
   assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.ARCHIVED), false);
   assert.equal(isDefaultVisibleMemberLifecycleStatus(MemberLifecycleStatus.ALUMNI), false);
+});
+
+test("guardian relationship workflow requires guardian role value", () => {
+  const parsed = guardianRelationshipWorkflowSchema.safeParse({
+    guardianPersonId: "guardian-1",
+    relationshipType: RelationshipType.GUARDIAN,
+    guardianRole: GuardianRelationshipRole.EMERGENCY_CONTACT,
+  });
+
+  assert.equal(parsed.success, true);
 });
 
 test("member assignment filter defaults to all so newly created unassigned people remain visible", () => {
