@@ -6,6 +6,7 @@ export type { CanonicalNavItem as NavSidebarItem, CanonicalNavGroup as NavSideba
 
 export const NAV_SIDEBAR_GROUPS = CADREOS_NAV_GROUPS;
 export const NAV_SIDEBAR_GROUP_STATE_STORAGE_KEY = "cadreos.nav-sidebar.group-state.v1";
+export const DEFAULT_NAV_SIDEBAR_GROUP_EXPANDED = true;
 
 export type NavSidebarGroupState = Partial<Record<string, boolean>>;
 
@@ -79,5 +80,5 @@ export function isNavSidebarGroupExpanded(
     return true;
   }
 
-  return groupState[group.key] ?? true;
+  return groupState[group.key] ?? DEFAULT_NAV_SIDEBAR_GROUP_EXPANDED;
 }

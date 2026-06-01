@@ -6,6 +6,7 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 
 import type { CurrentUser } from "@/lib/auth/current-user-types";
 import {
+  DEFAULT_NAV_SIDEBAR_GROUP_EXPANDED,
   getNavSidebarGroupsForUser,
   isNavSidebarGroupExpanded,
   isNavSidebarGroupActive,
@@ -122,6 +123,9 @@ export function NavSidebar({
             const isGroupActive = isNavSidebarGroupActive(pathname, group);
             const isGroupExpanded = isNavSidebarGroupExpanded(pathname, group, groupState);
             const groupPanelId = `dashboard-nav-group-${group.key.toLowerCase()}`;
+            const groupToggleClassName = isGroupActive
+              ? "mb-1 flex w-full items-center justify-between rounded-md px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
+              : "mb-1 flex w-full items-center justify-between rounded-md px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-200";
 
             return (
               <li key={group.key}>
@@ -139,17 +143,13 @@ export function NavSidebar({
                         NAV_SIDEBAR_GROUP_STATE_STORAGE_KEY,
                         JSON.stringify({
                           ...groupState,
-                          [group.key]: !(groupState[group.key] ?? true),
+                          [group.key]: !(groupState[group.key] ?? DEFAULT_NAV_SIDEBAR_GROUP_EXPANDED),
                         }),
                       );
                       window.dispatchEvent(new Event(NAV_SIDEBAR_GROUP_STATE_EVENT));
                     } catch {}
                   }}
-                  className={
-                    isGroupActive
-                      ? "mb-1 flex w-full items-center justify-between rounded-md bg-zinc-100 px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
-                      : "mb-1 flex w-full items-center justify-between rounded-md px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                  }
+                  className={groupToggleClassName}
                 >
                   <span>{group.label}</span>
                   <span
