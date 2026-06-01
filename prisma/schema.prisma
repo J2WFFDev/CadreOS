@@ -223,6 +223,28 @@ enum GuardianRelationshipRole {
   EMERGENCY_CONTACT
 }
 
+enum QualificationAssignmentStatus {
+  ACTIVE
+  EXPIRED
+  PENDING
+  SUSPENDED
+}
+
+enum CertificationVerificationStatus {
+  VERIFIED
+  PENDING
+  REJECTED
+  EXPIRED
+}
+
+enum EligibilityTargetType {
+  TEAM
+  PROGRAM
+  EQUIPMENT
+  ACTIVITY
+  RESPONSIBILITY
+}
+
 // FieldOps enums
 
 enum FacilityStatus {
@@ -865,6 +887,13 @@ model Organization {
   notificationReadStates       NotificationReadState[]
   notificationPreferences      NotificationPreference[]
   notificationDigests          NotificationDigest[]
+  qualificationDefinitions     QualificationDefinition[]
+  personQualifications         PersonQualification[]
+  certificationDefinitions     CertificationDefinition[]
+  personCertifications         PersonCertification[]
+  eligibilityDefinitions       EligibilityDefinition[]
+  eligibilityRequiredQualifications EligibilityRequiredQualification[]
+  eligibilityRequiredCertifications EligibilityRequiredCertification[]
   // Arc 25D: Dynamic Kit Allocation and Inventory Pools
   dynamicKitDefinitions        DynamicKitDefinition[]
   dynamicKitRequirements       DynamicKitRequirement[]
@@ -888,6 +917,7 @@ model Program {
   roles            RoleAssignment[]
   events           Event[]
   auditEvents      AuditEvent[]
+  eligibilityDefinitions EligibilityDefinition[]
   resourceBookings ResourceBooking[]
   gearItems        GearItem[]
   gearReservations GearReservation[]
@@ -913,6 +943,7 @@ model Team {
   notes            ObservationNote[]
   events           Event[]
   auditEvents      AuditEvent[]
+  eligibilityDefinitions EligibilityDefinition[]
   resourceBookings ResourceBooking[]
   gearAssignments  GearAssignment[]
   gearReservations GearReservation[]
@@ -1056,10 +1087,145 @@ model Person {
   ownedEntryLists                      EntryList[]                   @relation("EntryListOwner")
   // Arc 25D: Dynamic Kit Allocation actor
   dynamicKitAllocations                DynamicKitAllocation[]        @relation("DynamicKitAllocationActor")
+  qualifications                       PersonQualification[]
+  certifications                       PersonCertification[]
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
   @@index([organizationId, lastName, firstName])
+}
+
+model QualificationDefinition {
+  id                          String   @id @default(cuid())
+  organizationId              String
+  name                        String
+  description                 String?
+  qualificationType           String
+  active                      Boolean  @default(true)
+  supportsTeamParticipation   Boolean  @default(false)
+  supportsProgramParticipation Boolean @default(false)
+  supportsEquipmentEligibility Boolean @default(false)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  organization            Organization                    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignments             PersonQualification[]
+  eligibilityRequirements EligibilityRequiredQualification[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, active])
+  @@index([organizationId, qualificationType])
+}
+
+model PersonQualification {
+  id             String                        @id @default(cuid())
+  organizationId String
+  personId       String
+  qualificationId String
+  earnedDate     DateTime?
+  expirationDate DateTime?
+  status         QualificationAssignmentStatus @default(PENDING)
+  notes          String?
+  createdAt      DateTime                      @default(now())
+  updatedAt      DateTime                      @updatedAt
+
+  organization  Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  person        Person                  @relation(fields: [personId], references: [id], onDelete: Cascade)
+  qualification QualificationDefinition @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
+
+  @@unique([personId, qualificationId])
+  @@index([organizationId, personId, status])
+  @@index([organizationId, expirationDate])
+}
+
+model CertificationDefinition {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  name                String
+  issuingOrganization String?
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  organization            Organization                    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignments             PersonCertification[]
+  eligibilityRequirements EligibilityRequiredCertification[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, active])
+}
+
+model PersonCertification {
+  id                 String                        @id @default(cuid())
+  organizationId     String
+  personId           String
+  certificationId    String
+  earnedDate         DateTime?
+  expirationDate     DateTime?
+  verificationStatus CertificationVerificationStatus @default(PENDING)
+  notes              String?
+  createdAt          DateTime                      @default(now())
+  updatedAt          DateTime                      @updatedAt
+
+  organization  Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  person        Person                 @relation(fields: [personId], references: [id], onDelete: Cascade)
+  certification CertificationDefinition @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+
+  @@unique([personId, certificationId])
+  @@index([organizationId, personId, verificationStatus])
+  @@index([organizationId, expirationDate])
+}
+
+model EligibilityDefinition {
+  id             String               @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  targetType     EligibilityTargetType
+  active         Boolean              @default(true)
+  teamId         String?
+  programId      String?
+  targetLabel    String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  organization           Organization                    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  team                   Team?                           @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  program                Program?                        @relation(fields: [programId], references: [id], onDelete: SetNull)
+  requiredQualifications EligibilityRequiredQualification[]
+  requiredCertifications EligibilityRequiredCertification[]
+
+  @@index([organizationId, active, targetType])
+  @@index([organizationId, teamId])
+  @@index([organizationId, programId])
+}
+
+model EligibilityRequiredQualification {
+  id                  String @id @default(cuid())
+  organizationId      String
+  eligibilityId       String
+  qualificationId     String
+
+  organization  Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  eligibility   EligibilityDefinition   @relation(fields: [eligibilityId], references: [id], onDelete: Cascade)
+  qualification QualificationDefinition @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
+
+  @@unique([eligibilityId, qualificationId])
+  @@index([organizationId, eligibilityId])
+}
+
+model EligibilityRequiredCertification {
+  id              String @id @default(cuid())
+  organizationId  String
+  eligibilityId   String
+  certificationId String
+
+  organization  Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  eligibility   EligibilityDefinition    @relation(fields: [eligibilityId], references: [id], onDelete: Cascade)
+  certification CertificationDefinition  @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+
+  @@unique([eligibilityId, certificationId])
+  @@index([organizationId, eligibilityId])
 }
 
 model RoleAssignment {

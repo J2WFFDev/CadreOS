@@ -244,6 +244,12 @@ export async function getOperationalHistory(input: {
         "person.lifecycle.archive",
         "guardianRelationship.create",
         "guardianRelationship.update",
+        "qualification.assignment.granted",
+        "qualification.assignment.update",
+        "qualification.assignment.revoked",
+        "certification.assignment.added",
+        "certification.assignment.update",
+        "certification.assignment.expired",
       ],
     },
   };
@@ -263,6 +269,14 @@ export async function getOperationalHistory(input: {
           { afterJson: { contains: `"athletePersonId":"${escapedPersonId}"` } },
           { afterJson: { contains: `"guardianPersonId":"${escapedPersonId}"` } },
         ],
+      },
+      {
+        entityType: "personQualification",
+        metadataJson: { contains: `"personId":"${escapedPersonId}"` },
+      },
+      {
+        entityType: "personCertification",
+        metadataJson: { contains: `"personId":"${escapedPersonId}"` },
       },
     ];
   }
@@ -722,7 +736,11 @@ export async function getOperationalHistory(input: {
       title:
         event.action.startsWith("person.lifecycle")
           ? "Lifecycle state change"
-          : "Guardian relationship change",
+          : event.action.startsWith("qualification.assignment")
+            ? "Qualification change"
+            : event.action.startsWith("certification.assignment")
+              ? "Certification change"
+              : "Guardian relationship change",
       changeLabel: formatEnumLabel(event.action.replaceAll(".", "_")),
       changedAt: event.createdAt,
       summary: buildAuditSummary(event.action, event.beforeJson, event.afterJson),
@@ -803,6 +821,42 @@ function buildAuditSummary(action: string, beforeJson: string | null, afterJson:
         ? `Status: ${formatEnumLabel(fromStatus)} → ${formatEnumLabel(toStatus)}`
         : null,
       reason ? `Reason: ${reason}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  if (action.startsWith("qualification.assignment")) {
+    const qualificationName =
+      (typeof after?.qualificationName === "string" ? after.qualificationName : null) ??
+      (typeof before?.qualificationName === "string" ? before.qualificationName : null);
+    const statusBefore = typeof before?.status === "string" ? before.status : null;
+    const statusAfter =
+      (typeof after?.resolvedStatus === "string" ? after.resolvedStatus : null) ??
+      (typeof after?.status === "string" ? after.status : null);
+
+    return [
+      qualificationName ? `Qualification: ${qualificationName}` : null,
+      formatAuditTransitionLabel("Status", statusBefore, statusAfter),
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  if (action.startsWith("certification.assignment")) {
+    const certificationName =
+      (typeof after?.certificationName === "string" ? after.certificationName : null) ??
+      (typeof before?.certificationName === "string" ? before.certificationName : null);
+    const statusBefore =
+      (typeof before?.resolvedStatus === "string" ? before.resolvedStatus : null) ??
+      (typeof before?.verificationStatus === "string" ? before.verificationStatus : null);
+    const statusAfter =
+      (typeof after?.resolvedStatus === "string" ? after.resolvedStatus : null) ??
+      (typeof after?.verificationStatus === "string" ? after.verificationStatus : null);
+
+    return [
+      certificationName ? `Certification: ${certificationName}` : null,
+      formatAuditTransitionLabel("Verification", statusBefore, statusAfter),
     ]
       .filter(Boolean)
       .join(" · ");
