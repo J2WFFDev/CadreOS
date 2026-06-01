@@ -32,12 +32,54 @@ export async function POST(
 
   const formData = await request.formData();
   const notes = (formData.get("notes") as string | null)?.trim() || null;
+  const expectedGearItemIds = Array.from(
+    new Set(
+      formData
+        .getAll("expectedGearItemId")
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean),
+    ),
+  );
+  const returnedGearItemIds = Array.from(
+    new Set(
+      formData
+        .getAll("returnedGearItemId")
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean),
+    ),
+  );
+  const damagedGearItemIds = Array.from(
+    new Set(
+      formData
+        .getAll("damagedGearItemId")
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean),
+    ),
+  );
+  const maintenanceGearItemIds = Array.from(
+    new Set(
+      formData
+        .getAll("maintenanceGearItemId")
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean),
+    ),
+  );
+  const missingGearItemIds =
+    expectedGearItemIds.length > 0
+      ? expectedGearItemIds.filter((itemId) => !returnedGearItemIds.includes(itemId))
+      : [];
+  const isReturnValidationMode = expectedGearItemIds.length > 0;
 
   await checkInKit({
     organizationId: scope.organizationId,
     kitId,
     actorPersonId: scope.auth.personId,
     notes,
+    isPartial: isReturnValidationMode ? returnedGearItemIds.length !== expectedGearItemIds.length : undefined,
+    partialChildGearItemIds: isReturnValidationMode ? returnedGearItemIds : undefined,
+    missingGearItemIds,
+    damagedGearItemIds,
+    maintenanceGearItemIds,
   });
 
   redirect(`/gear-ops/kits/${kitId}`);

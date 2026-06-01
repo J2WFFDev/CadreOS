@@ -96,6 +96,8 @@ export type GearKitReadinessInput = {
   hasConflict?: boolean;
 };
 
+export type StaticKitAvailabilityStatus = "AVAILABLE" | "INCOMPLETE" | "UNAVAILABLE";
+
 // ── Out-of-service lifecycle statuses ───────────────────────────────────────
 
 const OUT_OF_SERVICE_STATUSES: Set<GearItemLifecycleStatus> = new Set([
@@ -474,4 +476,30 @@ export function isKitBlockedFromUse(label: GearKitReadinessLabel): boolean {
     label === "MISSING_COMPONENTS" ||
     label === "CONFLICT"
   );
+}
+
+export function deriveStaticKitAvailabilityStatus(input: {
+  completeness: GearKitCompletenessResult;
+  hasReservedMember: boolean;
+  hasCheckedOutMember: boolean;
+  hasOutOfServiceMember: boolean;
+}) : StaticKitAvailabilityStatus {
+  if (
+    input.hasReservedMember ||
+    input.hasCheckedOutMember ||
+    input.hasOutOfServiceMember ||
+    input.completeness.missingRequiredCount > 0
+  ) {
+    return "UNAVAILABLE";
+  }
+
+  if (
+    input.completeness.missingOptionalCount > 0 ||
+    input.completeness.damagedCount > 0 ||
+    input.completeness.maintenanceNeededCount > 0
+  ) {
+    return "INCOMPLETE";
+  }
+
+  return "AVAILABLE";
 }

@@ -236,6 +236,8 @@ export async function createInventoryKit(input: CreateInventoryKitInput) {
       organizationId: input.organizationId,
       name: input.name,
       description: input.description ?? null,
+      category: input.category ?? null,
+      notes: input.notes ?? null,
       ownerPersonId: input.ownerPersonId ?? null,
       kitType: input.kitType ?? "KIT",
     },
@@ -259,6 +261,8 @@ export async function updateInventoryKit(input: UpdateInventoryKitInput) {
     data: {
       ...(input.name ? { name: input.name } : {}),
       ...(input.description !== undefined ? { description: input.description } : {}),
+      ...(input.category !== undefined ? { category: input.category } : {}),
+      ...(input.notes !== undefined ? { notes: input.notes } : {}),
       ...(input.ownerPersonId !== undefined ? { ownerPersonId: input.ownerPersonId } : {}),
       ...(input.kitType ? { kitType: input.kitType } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
@@ -351,6 +355,8 @@ export async function listInventoryKits(input: {
       id: true,
       name: true,
       description: true,
+      category: true,
+      notes: true,
       kitType: true,
       isActive: true,
       readinessLabel: true,
@@ -366,6 +372,8 @@ export async function listInventoryKits(input: {
     id: kit.id,
     name: kit.name,
     description: kit.description,
+    category: kit.category,
+    notes: kit.notes,
     kitType: kit.kitType,
     isActive: kit.isActive,
     readinessLabel: kit.readinessLabel,
@@ -582,6 +590,9 @@ export async function checkInKit(input: CheckInKitInput) {
 
   return db.$transaction(async (tx) => {
     const now = new Date();
+    const missingGearItemIds = new Set(input.missingGearItemIds ?? []);
+    const damagedGearItemIds = new Set(input.damagedGearItemIds ?? []);
+    const maintenanceGearItemIds = new Set(input.maintenanceGearItemIds ?? []);
     const custodyEvent = await tx.gearKitCustodyEvent.create({
       data: {
         organizationId: input.organizationId,
@@ -622,6 +633,72 @@ export async function checkInKit(input: CheckInKitInput) {
           returnNotes: input.notes ?? "Returned through kit check-in.",
         },
       });
+    }
+
+    if (missingGearItemIds.size > 0 || damagedGearItemIds.size > 0 || maintenanceGearItemIds.size > 0) {
+      const itemConditions = targetItemIds
+        .filter((itemId) => damagedGearItemIds.has(itemId) || maintenanceGearItemIds.has(itemId))
+        .map((itemId) => ({
+          gearItemId: itemId,
+          conditionStatus: damagedGearItemIds.has(itemId) ? "DAMAGED" : null,
+          notes: maintenanceGearItemIds.has(itemId) ? "Needs maintenance from kit return validation." : null,
+        }));
+
+      await tx.gearKitInspection.create({
+        data: {
+          organizationId: input.organizationId,
+          kitId: input.kitId,
+          inspectedByPersonId: input.actorPersonId,
+          status: missingGearItemIds.size > 0 ? "INCOMPLETE" : "PASSED_WITH_NOTES",
+          notes: input.notes ?? "Kit return validation recorded item issues.",
+          itemConditionsJson: itemConditions.length > 0 ? JSON.stringify(itemConditions) : null,
+          missingItemIdsJson:
+            missingGearItemIds.size > 0
+              ? JSON.stringify(Array.from(missingGearItemIds))
+              : null,
+        },
+      });
+
+      for (const itemId of maintenanceGearItemIds) {
+        await tx.gearMaintenanceLog.create({
+          data: {
+            organizationId: input.organizationId,
+            gearItemId: itemId,
+            performedByPersonId: input.actorPersonId,
+            maintenanceType: "INSPECTION",
+            performedAt: now,
+            notes: "Auto-created from static kit return validation.",
+          },
+        });
+      }
+
+      if (damagedGearItemIds.size > 0) {
+        await tx.gearItem.updateMany({
+          where: {
+            organizationId: input.organizationId,
+            id: { in: [...damagedGearItemIds] },
+          },
+          data: {
+            conditionStatus: "DAMAGED",
+            readinessState: "MAINTENANCE_REQUIRED",
+          },
+        });
+      }
+
+      const maintenanceOnlyItemIds = [...maintenanceGearItemIds].filter(
+        (itemId) => !damagedGearItemIds.has(itemId),
+      );
+      if (maintenanceOnlyItemIds.length > 0) {
+        await tx.gearItem.updateMany({
+          where: {
+            organizationId: input.organizationId,
+            id: { in: maintenanceOnlyItemIds },
+          },
+          data: {
+            readinessState: "MAINTENANCE_REQUIRED",
+          },
+        });
+      }
     }
 
     return custodyEvent;

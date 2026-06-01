@@ -81,6 +81,35 @@ export default async function GearOpsReservationsPage() {
       requestedBy: { select: { id: true, firstName: true, lastName: true } },
       reservedFor: { select: { id: true, firstName: true, lastName: true } },
       gearItem: { select: { id: true, name: true } },
+      inventoryKit: {
+        select: {
+          id: true,
+          name: true,
+          items: {
+            where: { removedAt: null },
+            select: {
+              id: true,
+              gearItem: {
+                select: {
+                  id: true,
+                  name: true,
+                  lifecycleStatus: true,
+                  checkouts: {
+                    where: { status: { in: ["OPEN", "OVERDUE"] } },
+                    select: { id: true },
+                    take: 1,
+                  },
+                  reservations: {
+                    where: { status: { in: ["ACTIVE", "PENDING_REVIEW", "CONFLICT"] } },
+                    select: { id: true },
+                    take: 1,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     orderBy: [{ updatedAt: "desc" }],
     take: 100,
@@ -123,6 +152,14 @@ export default async function GearOpsReservationsPage() {
                 <Link href={`/gear-ops/items/${reservation.gearItem.id}`} className="underline">
                   {reservation.gearItem.name}
                 </Link>
+                {reservation.inventoryKit ? (
+                  <>
+                    {" · "}Kit:{" "}
+                    <Link href={`/gear-ops/kits/${reservation.inventoryKit.id}`} className="underline">
+                      {reservation.inventoryKit.name}
+                    </Link>
+                  </>
+                ) : null}
                 {" · "}Requested by{" "}
                 <Link href={`/people/${reservation.requestedBy.id}`} className="underline">
                   {reservation.requestedBy.firstName} {reservation.requestedBy.lastName}
@@ -139,6 +176,37 @@ export default async function GearOpsReservationsPage() {
               <p className="mt-1 text-zinc-500 dark:text-zinc-400">
                 Window: {formatGearOpsDateTime(reservation.windowStartAt)} → {formatGearOpsDateTime(reservation.windowEndAt)}
               </p>
+              {reservation.inventoryKit ? (
+                <div className="mt-2 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-950/40">
+                  <p className="font-medium text-zinc-700 dark:text-zinc-200">
+                    Kit members ({reservation.inventoryKit.items.length})
+                  </p>
+                  <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+                    Availability summary:{" "}
+                    {reservation.inventoryKit.items.filter((item) => item.gearItem.checkouts.length === 0).length} not checked out ·{" "}
+                    {reservation.inventoryKit.items.filter((item) => item.gearItem.reservations.length === 0).length} not reserved ·{" "}
+                    {reservation.inventoryKit.items.filter((item) =>
+                      ["MAINTENANCE", "QUARANTINED", "RETIRED", "LOST"].includes(item.gearItem.lifecycleStatus),
+                    ).length} out of service
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {reservation.inventoryKit.items.map((item) => (
+                      <li key={item.id}>
+                        <Link className="underline" href={`/gear-ops/items/${item.gearItem.id}`}>
+                          {item.gearItem.name}
+                        </Link>
+                        <span className="text-zinc-500">
+                          {item.gearItem.checkouts.length > 0 ? " · Checked out" : ""}
+                          {item.gearItem.reservations.length > 0 ? " · Reserved" : ""}
+                          {["MAINTENANCE", "QUARANTINED", "RETIRED", "LOST"].includes(item.gearItem.lifecycleStatus)
+                            ? " · Out of service"
+                            : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               {reservation.status === GearReservationStatus.PENDING_REVIEW ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <form action={`/gear-ops/items/${reservation.gearItem.id}/reservations/${reservation.id}/status`} method="post">

@@ -789,6 +789,7 @@ model Organization {
   gearAssignments              GearAssignment[]
   gearCheckouts                GearCheckout[]
   gearReservations             GearReservation[]
+  gearAssemblies              GearAssembly[]
   gearReservationApprovals        GearReservationApproval[]
   gearMaintenanceLogs             GearMaintenanceLog[]
   gearInspectionRecords        GearInspectionRecord[]
@@ -1764,6 +1765,8 @@ model GearItem {
   assignments                 GearAssignment[]
   checkouts                   GearCheckout[]
   reservations                GearReservation[]
+  parentAssemblies            GearAssembly[]             @relation("GearAssemblyParent")
+  childAssemblies             GearAssembly[]             @relation("GearAssemblyChild")
   maintenanceLogs             GearMaintenanceLog[]
   inspectionRecords           GearInspectionRecord[]
   consumableTransactions      ConsumableTransaction[]
@@ -1856,6 +1859,7 @@ model GearReservation {
   id                  String                 @id @default(cuid())
   organizationId      String
   gearItemId          String
+  inventoryKitId      String?
   programId           String?
   reservedForPersonId String?
   reservedForTeamId   String?
@@ -1888,6 +1892,7 @@ model GearReservation {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   gearItem      GearItem     @relation(fields: [gearItemId], references: [id], onDelete: Restrict)
+  inventoryKit  InventoryKit? @relation(fields: [inventoryKitId], references: [id], onDelete: SetNull)
   program       Program?     @relation(fields: [programId], references: [id], onDelete: SetNull)
   reservedFor   Person?      @relation("GearReservationReservedFor", fields: [reservedForPersonId], references: [id], onDelete: SetNull)
   reservedTeam  Team?        @relation(fields: [reservedForTeamId], references: [id], onDelete: SetNull)
@@ -1905,6 +1910,27 @@ model GearReservation {
   @@index([organizationId, reservedForEventId, status])
   @@index([organizationId, purpose, status])
   @@index([organizationId, workflowStatus, windowStartAt])
+  @@index([organizationId, inventoryKitId, status])
+}
+
+model GearAssembly {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  parentGearItemId   String
+  childGearItemId    String
+  relationshipType   String
+  isActive           Boolean  @default(true)
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  parentGearItem GearItem     @relation("GearAssemblyParent", fields: [parentGearItemId], references: [id], onDelete: Restrict)
+  childGearItem  GearItem     @relation("GearAssemblyChild", fields: [childGearItemId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, parentGearItemId, childGearItemId])
+  @@index([organizationId, parentGearItemId, isActive])
+  @@index([organizationId, childGearItemId, isActive])
 }
 
 model GearReservationApproval {
@@ -2446,6 +2472,8 @@ model InventoryKit {
   organizationId        String
   name                  String
   description           String?
+  category              String?
+  notes                 String?
   kitType               GearKitType             @default(KIT)
   ownerPersonId         String?
   assignedToPersonId    String?
@@ -2466,6 +2494,7 @@ model InventoryKit {
   assignedToTeam  Team?                 @relation("InventoryKitAssignedToTeam", fields: [assignedToTeamId], references: [id], onDelete: SetNull)
   assignedToEvent Event?                @relation("InventoryKitAssignedToEvent", fields: [assignedToEventId], references: [id], onDelete: SetNull)
   items           InventoryKitItem[]
+  reservations    GearReservation[]
   inspections     GearKitInspection[]
   custodyEvents   GearKitCustodyEvent[]
 

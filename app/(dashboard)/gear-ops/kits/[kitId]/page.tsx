@@ -9,6 +9,7 @@ import { formatGearOpsDateTime, formatGearOpsEnum, getGearLifecycleBadgeClass } 
 import {
   computeKitCompleteness,
   computeKitReadiness,
+  deriveStaticKitAvailabilityStatus,
   getKitCustodyStatusBadgeClass,
   getKitReadinessBadgeClass,
   labelForKitCustodyStatus,
@@ -71,6 +72,8 @@ export default async function InventoryKitDetailPage({
     id: string;
     name: string;
     description: string | null;
+    category: string | null;
+    notes: string | null;
     kitType: import("@prisma/client").GearKitType;
     isActive: boolean;
     readinessLabel: import("@prisma/client").GearKitReadinessLabel;
@@ -97,6 +100,8 @@ export default async function InventoryKitDetailPage({
         inventoryType: import("@prisma/client").GearInventoryType;
         conditionStatus: import("@prisma/client").GearConditionStatus | null;
         readinessState: import("@prisma/client").InventoryReadinessState | null;
+        checkouts: Array<{ id: string }>;
+        reservations: Array<{ id: string }>;
       };
     }>;
   } | null = null;
@@ -109,6 +114,8 @@ export default async function InventoryKitDetailPage({
         id: true,
         name: true,
         description: true,
+        category: true,
+        notes: true,
         kitType: true,
         isActive: true,
         readinessLabel: true,
@@ -137,6 +144,16 @@ export default async function InventoryKitDetailPage({
                 inventoryType: true,
                 conditionStatus: true,
                 readinessState: true,
+                checkouts: {
+                  where: { status: { in: ["OPEN", "OVERDUE"] } },
+                  select: { id: true },
+                  take: 1,
+                },
+                reservations: {
+                  where: { status: { in: ["ACTIVE", "PENDING_REVIEW", "CONFLICT"] } },
+                  select: { id: true },
+                  take: 1,
+                },
               },
             },
           },
@@ -177,6 +194,17 @@ export default async function InventoryKitDetailPage({
   }));
 
   const completeness = computeKitCompleteness(snapshots);
+  const hasCheckedOutMember = activeItems.some((entry) => entry.gearItem.checkouts.length > 0);
+  const hasReservedMember = activeItems.some((entry) => entry.gearItem.reservations.length > 0);
+  const hasOutOfServiceMember = activeItems.some((entry) =>
+    ["MAINTENANCE", "QUARANTINED", "RETIRED", "LOST"].includes(entry.gearItem.lifecycleStatus),
+  );
+  const staticAvailability = deriveStaticKitAvailabilityStatus({
+    completeness,
+    hasReservedMember,
+    hasCheckedOutMember,
+    hasOutOfServiceMember,
+  });
   const readiness = computeKitReadiness({
     completeness,
     custodyStatus: kit.custodyStatus,
@@ -185,6 +213,12 @@ export default async function InventoryKitDetailPage({
 
   const custodyBadge = getKitCustodyStatusBadgeClass(kit.custodyStatus);
   const readinessBadge = getKitReadinessBadgeClass(readiness);
+  const staticAvailabilityBadge =
+    staticAvailability === "AVAILABLE"
+      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+      : staticAvailability === "INCOMPLETE"
+        ? "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+        : "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200";
 
   return (
     <section className="space-y-4">
@@ -199,6 +233,8 @@ export default async function InventoryKitDetailPage({
             {kit.description ? (
               <p className="text-sm text-zinc-600 dark:text-zinc-400">{kit.description}</p>
             ) : null}
+            {kit.category ? <p className="text-sm text-zinc-500">Category: {kit.category}</p> : null}
+            {kit.notes ? <p className="text-sm text-zinc-500">{kit.notes}</p> : null}
             {kit.owner ? (
               <p className="text-sm text-zinc-500">
                 Owner:{" "}
@@ -244,6 +280,13 @@ export default async function InventoryKitDetailPage({
             )}
             <span className={`rounded-full px-2.5 py-1 font-medium ${readinessBadge}`}>
               {labelForKitReadiness(readiness)}
+            </span>
+            <span className={`rounded-full px-2.5 py-1 font-medium ${staticAvailabilityBadge}`}>
+              {staticAvailability === "AVAILABLE"
+                ? "Static availability: Available"
+                : staticAvailability === "INCOMPLETE"
+                  ? "Static availability: Incomplete"
+                  : "Static availability: Unavailable"}
             </span>
             <span className={`rounded-full px-2.5 py-1 font-medium ${custodyBadge}`}>
               {labelForKitCustodyStatus(kit.custodyStatus)}
@@ -309,6 +352,18 @@ export default async function InventoryKitDetailPage({
             className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Log inspection
+          </Link>
+          <Link
+            href={`/gear-ops/kits/${kit.id}/reserve`}
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Reserve kit
+          </Link>
+          <Link
+            href={`/gear-ops/kits/${kit.id}/return`}
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Validate return
           </Link>
           <Link
             href={`/gear-ops/kits/${kit.id}/edit`}

@@ -40,6 +40,8 @@ export async function POST(
   const formData = await request.formData();
   const name = (formData.get("name") as string | null)?.trim() ?? "";
   const description = (formData.get("description") as string | null)?.trim() || null;
+  const category = (formData.get("category") as string | null)?.trim() || null;
+  const notes = (formData.get("notes") as string | null)?.trim() || null;
   const kitTypeRaw = (formData.get("kitType") as string | null)?.trim() || null;
   const isActiveRaw = formData.get("isActive");
   const kitType =
@@ -56,6 +58,8 @@ export async function POST(
     kitId,
     name,
     description,
+    category,
+    notes,
     kitType,
     isActive: isActiveRaw === "true",
   });
