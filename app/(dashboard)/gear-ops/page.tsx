@@ -1,7 +1,5 @@
 import {
   ConsumableTransactionType,
-  GearReservationMode,
-  GearReservationStatus,
   GearAssignmentStatus,
   GearCheckoutStatus,
   GearConditionStatus,
@@ -20,9 +18,10 @@ import { GearQuickActionGrid, type GearQuickAction } from "@/components/gear-ops
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
 import { db } from "@/lib/db";
 import {
-  countOpenGearWorkflowTasksByCategory,
-  listOpenGearWorkflowTasks,
-} from "@/lib/gear-ops-workflows";
+  buildGearDashboardSummary,
+  loadGearReservationDashboardMetrics,
+  loadGearWorkflowDashboardMetrics,
+} from "@/lib/gear-ops-dashboard-metrics";
 import { formatGearOpsDateTime, formatGearOpsEnum } from "@/lib/gear-ops";
 import { resolveGearOpsReadAccess } from "@/lib/gear-ops-access";
 import { toneToBoxClass } from "@/lib/gear-ops-ui";
@@ -106,7 +105,9 @@ export default async function GearOpsDashboardPage() {
   let openMaintenanceWorkflowTasks = 0;
   let openMissingWorkflowTasks = 0;
   let openDamageWorkflowTasks = 0;
-  let recentWorkflowTasks: Awaited<ReturnType<typeof listOpenGearWorkflowTasks>> = [];
+  let recentWorkflowTasks: Awaited<ReturnType<typeof loadGearWorkflowDashboardMetrics>>["recentWorkflowTasks"] = [];
+  let reservationMetricsUnavailableReason: string | null = null;
+  let workflowMetricsUnavailableReason: string | null = null;
   let queryErrorMessage = "Unable to load GearOps dashboard metrics right now. Please try again later.";
 
   try {
@@ -245,93 +246,41 @@ export default async function GearOpsDashboardPage() {
     const consumableReplenishmentUnits30d = Math.max(replenishmentAggregate30d._sum.quantityDelta ?? 0, 0);
     const consumableNetDelta30d = consumableReplenishmentUnits30d - consumableUsageUnits30d;
 
-    // --- Optional GearReservation queries (Arc 20 feature — gracefully degrades to 0
-    //     if the GearReservation table is not yet migrated in this environment).
-    let activeReservations = 0;
-    let activeHolds = 0;
-    let upcomingReservations = 0;
-    let conflictingReservations = 0;
-
-    try {
-      [activeReservations, activeHolds, upcomingReservations, conflictingReservations] = await Promise.all([
-        db.gearReservation.count({
-          where: {
-            organizationId: scope.organizationId,
-            status: { in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW] },
-            mode: GearReservationMode.HARD_RESERVATION,
-            windowStartAt: { lte: now },
-            windowEndAt: { gte: now },
-            gearItem: { AND: [access.where] },
-          },
-        }),
-        db.gearReservation.count({
-          where: {
-            organizationId: scope.organizationId,
-            status: { in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW] },
-            mode: GearReservationMode.SOFT_HOLD,
-            windowStartAt: { lte: now },
-            windowEndAt: { gte: now },
-            gearItem: { AND: [access.where] },
-          },
-        }),
-        db.gearReservation.count({
-          where: {
-            organizationId: scope.organizationId,
-            status: { in: [GearReservationStatus.ACTIVE, GearReservationStatus.PENDING_REVIEW] },
-            windowStartAt: { gt: now },
-            gearItem: { AND: [access.where] },
-          },
-        }),
-        db.gearReservation.count({
-          where: {
-            organizationId: scope.organizationId,
-            status: GearReservationStatus.CONFLICT,
-            gearItem: { AND: [access.where] },
-          },
-        }),
-      ]);
-    } catch (reservationError) {
-      const detail = describeSchemaUnavailableError(reservationError);
-      if (detail) {
-        console.warn(
-          `[GearOps] GearReservation schema check failed (${detail}). ` +
-            "Reservation counts will show 0. Run database setup to apply the GearReservation migration.",
-        );
-      } else {
-        console.warn("[GearOps] GearReservation queries failed unexpectedly:", reservationError);
-      }
-      // Reservation counts remain at their default 0 values — dashboard continues to load.
-    }
-
-    [openMaintenanceWorkflowTasks, openMissingWorkflowTasks, openDamageWorkflowTasks, recentWorkflowTasks] = await Promise.all([
-      countOpenGearWorkflowTasksByCategory({ organizationId: scope.organizationId, category: "maintenance" }),
-      countOpenGearWorkflowTasksByCategory({ organizationId: scope.organizationId, category: "missing" }),
-      countOpenGearWorkflowTasksByCategory({ organizationId: scope.organizationId, category: "damage" }),
-      listOpenGearWorkflowTasks({ organizationId: scope.organizationId, limit: 5 }),
+    const [reservationMetrics, workflowMetrics] = await Promise.all([
+      loadGearReservationDashboardMetrics({
+        organizationId: scope.organizationId,
+        gearItemWhere: access.where,
+        now,
+      }),
+      loadGearWorkflowDashboardMetrics({ organizationId: scope.organizationId, limit: 5 }),
     ]);
 
-    summary = {
-      totalCategories,
-      totalItems,
-      durableItems,
-      consumableItems,
-      activeAvailableItems,
-      assignedOrCheckedOutItems,
-      maintenanceItems,
-      conditionConcernItems,
-      activeAssignmentRecords,
-      openCheckoutRecords,
-      activeReservations,
-      activeHolds,
-      upcomingReservations,
-      conflictingReservations,
-      lowAvailabilityConsumables: lowAvailabilityConsumablesCount,
-      consumableUsageUnits30d,
-      consumableReplenishmentUnits30d,
-      consumableNetDelta30d,
-      readinessConcerns:
-        maintenanceItems + conditionConcernItems + lowAvailabilityConsumablesCount + openCheckoutRecords,
-    };
+    reservationMetricsUnavailableReason = reservationMetrics.unavailableReason;
+    workflowMetricsUnavailableReason = workflowMetrics.unavailableReason;
+    openMaintenanceWorkflowTasks = workflowMetrics.openMaintenanceWorkflowTasks;
+    openMissingWorkflowTasks = workflowMetrics.openMissingWorkflowTasks;
+    openDamageWorkflowTasks = workflowMetrics.openDamageWorkflowTasks;
+    recentWorkflowTasks = workflowMetrics.recentWorkflowTasks;
+
+    summary = buildGearDashboardSummary({
+      core: {
+        totalCategories,
+        totalItems,
+        durableItems,
+        consumableItems,
+        activeAvailableItems,
+        assignedOrCheckedOutItems,
+        maintenanceItems,
+        conditionConcernItems,
+        activeAssignmentRecords,
+        openCheckoutRecords,
+        lowAvailabilityConsumablesCount,
+        consumableUsageUnits30d,
+        consumableReplenishmentUnits30d,
+        consumableNetDelta30d,
+      },
+      reservations: reservationMetrics,
+    });
     lowAvailabilityConsumables = lowAvailabilityItems;
     openCheckouts = openCheckoutItems;
   } catch (error) {
@@ -380,6 +329,11 @@ export default async function GearOpsDashboardPage() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <h3 className="text-lg font-semibold">EntryOps workflow visibility</h3>
+          {workflowMetricsUnavailableReason ? (
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              Workflow metrics fallback active. {workflowMetricsUnavailableReason}
+            </p>
+          ) : null}
           <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
             <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
               <dt className="font-medium text-zinc-900 dark:text-zinc-100">Open maintenance tasks</dt>
@@ -398,7 +352,11 @@ export default async function GearOpsDashboardPage() {
 
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <h3 className="text-lg font-semibold">Recent linked workflow tasks</h3>
-          {recentWorkflowTasks.length === 0 ? (
+          {workflowMetricsUnavailableReason ? (
+            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+              Linked workflow task details are unavailable right now. {workflowMetricsUnavailableReason}
+            </p>
+          ) : recentWorkflowTasks.length === 0 ? (
             <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
               No open GearOps workflow tasks are currently linked into EntryOps.
             </p>
@@ -441,6 +399,11 @@ export default async function GearOpsDashboardPage() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Inventory overview
         </h2>
+        {reservationMetricsUnavailableReason ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Reservation metrics fallback active. {reservationMetricsUnavailableReason}
+          </p>
+        ) : null}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <GearPendingDashboardCard />
           <GearDashboardCard label="Total items" value={summary.totalItems} href="/gear-ops/items" />
