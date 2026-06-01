@@ -44,6 +44,9 @@ type GearCheckoutFormValues = {
   returnNotes: string;
 };
 
+const GEAR_CHECKOUT_RECORD_TYPE = "GEAR_CHECKOUT" as const;
+const MAINTENANCE_TASK_ITEM_NAME_MAX_LENGTH = 120;
+
 function buildErrorRedirectUrl(
   requestUrl: string,
   itemId: string,
@@ -350,7 +353,7 @@ export async function POST(
             movementType: InventoryMovementType.TRANSFERRED,
             actorPersonId: scope.auth.personId,
             custodyPersonId: parsed.data.checkedOutById,
-            relatedRecordType: "GEAR_CHECKOUT",
+            relatedRecordType: GEAR_CHECKOUT_RECORD_TYPE,
             relatedRecordId: existingCheckout.id,
             notes: custodyChangeSummary,
             occurredAt: new Date(),
@@ -398,7 +401,7 @@ export async function POST(
             actorPersonId: parsed.data.receivedById,
             fromLocationId: null,
             toLocationId: existingCheckout.gearItem.locationId,
-            relatedRecordType: "GEAR_CHECKOUT",
+            relatedRecordType: GEAR_CHECKOUT_RECORD_TYPE,
             relatedRecordId: existingCheckout.id,
             notes: "Item returned and checked in.",
             occurredAt: parsed.data.returnedAt,
@@ -463,14 +466,18 @@ export async function POST(
         parsed.data.status === GearCheckoutStatus.RETURNED &&
         parsed.data.receivedById
       ) {
+        const normalizedItemName = existingCheckout.gearItem.name.replace(/[\r\n\t]+/g, " ").trim();
+        const sanitizedItemName =
+          normalizedItemName.length > 0
+            ? normalizedItemName.slice(0, MAINTENANCE_TASK_ITEM_NAME_MAX_LENGTH)
+            : "Gear item";
         await tx.followUpTask.create({
           data: {
             organizationId,
-            title: `Gear maintenance needed: ${existingCheckout.gearItem.name}`,
+            title: `Gear maintenance needed: ${sanitizedItemName}`,
             description: [
-              `Gear item ${existingCheckout.gearItem.name} was returned with condition ${parsed.data.conditionOnReturn ?? "UNSPECIFIED"}.`,
-              `Checkout record: ${existingCheckout.id}`,
-              latestReservation ? `Reservation: ${latestReservation.id}` : null,
+              `Gear item ${sanitizedItemName} was returned with condition ${parsed.data.conditionOnReturn ?? "UNSPECIFIED"}.`,
+              "Checkout and return inspection follow-up is required before this item returns to service.",
               combinedReturnNotes ? `Notes: ${combinedReturnNotes}` : null,
             ]
               .filter(Boolean)

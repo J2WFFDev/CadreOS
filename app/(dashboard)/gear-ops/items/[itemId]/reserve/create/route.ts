@@ -29,6 +29,28 @@ import {
   requirePhase1CMutationPermission,
 } from "@/lib/workflows";
 
+const STAFF_ROLE_PRIORITY = [
+  "ORGANIZATION_ADMIN",
+  "PROGRAM_DIRECTOR",
+  "COACH",
+  "ASSISTANT_COACH",
+] as const;
+
+function resolveRequestSourceRole(input: {
+  isOrganizationAdmin: boolean;
+  staffRoleAssignments: Array<{ roleType: string }>;
+}) {
+  if (input.isOrganizationAdmin) {
+    return "ORGANIZATION_ADMIN";
+  }
+
+  const prioritizedRole = STAFF_ROLE_PRIORITY.find((role) =>
+    input.staffRoleAssignments.some((assignment) => assignment.roleType === role),
+  );
+
+  return prioritizedRole ?? input.staffRoleAssignments.at(0)?.roleType ?? "ATHLETE_OR_GUARDIAN";
+}
+
 type GearReservationFormValues = {
   status: string;
   mode: string;
@@ -266,10 +288,10 @@ export async function POST(
       organizationId,
       actorPersonId: requestedByPersonId,
     });
-    const requestSourceRole =
-      actorRoleContext.isOrganizationAdmin
-        ? "ORGANIZATION_ADMIN"
-        : actorRoleContext.staffRoleAssignments[0]?.roleType ?? "ATHLETE_OR_GUARDIAN";
+    const requestSourceRole = resolveRequestSourceRole({
+      isOrganizationAdmin: actorRoleContext.isOrganizationAdmin,
+      staffRoleAssignments: actorRoleContext.staffRoleAssignments,
+    });
 
     const approvalRequired =
       item.category.guardianApprovalRequired &&

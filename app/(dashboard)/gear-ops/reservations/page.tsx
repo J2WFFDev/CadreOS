@@ -53,7 +53,7 @@ export default async function GearOpsReservationsPage() {
     );
   }
 
-  const schemaStatus = await getGearOpsSchemaStatus("reservations-list");
+  const schemaStatus = await getGearOpsSchemaStatus("reservation-creation");
   if (!schemaStatus.schemaReady) {
     return (
       <section className="space-y-4">

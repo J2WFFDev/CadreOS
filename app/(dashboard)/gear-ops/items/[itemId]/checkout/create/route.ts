@@ -1,4 +1,4 @@
-import { GearReservationStatus, InventoryMovementType } from "@prisma/client";
+import { GearItemLifecycleStatus, GearReservationStatus, InventoryMovementType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
@@ -33,6 +33,8 @@ type GearCheckoutFormValues = {
   purposeNotes: string;
   returnNotes: string;
 };
+
+const GEAR_CHECKOUT_RECORD_TYPE = "GEAR_CHECKOUT" as const;
 
 function buildErrorRedirectUrl(
   requestUrl: string,
@@ -282,7 +284,7 @@ export async function POST(
       await tx.gearItem.update({
         where: { id: itemId },
         data: {
-          lifecycleStatus: "CHECKED_OUT",
+          lifecycleStatus: GearItemLifecycleStatus.CHECKED_OUT,
         },
       });
 
@@ -293,8 +295,8 @@ export async function POST(
           movementType: InventoryMovementType.CHECKED_OUT,
           actorPersonId: parsed.data.issuedById,
           custodyPersonId: parsed.data.checkedOutById,
-          relatedRecordType: "GEAR_CHECKOUT",
-          notes: parsed.data.purposeNotes ?? "Checkout completed.",
+          relatedRecordType: GEAR_CHECKOUT_RECORD_TYPE,
+          notes: parsed.data.purposeNotes || "Checkout completed.",
           occurredAt: parsed.data.checkedOutAt,
         },
       });

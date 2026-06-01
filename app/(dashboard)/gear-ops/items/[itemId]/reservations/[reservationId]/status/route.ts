@@ -29,6 +29,34 @@ function buildRedirectUrl(requestUrl: string, itemId: string, status: string, er
   return url;
 }
 
+function buildManualApprovalRecord(input: {
+  organizationId: string;
+  reservationId: string;
+  actorPersonId: string;
+  nextStatus: GearReservationStatus;
+  reason: string;
+}) {
+  return {
+    organizationId: input.organizationId,
+    reservationId: input.reservationId,
+    approvalType: GearReservationApprovalType.COACH_ADMIN_APPROVAL,
+    approvalStatus:
+      input.nextStatus === GearReservationStatus.ACTIVE
+        ? GearReservationApprovalState.APPROVED
+        : GearReservationApprovalState.DENIED,
+    approvalActorRole: "COACH_OR_ADMIN",
+    approvedByPersonId: input.actorPersonId,
+    approvedAt: new Date(),
+    notes:
+      input.reason.length > 0
+        ? input.reason
+        : input.nextStatus === GearReservationStatus.ACTIVE
+          ? "Approved from reservation status control."
+          : "Denied from reservation status control.",
+    isAutomated: false,
+  } as const;
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ itemId: string; reservationId: string }> },
@@ -139,25 +167,13 @@ export async function POST(
 
       if (nextStatus === GearReservationStatus.ACTIVE || nextStatus === GearReservationStatus.CANCELED) {
         await tx.gearReservationApproval.create({
-          data: {
+          data: buildManualApprovalRecord({
             organizationId,
             reservationId: reservation.id,
-            approvalType: GearReservationApprovalType.COACH_ADMIN_APPROVAL,
-            approvalStatus:
-              nextStatus === GearReservationStatus.ACTIVE
-                ? GearReservationApprovalState.APPROVED
-                : GearReservationApprovalState.DENIED,
-            approvalActorRole: "COACH_OR_ADMIN",
-            approvedByPersonId: actorPersonId,
-            approvedAt: new Date(),
-            notes:
-              reason.length > 0
-                ? reason
-                : nextStatus === GearReservationStatus.ACTIVE
-                  ? "Approved from reservation status control."
-                  : "Denied from reservation status control.",
-            isAutomated: false,
-          },
+            actorPersonId,
+            nextStatus: nextStatus as GearReservationStatus,
+            reason,
+          }),
         });
       }
     });
