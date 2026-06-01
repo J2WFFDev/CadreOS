@@ -2,14 +2,46 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 import type { CurrentUser } from "@/lib/auth/current-user-types";
 import {
+  DEFAULT_NAV_SIDEBAR_GROUP_EXPANDED,
   getNavSidebarGroupsForUser,
+  isNavSidebarGroupExpanded,
   isNavSidebarGroupActive,
   isNavSidebarLinkActive,
+  NAV_SIDEBAR_GROUP_STATE_STORAGE_KEY,
+  parseNavSidebarGroupState,
 } from "@/lib/nav-sidebar";
+
+const NAV_SIDEBAR_GROUP_STATE_EVENT = "cadreos:nav-sidebar-group-state-changed";
+
+function subscribeToNavSidebarGroupState(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const handleStorageChange = (event: Event) => {
+    if (
+      event instanceof StorageEvent &&
+      event.key !== null &&
+      event.key !== NAV_SIDEBAR_GROUP_STATE_STORAGE_KEY
+    ) {
+      return;
+    }
+
+    onStoreChange();
+  };
+
+  window.addEventListener("storage", handleStorageChange);
+  window.addEventListener(NAV_SIDEBAR_GROUP_STATE_EVENT, handleStorageChange);
+
+  return () => {
+    window.removeEventListener("storage", handleStorageChange);
+    window.removeEventListener(NAV_SIDEBAR_GROUP_STATE_EVENT, handleStorageChange);
+  };
+}
 
 function renderNotificationBadge(href: string, unreadNotificationCount: number, className: string) {
   if (href !== "/notifications" || unreadNotificationCount <= 0) {
@@ -31,8 +63,24 @@ export function NavSidebar({
   currentUser: CurrentUser | null;
 }) {
   const pathname = usePathname();
-  const groups = getNavSidebarGroupsForUser(currentUser);
+  const groups = useMemo(() => getNavSidebarGroupsForUser(currentUser), [currentUser]);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const rawGroupState = useSyncExternalStore(
+    subscribeToNavSidebarGroupState,
+    () => {
+      if (typeof window === "undefined") {
+        return null;
+      }
+
+      try {
+        return window.localStorage.getItem(NAV_SIDEBAR_GROUP_STATE_STORAGE_KEY);
+      } catch {
+        return null;
+      }
+    },
+    () => null,
+  );
+  const groupState = useMemo(() => parseNavSidebarGroupState(rawGroupState, groups), [groups, rawGroupState]);
   const activeItemLabel = useMemo(
     () =>
       groups
@@ -43,7 +91,7 @@ export function NavSidebar({
 
   return (
     <nav
-      className="w-full shrink-0 border-b bg-white pt-4 dark:bg-zinc-900 md:w-52 md:border-b-0 md:border-r"
+      className="w-full shrink-0 border-b bg-white pt-4 dark:bg-zinc-900 md:flex md:h-full md:w-60 md:flex-col md:border-b-0 md:border-r md:overflow-y-auto"
       aria-label="Dashboard navigation"
     >
       <div className="px-2 pb-3 md:hidden">
@@ -69,23 +117,51 @@ export function NavSidebar({
           </span>
         </button>
       </div>
-      <div id="dashboard-nav-items" className={mobileOpen ? "block" : "hidden md:block"}>
+      <div id="dashboard-nav-items" className={mobileOpen ? "block md:flex-1" : "hidden md:block md:flex-1"}>
         <ul className="space-y-3 px-2 pb-4">
           {groups.map((group) => {
             const isGroupActive = isNavSidebarGroupActive(pathname, group);
+            const isGroupExpanded = isNavSidebarGroupExpanded(pathname, group, groupState);
+            const groupPanelId = `dashboard-nav-group-${group.key.toLowerCase()}`;
+            const groupToggleClassName = isGroupActive
+              ? "mb-1 flex w-full items-center justify-between rounded-md px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
+              : "mb-1 flex w-full items-center justify-between rounded-md px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-200";
 
             return (
               <li key={group.key}>
-                <p
-                  className={
-                    isGroupActive
-                      ? "mb-1 rounded-md bg-zinc-100 px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
-                      : "px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500"
-                  }
+                <button
+                  type="button"
+                  aria-controls={groupPanelId}
+                  aria-expanded={isGroupExpanded}
+                  onClick={() => {
+                    if (typeof window === "undefined") {
+                      return;
+                    }
+
+                    try {
+                      window.localStorage.setItem(
+                        NAV_SIDEBAR_GROUP_STATE_STORAGE_KEY,
+                        JSON.stringify({
+                          ...groupState,
+                          [group.key]: !(groupState[group.key] ?? DEFAULT_NAV_SIDEBAR_GROUP_EXPANDED),
+                        }),
+                      );
+                      window.dispatchEvent(new Event(NAV_SIDEBAR_GROUP_STATE_EVENT));
+                    } catch {}
+                  }}
+                  className={groupToggleClassName}
                 >
-                  {group.label}
-                </p>
-                <ul className="space-y-0.5 pl-3">
+                  <span>{group.label}</span>
+                  <span
+                    aria-hidden="true"
+                    className={isGroupExpanded ? "text-zinc-500 transition-transform dark:text-zinc-400" : "-rotate-90 text-zinc-500 transition-transform dark:text-zinc-400"}
+                  >
+                    <svg viewBox="0 0 20 20" className="h-4 w-4 fill-current">
+                      <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.158l3.71-3.928a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" />
+                    </svg>
+                  </span>
+                </button>
+                <ul id={groupPanelId} className={isGroupExpanded ? "space-y-0.5 pl-3" : "hidden"}>
                   {group.items.map((item) => {
                     const isInteractive = item.status === "active" && item.disabled !== true;
                     const isActive = isInteractive && isNavSidebarLinkActive(pathname, item.href);
