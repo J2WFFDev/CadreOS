@@ -206,6 +206,7 @@ export async function POST(
         quantityOnHand: true,
         lifecycleStatus: true,
         readinessState: true,
+        inventoryCondition: true,
         category: { select: { guardianApprovalRequired: true } },
       },
     });
@@ -301,6 +302,7 @@ export async function POST(
     const conflicts = evaluateGearReservationConflicts({
       lifecycleStatus: item.lifecycleStatus,
       readinessState: item.readinessState,
+      inventoryCondition: item.inventoryCondition,
       inventoryType: item.inventoryType,
       quantityOnHand: item.quantityOnHand,
       currentOpenCheckoutCount,

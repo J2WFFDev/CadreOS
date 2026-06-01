@@ -7,6 +7,7 @@ import {
   GearConditionStatus,
   GearInventoryType,
   GearItemLifecycleStatus,
+  InventoryConditionStatus,
   Prisma,
   TaskStatus,
   type GearMaintenanceType,
@@ -143,16 +144,22 @@ export default async function GearOpsItemDetailsPage({
         inventoryType: GearInventoryType;
         lifecycleStatus: GearItemLifecycleStatus;
         conditionStatus: GearConditionStatus | null;
+        inventoryCondition: InventoryConditionStatus | null;
         readinessState: InventoryReadinessState | null;
         ownershipType: import("@prisma/client").InventoryOwnershipType | null;
         lastInspectionResult: import("@prisma/client").GearItemInspectionResult | null;
         inspectionDueStatus: import("@prisma/client").GearInspectionDueStatus;
         maintenanceDueStatus: import("@prisma/client").GearMaintenanceDueStatus;
         barcodeValue: string | null;
+        qrCodeValue: string | null;
+        manufacturer: string | null;
+        model: string | null;
         sku: string | null;
         serialNumber: string | null;
         quantityOnHand: number;
+        unitType: string | null;
         quantityMin: number | null;
+        storageLocationText: string | null;
         notes: string | null;
         location: { id: string; name: string; locationCode: string | null } | null;
         category: { id: string; name: string; inventoryType: GearInventoryType };
@@ -229,16 +236,22 @@ export default async function GearOpsItemDetailsPage({
     inventoryType: true,
     lifecycleStatus: true,
     conditionStatus: true,
+    inventoryCondition: true,
     readinessState: true,
     ownershipType: true,
     lastInspectionResult: true,
     inspectionDueStatus: true,
     maintenanceDueStatus: true,
     barcodeValue: true,
+    qrCodeValue: true,
+    manufacturer: true,
+    model: true,
     sku: true,
     serialNumber: true,
     quantityOnHand: true,
+    unitType: true,
     quantityMin: true,
+    storageLocationText: true,
     notes: true,
     location: { select: { id: true, name: true, locationCode: true } },
     category: { select: { id: true, name: true, inventoryType: true } },
@@ -1097,6 +1110,8 @@ export default async function GearOpsItemDetailsPage({
                 hasActiveAssignment: currentAssignments.length > 0,
                 hasActiveReservation: reservationSummary.currentReservedCount > 0,
                 hasActiveHold: reservationSummary.currentHeldCount > 0,
+                readinessState: item.readinessState,
+                inventoryCondition: item.inventoryCondition,
               })}
             />
             <GearLifecycleBadge status={item.lifecycleStatus} />
@@ -1331,10 +1346,13 @@ export default async function GearOpsItemDetailsPage({
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Location</dt>
           <dd className="text-zinc-600 dark:text-zinc-400">
             {item.location ? (
-              <Link href={`/gear-ops/locations/${item.location.id}`} className="underline">
-                {item.location.name}
-                {item.location.locationCode ? ` (${item.location.locationCode})` : ""}
-              </Link>
+              <>
+                <Link href={`/gear-ops/locations/${item.location.id}`} className="underline">
+                  {item.location.name}
+                  {item.location.locationCode ? ` (${item.location.locationCode})` : ""}
+                </Link>
+                {item.storageLocationText ? ` · ${item.storageLocationText}` : ""}
+              </>
             ) : "—"}
           </dd>
         </div>
@@ -1355,8 +1373,23 @@ export default async function GearOpsItemDetailsPage({
           </dd>
         </div>
         <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Manufacturer / Model</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">
+            {item.manufacturer ?? "—"} / {item.model ?? "—"}
+            {item.unitType ? ` · Unit: ${item.unitType}` : ""}
+          </dd>
+        </div>
+        <div>
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Barcode / QR</dt>
-          <dd className="font-mono text-zinc-600 dark:text-zinc-400">{item.barcodeValue ?? "—"}</dd>
+          <dd className="font-mono text-zinc-600 dark:text-zinc-400">
+            {item.barcodeValue ?? "—"} / {item.qrCodeValue ?? "—"}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Inventory condition</dt>
+          <dd className="text-zinc-600 dark:text-zinc-400">
+            {item.inventoryCondition ? formatGearOpsEnum(item.inventoryCondition) : "—"}
+          </dd>
         </div>
       </dl>
 

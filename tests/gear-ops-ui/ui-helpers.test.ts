@@ -299,9 +299,45 @@ test("QUARANTINED lifecycle → MAINTENANCE signal", () => {
   );
 });
 
-test("RETIRED lifecycle → MAINTENANCE signal", () => {
+test("RETIRED lifecycle → RETIRED signal", () => {
   assert.equal(
     deriveAvailabilitySignal({ lifecycleStatus: "RETIRED", hasOpenCheckout: false, hasActiveAssignment: false }),
+    "RETIRED",
+  );
+});
+
+test("NEEDS_INSPECTION readiness → INSPECTION_NEEDED signal", () => {
+  assert.equal(
+    deriveAvailabilitySignal({
+      lifecycleStatus: "ACTIVE",
+      hasOpenCheckout: false,
+      hasActiveAssignment: false,
+      readinessState: "NEEDS_INSPECTION",
+    }),
+    "INSPECTION_NEEDED",
+  );
+});
+
+test("OUT_OF_SERVICE inventory condition → OUT_OF_SERVICE signal", () => {
+  assert.equal(
+    deriveAvailabilitySignal({
+      lifecycleStatus: "ACTIVE",
+      hasOpenCheckout: false,
+      hasActiveAssignment: false,
+      inventoryCondition: "OUT_OF_SERVICE",
+    }),
+    "OUT_OF_SERVICE",
+  );
+});
+
+test("NEEDS_MAINTENANCE inventory condition → MAINTENANCE signal", () => {
+  assert.equal(
+    deriveAvailabilitySignal({
+      lifecycleStatus: "ACTIVE",
+      hasOpenCheckout: false,
+      hasActiveAssignment: false,
+      inventoryCondition: "NEEDS_MAINTENANCE",
+    }),
     "MAINTENANCE",
   );
 });
@@ -472,12 +508,26 @@ test("getAvailabilitySignalLabel returns readable text for all signals", () => {
   assert.equal(getAvailabilitySignalLabel("HELD"), "Held");
   assert.equal(getAvailabilitySignalLabel("CHECKED_OUT"), "Checked out");
   assert.equal(getAvailabilitySignalLabel("ASSIGNED"), "Assigned");
-  assert.equal(getAvailabilitySignalLabel("MAINTENANCE"), "Out of service");
+  assert.equal(getAvailabilitySignalLabel("INSPECTION_NEEDED"), "Inspection needed");
+  assert.equal(getAvailabilitySignalLabel("MAINTENANCE"), "Maintenance");
+  assert.equal(getAvailabilitySignalLabel("OUT_OF_SERVICE"), "Out of service");
+  assert.equal(getAvailabilitySignalLabel("RETIRED"), "Retired");
   assert.equal(getAvailabilitySignalLabel("UNAVAILABLE"), "Unavailable");
 });
 
 test("getAvailabilitySignalChipClass returns non-empty class strings for all signals", () => {
-  const signals: GearAvailabilitySignal[] = ["AVAILABLE", "RESERVED", "HELD", "CHECKED_OUT", "ASSIGNED", "MAINTENANCE", "UNAVAILABLE"];
+  const signals: GearAvailabilitySignal[] = [
+    "AVAILABLE",
+    "RESERVED",
+    "HELD",
+    "CHECKED_OUT",
+    "ASSIGNED",
+    "INSPECTION_NEEDED",
+    "MAINTENANCE",
+    "OUT_OF_SERVICE",
+    "RETIRED",
+    "UNAVAILABLE",
+  ];
   const classes = signals.map(getAvailabilitySignalChipClass);
   classes.forEach((cls) => assert.ok(cls.length > 0, "Chip class must be non-empty"));
   assert.ok(getAvailabilitySignalChipClass("RESERVED").includes("violet"));

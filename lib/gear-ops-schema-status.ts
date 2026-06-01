@@ -74,12 +74,19 @@ const GEAR_ITEM_CREATE_COLUMNS = [
   "gearCategoryId",
   "name",
   "inventoryType",
+  "manufacturer",
+  "model",
   "sku",
   "serialNumber",
+  "qrCodeValue",
   "quantityOnHand",
+  "unitType",
   "quantityMin",
   "lifecycleStatus",
   "conditionStatus",
+  "inventoryCondition",
+  "locationId",
+  "storageLocationText",
   "barcodeValue",
   "notes",
 ];
@@ -234,6 +241,8 @@ const GEAR_ITEM_LIST_COLUMNS = [
   "inventoryType",
   "lifecycleStatus",
   "conditionStatus",
+  "inventoryCondition",
+  "readinessState",
   "quantityOnHand",
   "quantityMin",
 ];
@@ -246,13 +255,19 @@ const GEAR_ITEM_DETAIL_COLUMNS = [
   "inventoryType",
   "lifecycleStatus",
   "conditionStatus",
+  "inventoryCondition",
   "readinessState",
   "ownershipType",
   "barcodeValue",
+  "qrCodeValue",
   "sku",
   "serialNumber",
+  "manufacturer",
+  "model",
+  "unitType",
   "quantityOnHand",
   "quantityMin",
+  "storageLocationText",
   "notes",
 ];
 const GEAR_ASSIGNMENT_LIST_COLUMNS = [
@@ -380,6 +395,7 @@ const CORE_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
 const ITEM_CREATION_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequirements(
   [{ table: "GearCategory", columns: GEAR_CATEGORY_BASIC_COLUMNS }],
   [{ table: "Program", columns: PROGRAM_LOOKUP_COLUMNS }],
+  [{ table: "InventoryLocation", columns: INVENTORY_LOCATION_MINIMAL_COLUMNS }],
   [{ table: "GearItem", columns: GEAR_ITEM_CREATE_COLUMNS }],
 );
 
@@ -513,7 +529,16 @@ const RESERVATION_CREATION_REQUIREMENTS: GearOpsSchemaRequirement[] = mergeRequi
   [
     {
       table: "GearItem",
-      columns: ["organizationId", "gearCategoryId", "name", "inventoryType", "lifecycleStatus", "quantityOnHand", "readinessState"],
+      columns: [
+        "organizationId",
+        "gearCategoryId",
+        "name",
+        "inventoryType",
+        "lifecycleStatus",
+        "quantityOnHand",
+        "readinessState",
+        "inventoryCondition",
+      ],
     },
   ],
   [{ table: "GearReservation", columns: GEAR_RESERVATION_DETAIL_COLUMNS }],

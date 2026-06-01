@@ -144,6 +144,8 @@ export default async function GearOpsItemsPage({
         inventoryType: GearInventoryType;
         lifecycleStatus: GearItemLifecycleStatus;
         conditionStatus: GearConditionStatus | null;
+        inventoryCondition: import("@prisma/client").InventoryConditionStatus | null;
+        readinessState: InventoryReadinessState | null;
         quantityOnHand: number;
         quantityMin: number | null;
         category: { id: string; name: string; inventoryType: GearInventoryType };
@@ -185,6 +187,8 @@ export default async function GearOpsItemsPage({
         inventoryType: true,
         lifecycleStatus: true,
         conditionStatus: true,
+        inventoryCondition: true,
+        readinessState: true,
         quantityOnHand: true,
         quantityMin: true,
         category: { select: { id: true, name: true, inventoryType: true } },
@@ -422,6 +426,8 @@ export default async function GearOpsItemsPage({
               lifecycleStatus: item.lifecycleStatus,
               hasOpenCheckout: activeCheckout !== null,
               hasActiveAssignment: activeAssignment !== null,
+              readinessState: item.readinessState,
+              inventoryCondition: item.inventoryCondition,
             });
 
             return (

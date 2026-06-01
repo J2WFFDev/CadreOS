@@ -1,4 +1,9 @@
-import { GearConditionStatus, GearInventoryType, GearItemLifecycleStatus } from "@prisma/client";
+import {
+  GearConditionStatus,
+  GearInventoryType,
+  GearItemLifecycleStatus,
+  InventoryConditionStatus,
+} from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
@@ -90,10 +95,11 @@ export default async function NewGearItemPage({
 
   let categories: Array<{ id: string; name: string; inventoryType: GearInventoryType }> | null = null;
   let programs: Array<{ id: string; name: string }> | null = null;
+  let locations: Array<{ id: string; name: string; locationCode: string | null }> | null = null;
   let queryErrorMessage = "Unable to load gear item creation options right now. Please try again later.";
 
   try {
-    [categories, programs] = await Promise.all([
+    [categories, programs, locations] = await Promise.all([
       db.gearCategory.findMany({
         where: { organizationId: scope.organizationId },
         select: { id: true, name: true, inventoryType: true },
@@ -104,6 +110,11 @@ export default async function NewGearItemPage({
         select: { id: true, name: true },
         orderBy: [{ name: "asc" }],
       }),
+      db.inventoryLocation.findMany({
+        where: { organizationId: scope.organizationId, isActive: true },
+        select: { id: true, name: true, locationCode: true },
+        orderBy: [{ name: "asc" }],
+      }),
     ]);
   } catch (error) {
     if (isSchemaUnavailableError(error)) {
@@ -111,7 +122,7 @@ export default async function NewGearItemPage({
     }
   }
 
-  if (!categories || !programs) {
+  if (!categories || !programs || !locations) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">New gear item</h2>
@@ -138,14 +149,21 @@ export default async function NewGearItemPage({
   const name = readSearchParam(resolvedSearchParams, "name");
   const inventoryType = readSearchParam(resolvedSearchParams, "inventoryType");
   const programId = readSearchParam(resolvedSearchParams, "programId");
+  const manufacturer = readSearchParam(resolvedSearchParams, "manufacturer");
+  const model = readSearchParam(resolvedSearchParams, "model");
   const sku = readSearchParam(resolvedSearchParams, "sku");
   const serialNumber = readSearchParam(resolvedSearchParams, "serialNumber");
   const barcodeValue = readSearchParam(resolvedSearchParams, "barcodeValue");
+  const qrCodeValue = readSearchParam(resolvedSearchParams, "qrCodeValue");
   const assetId = readSearchParam(resolvedSearchParams, "assetId");
   const quantityOnHand = readSearchParam(resolvedSearchParams, "quantityOnHand");
+  const unitType = readSearchParam(resolvedSearchParams, "unitType");
   const quantityMin = readSearchParam(resolvedSearchParams, "quantityMin");
   const lifecycleStatus = readSearchParam(resolvedSearchParams, "lifecycleStatus");
   const conditionStatus = readSearchParam(resolvedSearchParams, "conditionStatus");
+  const inventoryCondition = readSearchParam(resolvedSearchParams, "inventoryCondition");
+  const locationId = readSearchParam(resolvedSearchParams, "locationId");
+  const storageLocationText = readSearchParam(resolvedSearchParams, "storageLocationText");
   const notes = readSearchParam(resolvedSearchParams, "notes");
   const generalError = readSearchParam(resolvedSearchParams, "error");
 
@@ -223,6 +241,33 @@ export default async function NewGearItemPage({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1">
+            <label htmlFor="manufacturer" className="text-sm font-medium">
+              Manufacturer (optional)
+            </label>
+            <input
+              id="manufacturer"
+              name="manufacturer"
+              defaultValue={manufacturer}
+              className="w-full rounded-md border px-3 py-2 text-sm"
+            />
+            {readSearchParam(resolvedSearchParams, "manufacturerError") ? (
+              <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "manufacturerError")}</p>
+            ) : null}
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="model" className="text-sm font-medium">
+              Model (optional)
+            </label>
+            <input id="model" name="model" defaultValue={model} className="w-full rounded-md border px-3 py-2 text-sm" />
+            {readSearchParam(resolvedSearchParams, "modelError") ? (
+              <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "modelError")}</p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
             <label htmlFor="lifecycleStatus" className="text-sm font-medium">
               Lifecycle status
             </label>
@@ -245,7 +290,7 @@ export default async function NewGearItemPage({
 
           <div className="space-y-1">
             <label htmlFor="conditionStatus" className="text-sm font-medium">
-              Condition status <span className="text-zinc-500">(durable items)</span>
+              Legacy condition status <span className="text-zinc-500">(compatibility)</span>
             </label>
             <select
               id="conditionStatus"
@@ -264,6 +309,28 @@ export default async function NewGearItemPage({
               <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "conditionStatusError")}</p>
             ) : null}
           </div>
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="inventoryCondition" className="text-sm font-medium">
+            Inventory condition (optional)
+          </label>
+          <select
+            id="inventoryCondition"
+            name="inventoryCondition"
+            defaultValue={inventoryCondition}
+            className="w-full rounded-md border px-3 py-2 text-sm"
+          >
+            <option value="">No inventory condition recorded</option>
+            {Object.values(InventoryConditionStatus).map((status) => (
+              <option key={status} value={status}>
+                {formatGearOpsEnum(status)}
+              </option>
+            ))}
+          </select>
+          {readSearchParam(resolvedSearchParams, "inventoryConditionError") ? (
+            <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "inventoryConditionError")}</p>
+          ) : null}
         </div>
 
         <div className="space-y-1">
@@ -338,7 +405,7 @@ export default async function NewGearItemPage({
           </div>
           <div className="space-y-1">
             <label htmlFor="barcodeValue" className="text-sm font-medium">
-              Barcode / QR value (optional)
+              Barcode value (optional)
             </label>
             <input
               id="barcodeValue"
@@ -348,6 +415,79 @@ export default async function NewGearItemPage({
             />
             {readSearchParam(resolvedSearchParams, "barcodeValueError") ? (
               <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "barcodeValueError")}</p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label htmlFor="qrCodeValue" className="text-sm font-medium">
+              QR code value (optional)
+            </label>
+            <input
+              id="qrCodeValue"
+              name="qrCodeValue"
+              defaultValue={qrCodeValue}
+              className="w-full rounded-md border px-3 py-2 text-sm font-mono"
+            />
+            {readSearchParam(resolvedSearchParams, "qrCodeValueError") ? (
+              <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "qrCodeValueError")}</p>
+            ) : null}
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="unitType" className="text-sm font-medium">
+              Unit type (optional)
+            </label>
+            <input
+              id="unitType"
+              name="unitType"
+              defaultValue={unitType}
+              placeholder="ea, box, round, pack"
+              className="w-full rounded-md border px-3 py-2 text-sm"
+            />
+            {readSearchParam(resolvedSearchParams, "unitTypeError") ? (
+              <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "unitTypeError")}</p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label htmlFor="locationId" className="text-sm font-medium">
+              Storage location (optional)
+            </label>
+            <select
+              id="locationId"
+              name="locationId"
+              defaultValue={locationId}
+              className="w-full rounded-md border px-3 py-2 text-sm"
+            >
+              <option value="">No location selected</option>
+              {locations.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                  {location.locationCode ? ` (${location.locationCode})` : ""}
+                </option>
+              ))}
+            </select>
+            {readSearchParam(resolvedSearchParams, "locationIdError") ? (
+              <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "locationIdError")}</p>
+            ) : null}
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="storageLocationText" className="text-sm font-medium">
+              Storage location notes (optional)
+            </label>
+            <input
+              id="storageLocationText"
+              name="storageLocationText"
+              defaultValue={storageLocationText}
+              className="w-full rounded-md border px-3 py-2 text-sm"
+            />
+            {readSearchParam(resolvedSearchParams, "storageLocationTextError") ? (
+              <p className="text-sm text-red-600">{readSearchParam(resolvedSearchParams, "storageLocationTextError")}</p>
             ) : null}
           </div>
         </div>

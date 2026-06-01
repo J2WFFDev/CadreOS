@@ -18,6 +18,7 @@ import type {
   GearConditionStatus,
   GearInventoryType,
   GearItemLifecycleStatus,
+  InventoryConditionStatus,
   InventoryReadinessState,
 } from "@prisma/client";
 
@@ -330,7 +331,10 @@ export type GearAvailabilitySignal =
   | "HELD"
   | "CHECKED_OUT"
   | "ASSIGNED"
+  | "INSPECTION_NEEDED"
   | "MAINTENANCE"
+  | "OUT_OF_SERVICE"
+  | "RETIRED"
   | "UNAVAILABLE";
 
 export function deriveAvailabilitySignal({
@@ -339,21 +343,39 @@ export function deriveAvailabilitySignal({
   hasActiveAssignment,
   hasActiveReservation = false,
   hasActiveHold = false,
+  readinessState = null,
+  inventoryCondition = null,
 }: {
   lifecycleStatus: GearItemLifecycleStatus;
   hasOpenCheckout: boolean;
   hasActiveAssignment: boolean;
   hasActiveReservation?: boolean;
   hasActiveHold?: boolean;
+  readinessState?: InventoryReadinessState | null;
+  inventoryCondition?: InventoryConditionStatus | null;
 }): GearAvailabilitySignal {
+  if (lifecycleStatus === "RETIRED" || lifecycleStatus === "LOST") {
+    return "RETIRED";
+  }
+
+  if (
+    inventoryCondition === "OUT_OF_SERVICE" ||
+    readinessState === "NOT_READY" ||
+    readinessState === "DECOMMISSIONED"
+  ) {
+    return "OUT_OF_SERVICE";
+  }
+
   if (
     lifecycleStatus === "MAINTENANCE" ||
     lifecycleStatus === "QUARANTINED" ||
-    lifecycleStatus === "RETIRED" ||
-    lifecycleStatus === "LOST"
+    inventoryCondition === "NEEDS_MAINTENANCE" ||
+    readinessState === "MAINTENANCE_REQUIRED"
   ) {
     return "MAINTENANCE";
   }
+
+  if (readinessState === "NEEDS_INSPECTION") return "INSPECTION_NEEDED";
 
   if (hasOpenCheckout) return "CHECKED_OUT";
   if (hasActiveAssignment) return "ASSIGNED";
@@ -376,8 +398,14 @@ export function getAvailabilitySignalLabel(signal: GearAvailabilitySignal): stri
       return "Checked out";
     case "ASSIGNED":
       return "Assigned";
+    case "INSPECTION_NEEDED":
+      return "Inspection needed";
     case "MAINTENANCE":
+      return "Maintenance";
+    case "OUT_OF_SERVICE":
       return "Out of service";
+    case "RETIRED":
+      return "Retired";
     case "UNAVAILABLE":
       return "Unavailable";
   }
@@ -395,8 +423,14 @@ export function getAvailabilitySignalChipClass(signal: GearAvailabilitySignal): 
       return "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200";
     case "ASSIGNED":
       return "bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200";
+    case "INSPECTION_NEEDED":
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200";
     case "MAINTENANCE":
       return "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200";
+    case "OUT_OF_SERVICE":
+      return "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200";
+    case "RETIRED":
+      return "bg-slate-100 text-slate-800 dark:bg-slate-900/40 dark:text-slate-200";
     case "UNAVAILABLE":
       return "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200";
   }

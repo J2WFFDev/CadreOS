@@ -107,7 +107,10 @@ export function GearAvailabilityBanner({
     HELD: "info",
     CHECKED_OUT: "info",
     ASSIGNED: "info",
+    INSPECTION_NEEDED: "warning",
     MAINTENANCE: "warning",
+    OUT_OF_SERVICE: "danger",
+    RETIRED: "neutral",
     UNAVAILABLE: "danger",
   };
 

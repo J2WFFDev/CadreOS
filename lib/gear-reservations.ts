@@ -5,6 +5,7 @@ import type {
   GearReservationMode,
   GearReservationPurpose,
   GearReservationStatus,
+  InventoryConditionStatus,
   InventoryReadinessState,
 } from "@prisma/client";
 
@@ -45,6 +46,7 @@ export type GearReservationConflict = {
 export type GearReservationEvaluationInput = {
   lifecycleStatus: GearItemLifecycleStatus;
   readinessState: InventoryReadinessState | null;
+  inventoryCondition?: InventoryConditionStatus | null;
   inventoryType: "DURABLE" | "CONSUMABLE";
   quantityOnHand: number;
   currentOpenCheckoutCount: number;
@@ -167,6 +169,20 @@ export function evaluateGearReservationConflicts(input: GearReservationEvaluatio
       code: "READINESS_WARNING",
       severity: input.requestedMode === "HARD_RESERVATION" ? "blocking" : "warning",
       message: "Readiness or inspection follow-up is still open for this item.",
+    });
+  }
+
+  if (input.inventoryCondition === "OUT_OF_SERVICE") {
+    conflicts.push({
+      code: "OUT_OF_SERVICE",
+      severity: "blocking",
+      message: "This item is marked out of service and cannot be reserved or held for fulfillment.",
+    });
+  } else if (input.inventoryCondition === "NEEDS_MAINTENANCE") {
+    conflicts.push({
+      code: "READINESS_WARNING",
+      severity: input.requestedMode === "HARD_RESERVATION" ? "blocking" : "warning",
+      message: "This item needs maintenance before routine operational use.",
     });
   }
 

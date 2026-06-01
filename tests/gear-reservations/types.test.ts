@@ -88,6 +88,7 @@ test("soft holds warn while consumable shortages block", () => {
   const conflicts = evaluateGearReservationConflicts({
     lifecycleStatus: "ACTIVE",
     readinessState: "READY",
+    inventoryCondition: null,
     inventoryType: "CONSUMABLE",
     quantityOnHand: 4,
     currentOpenCheckoutCount: 0,
@@ -201,6 +202,48 @@ test("reservation summary counts current, upcoming, expired, and blocked reserva
   assert.equal(summary.eventHeldCount, 1);
   assert.equal(summary.maintenanceHeldCount, 1);
   assert.equal(summary.blockedCount, 1);
+});
+
+test("out-of-service inventory condition blocks reservations", () => {
+  const conflicts = evaluateGearReservationConflicts({
+    lifecycleStatus: "ACTIVE",
+    readinessState: "READY",
+    inventoryCondition: "OUT_OF_SERVICE",
+    inventoryType: "DURABLE",
+    quantityOnHand: 1,
+    currentOpenCheckoutCount: 0,
+    currentAssignmentCount: 0,
+    requestedMode: "HARD_RESERVATION",
+    requestedHoldType: null,
+    requestedQuantity: 1,
+    requestedWindowStartAt: new Date("2026-05-27T10:00:00Z"),
+    requestedWindowEndAt: new Date("2026-05-27T12:00:00Z"),
+    approvalRequired: false,
+    existingReservations: [],
+  });
+
+  assert.ok(conflicts.some((conflict) => conflict.code === "OUT_OF_SERVICE" && conflict.severity === "blocking"));
+});
+
+test("needs-maintenance inventory condition warns for soft holds", () => {
+  const conflicts = evaluateGearReservationConflicts({
+    lifecycleStatus: "ACTIVE",
+    readinessState: "READY",
+    inventoryCondition: "NEEDS_MAINTENANCE",
+    inventoryType: "DURABLE",
+    quantityOnHand: 1,
+    currentOpenCheckoutCount: 0,
+    currentAssignmentCount: 0,
+    requestedMode: "SOFT_HOLD",
+    requestedHoldType: null,
+    requestedQuantity: 1,
+    requestedWindowStartAt: new Date("2026-05-27T10:00:00Z"),
+    requestedWindowEndAt: new Date("2026-05-27T12:00:00Z"),
+    approvalRequired: false,
+    existingReservations: [],
+  });
+
+  assert.ok(conflicts.some((conflict) => conflict.code === "READINESS_WARNING" && conflict.severity === "warning"));
 });
 
 test("matching reservation fulfillment prefers overlapping contextual reservations", () => {

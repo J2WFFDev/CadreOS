@@ -361,6 +361,14 @@ enum InventoryOwnershipType {
   DONATED
 }
 
+enum InventoryConditionStatus {
+  EXCELLENT
+  GOOD
+  FAIR
+  NEEDS_MAINTENANCE
+  OUT_OF_SERVICE
+}
+
 enum InventoryReadinessState {
   READY
   NEEDS_INSPECTION
@@ -2031,15 +2039,21 @@ model GearItem {
   inventoryType          GearInventoryType
   // Arc 20Z: human-readable asset identity (e.g. GO-RIFLE-0007). Auto-generated on create; admin-overridable.
   assetId                String?
+  manufacturer           String?
+  model                  String?
   sku                    String?
   serialNumber           String?
+  qrCodeValue            String?
   quantityOnHand         Int                       @default(0)
+  unitType               String?
   quantityMin            Int?
   lifecycleStatus        GearItemLifecycleStatus   @default(ACTIVE)
   conditionStatus        GearConditionStatus?
+  inventoryCondition     InventoryConditionStatus?
   ownershipType          InventoryOwnershipType?
   readinessState         InventoryReadinessState?
   locationId             String?
+  storageLocationText    String?
   barcodeValue           String?
   notes                  String?
   // Arc 20Y: inspection tracking fields
@@ -2085,6 +2099,7 @@ model GearItem {
   @@index([organizationId, programId])
   @@index([organizationId, inventoryType, lifecycleStatus])
   @@index([organizationId, locationId])
+  @@index([organizationId, inventoryCondition])
   @@index([organizationId, readinessState])
   @@index([organizationId, inspectionDueStatus])
   @@index([organizationId, maintenanceDueStatus])
