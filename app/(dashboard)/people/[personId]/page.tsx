@@ -1,4 +1,11 @@
-import { AttendanceStatus, MemberLifecycleStatus, RoleType, ScopeType } from "@prisma/client";
+import {
+  AttendanceStatus,
+  CertificationVerificationStatus,
+  MemberLifecycleStatus,
+  QualificationAssignmentStatus,
+  RoleType,
+  ScopeType,
+} from "@prisma/client";
 import Link from "next/link";
 
 import { BackLink } from "@/components/dashboard/back-link";
@@ -13,6 +20,16 @@ import {
   type StaffScopeResolution,
 } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import {
+  CERTIFICATION_VERIFICATION_STATUS_LABELS,
+  ELIGIBILITY_TARGET_TYPE_LABELS,
+  EXPIRING_SOON_WINDOW_DAYS,
+  getExpirationState,
+  QUALIFICATION_ASSIGNMENT_STATUS_LABELS,
+  resolveCertificationVerificationStatus,
+  resolveQualificationAssignmentStatus,
+  summarizeEligibility,
+} from "@/lib/member-ops-qualifications";
 import { isUnresolvedTaskStatus } from "@/lib/follow-up-tasks";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
 import {
@@ -27,6 +44,7 @@ import {
   buildSupportedTaskSourceNoteVisibilityWhere,
   SUPPORTED_OPERATIONAL_NOTE_VISIBILITY,
 } from "@/lib/operational-visibility";
+import { formatDateInputValue } from "@/lib/workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +73,10 @@ const lifecycleDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   timeStyle: "short",
 });
 
+const calendarDateFormatter = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+});
+
 const TERMINAL_MEMBER_LIFECYCLE_STATUSES = new Set<MemberLifecycleStatus>([
   MemberLifecycleStatus.ARCHIVED,
   MemberLifecycleStatus.FORMER,
@@ -65,6 +87,30 @@ function formatEnumLabel(value: string) {
     .replaceAll("_", " ")
     .toLowerCase()
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatOptionalDate(value: Date | null) {
+  return value ? calendarDateFormatter.format(value) : "Not set";
+}
+
+function getStatusBadgeClasses(tone: "green" | "amber" | "red" | "zinc" | "blue") {
+  if (tone === "green") {
+    return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300";
+  }
+
+  if (tone === "amber") {
+    return "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300";
+  }
+
+  if (tone === "red") {
+    return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300";
+  }
+
+  if (tone === "blue") {
+    return "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300";
+  }
+
+  return "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200";
 }
 
 const ASSIGNMENT_SCOPE_OPTIONS = [
@@ -237,10 +283,57 @@ export default async function PersonDetailsPage({
           team: { id: string; name: string; program: { id: string; name: string } };
           season: { id: string; name: string };
         }>;
+        qualifications: Array<{
+          id: string;
+          earnedDate: Date | null;
+          expirationDate: Date | null;
+          status: QualificationAssignmentStatus;
+          notes: string | null;
+          qualification: {
+            id: string;
+            name: string;
+            qualificationType: string;
+            supportsTeamParticipation: boolean;
+            supportsProgramParticipation: boolean;
+            supportsEquipmentEligibility: boolean;
+          };
+        }>;
+        certifications: Array<{
+          id: string;
+          earnedDate: Date | null;
+          expirationDate: Date | null;
+          verificationStatus: CertificationVerificationStatus;
+          notes: string | null;
+          certification: {
+            id: string;
+            name: string;
+            issuingOrganization: string | null;
+          };
+        }>;
       }
     | null = null;
   let programs: Array<{ id: string; name: string }> = [];
   let teams: Array<{ id: string; name: string; program: { id: string; name: string } }> = [];
+  let qualificationDefinitions: Array<{
+    id: string;
+    name: string;
+    qualificationType: string;
+  }> = [];
+  let certificationDefinitions: Array<{
+    id: string;
+    name: string;
+    issuingOrganization: string | null;
+  }> = [];
+  let eligibilityDefinitions: Array<{
+    id: string;
+    name: string;
+    targetType: Parameters<typeof summarizeEligibility>[0][number]["targetType"];
+    targetLabel: string | null;
+    team: { name: string } | null;
+    program: { name: string } | null;
+    requiredQualifications: Array<{ qualification: { id: string; name: string } }>;
+    requiredCertifications: Array<{ certification: { id: string; name: string } }>;
+  }> = [];
   const guardianAccess = await resolveGuardianRelationshipAccess({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
@@ -249,7 +342,7 @@ export default async function PersonDetailsPage({
   const canEditGuardianLinkageWhereSupported = guardianAccess.canEditGuardianLinkageWhereSupported;
 
   try {
-    [person, programs, teams] = await Promise.all([
+    [person, programs, teams, qualificationDefinitions, certificationDefinitions, eligibilityDefinitions] = await Promise.all([
       db.person.findFirst({
         where: {
           id: personId,
@@ -348,6 +441,33 @@ export default async function PersonDetailsPage({
               createdAt: "desc",
             },
           },
+          qualifications: {
+            include: {
+              qualification: {
+                select: {
+                  id: true,
+                  name: true,
+                  qualificationType: true,
+                  supportsTeamParticipation: true,
+                  supportsProgramParticipation: true,
+                  supportsEquipmentEligibility: true,
+                },
+              },
+            },
+            orderBy: [{ qualification: { name: "asc" } }],
+          },
+          certifications: {
+            include: {
+              certification: {
+                select: {
+                  id: true,
+                  name: true,
+                  issuingOrganization: true,
+                },
+              },
+            },
+            orderBy: [{ certification: { name: "asc" } }],
+          },
         },
       }),
       db.program.findMany({
@@ -399,6 +519,69 @@ export default async function PersonDetailsPage({
           },
         },
         orderBy: [{ program: { name: "asc" } }, { name: "asc" }],
+      }),
+      db.qualificationDefinition.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          active: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          qualificationType: true,
+        },
+        orderBy: [{ name: "asc" }],
+      }),
+      db.certificationDefinition.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          active: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          issuingOrganization: true,
+        },
+        orderBy: [{ name: "asc" }],
+      }),
+      db.eligibilityDefinition.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          active: true,
+        },
+        include: {
+          team: {
+            select: {
+              name: true,
+            },
+          },
+          program: {
+            select: {
+              name: true,
+            },
+          },
+          requiredQualifications: {
+            include: {
+              qualification: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+          requiredCertifications: {
+            include: {
+              certification: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: [{ name: "asc" }],
       }),
     ]);
   } catch {
@@ -462,6 +645,10 @@ export default async function PersonDetailsPage({
   const activateError = readSearchParam(resolvedSearchParams, "activateError");
   const lifecycleError = readSearchParam(resolvedSearchParams, "lifecycleError");
   const moveSuccess = readSearchParam(resolvedSearchParams, "moveSuccess");
+  const qualificationError = readSearchParam(resolvedSearchParams, "qualificationError");
+  const qualificationSuccess = readSearchParam(resolvedSearchParams, "qualificationSuccess");
+  const certificationError = readSearchParam(resolvedSearchParams, "certificationError");
+  const certificationSuccess = readSearchParam(resolvedSearchParams, "certificationSuccess");
 
   const selectedScopeTypeParam = readSearchParam(resolvedSearchParams, "scopeType");
   const selectedScopeType =
@@ -482,6 +669,16 @@ export default async function PersonDetailsPage({
   const selectedRoleType = selectedRoleTypeOptions.includes(selectedRoleTypeParam as RoleType)
     ? (selectedRoleTypeParam as RoleType)
     : selectedRoleTypeOptions[0];
+  const defaultQualificationId =
+    qualificationDefinitions.find(
+      (qualification) =>
+        !person.qualifications.some((assignment) => assignment.qualification.id === qualification.id),
+    )?.id ?? qualificationDefinitions[0]?.id ?? "";
+  const defaultCertificationId =
+    certificationDefinitions.find(
+      (certification) =>
+        !person.certifications.some((assignment) => assignment.certification.id === certification.id),
+    )?.id ?? certificationDefinitions[0]?.id ?? "";
   const visibleRoles = staffScopeResolution.allowAllStaffScope
     ? person.roles
     : person.roles.filter((role) =>
@@ -515,6 +712,49 @@ export default async function PersonDetailsPage({
     (link) => link.guardian._count.userAccounts > 0 && link.guardian.roles.length === 0,
   );
   const hasPendingOrIncompleteRelationshipSupport = hasGuardianAccountLinkGap || hasInactiveGuardianAccountSignal;
+  const qualificationAssignments = person.qualifications.map((assignment) => {
+    const resolvedStatus = resolveQualificationAssignmentStatus(
+      assignment.status,
+      assignment.expirationDate,
+    );
+    const expirationState = getExpirationState(assignment.expirationDate);
+
+    return {
+      ...assignment,
+      resolvedStatus,
+      expirationState,
+    };
+  });
+  const certificationAssignments = person.certifications.map((assignment) => {
+    const resolvedStatus = resolveCertificationVerificationStatus(
+      assignment.verificationStatus,
+      assignment.expirationDate,
+    );
+    const expirationState = getExpirationState(assignment.expirationDate);
+
+    return {
+      ...assignment,
+      resolvedStatus,
+      expirationState,
+    };
+  });
+  const eligibilitySummary = summarizeEligibility(
+    eligibilityDefinitions,
+    qualificationAssignments,
+    certificationAssignments,
+  );
+  const expiringSoonQualificationCount = qualificationAssignments.filter(
+    (assignment) => assignment.expirationState === "expiringSoon",
+  ).length;
+  const expiredQualificationCount = qualificationAssignments.filter(
+    (assignment) => assignment.expirationState === "expired",
+  ).length;
+  const expiringSoonCertificationCount = certificationAssignments.filter(
+    (assignment) => assignment.expirationState === "expiringSoon",
+  ).length;
+  const expiredCertificationCount = certificationAssignments.filter(
+    (assignment) => assignment.expirationState === "expired",
+  ).length;
   const memberTransitionReadiness = deriveMemberRosterReadiness({
     lifecycleStatus: person.lifecycleStatus,
     roleTypes: [...new Set(visibleRoles.map((role) => role.roleType))],
@@ -721,11 +961,34 @@ export default async function PersonDetailsPage({
         <Link href={`/people/${person.id}/guardians`} className="ml-2 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
           Guardian relationships
         </Link>
+        <Link href="/people/qualifications" className="ml-2 inline-block rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+          Qualification foundation
+        </Link>
       </div>
 
       {moveSuccess ? (
         <div className="rounded-lg border border-green-300 bg-green-50 p-4 dark:border-green-700 dark:bg-green-950/40">
           <p className="text-sm text-green-900 dark:text-green-200">{moveSuccess}</p>
+        </div>
+      ) : null}
+      {qualificationSuccess ? (
+        <div className="rounded-lg border border-green-300 bg-green-50 p-4 dark:border-green-700 dark:bg-green-950/40">
+          <p className="text-sm text-green-900 dark:text-green-200">{qualificationSuccess}</p>
+        </div>
+      ) : null}
+      {qualificationError ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
+          <p className="text-sm text-amber-900 dark:text-amber-200">{qualificationError}</p>
+        </div>
+      ) : null}
+      {certificationSuccess ? (
+        <div className="rounded-lg border border-green-300 bg-green-50 p-4 dark:border-green-700 dark:bg-green-950/40">
+          <p className="text-sm text-green-900 dark:text-green-200">{certificationSuccess}</p>
+        </div>
+      ) : null}
+      {certificationError ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
+          <p className="text-sm text-amber-900 dark:text-amber-200">{certificationError}</p>
         </div>
       ) : null}
 
@@ -1025,6 +1288,335 @@ export default async function PersonDetailsPage({
           programIdError={programIdError || undefined}
           teamIdError={teamIdError || undefined}
         />
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-lg font-medium">Qualifications</h3>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Track member qualifications, status, notes, and expiration for training and authorization workflows.
+            </p>
+          </div>
+          <Link href="/people/qualifications" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Manage qualification models
+          </Link>
+        </div>
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          Expiring in the next {EXPIRING_SOON_WINDOW_DAYS} days: {expiringSoonQualificationCount} · Expired: {expiredQualificationCount}
+        </p>
+        <form action={`/people/${person.id}/qualifications/create`} method="post" className="mt-4 grid gap-3 rounded-md border p-3 lg:grid-cols-2">
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Qualification</span>
+            <select name="qualificationId" defaultValue={defaultQualificationId} className="w-full rounded-md border px-3 py-2">
+              {qualificationDefinitions.length === 0 ? <option value="">No qualification definitions available</option> : null}
+              {qualificationDefinitions.map((qualification) => (
+                <option key={qualification.id} value={qualification.id}>
+                  {qualification.name} · {qualification.qualificationType}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Status</span>
+            <select name="status" defaultValue={QualificationAssignmentStatus.ACTIVE} className="w-full rounded-md border px-3 py-2">
+              {Object.values(QualificationAssignmentStatus).map((status) => (
+                <option key={status} value={status}>
+                  {QUALIFICATION_ASSIGNMENT_STATUS_LABELS[status]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Earned date</span>
+            <input type="date" name="earnedDate" className="w-full rounded-md border px-3 py-2" />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Expiration date</span>
+            <input type="date" name="expirationDate" className="w-full rounded-md border px-3 py-2" />
+          </label>
+          <label className="space-y-1 text-sm lg:col-span-2">
+            <span className="font-medium">Notes</span>
+            <textarea name="notes" rows={2} className="w-full rounded-md border px-3 py-2" />
+          </label>
+          <div className="lg:col-span-2">
+            <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+              Assign qualification
+            </button>
+          </div>
+        </form>
+        <div className="mt-4 space-y-3">
+          {qualificationAssignments.length === 0 ? (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">No qualifications assigned yet.</p>
+          ) : (
+            qualificationAssignments.map((assignment) => (
+              <form
+                key={assignment.id}
+                action={`/people/${person.id}/qualifications/${assignment.id}/update`}
+                method="post"
+                className="grid gap-3 rounded-md border p-3 lg:grid-cols-2"
+              >
+                <div className="lg:col-span-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium">{assignment.qualification.name}</p>
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                      assignment.resolvedStatus === QualificationAssignmentStatus.ACTIVE
+                        ? getStatusBadgeClasses("green")
+                        : assignment.resolvedStatus === QualificationAssignmentStatus.PENDING
+                          ? getStatusBadgeClasses("amber")
+                          : assignment.resolvedStatus === QualificationAssignmentStatus.SUSPENDED
+                            ? getStatusBadgeClasses("red")
+                            : getStatusBadgeClasses("zinc")
+                    }`}>
+                      {QUALIFICATION_ASSIGNMENT_STATUS_LABELS[assignment.resolvedStatus]}
+                    </span>
+                  </div>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {assignment.qualification.qualificationType} · Supports: {[
+                      assignment.qualification.supportsTeamParticipation ? "Team participation" : null,
+                      assignment.qualification.supportsProgramParticipation ? "Program participation" : null,
+                      assignment.qualification.supportsEquipmentEligibility ? "Equipment eligibility" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "General use"}
+                  </p>
+                </div>
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium">Status</span>
+                  <select name="status" defaultValue={assignment.status} className="w-full rounded-md border px-3 py-2">
+                    {Object.values(QualificationAssignmentStatus).map((status) => (
+                      <option key={status} value={status}>
+                        {QUALIFICATION_ASSIGNMENT_STATUS_LABELS[status]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium">Earned date</span>
+                  <input type="date" name="earnedDate" defaultValue={formatDateInputValue(assignment.earnedDate)} className="w-full rounded-md border px-3 py-2" />
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium">Expiration date</span>
+                  <input type="date" name="expirationDate" defaultValue={formatDateInputValue(assignment.expirationDate)} className="w-full rounded-md border px-3 py-2" />
+                </label>
+                <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                  <p>Earned: {formatOptionalDate(assignment.earnedDate)}</p>
+                  <p>Expires: {formatOptionalDate(assignment.expirationDate)}</p>
+                  <p>
+                    Expiration state:{" "}
+                    {assignment.expirationState === "expiringSoon"
+                      ? "Expiring soon"
+                      : assignment.expirationState === "expired"
+                        ? "Expired"
+                        : assignment.expirationState === "current"
+                          ? "Current"
+                          : "No expiration"}
+                  </p>
+                </div>
+                <label className="space-y-1 text-sm lg:col-span-2">
+                  <span className="font-medium">Notes</span>
+                  <textarea name="notes" defaultValue={assignment.notes ?? ""} rows={2} className="w-full rounded-md border px-3 py-2" />
+                </label>
+                <div className="lg:col-span-2">
+                  <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                    Save qualification
+                  </button>
+                </div>
+              </form>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-lg font-medium">Certifications</h3>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Track certification verification and expiration for coaching, safety, and medical readiness.
+            </p>
+          </div>
+          <Link href="/people/qualifications" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Manage certification models
+          </Link>
+        </div>
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          Expiring in the next {EXPIRING_SOON_WINDOW_DAYS} days: {expiringSoonCertificationCount} · Expired: {expiredCertificationCount}
+        </p>
+        <form action={`/people/${person.id}/certifications/create`} method="post" className="mt-4 grid gap-3 rounded-md border p-3 lg:grid-cols-2">
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Certification</span>
+            <select name="certificationId" defaultValue={defaultCertificationId} className="w-full rounded-md border px-3 py-2">
+              {certificationDefinitions.length === 0 ? <option value="">No certification definitions available</option> : null}
+              {certificationDefinitions.map((certification) => (
+                <option key={certification.id} value={certification.id}>
+                  {certification.name}
+                  {certification.issuingOrganization ? ` · ${certification.issuingOrganization}` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Verification status</span>
+            <select name="verificationStatus" defaultValue={CertificationVerificationStatus.VERIFIED} className="w-full rounded-md border px-3 py-2">
+              {Object.values(CertificationVerificationStatus).map((status) => (
+                <option key={status} value={status}>
+                  {CERTIFICATION_VERIFICATION_STATUS_LABELS[status]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Earned date</span>
+            <input type="date" name="earnedDate" className="w-full rounded-md border px-3 py-2" />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Expiration date</span>
+            <input type="date" name="expirationDate" className="w-full rounded-md border px-3 py-2" />
+          </label>
+          <label className="space-y-1 text-sm lg:col-span-2">
+            <span className="font-medium">Notes</span>
+            <textarea name="notes" rows={2} className="w-full rounded-md border px-3 py-2" />
+          </label>
+          <div className="lg:col-span-2">
+            <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+              Assign certification
+            </button>
+          </div>
+        </form>
+        <div className="mt-4 space-y-3">
+          {certificationAssignments.length === 0 ? (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">No certifications assigned yet.</p>
+          ) : (
+            certificationAssignments.map((assignment) => (
+              <form
+                key={assignment.id}
+                action={`/people/${person.id}/certifications/${assignment.id}/update`}
+                method="post"
+                className="grid gap-3 rounded-md border p-3 lg:grid-cols-2"
+              >
+                <div className="lg:col-span-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium">{assignment.certification.name}</p>
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                      assignment.resolvedStatus === CertificationVerificationStatus.VERIFIED
+                        ? getStatusBadgeClasses("green")
+                        : assignment.resolvedStatus === CertificationVerificationStatus.PENDING
+                          ? getStatusBadgeClasses("amber")
+                          : assignment.resolvedStatus === CertificationVerificationStatus.EXPIRED
+                            ? getStatusBadgeClasses("zinc")
+                            : getStatusBadgeClasses("red")
+                    }`}>
+                      {CERTIFICATION_VERIFICATION_STATUS_LABELS[assignment.resolvedStatus]}
+                    </span>
+                  </div>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {assignment.certification.issuingOrganization ?? "Issuing organization not set"}
+                  </p>
+                </div>
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium">Verification status</span>
+                  <select name="verificationStatus" defaultValue={assignment.verificationStatus} className="w-full rounded-md border px-3 py-2">
+                    {Object.values(CertificationVerificationStatus).map((status) => (
+                      <option key={status} value={status}>
+                        {CERTIFICATION_VERIFICATION_STATUS_LABELS[status]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium">Earned date</span>
+                  <input type="date" name="earnedDate" defaultValue={formatDateInputValue(assignment.earnedDate)} className="w-full rounded-md border px-3 py-2" />
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium">Expiration date</span>
+                  <input type="date" name="expirationDate" defaultValue={formatDateInputValue(assignment.expirationDate)} className="w-full rounded-md border px-3 py-2" />
+                </label>
+                <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                  <p>Earned: {formatOptionalDate(assignment.earnedDate)}</p>
+                  <p>Expires: {formatOptionalDate(assignment.expirationDate)}</p>
+                  <p>
+                    Expiration state:{" "}
+                    {assignment.expirationState === "expiringSoon"
+                      ? "Expiring soon"
+                      : assignment.expirationState === "expired"
+                        ? "Expired"
+                        : assignment.expirationState === "current"
+                          ? "Current"
+                          : "No expiration"}
+                  </p>
+                </div>
+                <label className="space-y-1 text-sm lg:col-span-2">
+                  <span className="font-medium">Notes</span>
+                  <textarea name="notes" defaultValue={assignment.notes ?? ""} rows={2} className="w-full rounded-md border px-3 py-2" />
+                </label>
+                <div className="lg:col-span-2">
+                  <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                    Save certification
+                  </button>
+                </div>
+              </form>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-lg font-medium">Eligibility summary</h3>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Simple eligibility checks use current qualifications and certifications without a complex rules engine.
+            </p>
+          </div>
+          <Link href="/people/qualifications" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            Manage eligibility rules
+          </Link>
+        </div>
+        <div className="mt-4 space-y-3">
+          {eligibilitySummary.length === 0 ? (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">No eligibility rules are defined yet.</p>
+          ) : (
+            eligibilitySummary.map((eligibility) => (
+              <div key={eligibility.id} className="rounded-md border p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium">{eligibility.name}</p>
+                  <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                    eligibility.status === "eligible"
+                      ? getStatusBadgeClasses("green")
+                      : eligibility.status === "pending"
+                        ? getStatusBadgeClasses("amber")
+                        : eligibility.status === "missing"
+                          ? getStatusBadgeClasses("blue")
+                          : getStatusBadgeClasses("red")
+                  }`}>
+                    {eligibility.status === "eligible"
+                      ? "Eligible"
+                      : eligibility.status === "pending"
+                        ? "Pending"
+                        : eligibility.status === "expired"
+                          ? "Expired"
+                          : eligibility.status === "suspended"
+                            ? "Suspended"
+                            : "Missing requirements"}
+                  </span>
+                </div>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  {ELIGIBILITY_TARGET_TYPE_LABELS[eligibility.targetType]} · {eligibility.targetLabel} · Requirements: {eligibility.requiredCount}
+                </p>
+                {eligibility.missingRequirements.length > 0 ? (
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    Outstanding: {eligibility.missingRequirements.join(" · ")}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-sm text-green-700 dark:text-green-300">
+                    All linked qualification and certification requirements are currently satisfied.
+                  </p>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">

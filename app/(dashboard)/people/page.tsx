@@ -13,6 +13,7 @@ import {
 } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { resolveGuardianRelationshipAccess } from "@/lib/guardian-relationship-access";
+import { EXPIRING_SOON_WINDOW_DAYS, getExpirationState } from "@/lib/member-ops-qualifications";
 import {
   matchesMemberAssignmentFilter,
   isDefaultVisibleMemberLifecycleStatus,
@@ -560,6 +561,39 @@ export default async function PeoplePage({
   const lifecycleStatusSummary = Object.values(MemberLifecycleStatus)
     .map((status) => `${MEMBER_LIFECYCLE_STATUS_LABELS[status]} ${lifecycleCounts[status] ?? 0}`)
     .join(" · ");
+  const visiblePersonIds = filteredPeople.map((person) => person.id);
+  const [visibleQualificationExpirations, visibleCertificationExpirations] = visiblePersonIds.length
+    ? await Promise.all([
+        db.personQualification.findMany({
+          where: {
+            organizationId: scope.organizationId,
+            personId: { in: visiblePersonIds },
+            expirationDate: { not: null },
+          },
+          select: { expirationDate: true },
+        }),
+        db.personCertification.findMany({
+          where: {
+            organizationId: scope.organizationId,
+            personId: { in: visiblePersonIds },
+            expirationDate: { not: null },
+          },
+          select: { expirationDate: true },
+        }),
+      ])
+    : [[], []];
+  const visibleExpiringQualifications = visibleQualificationExpirations.filter(
+    (assignment) => getExpirationState(assignment.expirationDate) === "expiringSoon",
+  ).length;
+  const visibleExpiredQualifications = visibleQualificationExpirations.filter(
+    (assignment) => getExpirationState(assignment.expirationDate) === "expired",
+  ).length;
+  const visibleExpiringCertifications = visibleCertificationExpirations.filter(
+    (assignment) => getExpirationState(assignment.expirationDate) === "expiringSoon",
+  ).length;
+  const visibleExpiredCertifications = visibleCertificationExpirations.filter(
+    (assignment) => getExpirationState(assignment.expirationDate) === "expired",
+  ).length;
 
   return (
     <section className="space-y-4">
@@ -567,9 +601,14 @@ export default async function PeoplePage({
         title="Members"
         description="Manage member lifecycle, roster assignments, and guardian relationships."
         actions={
-          <Link href="/people/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-            New member
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/people/qualifications" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Qualification foundation
+            </Link>
+            <Link href="/people/new" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+              New member
+            </Link>
+          </div>
         }
       />
 
@@ -595,6 +634,12 @@ export default async function PeoplePage({
             </p>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Active members with no roster membership in current scope: {activePeopleWithoutRosterMembership}.
+            </p>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Qualification expirations in current scope over the next {EXPIRING_SOON_WINDOW_DAYS} days: {visibleExpiringQualifications} · Qualification expired: {visibleExpiredQualifications}.
+            </p>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Certification expirations in current scope over the next {EXPIRING_SOON_WINDOW_DAYS} days: {visibleExpiringCertifications} · Certification expired: {visibleExpiredCertifications}.
             </p>
             {canViewGuardianRelationshipDetails ? (
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">

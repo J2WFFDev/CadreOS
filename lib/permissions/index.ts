@@ -17,6 +17,13 @@ type SupportedAction =
   | "person.deactivate"
   | "person.archive"
   | "person.move"
+  | "qualificationDefinition.create"
+  | "certificationDefinition.create"
+  | "eligibilityDefinition.create"
+  | "personQualification.create"
+  | "personQualification.update"
+  | "personCertification.create"
+  | "personCertification.update"
   | "guardianRelationship.create"
   | "guardianRelationship.update"
   | "team.create"
@@ -93,6 +100,13 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "person.deactivate",
     "person.archive",
     "person.move",
+    "qualificationDefinition.create",
+    "certificationDefinition.create",
+    "eligibilityDefinition.create",
+    "personQualification.create",
+    "personQualification.update",
+    "personCertification.create",
+    "personCertification.update",
     "guardianRelationship.create",
     "guardianRelationship.update",
     "team.create",
@@ -151,6 +165,13 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "person.deactivate",
     "person.archive",
     "person.move",
+    "qualificationDefinition.create",
+    "certificationDefinition.create",
+    "eligibilityDefinition.create",
+    "personQualification.create",
+    "personQualification.update",
+    "personCertification.create",
+    "personCertification.update",
     "guardianRelationship.create",
     "guardianRelationship.update",
     "rosterMembership.create",
@@ -283,6 +304,13 @@ const SUPPORTED_ACTIONS = new Set<SupportedAction>([
   "person.deactivate",
   "person.archive",
   "person.move",
+  "qualificationDefinition.create",
+  "certificationDefinition.create",
+  "eligibilityDefinition.create",
+  "personQualification.create",
+  "personQualification.update",
+  "personCertification.create",
+  "personCertification.update",
   "guardianRelationship.create",
   "guardianRelationship.update",
   "team.create",
