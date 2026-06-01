@@ -1,5 +1,7 @@
 import {
   ApprovalStatus,
+  GearReservationApprovalState,
+  GearReservationApprovalType,
   GearReservationMode,
   GearReservationStatus,
   InventoryMovementType,
@@ -11,12 +13,14 @@ import {
   evaluateGearReservationConflicts,
   formatGearReservationEnum,
 } from "@/lib/gear-reservations";
+import { deriveReservationWorkflowStatus } from "@/lib/gear-reservation-foundation";
 import {
   buildGearOpsSchemaUnavailableMessage,
   getGearOpsSchemaStatus,
 } from "@/lib/gear-ops-schema-status";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { resolveActorPersonId } from "@/lib/user-account";
+import { resolveActorRoleContext } from "@/lib/authorization";
 import {
   gearReservationWorkflowSchema,
   getStringField,
@@ -258,6 +262,15 @@ export async function POST(
       }),
     ]);
 
+    const actorRoleContext = await resolveActorRoleContext({
+      organizationId,
+      actorPersonId: requestedByPersonId,
+    });
+    const requestSourceRole =
+      actorRoleContext.isOrganizationAdmin
+        ? "ORGANIZATION_ADMIN"
+        : actorRoleContext.staffRoleAssignments[0]?.roleType ?? "ATHLETE_OR_GUARDIAN";
+
     const approvalRequired =
       item.category.guardianApprovalRequired &&
       Boolean(parsed.data.reservedForPersonId) &&
@@ -315,7 +328,13 @@ export async function POST(
           holdType: parsed.data.holdType,
           purpose: parsed.data.purpose,
           status,
+          workflowStatus: deriveReservationWorkflowStatus(status),
           approvalStatus,
+          requestSourceRole,
+          requestedForPersonId: parsed.data.reservedForPersonId,
+          requestedStartAt: parsed.data.windowStartAt,
+          expectedReturnAt: parsed.data.windowEndAt,
+          createdByPersonId: requestedByPersonId,
           quantityRequested: parsed.data.quantityRequested,
           windowStartAt: parsed.data.windowStartAt,
           windowEndAt: parsed.data.windowEndAt,
@@ -323,6 +342,77 @@ export async function POST(
           conflictSummary,
         },
       });
+
+      const hasReadinessOrConditionIssue = conflicts.some(
+        (conflict) => conflict.code === "OUT_OF_SERVICE" || conflict.code === "READINESS_WARNING",
+      );
+      const hasAvailabilityIssue = conflicts.some(
+        (conflict) =>
+          conflict.code === "OPEN_CHECKOUT" ||
+          conflict.code === "ACTIVE_ASSIGNMENT" ||
+          conflict.code === "OVERLAPPING_RESERVATION" ||
+          conflict.code === "OVERLAPPING_HOLD" ||
+          conflict.code === "CONSUMABLE_SHORTAGE",
+      );
+
+      await tx.gearReservationApproval.createMany({
+        data: [
+          {
+            organizationId,
+            reservationId: createdReservation.id,
+            approvalType: GearReservationApprovalType.AVAILABILITY,
+            approvalStatus: hasAvailabilityIssue
+              ? GearReservationApprovalState.FAILED
+              : GearReservationApprovalState.PASSED,
+            approvalActorRole: "SYSTEM",
+            notes: hasAvailabilityIssue
+              ? "Automated availability validation found blocking constraints."
+              : "Automated availability validation passed.",
+            isAutomated: true,
+          },
+          {
+            organizationId,
+            reservationId: createdReservation.id,
+            approvalType: GearReservationApprovalType.CONDITION,
+            approvalStatus: hasReadinessOrConditionIssue
+              ? GearReservationApprovalState.FAILED
+              : GearReservationApprovalState.PASSED,
+            approvalActorRole: "SYSTEM",
+            notes: hasReadinessOrConditionIssue
+              ? "Automated readiness/condition validation found follow-up concerns."
+              : "Automated readiness/condition validation passed.",
+            isAutomated: true,
+          },
+        ],
+      });
+
+      if (approvalRequired) {
+        await tx.gearReservationApproval.create({
+          data: {
+            organizationId,
+            reservationId: createdReservation.id,
+            approvalType: GearReservationApprovalType.GUARDIAN_RESPONSIBILITY,
+            approvalStatus: GearReservationApprovalState.PENDING,
+            approvalActorRole: "GUARDIAN",
+            notes: "Guardian responsibility acceptance is required before fulfillment.",
+            isAutomated: false,
+          },
+        });
+      }
+
+      if (status === GearReservationStatus.PENDING_REVIEW) {
+        await tx.gearReservationApproval.create({
+          data: {
+            organizationId,
+            reservationId: createdReservation.id,
+            approvalType: GearReservationApprovalType.COACH_ADMIN_APPROVAL,
+            approvalStatus: GearReservationApprovalState.PENDING,
+            approvalActorRole: "COACH_OR_ADMIN",
+            notes: "Manual coach/admin review is pending.",
+            isAutomated: false,
+          },
+        });
+      }
 
       if (status !== GearReservationStatus.DRAFT) {
         await tx.inventoryMovement.create({

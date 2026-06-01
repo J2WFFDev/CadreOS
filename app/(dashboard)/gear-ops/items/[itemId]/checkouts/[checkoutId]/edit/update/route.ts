@@ -18,6 +18,7 @@ import {
   deriveGearItemCheckinUpdate,
   isMaintenanceConditionOnReturn,
 } from "@/lib/gear-checkout-usage";
+import { deriveReturnWorkflowStatus } from "@/lib/gear-reservation-foundation";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   gearCheckoutWorkflowSchema,
@@ -296,6 +297,9 @@ export async function POST(
           conditionOnReturn: true,
           gearItem: {
             select: {
+              id: true,
+              name: true,
+              locationId: true,
               conditionStatus: true,
               lifecycleStatus: true,
             },
@@ -381,6 +385,27 @@ export async function POST(
         });
       }
 
+      if (
+        parsed.data.status === GearCheckoutStatus.RETURNED &&
+        parsed.data.returnedAt &&
+        parsed.data.receivedById
+      ) {
+        await tx.inventoryMovement.create({
+          data: {
+            organizationId,
+            gearItemId: itemId,
+            movementType: InventoryMovementType.CHECKED_IN,
+            actorPersonId: parsed.data.receivedById,
+            fromLocationId: null,
+            toLocationId: existingCheckout.gearItem.locationId,
+            relatedRecordType: "GEAR_CHECKOUT",
+            relatedRecordId: existingCheckout.id,
+            notes: "Item returned and checked in.",
+            occurredAt: parsed.data.returnedAt,
+          },
+        });
+      }
+
       const wasAlreadyReturnedAsDamaged =
         existingCheckout.status === GearCheckoutStatus.RETURNED &&
         isMaintenanceConditionOnReturn(existingCheckout.conditionOnReturn);
@@ -407,6 +432,52 @@ export async function POST(
             conditionAfter: maintenanceConditionAfter,
             notes:
               combinedReturnNotes ?? "Flagged during check-in due to return condition.",
+          },
+        });
+      }
+
+      const latestReservation = await tx.gearReservation.findFirst({
+        where: {
+          organizationId,
+          gearItemId: itemId,
+          status: "FULFILLED",
+        },
+        orderBy: [{ fulfilledAt: "desc" }, { updatedAt: "desc" }],
+        select: { id: true },
+      });
+
+      if (latestReservation && parsed.data.status === GearCheckoutStatus.RETURNED) {
+        await tx.gearReservation.update({
+          where: { id: latestReservation.id },
+          data: {
+            workflowStatus: deriveReturnWorkflowStatus({
+              conditionOnReturn: parsed.data.conditionOnReturn,
+            }),
+          },
+        });
+      }
+
+      if (
+        itemUpdate.needsMaintenanceFollowUp &&
+        !wasAlreadyReturnedAsDamaged &&
+        parsed.data.status === GearCheckoutStatus.RETURNED &&
+        parsed.data.receivedById
+      ) {
+        await tx.followUpTask.create({
+          data: {
+            organizationId,
+            title: `Gear maintenance needed: ${existingCheckout.gearItem.name}`,
+            description: [
+              `Gear item ${existingCheckout.gearItem.name} was returned with condition ${parsed.data.conditionOnReturn ?? "UNSPECIFIED"}.`,
+              `Checkout record: ${existingCheckout.id}`,
+              latestReservation ? `Reservation: ${latestReservation.id}` : null,
+              combinedReturnNotes ? `Notes: ${combinedReturnNotes}` : null,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+            assigneePersonId: parsed.data.receivedById,
+            createdByPersonId: parsed.data.receivedById,
+            status: "OPEN",
           },
         });
       }

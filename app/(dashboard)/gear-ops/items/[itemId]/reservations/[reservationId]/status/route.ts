@@ -1,11 +1,14 @@
 import {
   ApprovalStatus,
+  GearReservationApprovalState,
+  GearReservationApprovalType,
   GearReservationStatus,
   InventoryMovementType,
 } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { deriveReservationWorkflowStatus } from "@/lib/gear-reservation-foundation";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { resolveActorPersonId } from "@/lib/user-account";
 import {
@@ -88,6 +91,7 @@ export async function POST(
         where: { id: reservation.id },
         data: {
           status: nextStatus as GearReservationStatus,
+          workflowStatus: deriveReservationWorkflowStatus(nextStatus as GearReservationStatus),
           approvalStatus:
             nextStatus === GearReservationStatus.ACTIVE
               ? ApprovalStatus.APPROVED
@@ -129,6 +133,30 @@ export async function POST(
             relatedRecordId: reservation.id,
             notes: reason.length > 0 ? reason : `Reservation marked ${nextStatus.toLowerCase()}.`,
             occurredAt: new Date(),
+          },
+        });
+      }
+
+      if (nextStatus === GearReservationStatus.ACTIVE || nextStatus === GearReservationStatus.CANCELED) {
+        await tx.gearReservationApproval.create({
+          data: {
+            organizationId,
+            reservationId: reservation.id,
+            approvalType: GearReservationApprovalType.COACH_ADMIN_APPROVAL,
+            approvalStatus:
+              nextStatus === GearReservationStatus.ACTIVE
+                ? GearReservationApprovalState.APPROVED
+                : GearReservationApprovalState.DENIED,
+            approvalActorRole: "COACH_OR_ADMIN",
+            approvedByPersonId: actorPersonId,
+            approvedAt: new Date(),
+            notes:
+              reason.length > 0
+                ? reason
+                : nextStatus === GearReservationStatus.ACTIVE
+                  ? "Approved from reservation status control."
+                  : "Denied from reservation status control.",
+            isAutomated: false,
           },
         });
       }

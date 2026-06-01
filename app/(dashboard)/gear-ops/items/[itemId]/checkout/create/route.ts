@@ -279,6 +279,26 @@ export async function POST(
         },
       });
 
+      await tx.gearItem.update({
+        where: { id: itemId },
+        data: {
+          lifecycleStatus: "CHECKED_OUT",
+        },
+      });
+
+      await tx.inventoryMovement.create({
+        data: {
+          organizationId,
+          gearItemId: itemId,
+          movementType: InventoryMovementType.CHECKED_OUT,
+          actorPersonId: parsed.data.issuedById,
+          custodyPersonId: parsed.data.checkedOutById,
+          relatedRecordType: "GEAR_CHECKOUT",
+          notes: parsed.data.purposeNotes ?? "Checkout completed.",
+          occurredAt: parsed.data.checkedOutAt,
+        },
+      });
+
       const reservations = await tx.gearReservation.findMany({
         where: {
           organizationId: organizationId,
@@ -317,6 +337,7 @@ export async function POST(
           where: { id: reservationToFulfill.id },
           data: {
             status: GearReservationStatus.FULFILLED,
+            workflowStatus: "CHECKED_OUT",
             fulfilledAt: new Date(),
             releasedByPersonId: parsed.data.issuedById,
           },

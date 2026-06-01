@@ -503,6 +503,36 @@ enum GearReservationStatus {
   PENDING_REVIEW
 }
 
+enum GearReservationWorkflowStatus {
+  REQUESTED
+  PENDING_APPROVAL
+  APPROVED
+  DENIED
+  ALLOCATED
+  CHECKED_OUT
+  RETURNED
+  INSPECTION_NEEDED
+  CLOSED
+  CANCELLED
+}
+
+enum GearReservationApprovalType {
+  AVAILABILITY
+  CONDITION
+  QUALIFICATION
+  GUARDIAN_RESPONSIBILITY
+  COACH_ADMIN_APPROVAL
+  POLICY
+}
+
+enum GearReservationApprovalState {
+  PENDING
+  APPROVED
+  DENIED
+  PASSED
+  FAILED
+}
+
 enum GearHoldType {
   EVENT_HOLD
   PERSON_HOLD
@@ -759,7 +789,8 @@ model Organization {
   gearAssignments              GearAssignment[]
   gearCheckouts                GearCheckout[]
   gearReservations             GearReservation[]
-  gearMaintenanceLogs          GearMaintenanceLog[]
+  gearReservationApprovals        GearReservationApproval[]
+  gearMaintenanceLogs             GearMaintenanceLog[]
   gearInspectionRecords        GearInspectionRecord[]
   consumableTransactions       ConsumableTransaction[]
   eventGearPlans               EventGearPlan[]
@@ -932,6 +963,7 @@ model Person {
   reservedGearReservations             GearReservation[]             @relation("GearReservationReservedFor")
   approvedGearReservations             GearReservation[]             @relation("GearReservationApprovedBy")
   releasedGearReservations             GearReservation[]             @relation("GearReservationReleasedBy")
+  approvedGearReservationRecords       GearReservationApproval[]     @relation("GearReservationApprovalApprovedBy")
   gearMaintenanceLogs                  GearMaintenanceLog[]
   gearInspectionRecords                GearInspectionRecord[]         @relation("GearInspectionRecordInspectedBy")
   recordedConsumableTransactions       ConsumableTransaction[]
@@ -1835,7 +1867,14 @@ model GearReservation {
   holdType            GearHoldType?
   purpose             GearReservationPurpose @default(OTHER)
   status              GearReservationStatus  @default(ACTIVE)
+  workflowStatus      GearReservationWorkflowStatus @default(REQUESTED)
   approvalStatus      ApprovalStatus         @default(NOT_REQUIRED)
+  requestSourceRole   String?
+  requestedForPersonId String?
+  requestedStartAt    DateTime?
+  expectedReturnAt    DateTime?
+  intendedUseLocation String?
+  createdByPersonId   String?
   quantityRequested   Int                    @default(1)
   windowStartAt       DateTime
   windowEndAt         DateTime
@@ -1856,6 +1895,7 @@ model GearReservation {
   requestedBy   Person       @relation("GearReservationRequestedBy", fields: [requestedByPersonId], references: [id], onDelete: Restrict)
   approvedBy    Person?      @relation("GearReservationApprovedBy", fields: [approvedByPersonId], references: [id], onDelete: SetNull)
   releasedBy    Person?      @relation("GearReservationReleasedBy", fields: [releasedByPersonId], references: [id], onDelete: SetNull)
+  approvals     GearReservationApproval[]
 
   @@index([organizationId, gearItemId, status])
   @@index([organizationId, windowStartAt, status])
@@ -1864,6 +1904,30 @@ model GearReservation {
   @@index([organizationId, reservedForTeamId, status])
   @@index([organizationId, reservedForEventId, status])
   @@index([organizationId, purpose, status])
+  @@index([organizationId, workflowStatus, windowStartAt])
+}
+
+model GearReservationApproval {
+  id               String                        @id @default(cuid())
+  organizationId   String
+  reservationId    String
+  approvalType     GearReservationApprovalType
+  approvalStatus   GearReservationApprovalState  @default(PENDING)
+  approvalActorRole String?
+  approvedByPersonId String?
+  approvedAt       DateTime?
+  notes            String?
+  isAutomated      Boolean                       @default(false)
+  createdAt        DateTime                      @default(now())
+  updatedAt        DateTime                      @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  reservation  GearReservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  approvedBy   Person?         @relation("GearReservationApprovalApprovedBy", fields: [approvedByPersonId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, reservationId])
+  @@index([organizationId, approvalType, approvalStatus])
+  @@index([organizationId, approvedByPersonId, approvedAt])
 }
 
 model GearMaintenanceLog {

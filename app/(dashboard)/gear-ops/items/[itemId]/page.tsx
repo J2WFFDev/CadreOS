@@ -852,7 +852,7 @@ export default async function GearOpsItemDetailsPage({
             <input type="hidden" name="status" value="CANCELED" />
             <input type="hidden" name="reason" value="Canceled from item detail." />
             <button type="submit" className="rounded-md border px-2.5 py-1 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              Cancel
+              {effectiveStatus === GearReservationStatus.PENDING_REVIEW ? "Deny" : "Cancel"}
             </button>
           </form>
           <form action={`/gear-ops/items/${gearItem.id}/reservations/${reservation.id}/status`} method="post">
