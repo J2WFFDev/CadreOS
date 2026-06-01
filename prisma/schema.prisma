@@ -1943,8 +1943,9 @@ model GearReservation {
   releasedBy         Person?               @relation("GearReservationReleasedBy", fields: [releasedByPersonId], references: [id], onDelete: SetNull)
   approvals          GearReservationApproval[]
 
+  // Note: gearItemId is nullable (Arc 25D) so this index is sparse — dynamic kit reservations
+  // (where gearItemId is null) are excluded. Static item reservations are still indexed.
   @@index([organizationId, gearItemId, status])
-  @@index([organizationId, windowStartAt, status])
   @@index([organizationId, windowEndAt, status])
   @@index([organizationId, reservedForPersonId, status])
   @@index([organizationId, reservedForTeamId, status])

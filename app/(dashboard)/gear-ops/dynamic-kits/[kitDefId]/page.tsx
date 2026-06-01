@@ -133,14 +133,12 @@ export default async function DynamicKitDetailPage({ params }: Props) {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Requirements</h3>
-          <form action={`/gear-ops/dynamic-kits/${kitDefId}/requirements/add`} method="POST">
-            <Link
-              href={`/gear-ops/dynamic-kits/${kitDefId}/requirements/new`}
-              className="rounded-md bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-            >
-              + Add Requirement
-            </Link>
-          </form>
+          <Link
+            href={`/gear-ops/dynamic-kits/${kitDefId}/requirements/new`}
+            className="rounded-md bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+          >
+            + Add Requirement
+          </Link>
         </div>
 
         {def.requirements.length === 0 ? (
@@ -193,9 +191,6 @@ export default async function DynamicKitDetailPage({ params }: Props) {
                         <button
                           type="submit"
                           className="text-xs text-rose-600 hover:underline dark:text-rose-400"
-                          onClick={(e) => {
-                            if (!confirm("Remove this requirement?")) e.preventDefault();
-                          }}
                         >
                           Remove
                         </button>
