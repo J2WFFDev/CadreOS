@@ -18,6 +18,7 @@ import {
   deriveGearItemCheckinUpdate,
   isMaintenanceConditionOnReturn,
 } from "@/lib/gear-checkout-usage";
+import { deriveReturnWorkflowStatus } from "@/lib/gear-reservation-foundation";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   gearCheckoutWorkflowSchema,
@@ -42,6 +43,9 @@ type GearCheckoutFormValues = {
   purposeNotes: string;
   returnNotes: string;
 };
+
+const GEAR_CHECKOUT_RECORD_TYPE = "GEAR_CHECKOUT" as const;
+const MAINTENANCE_TASK_ITEM_NAME_MAX_LENGTH = 120;
 
 function buildErrorRedirectUrl(
   requestUrl: string,
@@ -296,6 +300,9 @@ export async function POST(
           conditionOnReturn: true,
           gearItem: {
             select: {
+              id: true,
+              name: true,
+              locationId: true,
               conditionStatus: true,
               lifecycleStatus: true,
             },
@@ -346,7 +353,7 @@ export async function POST(
             movementType: InventoryMovementType.TRANSFERRED,
             actorPersonId: scope.auth.personId,
             custodyPersonId: parsed.data.checkedOutById,
-            relatedRecordType: "GEAR_CHECKOUT",
+            relatedRecordType: GEAR_CHECKOUT_RECORD_TYPE,
             relatedRecordId: existingCheckout.id,
             notes: custodyChangeSummary,
             occurredAt: new Date(),
@@ -381,6 +388,27 @@ export async function POST(
         });
       }
 
+      if (
+        parsed.data.status === GearCheckoutStatus.RETURNED &&
+        parsed.data.returnedAt &&
+        parsed.data.receivedById
+      ) {
+        await tx.inventoryMovement.create({
+          data: {
+            organizationId,
+            gearItemId: itemId,
+            movementType: InventoryMovementType.CHECKED_IN,
+            actorPersonId: parsed.data.receivedById,
+            fromLocationId: null,
+            toLocationId: existingCheckout.gearItem.locationId,
+            relatedRecordType: GEAR_CHECKOUT_RECORD_TYPE,
+            relatedRecordId: existingCheckout.id,
+            notes: "Item returned and checked in.",
+            occurredAt: parsed.data.returnedAt,
+          },
+        });
+      }
+
       const wasAlreadyReturnedAsDamaged =
         existingCheckout.status === GearCheckoutStatus.RETURNED &&
         isMaintenanceConditionOnReturn(existingCheckout.conditionOnReturn);
@@ -407,6 +435,56 @@ export async function POST(
             conditionAfter: maintenanceConditionAfter,
             notes:
               combinedReturnNotes ?? "Flagged during check-in due to return condition.",
+          },
+        });
+      }
+
+      const latestReservation = await tx.gearReservation.findFirst({
+        where: {
+          organizationId,
+          gearItemId: itemId,
+          status: "FULFILLED",
+        },
+        orderBy: [{ fulfilledAt: "desc" }, { updatedAt: "desc" }],
+        select: { id: true },
+      });
+
+      if (latestReservation && parsed.data.status === GearCheckoutStatus.RETURNED) {
+        await tx.gearReservation.update({
+          where: { id: latestReservation.id },
+          data: {
+            workflowStatus: deriveReturnWorkflowStatus({
+              conditionOnReturn: parsed.data.conditionOnReturn,
+            }),
+          },
+        });
+      }
+
+      if (
+        itemUpdate.needsMaintenanceFollowUp &&
+        !wasAlreadyReturnedAsDamaged &&
+        parsed.data.status === GearCheckoutStatus.RETURNED &&
+        parsed.data.receivedById
+      ) {
+        const normalizedItemName = existingCheckout.gearItem.name.replace(/[\r\n\t]+/g, " ").trim();
+        const sanitizedItemName =
+          normalizedItemName.length > 0
+            ? normalizedItemName.slice(0, MAINTENANCE_TASK_ITEM_NAME_MAX_LENGTH)
+            : "Gear item";
+        await tx.followUpTask.create({
+          data: {
+            organizationId,
+            title: `Gear maintenance needed: ${sanitizedItemName}`,
+            description: [
+              `Gear item ${sanitizedItemName} was returned with condition ${parsed.data.conditionOnReturn ?? "UNSPECIFIED"}.`,
+              "Checkout and return inspection follow-up is required before this item returns to service.",
+              combinedReturnNotes ? `Notes: ${combinedReturnNotes}` : null,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+            assigneePersonId: parsed.data.receivedById,
+            createdByPersonId: parsed.data.receivedById,
+            status: "OPEN",
           },
         });
       }

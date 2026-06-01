@@ -1,11 +1,14 @@
 import {
   ApprovalStatus,
+  GearReservationApprovalState,
+  GearReservationApprovalType,
   GearReservationStatus,
   InventoryMovementType,
 } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { deriveReservationWorkflowStatus } from "@/lib/gear-reservation-foundation";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { resolveActorPersonId } from "@/lib/user-account";
 import {
@@ -24,6 +27,34 @@ function buildRedirectUrl(requestUrl: string, itemId: string, status: string, er
     url.searchParams.set("reservationError", error);
   }
   return url;
+}
+
+function buildManualApprovalRecord(input: {
+  organizationId: string;
+  reservationId: string;
+  actorPersonId: string;
+  nextStatus: GearReservationStatus;
+  reason: string;
+}) {
+  return {
+    organizationId: input.organizationId,
+    reservationId: input.reservationId,
+    approvalType: GearReservationApprovalType.COACH_ADMIN_APPROVAL,
+    approvalStatus:
+      input.nextStatus === GearReservationStatus.ACTIVE
+        ? GearReservationApprovalState.APPROVED
+        : GearReservationApprovalState.DENIED,
+    approvalActorRole: "COACH_OR_ADMIN",
+    approvedByPersonId: input.actorPersonId,
+    approvedAt: new Date(),
+    notes:
+      input.reason.length > 0
+        ? input.reason
+        : input.nextStatus === GearReservationStatus.ACTIVE
+          ? "Approved from reservation status control."
+          : "Denied from reservation status control.",
+    isAutomated: false,
+  } as const;
 }
 
 export async function POST(
@@ -88,6 +119,7 @@ export async function POST(
         where: { id: reservation.id },
         data: {
           status: nextStatus as GearReservationStatus,
+          workflowStatus: deriveReservationWorkflowStatus(nextStatus as GearReservationStatus),
           approvalStatus:
             nextStatus === GearReservationStatus.ACTIVE
               ? ApprovalStatus.APPROVED
@@ -130,6 +162,18 @@ export async function POST(
             notes: reason.length > 0 ? reason : `Reservation marked ${nextStatus.toLowerCase()}.`,
             occurredAt: new Date(),
           },
+        });
+      }
+
+      if (nextStatus === GearReservationStatus.ACTIVE || nextStatus === GearReservationStatus.CANCELED) {
+        await tx.gearReservationApproval.create({
+          data: buildManualApprovalRecord({
+            organizationId,
+            reservationId: reservation.id,
+            actorPersonId,
+            nextStatus: nextStatus as GearReservationStatus,
+            reason,
+          }),
         });
       }
     });

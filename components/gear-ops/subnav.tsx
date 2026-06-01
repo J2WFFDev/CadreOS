@@ -13,6 +13,7 @@ import Link from "next/link";
 type SubnavKey =
   | "overview"
   | "items"
+  | "reservations"
   | "scan"
   | "kits"
   | "bulk"
@@ -35,6 +36,7 @@ const GEAR_OPS_GROUPS: SubnavGroup[] = [
     links: [
       { href: "/gear-ops", label: "Overview", key: "overview" },
       { href: "/gear-ops/items", label: "Items", key: "items" },
+      { href: "/gear-ops/reservations", label: "Reservations", key: "reservations" },
       { href: "/gear-ops/scan", label: "Scan", key: "scan" },
       { href: "/gear-ops/kits", label: "Kits", key: "kits" },
       { href: "/gear-ops/bulk", label: "Bulk Ops", key: "bulk" },

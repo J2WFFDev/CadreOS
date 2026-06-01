@@ -1,4 +1,4 @@
-import { GearReservationStatus, InventoryMovementType } from "@prisma/client";
+import { GearItemLifecycleStatus, GearReservationStatus, InventoryMovementType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
@@ -33,6 +33,8 @@ type GearCheckoutFormValues = {
   purposeNotes: string;
   returnNotes: string;
 };
+
+const GEAR_CHECKOUT_RECORD_TYPE = "GEAR_CHECKOUT" as const;
 
 function buildErrorRedirectUrl(
   requestUrl: string,
@@ -279,6 +281,26 @@ export async function POST(
         },
       });
 
+      await tx.gearItem.update({
+        where: { id: itemId },
+        data: {
+          lifecycleStatus: GearItemLifecycleStatus.CHECKED_OUT,
+        },
+      });
+
+      await tx.inventoryMovement.create({
+        data: {
+          organizationId,
+          gearItemId: itemId,
+          movementType: InventoryMovementType.CHECKED_OUT,
+          actorPersonId: parsed.data.issuedById,
+          custodyPersonId: parsed.data.checkedOutById,
+          relatedRecordType: GEAR_CHECKOUT_RECORD_TYPE,
+          notes: parsed.data.purposeNotes || "Checkout completed.",
+          occurredAt: parsed.data.checkedOutAt,
+        },
+      });
+
       const reservations = await tx.gearReservation.findMany({
         where: {
           organizationId: organizationId,
@@ -317,6 +339,7 @@ export async function POST(
           where: { id: reservationToFulfill.id },
           data: {
             status: GearReservationStatus.FULFILLED,
+            workflowStatus: "CHECKED_OUT",
             fulfilledAt: new Date(),
             releasedByPersonId: parsed.data.issuedById,
           },
