@@ -4,6 +4,7 @@ import {
   GearConditionStatus,
   GearInventoryType,
   GearItemLifecycleStatus,
+  type InventoryReadinessState,
   Prisma,
 } from "@prisma/client";
 import Link from "next/link";
@@ -246,6 +247,8 @@ export default async function GearOpsItemsPage({
             inventoryType: true,
             lifecycleStatus: true,
             conditionStatus: true,
+            inventoryCondition: true,
+            readinessState: true,
             quantityOnHand: true,
             quantityMin: true,
             category: { select: { id: true, name: true, inventoryType: true } },

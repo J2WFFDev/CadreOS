@@ -112,7 +112,7 @@ test("item-creation readiness requires shared Program and InventoryLocation tabl
   });
 
   assert.equal(status.schemaReady, false);
-  assert.deepEqual(status.missingTables, ["Program", "InventoryLocation"]);
+  assert.deepEqual(status.missingTables, ["InventoryLocation", "Program"]);
   assert.deepEqual(status.missingColumns, []);
 });
 
