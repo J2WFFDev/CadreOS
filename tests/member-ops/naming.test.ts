@@ -82,6 +82,7 @@ test("member move workflow accepts valid roster role types", () => {
 test("lifecycle labels use prospect/alumni language", () => {
   assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.PROSPECT], "Prospect");
   assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.ALUMNI], "Alumni");
+  assert.equal(MEMBER_LIFECYCLE_STATUS_LABELS[MemberLifecycleStatus.ARCHIVED], "Former Member (Archived)");
 });
 
 test("default roster visibility includes active and prospect only", () => {
