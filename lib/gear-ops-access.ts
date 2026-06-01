@@ -21,6 +21,45 @@ export type GearOpsAdminAccess = {
   denialMessage?: string;
 };
 
+export function buildGearReservationVisibilityWhere(input: {
+  organizationId: string;
+  gearItemWhere: Prisma.GearItemWhereInput;
+}): Prisma.GearReservationWhereInput {
+  return {
+    organizationId: input.organizationId,
+    OR: [
+      {
+        gearItem: {
+          AND: [input.gearItemWhere],
+        },
+      },
+      {
+        inventoryKit: {
+          items: {
+            some: {
+              removedAt: null,
+              gearItem: {
+                AND: [input.gearItemWhere],
+              },
+            },
+          },
+        },
+      },
+      {
+        dynamicKitAllocation: {
+          items: {
+            some: {
+              gearItem: {
+                AND: [input.gearItemWhere],
+              },
+            },
+          },
+        },
+      },
+    ],
+  };
+}
+
 export async function resolveGearOpsReadAccess(input: {
   organizationId: string;
   actorPersonId: string | null;
