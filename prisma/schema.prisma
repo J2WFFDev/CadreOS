@@ -212,6 +212,27 @@ enum ScopeType {
   TEAM
 }
 
+enum StaffingAssignmentStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+  SUSPENDED
+}
+
+enum StaffingRoleCategory {
+  COACHING
+  VOLUNTEER
+  STAFF
+  ADMIN
+}
+
+enum StaffingCoverageType {
+  PRACTICE
+  MATCH
+  CLINIC
+  MEETING
+}
+
 enum RelationshipType {
   PARENT
   GUARDIAN
@@ -894,6 +915,9 @@ model Organization {
   eligibilityDefinitions       EligibilityDefinition[]
   eligibilityRequiredQualifications EligibilityRequiredQualification[]
   eligibilityRequiredCertifications EligibilityRequiredCertification[]
+  staffingRoles                StaffingRole[]
+  staffingAssignments          StaffingAssignment[]
+  staffingAssignmentCoverage   StaffingAssignmentCoverage[]
   // Arc 25D: Dynamic Kit Allocation and Inventory Pools
   dynamicKitDefinitions        DynamicKitDefinition[]
   dynamicKitRequirements       DynamicKitRequirement[]
@@ -918,6 +942,7 @@ model Program {
   events           Event[]
   auditEvents      AuditEvent[]
   eligibilityDefinitions EligibilityDefinition[]
+  staffingAssignments StaffingAssignment[]
   resourceBookings ResourceBooking[]
   gearItems        GearItem[]
   gearReservations GearReservation[]
@@ -944,6 +969,7 @@ model Team {
   events           Event[]
   auditEvents      AuditEvent[]
   eligibilityDefinitions EligibilityDefinition[]
+  staffingAssignments StaffingAssignment[]
   resourceBookings ResourceBooking[]
   gearAssignments  GearAssignment[]
   gearReservations GearReservation[]
@@ -1089,6 +1115,7 @@ model Person {
   dynamicKitAllocations                DynamicKitAllocation[]        @relation("DynamicKitAllocationActor")
   qualifications                       PersonQualification[]
   certifications                       PersonCertification[]
+  staffingAssignments                  StaffingAssignment[]
 
   @@index([organizationId])
   @@index([organizationId, lifecycleStatus])
@@ -1247,6 +1274,67 @@ model RoleAssignment {
   @@unique([personId, roleType, scopeType, programId, teamId])
   @@index([organizationId, personId])
   @@index([organizationId, roleType, scopeType])
+}
+
+model StaffingRole {
+  id                               String              @id @default(cuid())
+  organizationId                   String
+  key                              String?
+  name                             String
+  description                      String?
+  category                         StaffingRoleCategory @default(STAFF)
+  requiredQualificationType        String?
+  requiredQualificationName        String?
+  active                           Boolean             @default(true)
+  isSystemDefined                  Boolean             @default(false)
+  createdAt                        DateTime            @default(now())
+  updatedAt                        DateTime            @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignments  StaffingAssignment[]
+
+  @@unique([organizationId, name])
+  @@unique([organizationId, key])
+  @@index([organizationId, active, category])
+}
+
+model StaffingAssignment {
+  id             String                  @id @default(cuid())
+  organizationId String
+  personId       String
+  staffingRoleId String
+  programId      String?
+  teamId         String?
+  startDate      DateTime?
+  endDate        DateTime?
+  status         StaffingAssignmentStatus @default(PENDING)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  organization Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  person       Person                      @relation(fields: [personId], references: [id], onDelete: Cascade)
+  staffingRole StaffingRole                @relation(fields: [staffingRoleId], references: [id], onDelete: Restrict)
+  program      Program?                    @relation(fields: [programId], references: [id], onDelete: SetNull)
+  team         Team?                       @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  coverage     StaffingAssignmentCoverage[]
+
+  @@index([organizationId, personId, status])
+  @@index([organizationId, staffingRoleId, status])
+  @@index([organizationId, programId, teamId, status])
+}
+
+model StaffingAssignmentCoverage {
+  id                  String             @id @default(cuid())
+  organizationId      String
+  staffingAssignmentId String
+  coverageType        StaffingCoverageType
+  createdAt           DateTime           @default(now())
+
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  staffingAssignment StaffingAssignment @relation(fields: [staffingAssignmentId], references: [id], onDelete: Cascade)
+
+  @@unique([staffingAssignmentId, coverageType])
+  @@index([organizationId, coverageType])
 }
 
 model AthleteGuardianRelationship {

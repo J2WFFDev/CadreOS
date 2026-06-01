@@ -250,6 +250,11 @@ export async function getOperationalHistory(input: {
         "certification.assignment.added",
         "certification.assignment.update",
         "certification.assignment.expired",
+        "staffing.assignment.assigned",
+        "staffing.assignment.updated",
+        "staffing.assignment.activated",
+        "staffing.assignment.ended",
+        "staffing.assignment.removed",
       ],
     },
   };
@@ -276,6 +281,10 @@ export async function getOperationalHistory(input: {
       },
       {
         entityType: "personCertification",
+        metadataJson: { contains: `"personId":"${escapedPersonId}"` },
+      },
+      {
+        entityType: "staffingAssignment",
         metadataJson: { contains: `"personId":"${escapedPersonId}"` },
       },
     ];
@@ -740,6 +749,8 @@ export async function getOperationalHistory(input: {
             ? "Qualification change"
             : event.action.startsWith("certification.assignment")
               ? "Certification change"
+              : event.action.startsWith("staffing.assignment")
+                ? "Staffing assignment change"
               : "Guardian relationship change",
       changeLabel: formatEnumLabel(event.action.replaceAll(".", "_")),
       changedAt: event.createdAt,
@@ -857,6 +868,21 @@ function buildAuditSummary(action: string, beforeJson: string | null, afterJson:
     return [
       certificationName ? `Certification: ${certificationName}` : null,
       formatAuditTransitionLabel("Verification", statusBefore, statusAfter),
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  if (action.startsWith("staffing.assignment")) {
+    const staffingRoleName =
+      (typeof after?.staffingRoleName === "string" ? after.staffingRoleName : null) ??
+      (typeof before?.staffingRoleName === "string" ? before.staffingRoleName : null);
+    const statusBefore = typeof before?.status === "string" ? before.status : null;
+    const statusAfter = typeof after?.status === "string" ? after.status : null;
+
+    return [
+      staffingRoleName ? `Staffing role: ${staffingRoleName}` : null,
+      formatAuditTransitionLabel("Status", statusBefore, statusAfter),
     ]
       .filter(Boolean)
       .join(" · ");
