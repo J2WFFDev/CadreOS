@@ -11,6 +11,18 @@ export const MAX_HABIT_TITLE_LENGTH = 160;
 export const MAX_HABIT_DESCRIPTION_LENGTH = 1000;
 export const MAX_CHECKIN_NOTE_LENGTH = 500;
 
+const WEEKDAY_LABELS: Record<string, string> = {
+  SUN: "Sun",
+  MON: "Mon",
+  TUE: "Tue",
+  WED: "Wed",
+  THU: "Thu",
+  FRI: "Fri",
+  SAT: "Sat",
+};
+
+const WEEKDAY_ORDER = Object.keys(WEEKDAY_LABELS);
+
 // ── Label helpers ─────────────────────────────────────────────────────────────
 
 export function labelForHabitStatus(status: HabitStatus): string {
@@ -24,6 +36,53 @@ export function labelForHabitFrequency(frequency: HabitFrequency): string {
   if (frequency === HabitFrequency.DAILY) return "Daily";
   if (frequency === HabitFrequency.WEEKLY) return "Weekly";
   return "Custom";
+}
+
+/**
+ * Store weekly cadence days as comma-separated weekday abbreviations.
+ * Invalid values are ignored so UI free text cannot make a habit unschedulable.
+ */
+export function normalizeHabitScheduleDays(raw: string | null | undefined): string | null {
+  const value = typeof raw === "string" ? raw.trim().toUpperCase() : "";
+  if (!value) return null;
+
+  const uniqueDays = new Set(
+    value
+      .split(/[,\s]+/)
+      .map((day) => day.trim())
+      .filter((day) => day in WEEKDAY_LABELS),
+  );
+
+  const orderedDays = WEEKDAY_ORDER.filter((day) => uniqueDays.has(day));
+  return orderedDays.length > 0 ? orderedDays.join(",") : null;
+}
+
+export function labelForHabitScheduleDays(daysOfWeek: string | null | undefined): string | null {
+  const normalized = normalizeHabitScheduleDays(daysOfWeek);
+  if (!normalized) return null;
+  return normalized
+    .split(",")
+    .map((day) => WEEKDAY_LABELS[day])
+    .join(", ");
+}
+
+export function labelForHabitCadence(input: {
+  frequency: HabitFrequency | null | undefined;
+  daysOfWeek?: string | null;
+}): string {
+  if (!input.frequency) return "No set cadence";
+  if (input.frequency === HabitFrequency.WEEKLY) {
+    const days = labelForHabitScheduleDays(input.daysOfWeek);
+    return days ? `Weekly on ${days}` : "Weekly";
+  }
+  return labelForHabitFrequency(input.frequency);
+}
+
+export function descriptionForHabitStatus(status: HabitStatus): string {
+  if (status === HabitStatus.ACTIVE) return "Active habits can receive scheduled check-ins.";
+  if (status === HabitStatus.PAUSED) return "Paused habits keep history but do not accept check-ins.";
+  if (status === HabitStatus.COMPLETED) return "Completed habits are finished and do not accept check-ins.";
+  return "Archived habits are retained for history and do not accept check-ins.";
 }
 
 // Arc 24D.8: Tracking mode labels
@@ -189,11 +248,7 @@ export function isHabitActionableToday(input: {
     if (!input.scheduleDaysOfWeek) return true; // no day restriction → any day
     const dayAbbrevs = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const todayAbbrev = dayAbbrevs[today.getUTCDay()];
-    const scheduledDays = input.scheduleDaysOfWeek
-      .toUpperCase()
-      .split(/[,\s]+/)
-      .map((d) => d.trim())
-      .filter(Boolean);
+    const scheduledDays = normalizeHabitScheduleDays(input.scheduleDaysOfWeek)?.split(",") ?? [];
     return scheduledDays.includes(todayAbbrev);
   }
 

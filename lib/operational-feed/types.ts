@@ -4,7 +4,7 @@
  * Type definitions for the operational feed service.
  */
 
-import type { EntryPriority, EntryStatus, EntryType } from "@prisma/client";
+import type { EntryPriority, EntryStatus, EntryType, HabitFrequency } from "@prisma/client";
 
 // ── Active operational types ────────────────────────────────────────────────
 
@@ -63,7 +63,7 @@ export type FeedActivityItem = {
 export type ActionableHabitItem = {
   id: string;
   title: string;
-  frequency: string | null;
+  frequency: HabitFrequency | null;
   trackingMode: string | null;
   targetCount: number | null;
   targetUnit: string | null;

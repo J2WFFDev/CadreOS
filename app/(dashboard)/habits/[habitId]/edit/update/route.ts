@@ -6,6 +6,7 @@ import { canEditHabit, resolveHabitAccessContext } from "@/lib/habits/access";
 import {
   MAX_HABIT_DESCRIPTION_LENGTH,
   MAX_HABIT_TITLE_LENGTH,
+  normalizeHabitScheduleDays,
   normalizeCompletedOn,
   normalizeTrackingMode,
 } from "@/lib/habits/policy";
@@ -54,7 +55,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
   const athletePersonId = String(formData.get("athletePersonId") ?? "").trim();
   const assignedToTeamId = String(formData.get("assignedToTeamId") ?? "").trim() || null;
   const frequencyRaw = String(formData.get("frequency") ?? "").trim();
-  const daysOfWeek = String(formData.get("daysOfWeek") ?? "").trim() || null;
+  const daysOfWeek = normalizeHabitScheduleDays(String(formData.get("daysOfWeek") ?? ""));
   const startDateRaw = String(formData.get("startDate") ?? "").trim();
   const endDateRaw = String(formData.get("endDate") ?? "").trim();
   const scheduleId = String(formData.get("scheduleId") ?? "").trim() || null;

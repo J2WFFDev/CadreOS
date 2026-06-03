@@ -7,7 +7,7 @@ import { FilterTabs } from "@/components/dashboard/filter-tabs";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { canCreateHabit, canReadHabit, resolveHabitAccessContext } from "@/lib/habits/access";
-import { badgeVariantForHabitStatus, labelForHabitFrequency, labelForHabitStatus } from "@/lib/habits/policy";
+import { badgeVariantForHabitStatus, labelForHabitCadence, labelForHabitStatus } from "@/lib/habits/policy";
 import { formatShortDateTime } from "@/lib/format-date";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { db } from "@/lib/db";
@@ -66,7 +66,7 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
         updatedAt: Date;
         athlete: { firstName: string; lastName: string };
         assignedToTeam: { name: string; programId: string } | null;
-        schedules: Array<{ frequency: HabitFrequency }>;
+        schedules: Array<{ frequency: HabitFrequency; daysOfWeek: string | null }>;
         _count: { completions: number };
       }>
     | null = null;
@@ -93,7 +93,7 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
         updatedAt: true,
         athlete: { select: { firstName: true, lastName: true } },
         assignedToTeam: { select: { name: true, programId: true } },
-        schedules: { select: { frequency: true }, take: 1, orderBy: { createdAt: "asc" } },
+        schedules: { select: { frequency: true, daysOfWeek: true }, take: 1, orderBy: { createdAt: "asc" } },
         _count: { select: { completions: true } },
       },
       take: HABIT_LIST_LIMIT,
@@ -180,7 +180,7 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
             <tbody>
               {visibleHabits.map((habit) => {
                 const athleteName = `${habit.athlete.firstName} ${habit.athlete.lastName}`.trim() || "Unknown";
-                const frequency = habit.schedules[0]?.frequency as HabitFrequency | undefined;
+                const schedule = habit.schedules[0] ?? null;
                 return (
                   <tr key={habit.id} className="border-b last:border-b-0">
                     <td className="px-4 py-3">
@@ -193,7 +193,10 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
                     </td>
                     <td className="px-4 py-3">{athleteName}</td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                      {frequency ? labelForHabitFrequency(frequency) : <span className="text-zinc-400">—</span>}
+                      {labelForHabitCadence({
+                        frequency: schedule?.frequency ?? null,
+                        daysOfWeek: schedule?.daysOfWeek ?? null,
+                      })}
                     </td>
                     <td className="px-4 py-3">{habit._count.completions}</td>
                     <td className="px-4 py-3">

@@ -31,7 +31,9 @@ import {
   badgeVariantForHabitStatus,
   computeCompletionCount,
   computeCurrentStreak,
-  labelForHabitFrequency,
+  descriptionForHabitStatus,
+  labelForHabitCadence,
+  labelForHabitScheduleDays,
   labelForHabitStatus,
   labelForHabitTrackingMode,
   MAX_CHECKIN_NOTE_LENGTH,
@@ -124,11 +126,15 @@ export default async function HabitDetailPage({
   const canComplete = canCompleteHabit(accessContext, habitRecord);
   const canRestore = canRestoreHabit(accessContext, habitRecord);
   const showCompletionDetail = canReadCompletionDetail(accessContext, habitRecord);
+  const duplicateCheckIn = readFirstSearchParam(resolvedSearchParams.duplicate) === "1";
+  const invalidCheckInDate = readFirstSearchParam(resolvedSearchParams.invalidDate) === "1";
 
   const completionDates = habit.completions.map((c) => c.completedOn);
-  const frequency = habit.schedules[0]?.frequency;
+  const schedule = habit.schedules[0] ?? null;
+  const frequency = schedule?.frequency;
   const currentStreak = frequency ? computeCurrentStreak(completionDates, frequency) : null;
   const completionCount = computeCompletionCount(completionDates);
+  const scheduleDaysLabel = labelForHabitScheduleDays(schedule?.daysOfWeek);
   const relationshipTargetTypeParam = readFirstSearchParam(resolvedSearchParams.relationshipTargetType);
   const relationshipTargetType = parseRelationshipTargetNodeType(relationshipTargetTypeParam);
   const relationshipQuery = readFirstSearchParam(resolvedSearchParams.relationshipQuery)?.trim() ?? "";
@@ -227,6 +233,17 @@ export default async function HabitDetailPage({
       <section className="rounded-lg border bg-white p-5 dark:bg-zinc-900">
         <h3 className="text-sm font-semibold">Main Item</h3>
         <p className="mt-2 text-sm whitespace-pre-wrap">{habit.description?.trim() ? habit.description : "No habit detail captured."}</p>
+        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">{descriptionForHabitStatus(habit.status)}</p>
+        {duplicateCheckIn ? (
+          <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+            A check-in already exists for that date. Each habit can have one check-in per UTC day.
+          </p>
+        ) : null}
+        {invalidCheckInDate ? (
+          <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+            Choose a valid check-in date before recording the check-in.
+          </p>
+        ) : null}
       </section>
 
       <section className="rounded-lg border bg-white p-5 dark:bg-zinc-900">
@@ -286,28 +303,28 @@ export default async function HabitDetailPage({
               <dd className="mt-1 text-sm">{habit.targetCount}{habit.targetUnit ? ` ${habit.targetUnit}` : ""}</dd>
             </div>
           ) : null}
-          {frequency ? (
-            <div>
-              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Cadence</dt>
-              <dd className="mt-1 text-sm">{labelForHabitFrequency(frequency)}</dd>
-            </div>
-          ) : null}
-          {habit.schedules[0]?.daysOfWeek ? (
+          <div>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Cadence</dt>
+            <dd className="mt-1 text-sm">
+              {labelForHabitCadence({ frequency: frequency ?? null, daysOfWeek: schedule?.daysOfWeek ?? null })}
+            </dd>
+          </div>
+          {scheduleDaysLabel ? (
             <div>
               <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Days</dt>
-              <dd className="mt-1 text-sm">{habit.schedules[0].daysOfWeek}</dd>
+              <dd className="mt-1 text-sm">{scheduleDaysLabel}</dd>
             </div>
           ) : null}
-          {habit.schedules[0]?.startDate ? (
+          {schedule?.startDate ? (
             <div>
               <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Start date</dt>
-              <dd className="mt-1 text-sm">{habit.schedules[0].startDate.toISOString().slice(0, 10)}</dd>
+              <dd className="mt-1 text-sm">{schedule.startDate.toISOString().slice(0, 10)}</dd>
             </div>
           ) : null}
-          {habit.schedules[0]?.endDate ? (
+          {schedule?.endDate ? (
             <div>
               <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">End date</dt>
-              <dd className="mt-1 text-sm">{habit.schedules[0].endDate.toISOString().slice(0, 10)}</dd>
+              <dd className="mt-1 text-sm">{schedule.endDate.toISOString().slice(0, 10)}</dd>
             </div>
           ) : null}
           <div>
