@@ -99,6 +99,19 @@ export type FoundationRelationshipListItem = {
 
 export type RelationshipSearchCandidate = RelationshipNodeSummary;
 
+export type ReviewLinkedHabitContextItem = {
+  entryId: string;
+  relationshipId: string;
+  relationshipLabel: string;
+  habit: {
+    id: string;
+    title: string;
+    statusLabel: string;
+    href: string;
+  };
+  note: string | null;
+};
+
 export function isFoundationRelationshipType(value: string): value is FoundationRelationshipType {
   return FOUNDATION_RELATIONSHIP_TYPES.includes(value as FoundationRelationshipType);
 }
@@ -599,6 +612,124 @@ export async function listFoundationRelationships(input: {
   );
 
   return items.filter((item): item is FoundationRelationshipListItem => Boolean(item));
+}
+
+export async function listReviewLinkedHabitContextForEntries(input: {
+  organizationId: string;
+  actorPersonId: string | null;
+  entryIds: string[];
+  limitPerEntry?: number;
+}): Promise<Record<string, ReviewLinkedHabitContextItem[]>> {
+  const entryIds = Array.from(new Set(input.entryIds.filter((entryId) => entryId.trim().length > 0)));
+  if (entryIds.length === 0) {
+    return {};
+  }
+
+  const rows = await db.operationalRelationship.findMany({
+    where: {
+      organizationId: input.organizationId,
+      removedAt: null,
+      relationshipType: { in: FOUNDATION_STORED_RELATIONSHIP_TYPES },
+      OR: [
+        {
+          fromNodeType: OperationalGraphNodeType.ENTRY,
+          fromNodeId: { in: entryIds },
+          toNodeType: OperationalGraphNodeType.HABIT,
+        },
+        {
+          fromNodeType: OperationalGraphNodeType.HABIT,
+          toNodeType: OperationalGraphNodeType.ENTRY,
+          toNodeId: { in: entryIds },
+        },
+      ],
+    },
+    orderBy: [{ createdAt: "desc" }],
+    select: {
+      id: true,
+      fromNodeType: true,
+      fromNodeId: true,
+      toNodeType: true,
+      toNodeId: true,
+      relationshipType: true,
+      metadataJson: true,
+    },
+  });
+
+  if (rows.length === 0) {
+    return {};
+  }
+
+  const habitIds = Array.from(
+    new Set(
+      rows.map((row) =>
+        row.fromNodeType === OperationalGraphNodeType.HABIT ? row.fromNodeId : row.toNodeId,
+      ),
+    ),
+  );
+
+  const accessContext = await resolveHabitAccessContext({
+    organizationId: input.organizationId,
+    actorPersonId: input.actorPersonId,
+  });
+
+  const habits = await db.habit.findMany({
+    where: {
+      id: { in: habitIds },
+      organizationId: input.organizationId,
+    },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      athletePersonId: true,
+      assignedToTeamId: true,
+      createdByPersonId: true,
+      assignedToTeam: { select: { programId: true } },
+    },
+  });
+
+  const habitById = new Map(
+    habits
+      .filter((habit) => canReadHabit(accessContext, toHabitRecord(habit)))
+      .map((habit) => [
+        habit.id,
+        {
+          id: habit.id,
+          title: habit.title,
+          statusLabel: labelForHabitStatus(habit.status),
+          href: `/habits/${habit.id}`,
+        },
+      ]),
+  );
+  const limitPerEntry = input.limitPerEntry ?? 3;
+  const result: Record<string, ReviewLinkedHabitContextItem[]> = {};
+
+  for (const row of rows) {
+    const entryId = row.fromNodeType === OperationalGraphNodeType.ENTRY ? row.fromNodeId : row.toNodeId;
+    const habitId = row.fromNodeType === OperationalGraphNodeType.HABIT ? row.fromNodeId : row.toNodeId;
+    const habit = habitById.get(habitId);
+    if (!habit) {
+      continue;
+    }
+
+    const existing = result[entryId] ?? [];
+    if (existing.length >= limitPerEntry) {
+      result[entryId] = existing;
+      continue;
+    }
+
+    const direction = row.fromNodeType === OperationalGraphNodeType.ENTRY ? "OUTBOUND" : "INBOUND";
+    existing.push({
+      entryId,
+      relationshipId: row.id,
+      relationshipLabel: labelForRelationshipDirection(row.relationshipType as FoundationRelationshipType, direction),
+      habit,
+      note: parseRelationshipNote(row.metadataJson),
+    });
+    result[entryId] = existing;
+  }
+
+  return result;
 }
 
 export async function searchRelationshipTargets(input: {
