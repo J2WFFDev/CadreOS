@@ -6,6 +6,7 @@ import {
   createFoundationRelationship,
   isFoundationRelationshipNodeType,
   isFoundationRelationshipType,
+  labelForRelationshipNodeContext,
   labelForRelationshipDirection,
   normalizeFoundationRelationship,
   searchRelationshipTargets,
@@ -50,6 +51,11 @@ test("relationship helpers expose supported creation types", () => {
   assert.equal(isFoundationRelationshipNodeType("ENTRY"), true);
   assert.equal(isFoundationRelationshipNodeType("HABIT"), true);
   assert.equal(isFoundationRelationshipNodeType("TEAM"), false);
+});
+
+test("relationship helpers label habit links as contextual habit activity", () => {
+  assert.equal(labelForRelationshipNodeContext("ENTRY"), "Entry item");
+  assert.equal(labelForRelationshipNodeContext("HABIT"), "Linked habit activity");
 });
 
 test("createFoundationRelationship rejects missing actor context", async () => {

@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { OperationalGraphNodeType, OperationalRelationshipType } from "@prisma/client";
 
-import type {
-  FoundationRelationshipNodeType,
-  FoundationRelationshipListItem,
-  RelationshipSearchCandidate,
+import {
+  labelForRelationshipNodeContext,
+  type FoundationRelationshipListItem,
+  type FoundationRelationshipNodeType,
+  type RelationshipSearchCandidate,
 } from "@/lib/entry-relationships";
 
 const TARGET_TYPE_LABELS: Record<OperationalGraphNodeType, string> = {
-  ENTRY: "Entry item",
-  HABIT: "Habit",
+  ENTRY: labelForRelationshipNodeContext(OperationalGraphNodeType.ENTRY),
+  HABIT: labelForRelationshipNodeContext(OperationalGraphNodeType.HABIT),
   PERSON: "Person",
   TEAM: "Team",
   PROGRAM: "Program",
@@ -65,13 +66,23 @@ export function RelationshipPanel({
   searchTargetOptions: FoundationRelationshipNodeType[];
   limitation?: string | null;
 }) {
+  const includesHabitContext =
+    sourceNodeType === OperationalGraphNodeType.HABIT ||
+    searchTargetOptions.includes(OperationalGraphNodeType.HABIT) ||
+    relationshipItems.some((item) => item.related.nodeType === OperationalGraphNodeType.HABIT);
+
+  const helperText =
+    sourceNodeType === OperationalGraphNodeType.HABIT
+      ? "Linked habit activity only - HabitCompletion remains the canonical check-in record."
+      : includesHabitContext
+        ? "Context only - linked habit activity does not create tasks, runtime refs, or My Work visibility."
+        : "Context only - related items do not change My Work visibility.";
+
   return (
     <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">Related Items / Context</h3>
-        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-          Context only — related items do not change My Work visibility.
-        </span>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">{helperText}</span>
       </div>
 
       {limitation ? (
