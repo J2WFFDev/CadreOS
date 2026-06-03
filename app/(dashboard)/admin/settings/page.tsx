@@ -55,6 +55,9 @@ export default async function AdminSettingsPage() {
   return (
     <section className="space-y-4">
       <PageHeader title="Settings" description="Organization-level configuration." />
+      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        Local validation baseline is available in docs/dev/local-agent-validation-baseline.md.
+      </p>
 
       <div className="rounded-lg border bg-white dark:bg-zinc-900">
         <div className="border-b px-4 py-3">
