@@ -61,6 +61,11 @@ type RelationshipDirection = "OUTBOUND" | "INBOUND";
 
 export type FoundationRelationshipNodeType = "ENTRY" | "HABIT";
 
+const RELATIONSHIP_NODE_CONTEXT_LABELS: Record<FoundationRelationshipNodeType, string> = {
+  ENTRY: "Entry item",
+  HABIT: "Linked habit activity",
+};
+
 export type RelationshipNodeRef = {
   nodeType: FoundationRelationshipNodeType;
   nodeId: string;
@@ -105,6 +110,10 @@ export function isFoundationRelationshipNodeType(value: string): value is Founda
 export function parseRelationshipTargetNodeType(value: string | null | undefined): FoundationRelationshipNodeType {
   const normalized = value?.toUpperCase() ?? "";
   return isFoundationRelationshipNodeType(normalized) ? normalized : OperationalGraphNodeType.ENTRY;
+}
+
+export function labelForRelationshipNodeContext(nodeType: FoundationRelationshipNodeType): string {
+  return RELATIONSHIP_NODE_CONTEXT_LABELS[nodeType];
 }
 
 function compareNodeRefs(left: RelationshipNodeRef, right: RelationshipNodeRef) {
@@ -303,7 +312,7 @@ async function resolveHabitNodeSummary(input: {
     nodeType: OperationalGraphNodeType.HABIT,
     nodeId: habit.id,
     title: habit.title,
-    typeLabel: "Habit",
+    typeLabel: labelForRelationshipNodeContext(OperationalGraphNodeType.HABIT),
     statusLabel: labelForHabitStatus(habit.status),
     href: `/habits/${habit.id}`,
   };
@@ -716,7 +725,7 @@ export async function searchRelationshipTargets(input: {
       nodeType: OperationalGraphNodeType.HABIT,
       nodeId: habit.id,
       title: habit.title,
-      typeLabel: "Habit",
+      typeLabel: labelForRelationshipNodeContext(OperationalGraphNodeType.HABIT),
       statusLabel: labelForHabitStatus(habit.status),
       href: `/habits/${habit.id}`,
     }));
