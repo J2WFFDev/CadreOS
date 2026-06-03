@@ -3,6 +3,7 @@ import { EntryStatus } from "@prisma/client";
 
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { labelForHabitCadence } from "@/lib/habits/policy";
 import {
   aggregateOperationalFeed,
   computeTodayWindow,
@@ -116,9 +117,7 @@ function HabitsTodayList({ habits }: { habits: ActionableHabitItem[] }) {
             <Link href={`/habits/${habit.id}`} className="underline truncate font-medium text-zinc-700 dark:text-zinc-300">
               {habit.title}
             </Link>
-            {habit.frequency ? (
-              <span className="text-xs text-zinc-400">{habit.frequency.charAt(0) + habit.frequency.slice(1).toLowerCase()}</span>
-            ) : null}
+            <span className="text-xs text-zinc-400">{labelForHabitCadence({ frequency: habit.frequency })}</span>
           </div>
           {!habit.completedToday && habit.canCheckIn ? (
             <form method="POST" action={`/habits/${habit.id}/check-in`} className="shrink-0">

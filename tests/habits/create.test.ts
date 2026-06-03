@@ -127,6 +127,24 @@ test("HBT-CREATE-006: explicit schedule values are preserved in create payload",
   assert.equal(createData.schedules?.create.daysOfWeek, "MON,WED,FRI");
 });
 
+test("HBT-CREATE-006b: weekly schedule days are normalized before persistence", () => {
+  const input = normalizeHabitCreateFormInput(
+    makeFormData({
+      title: "Sprint intervals",
+      athletePersonId: "athlete-1",
+      frequency: "WEEKLY",
+      daysOfWeek: "fri, bad-day mon",
+      startDate: "2026-05-31",
+    }),
+  );
+
+  const createData = buildHabitCreateData(input, {
+    organizationId: "org-1",
+    actorPersonId: "person-1",
+  });
+  assert.equal(createData.schedules?.create.daysOfWeek, "MON,FRI");
+});
+
 test("HBT-CREATE-007: activity creation is non-blocking when activity write fails", async () => {
   let attempted = 0;
   const loggedErrors: unknown[] = [];

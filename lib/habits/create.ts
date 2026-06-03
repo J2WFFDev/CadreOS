@@ -3,6 +3,7 @@ import { HabitFrequency, HabitTrackingMode } from "@prisma/client";
 import {
   MAX_HABIT_DESCRIPTION_LENGTH,
   MAX_HABIT_TITLE_LENGTH,
+  normalizeHabitScheduleDays,
   normalizeCompletedOn,
   normalizeTrackingMode,
 } from "@/lib/habits/policy";
@@ -50,7 +51,7 @@ export function normalizeHabitCreateFormInput(formData: FormData): HabitCreateFo
   const athletePersonId = String(formData.get("athletePersonId") ?? "").trim();
   const assignedToTeamId = String(formData.get("assignedToTeamId") ?? "").trim() || null;
   const frequency = normalizeHabitFrequency(String(formData.get("frequency") ?? "").trim());
-  const daysOfWeek = String(formData.get("daysOfWeek") ?? "").trim() || null;
+  const daysOfWeek = normalizeHabitScheduleDays(String(formData.get("daysOfWeek") ?? ""));
   const startDateRaw = String(formData.get("startDate") ?? "").trim();
   const endDateRaw = String(formData.get("endDate") ?? "").trim();
   const trackingMode = normalizeTrackingMode(String(formData.get("trackingMode") ?? "").trim());

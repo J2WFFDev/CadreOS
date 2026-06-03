@@ -7,15 +7,19 @@ import {
   badgeVariantForHabitStatus,
   computeCompletionCount,
   computeCurrentStreak,
+  descriptionForHabitStatus,
   deriveSafeHabitActivityText,
   isHabitActionableToday,
+  labelForHabitCadence,
   labelForHabitFrequency,
+  labelForHabitScheduleDays,
   labelForHabitStatus,
   labelForHabitTrackingMode,
   MAX_CHECKIN_NOTE_LENGTH,
   MAX_HABIT_DESCRIPTION_LENGTH,
   MAX_HABIT_TITLE_LENGTH,
   normalizeCompletedOn,
+  normalizeHabitScheduleDays,
   normalizeTrackingMode,
   parseHabitCountValue,
 } from "../../lib/habits/policy";
@@ -60,6 +64,36 @@ test("labelForHabitFrequency returns Weekly for WEEKLY", () => {
 
 test("labelForHabitFrequency returns Custom for CUSTOM", () => {
   assert.equal(labelForHabitFrequency(HabitFrequency.CUSTOM), "Custom");
+});
+
+// ── cadence labels and weekly day normalization ─────────────────────────────
+
+test("normalizeHabitScheduleDays stores weekly days in canonical order", () => {
+  assert.equal(normalizeHabitScheduleDays("wed, mon FRI"), "MON,WED,FRI");
+});
+
+test("normalizeHabitScheduleDays ignores invalid weekday tokens", () => {
+  assert.equal(normalizeHabitScheduleDays("MON,FUNDAY,WED"), "MON,WED");
+  assert.equal(normalizeHabitScheduleDays("FUNDAY"), null);
+});
+
+test("labelForHabitScheduleDays renders user-friendly weekday labels", () => {
+  assert.equal(labelForHabitScheduleDays("MON,WED,FRI"), "Mon, Wed, Fri");
+});
+
+test("labelForHabitCadence clarifies unset and weekly cadence", () => {
+  assert.equal(labelForHabitCadence({ frequency: null }), "No set cadence");
+  assert.equal(
+    labelForHabitCadence({ frequency: HabitFrequency.WEEKLY, daysOfWeek: "WED,MON" }),
+    "Weekly on Mon, Wed",
+  );
+});
+
+test("descriptionForHabitStatus distinguishes check-in lifecycle states", () => {
+  assert.match(descriptionForHabitStatus(HabitStatus.ACTIVE), /receive scheduled check-ins/);
+  assert.match(descriptionForHabitStatus(HabitStatus.PAUSED), /do not accept check-ins/);
+  assert.match(descriptionForHabitStatus(HabitStatus.COMPLETED), /finished/);
+  assert.match(descriptionForHabitStatus(HabitStatus.ARCHIVED), /retained for history/);
 });
 
 // ── badgeVariantForHabitStatus ────────────────────────────────────────────────

@@ -42,13 +42,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
   const countValue = parseHabitCountValue(String(formData.get("countValue") ?? ""));
 
   if (!completedOnRaw) {
-    return NextResponse.redirect(new URL(`/habits/${habitId}`, request.url), 303);
+    return NextResponse.redirect(new URL(`/habits/${habitId}?invalidDate=1`, request.url), 303);
   }
 
-  const completedOn = normalizeCompletedOn(new Date(completedOnRaw));
+  const parsedCompletedOn = new Date(completedOnRaw);
+  if (Number.isNaN(parsedCompletedOn.getTime())) {
+    return NextResponse.redirect(new URL(`/habits/${habitId}?invalidDate=1`, request.url), 303);
+  }
+
+  const completedOn = normalizeCompletedOn(parsedCompletedOn);
 
   // Attempt to create the completion. The unique constraint on (habitId, completedOn)
-  // will silently skip duplicate same-day completions.
+  // prevents duplicate same-day completions.
   try {
     await db.habitCompletion.create({
       data: {

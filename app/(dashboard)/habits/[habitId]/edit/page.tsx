@@ -168,9 +168,9 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
               defaultValue={habit.trackingMode ?? HabitTrackingMode.CHECKOFF}
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
             >
-              <option value={HabitTrackingMode.CHECKOFF}>Checkoff — mark as done</option>
-              <option value={HabitTrackingMode.COUNT}>Count — track a numeric value</option>
-              <option value={HabitTrackingMode.NOTES}>Notes — log a free-text entry</option>
+              <option value={HabitTrackingMode.CHECKOFF}>Checkoff - record one check-in per day</option>
+              <option value={HabitTrackingMode.COUNT}>Count - record one numeric check-in per day</option>
+              <option value={HabitTrackingMode.NOTES}>Notes - record one note-based check-in per day</option>
             </select>
           </div>
 
@@ -200,7 +200,7 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
         </fieldset>
 
         <fieldset className="space-y-3 rounded-md border p-4">
-          <legend className="px-1 text-sm font-medium">Recurrence / Cadence</legend>
+          <legend className="px-1 text-sm font-medium">Cadence</legend>
           <div className="space-y-1">
             <label htmlFor="frequency" className="block text-sm font-medium">Frequency</label>
             <select
@@ -209,14 +209,14 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
               defaultValue={schedule?.frequency ?? ""}
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
             >
-              <option value="">— No schedule —</option>
+              <option value="">— No set cadence —</option>
               <option value={HabitFrequency.DAILY}>Daily</option>
               <option value={HabitFrequency.WEEKLY}>Weekly</option>
               <option value={HabitFrequency.CUSTOM}>Custom</option>
             </select>
           </div>
           <div className="space-y-1">
-            <label htmlFor="daysOfWeek" className="block text-sm font-medium">Days of week <span className="text-zinc-400">(e.g. MON,WED,FRI)</span></label>
+            <label htmlFor="daysOfWeek" className="block text-sm font-medium">Weekly days <span className="text-zinc-400">(MON,WED,FRI)</span></label>
             <input
               id="daysOfWeek"
               name="daysOfWeek"
