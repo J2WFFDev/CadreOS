@@ -911,6 +911,14 @@ export default async function EntryDetailPage({
                     </button>
                   </form>
                 ) : null}
+                {entry.type === EntryType.TASK && entry.status !== EntryStatus.ARCHIVED ? (
+                  <form action={`/entries/${entry.id}/convert-task-to-habit`} method="post">
+                    <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
+                    <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                      Convert task to habit
+                    </button>
+                  </form>
+                ) : null}
                 <form action={`/entries/${entry.id}/delete`} method="post">
                   <input type="hidden" name="returnTo" value="/entries" />
                   <button type="submit" className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300">

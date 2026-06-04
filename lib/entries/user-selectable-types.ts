@@ -5,6 +5,5 @@ export const USER_SELECTABLE_ENTRY_TYPES: EntryType[] = [
   EntryType.NOTE,
   EntryType.EVENT,
   EntryType.DECISION,
-  EntryType.HABIT,
   EntryType.JOURNAL,
 ];

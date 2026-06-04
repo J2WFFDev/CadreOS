@@ -17,6 +17,7 @@ test("entry activity actions include Arc 22E notification-ready concepts", () =>
   assert.equal(ENTRY_ACTIVITY_ACTIONS.ENTRY_ARCHIVED, "entry.archived");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.ENTRY_RELATIONSHIP_ADDED, "entry.relationship_added");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.ENTRY_RELATIONSHIP_REMOVED, "entry.relationship_removed");
+  assert.equal(ENTRY_ACTIVITY_ACTIONS.ENTRY_TASK_TO_HABIT_CONVERTED, "entry.task_to_habit_converted");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.JOURNAL_DRAFT_CREATED, "journal.draft_created");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.JOURNAL_DRAFT_UPDATED, "journal.draft_updated");
   assert.equal(ENTRY_ACTIVITY_ACTIONS.JOURNAL_SUBMITTED, "journal.submitted");
