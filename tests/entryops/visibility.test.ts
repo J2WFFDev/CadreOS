@@ -5,6 +5,8 @@ import { RoleType, ScopeType } from "@prisma/client";
 
 import {
   buildEntryOpsAllWorkDefaultWhere,
+  buildEntryOpsEntryDetailVisibilityWhere,
+  canReadEntryOpsEntryDetail,
   resolveEntryOpsAllWorkDefaultVisibility,
   type EntryOpsRoleAssignmentScope,
 } from "../../lib/entryops/visibility";
@@ -128,4 +130,179 @@ test("program director default uses available program and team assignment scope"
   assert.deepEqual(visibility.visiblePersonIds, ["program-1"]);
   assert.deepEqual(visibility.programIds, ["program-a"]);
   assert.deepEqual(visibility.teamIds, ["team-a"]);
+});
+
+test("entry detail visibility allows owner access independent of active persona", () => {
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility({
+    actorPersonId: "member-1",
+    assignments: [assignment({ roleType: RoleType.ATHLETE })],
+    linkedGuardianAthleteIds: new Set(),
+  });
+
+  assert.equal(
+    canReadEntryOpsEntryDetail(visibility, {
+      createdByPersonId: "member-1",
+      assignedToPersonId: null,
+      teamId: null,
+    }),
+    true,
+  );
+});
+
+test("entry detail visibility blocks unrelated athlete from another person's entry", () => {
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility({
+    actorPersonId: "athlete-2",
+    assignments: [assignment({ roleType: RoleType.ATHLETE })],
+    linkedGuardianAthleteIds: new Set(),
+  });
+
+  assert.equal(
+    canReadEntryOpsEntryDetail(visibility, {
+      createdByPersonId: "member-1",
+      assignedToPersonId: null,
+      teamId: null,
+    }),
+    false,
+  );
+});
+
+test("entry detail visibility blocks unrelated limited or no-role users", () => {
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility({
+    actorPersonId: "limited-1",
+    assignments: [],
+    linkedGuardianAthleteIds: new Set(),
+  });
+
+  assert.equal(
+    canReadEntryOpsEntryDetail(visibility, {
+      createdByPersonId: "member-1",
+      assignedToPersonId: null,
+      teamId: null,
+    }),
+    false,
+  );
+});
+
+test("entry detail visibility allows guardian access to dependent athlete entries", () => {
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility({
+    actorPersonId: "guardian-1",
+    assignments: [assignment({ roleType: RoleType.PARENT_GUARDIAN })],
+    linkedGuardianAthleteIds: new Set(["athlete-1"]),
+  });
+
+  assert.equal(
+    canReadEntryOpsEntryDetail(visibility, {
+      createdByPersonId: "athlete-1",
+      assignedToPersonId: null,
+      teamId: null,
+    }),
+    true,
+  );
+  assert.equal(
+    canReadEntryOpsEntryDetail(visibility, {
+      createdByPersonId: "member-1",
+      assignedToPersonId: "athlete-1",
+      teamId: null,
+    }),
+    true,
+  );
+});
+
+test("entry detail visibility blocks unrelated guardian from athlete entries", () => {
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility({
+    actorPersonId: "guardian-1",
+    assignments: [assignment({ roleType: RoleType.PARENT_GUARDIAN })],
+    linkedGuardianAthleteIds: new Set(["athlete-1"]),
+  });
+
+  assert.equal(
+    canReadEntryOpsEntryDetail(visibility, {
+      createdByPersonId: "athlete-2",
+      assignedToPersonId: null,
+      teamId: null,
+    }),
+    false,
+  );
+});
+
+test("entry detail visibility allows org admin access organization-wide", () => {
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility({
+    actorPersonId: "admin-1",
+    assignments: [assignment({ roleType: RoleType.ORGANIZATION_ADMIN })],
+    linkedGuardianAthleteIds: new Set(),
+  });
+
+  assert.equal(
+    canReadEntryOpsEntryDetail(visibility, {
+      createdByPersonId: "member-1",
+      assignedToPersonId: null,
+      teamId: null,
+    }),
+    true,
+  );
+  assert.deepEqual(buildEntryOpsEntryDetailVisibilityWhere(visibility), {});
+});
+
+test("entry detail visibility allows program director scoped program and team entries", () => {
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility({
+    actorPersonId: "program-1",
+    assignments: [
+      assignment({
+        roleType: RoleType.PROGRAM_DIRECTOR,
+        scopeType: ScopeType.PROGRAM,
+        programId: "program-a",
+      }),
+      assignment({
+        roleType: RoleType.PROGRAM_DIRECTOR,
+        scopeType: ScopeType.TEAM,
+        teamId: "team-a",
+      }),
+    ],
+    linkedGuardianAthleteIds: new Set(),
+  });
+
+  assert.equal(
+    canReadEntryOpsEntryDetail(visibility, {
+      createdByPersonId: "member-1",
+      assignedToPersonId: null,
+      teamId: "team-a",
+    }),
+    true,
+  );
+  assert.equal(
+    canReadEntryOpsEntryDetail(visibility, {
+      createdByPersonId: "member-2",
+      assignedToPersonId: null,
+      teamId: "team-b",
+      team: { programId: "program-a" },
+    }),
+    true,
+  );
+});
+
+test("entry detail visibility allows active assignment relationship access", () => {
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility({
+    actorPersonId: "member-1",
+    assignments: [],
+    linkedGuardianAthleteIds: new Set(),
+  });
+
+  assert.equal(
+    canReadEntryOpsEntryDetail(visibility, {
+      createdByPersonId: "member-2",
+      assignedToPersonId: null,
+      teamId: null,
+      assignments: [{ personId: "member-1", revokedAt: null }],
+    }),
+    true,
+  );
+  assert.equal(
+    canReadEntryOpsEntryDetail(visibility, {
+      createdByPersonId: "member-2",
+      assignedToPersonId: null,
+      teamId: null,
+      assignments: [{ personId: "member-1", revokedAt: new Date("2026-01-01T00:00:00.000Z") }],
+    }),
+    false,
+  );
 });
