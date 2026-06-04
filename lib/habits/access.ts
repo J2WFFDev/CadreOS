@@ -121,6 +121,7 @@ export function canCreateHabit(context: HabitAccessContext): boolean {
 /**
  * A habit is readable if:
  * - the actor is org admin/director
+ * - the actor created the habit
  * - the actor is the habit's athlete
  * - the actor is a scoped coach/assistant-coach for the habit's team/program
  * - the actor is a guardian linked to the habit's athlete (summary-level access)
@@ -128,6 +129,7 @@ export function canCreateHabit(context: HabitAccessContext): boolean {
 export function canReadHabit(context: HabitAccessContext, habit: HabitRecord): boolean {
   if (!context.actorPersonId) return false;
   if (hasHabitAdminAccess(context)) return true;
+  if (habit.createdByPersonId === context.actorPersonId) return true;
   if (habit.athletePersonId === context.actorPersonId) return true;
 
   if (

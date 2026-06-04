@@ -121,8 +121,13 @@ test("athlete can read own habit", () => {
   assert.equal(canReadHabit(buildContext({ assignments: [athleteAssignment] }), habit), true);
 });
 
+test("creator can read habit even when active persona is not the athlete", () => {
+  const habit = buildHabit({ athletePersonId: "other-athlete", createdByPersonId: "actor-1" });
+  assert.equal(canReadHabit(buildContext({ assignments: [athleteAssignment] }), habit), true);
+});
+
 test("athlete cannot read another athlete's habit", () => {
-  const habit = buildHabit({ athletePersonId: "other-athlete" });
+  const habit = buildHabit({ athletePersonId: "other-athlete", createdByPersonId: "other-creator" });
   assert.equal(canReadHabit(buildContext({ assignments: [athleteAssignment] }), habit), false);
 });
 
@@ -132,7 +137,11 @@ test("scoped coach can read habit for their team", () => {
 });
 
 test("coach from different team cannot read habit", () => {
-  const habit = buildHabit({ assignedToTeamId: "other-team", athletePersonId: "other-athlete" });
+  const habit = buildHabit({
+    assignedToTeamId: "other-team",
+    athletePersonId: "other-athlete",
+    createdByPersonId: "other-creator",
+  });
   assert.equal(canReadHabit(buildContext({ assignments: [coachAssignment] }), habit), false);
 });
 
@@ -147,7 +156,7 @@ test("guardian can read habit of linked athlete", () => {
 });
 
 test("guardian cannot read habit of unlinked athlete", () => {
-  const habit = buildHabit({ athletePersonId: "other-athlete" });
+  const habit = buildHabit({ athletePersonId: "other-athlete", createdByPersonId: "other-creator" });
   const ctx = buildContext({
     actorPersonId: "guardian-1",
     assignments: [guardianAssignment],
@@ -306,6 +315,21 @@ test("cannot complete an archived habit", () => {
 test("unrelated athlete cannot complete another's habit", () => {
   const habit = buildHabit({ createdByPersonId: "other" });
   assert.equal(canCompleteHabit(buildContext({ assignments: [athleteAssignment] }), habit), false);
+});
+
+test("unrelated guardian cannot mutate dependent-only inaccessible habit actions", () => {
+  const habit = buildHabit({ athletePersonId: "other-athlete", createdByPersonId: "other" });
+  const ctx = buildContext({
+    actorPersonId: "guardian-1",
+    assignments: [guardianAssignment],
+    linkedGuardianAthleteIds: new Set(["athlete-1"]),
+  });
+
+  assert.equal(canArchiveHabit(ctx, habit), false);
+  assert.equal(canPauseHabit(ctx, habit), false);
+  assert.equal(canCompleteHabit(ctx, habit), false);
+  assert.equal(canRestoreHabit(ctx, { ...habit, status: HabitStatus.ARCHIVED }), false);
+  assert.equal(canCheckInHabit(ctx, habit), false);
 });
 
 // ── Arc 24D.8: canRestoreHabit ────────────────────────────────────────────────
