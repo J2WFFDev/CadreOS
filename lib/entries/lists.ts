@@ -6,7 +6,7 @@
  * Default Inbox lists are created lazily on first access.
  */
 
-import { EntryListScope } from "@prisma/client";
+import { EntryListScope, Prisma, RoleType, ScopeType } from "@prisma/client";
 
 import { db } from "@/lib/db";
 
@@ -21,6 +21,18 @@ export type EntryListSummary = {
   ownerPersonId: string | null;
   programId: string | null;
   teamId: string | null;
+};
+
+type EntryListRoleScope = {
+  roleType: RoleType;
+  scopeType: ScopeType;
+};
+
+export type EntryListVisibility = {
+  canRead: boolean;
+  canCreatePersonalList: boolean;
+  canManageSharedLists: boolean;
+  where: Prisma.EntryListWhereInput;
 };
 
 export type ResolveDefaultListInput =
@@ -121,6 +133,68 @@ export async function resolveOrCreateEntryDefaultInboxList(input: ResolveEntryDe
   return resolveOrCreateDefaultList(buildDefaultInboxListResolutionInput(input));
 }
 
+function canManageSharedEntryLists(assignments: EntryListRoleScope[]): boolean {
+  return assignments.some(
+    (assignment) =>
+      assignment.roleType === RoleType.ORGANIZATION_ADMIN &&
+      assignment.scopeType === ScopeType.ORGANIZATION,
+  );
+}
+
+export function buildEntryListVisibilityForActor(input: {
+  organizationId: string;
+  actorPersonId: string | null | undefined;
+  assignments: EntryListRoleScope[];
+}): EntryListVisibility {
+  const { organizationId, actorPersonId, assignments } = input;
+
+  if (!actorPersonId) {
+    return {
+      canRead: false,
+      canCreatePersonalList: false,
+      canManageSharedLists: false,
+      where: { id: "__entry_list_no_actor__" },
+    };
+  }
+
+  const canManageSharedLists = canManageSharedEntryLists(assignments);
+
+  if (canManageSharedLists) {
+    return {
+      canRead: true,
+      canCreatePersonalList: true,
+      canManageSharedLists: true,
+      where: { organizationId, isArchived: false },
+    };
+  }
+
+  return {
+    canRead: true,
+    canCreatePersonalList: true,
+    canManageSharedLists: false,
+    where: {
+      organizationId,
+      isArchived: false,
+      scope: EntryListScope.PERSONAL,
+      ownerPersonId: actorPersonId,
+    },
+  };
+}
+
+export async function resolveEntryListVisibility(input: {
+  organizationId: string;
+  actorPersonId: string | null | undefined;
+}): Promise<EntryListVisibility> {
+  const { organizationId, actorPersonId } = input;
+  if (!actorPersonId) return buildEntryListVisibilityForActor({ organizationId, actorPersonId, assignments: [] });
+
+  const assignments = await db.roleAssignment.findMany({
+    where: { organizationId, personId: actorPersonId },
+    select: { roleType: true, scopeType: true },
+  });
+  return buildEntryListVisibilityForActor({ organizationId, actorPersonId, assignments });
+}
+
 // ── Fetch lists for actor ─────────────────────────────────────────────────────
 
 /**
@@ -132,23 +206,14 @@ export async function fetchListsForActor(input: {
   organizationId: string;
   actorPersonId: string | null | undefined;
 }): Promise<EntryListSummary[]> {
-  const { organizationId, actorPersonId } = input;
+  const visibility = await resolveEntryListVisibility(input);
+
+  if (!visibility.canRead) {
+    return [];
+  }
 
   const lists = await db.entryList.findMany({
-    where: {
-      organizationId,
-      isArchived: false,
-      OR: [
-        // Org-scoped lists visible to all
-        { scope: EntryListScope.ORGANIZATION },
-        // Personal lists owned by this actor
-        ...(actorPersonId ? [{ scope: EntryListScope.PERSONAL, ownerPersonId: actorPersonId }] : []),
-        // Program and team lists — return all for simplicity (server-side role
-        // filtering is done by the calling page if stricter access is needed)
-        { scope: EntryListScope.PROGRAM },
-        { scope: EntryListScope.TEAM },
-      ],
-    },
+    where: visibility.where,
     orderBy: [{ scope: "asc" }, { name: "asc" }],
     select: {
       id: true,
@@ -170,9 +235,26 @@ export async function fetchListsForActor(input: {
 export async function fetchEntryList(input: {
   organizationId: string;
   listId: string;
+  actorPersonId?: string | null;
 }): Promise<EntryListSummary | null> {
+  const visibility =
+    "actorPersonId" in input
+      ? await resolveEntryListVisibility({
+          organizationId: input.organizationId,
+          actorPersonId: input.actorPersonId,
+        })
+      : null;
+
+  if (visibility && !visibility.canRead) {
+    return null;
+  }
+
   return db.entryList.findFirst({
-    where: { id: input.listId, organizationId: input.organizationId },
+    where: {
+      id: input.listId,
+      organizationId: input.organizationId,
+      ...(visibility ? { AND: [visibility.where] } : {}),
+    },
     select: {
       id: true,
       name: true,

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { resolveEntryAccess } from "@/lib/operational-entry";
+import { resolveEntryListVisibility } from "@/lib/entries/lists";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export async function POST(request: Request, { params }: { params: Promise<{ listId: string }> }) {
@@ -14,23 +14,28 @@ export async function POST(request: Request, { params }: { params: Promise<{ lis
 
   const { organizationId } = scope;
 
-  const entryAccess = await resolveEntryAccess({
+  const listVisibility = await resolveEntryListVisibility({
     organizationId,
     actorPersonId: scope.auth.personId,
   });
 
-  if (entryAccess.level === "NONE" || entryAccess.level === "READ") {
+  if (!listVisibility.canRead) {
     return NextResponse.redirect(new URL(`/lists/${listId}?error=Permission+denied`, request.url), 303);
   }
 
   // Verify list belongs to this org
   const list = await db.entryList.findFirst({
-    where: { id: listId, organizationId },
-    select: { id: true, isInbox: true },
+    where: { id: listId, organizationId, AND: [listVisibility.where] },
+    select: { id: true, isInbox: true, ownerPersonId: true },
   });
 
   if (!list) {
     return NextResponse.redirect(new URL("/lists?error=List+not+found", request.url), 303);
+  }
+
+  const canEditList = listVisibility.canManageSharedLists || list.ownerPersonId === scope.auth.personId;
+  if (!canEditList) {
+    return NextResponse.redirect(new URL(`/lists/${listId}?error=Permission+denied`, request.url), 303);
   }
 
   const formData = await request.formData();

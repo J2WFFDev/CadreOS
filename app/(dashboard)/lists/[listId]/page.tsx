@@ -4,9 +4,17 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
-import { fetchEntryList, labelForEntryListScope } from "@/lib/entries/lists";
+import {
+  fetchEntryList,
+  labelForEntryListScope,
+  resolveEntryListVisibility,
+} from "@/lib/entries/lists";
+import {
+  buildEntryOpsEntryDetailVisibilityWhere,
+  resolveEntryOpsAllWorkDefaultVisibility,
+  resolveEntryOpsVisibilityContext,
+} from "@/lib/entryops/visibility";
 import { labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
-import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -35,12 +43,12 @@ export default async function ListDetailPage({ params }: { params: Promise<{ lis
 
   const { organizationId } = scope;
 
-  const entryAccess = await resolveEntryAccess({
+  const listVisibility = await resolveEntryListVisibility({
     organizationId,
     actorPersonId: scope.auth.personId,
   });
 
-  if (entryAccess.level === "NONE") {
+  if (!listVisibility.canRead) {
     return (
       <section className="space-y-4">
         <PageHeader title="List" description="Work list details." />
@@ -49,7 +57,7 @@ export default async function ListDetailPage({ params }: { params: Promise<{ lis
     );
   }
 
-  const list = await fetchEntryList({ organizationId, listId });
+  const list = await fetchEntryList({ organizationId, listId, actorPersonId: scope.auth.personId });
 
   if (!list) {
     return (
@@ -63,10 +71,20 @@ export default async function ListDetailPage({ params }: { params: Promise<{ lis
     );
   }
 
-  const canWrite = entryAccess.level === "WRITE" || entryAccess.level === "MANAGE";
+  const canWrite = listVisibility.canManageSharedLists || list.ownerPersonId === scope.auth.personId;
+  const entryVisibilityContext = await resolveEntryOpsVisibilityContext({
+    organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const entryVisibility = resolveEntryOpsAllWorkDefaultVisibility(entryVisibilityContext);
 
   const entries = await db.entry.findMany({
-    where: { organizationId, listId, deletedAt: null },
+    where: {
+      organizationId,
+      listId,
+      deletedAt: null,
+      AND: [buildEntryOpsEntryDetailVisibilityWhere(entryVisibility)],
+    },
     orderBy: [{ createdAt: "desc" }],
     select: {
       id: true,

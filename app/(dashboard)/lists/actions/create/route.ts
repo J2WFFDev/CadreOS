@@ -2,8 +2,8 @@ import { EntryListScope } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { resolveEntryListVisibility } from "@/lib/entries/lists";
 import { formatEntryListSetupIncompleteMessage, getEntryListSchemaIssue, logEntryListSchemaIssue } from "@/lib/entries/schema-guard";
-import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export async function POST(request: Request) {
@@ -15,12 +15,12 @@ export async function POST(request: Request) {
 
   const { organizationId } = scope;
 
-  const entryAccess = await resolveEntryAccess({
+  const listVisibility = await resolveEntryListVisibility({
     organizationId,
     actorPersonId: scope.auth.personId,
   });
 
-  if (entryAccess.level === "NONE" || entryAccess.level === "READ") {
+  if (!listVisibility.canCreatePersonalList) {
     return NextResponse.redirect(new URL("/lists?error=Permission+denied", request.url), 303);
   }
 
@@ -37,6 +37,10 @@ export async function POST(request: Request) {
   const listScope = Object.values(EntryListScope).includes(scopeValue as EntryListScope)
     ? (scopeValue as EntryListScope)
     : EntryListScope.PERSONAL;
+
+  if (listScope !== EntryListScope.PERSONAL && !listVisibility.canManageSharedLists) {
+    return NextResponse.redirect(new URL("/lists/create?error=Only+personal+lists+are+available", request.url), 303);
+  }
 
   // Validate scope-required fields
   if (listScope === EntryListScope.PERSONAL && !scope.auth.personId) {
