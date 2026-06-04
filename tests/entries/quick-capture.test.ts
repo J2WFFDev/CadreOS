@@ -7,6 +7,7 @@ import {
   resolveQuickCaptureDueDate,
   resolveQuickCaptureEntryType,
 } from "../../lib/quick-capture";
+import { canQuickCaptureCreateForAssignee } from "../../lib/entries/quick-capture-permissions";
 
 test("resolveQuickCaptureEntryType always resolves to task for quick capture", () => {
   const result = resolveQuickCaptureEntryType();
@@ -51,4 +52,52 @@ test("inferQuickCaptureContextFromPath maps team, event, and gear item paths", (
     targetId: "gear_123",
     label: "Gear item context auto-linked",
   });
+});
+
+test("quick capture permission allows athlete or limited self-create without staff task permission", () => {
+  assert.equal(
+    canQuickCaptureCreateForAssignee({
+      actorPersonId: "person-1",
+      assigneePersonId: "person-1",
+      hasContextTarget: false,
+      hasTaskCreatePermission: false,
+    }),
+    true,
+  );
+});
+
+test("quick capture permission blocks unrelated assignee without staff task permission", () => {
+  assert.equal(
+    canQuickCaptureCreateForAssignee({
+      actorPersonId: "person-1",
+      assigneePersonId: "person-2",
+      hasContextTarget: false,
+      hasTaskCreatePermission: false,
+    }),
+    false,
+  );
+});
+
+test("quick capture permission preserves elevated create and assign behavior", () => {
+  assert.equal(
+    canQuickCaptureCreateForAssignee({
+      actorPersonId: "admin-1",
+      assigneePersonId: "person-2",
+      hasContextTarget: true,
+      hasTaskCreatePermission: true,
+    }),
+    true,
+  );
+});
+
+test("quick capture permission blocks context-linked self-create without staff task permission", () => {
+  assert.equal(
+    canQuickCaptureCreateForAssignee({
+      actorPersonId: "person-1",
+      assigneePersonId: "person-1",
+      hasContextTarget: true,
+      hasTaskCreatePermission: false,
+    }),
+    false,
+  );
 });
