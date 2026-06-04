@@ -29,6 +29,12 @@ export type ResolveDefaultListInput =
   | { scope: "TEAM"; organizationId: string; teamId: string }
   | { scope: "PROGRAM"; organizationId: string; programId: string };
 
+export type ResolveEntryDefaultInboxInput = {
+  organizationId: string;
+  actorPersonId?: string | null;
+  teamId?: string | null;
+};
+
 // ── Default Inbox names ───────────────────────────────────────────────────────
 
 const INBOX_NAMES: Record<EntryListScope, string> = {
@@ -97,6 +103,22 @@ export async function resolveOrCreateDefaultList(input: ResolveDefaultListInput)
     data: { organizationId, name, scope: EntryListScope.TEAM, isInbox: true, teamId },
     select: { id: true },
   });
+}
+
+export function buildDefaultInboxListResolutionInput(input: ResolveEntryDefaultInboxInput): ResolveDefaultListInput {
+  if (input.teamId) {
+    return { scope: "TEAM", organizationId: input.organizationId, teamId: input.teamId };
+  }
+
+  if (input.actorPersonId) {
+    return { scope: "PERSONAL", organizationId: input.organizationId, ownerPersonId: input.actorPersonId };
+  }
+
+  return { scope: "ORGANIZATION", organizationId: input.organizationId };
+}
+
+export async function resolveOrCreateEntryDefaultInboxList(input: ResolveEntryDefaultInboxInput): Promise<{ id: string }> {
+  return resolveOrCreateDefaultList(buildDefaultInboxListResolutionInput(input));
 }
 
 // ── Fetch lists for actor ─────────────────────────────────────────────────────

@@ -63,6 +63,7 @@ export type CreateOperationalEntryInput = {
   sourceNoteId?: string | null;
   // Arc 24D.4: optional list assignment
   listId?: string | null;
+  skipDefaultListAssignment?: boolean;
 };
 
 /** Input for updating an existing OperationalEntry. */

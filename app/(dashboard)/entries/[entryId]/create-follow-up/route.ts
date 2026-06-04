@@ -2,6 +2,7 @@ import { EntryPriority, EntryType, TaskStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { resolveOrCreateEntryDefaultInboxList } from "@/lib/entries/lists";
 import { buildTaskEntryProjection, deriveEntryFollowUpDraft, writeEntryActivity } from "@/lib/entries/service";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
@@ -100,6 +101,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   });
 
   const projection = buildTaskEntryProjection({ dueAt, status: TaskStatus.OPEN });
+  const defaultList = await resolveOrCreateEntryDefaultInboxList({
+    organizationId,
+    actorPersonId,
+    teamId: sourceEntry.teamId,
+  });
   const followUpEntry = await db.entry.create({
     data: {
       organizationId,
@@ -118,6 +124,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       taskCompleted: false,
       sourceTaskId: followUpTask.id,
       parentEntryId: sourceEntry.id,
+      listId: defaultList.id,
     },
     select: { id: true },
   });
