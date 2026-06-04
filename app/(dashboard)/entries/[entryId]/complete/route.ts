@@ -3,7 +3,12 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { resolveEntryOpsEntryActionVisibilityWhere } from "@/lib/entryops/visibility";
+import {
+  buildEntryOpsEntryDetailVisibilityWhere,
+  canEditEntryOpsEntry,
+  resolveEntryOpsAllWorkDefaultVisibility,
+  resolveEntryOpsVisibilityContext,
+} from "@/lib/entryops/visibility";
 import { deriveTaskCompletionUpdate, writeEntryActivity } from "@/lib/entries/service";
 import { ENTRY_ACTIVITY_ACTIONS, canWriteEntries } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
@@ -37,32 +42,35 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(url, 303);
   }
   const organizationId = scope.organizationId;
-  const entryVisibilityWhere = await resolveEntryOpsEntryActionVisibilityWhere({
+  const visibilityContext = await resolveEntryOpsVisibilityContext({
     organizationId,
     actorPersonId: scope.auth.personId,
   });
+  const entryVisibility = resolveEntryOpsAllWorkDefaultVisibility(visibilityContext);
+  const entryVisibilityWhere = buildEntryOpsEntryDetailVisibilityWhere(entryVisibility);
 
-  const canEdit = await canWriteEntries({ organizationId, actorPersonId: scope.auth.personId });
+  const canEditByRole = await canWriteEntries({ organizationId, actorPersonId: scope.auth.personId });
   console.log("[entries.complete] canWriteEntries result", {
-    canEdit,
+    canEdit: canEditByRole,
     organizationId,
     actorPersonId: scope.auth.personId,
   });
-
-  if (!canEdit) {
-    console.warn("[entries.complete] Aborting: actor does not have write permission", {
-      organizationId,
-      actorPersonId: scope.auth.personId,
-      unresolvedPersonLink: scope.auth.unresolvedPersonLink,
-    });
-    const url = new URL(returnTo, request.url);
-    url.searchParams.set("error", "You do not have permission to complete entries.");
-    return NextResponse.redirect(url, 303);
-  }
 
   const entry = await db.entry.findFirst({
     where: { id: entryId, organizationId: organizationId, deletedAt: null, AND: [entryVisibilityWhere] },
-    select: { id: true, type: true, taskCompleted: true, sourceTaskId: true },
+    select: {
+      id: true,
+      type: true,
+      taskCompleted: true,
+      sourceTaskId: true,
+      createdByPersonId: true,
+      assignedToPersonId: true,
+      teamId: true,
+      assignments: {
+        select: { personId: true, revokedAt: true },
+        take: 40,
+      },
+    },
   });
 
   console.log("[entries.complete] entry lookup result", {
@@ -81,6 +89,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     });
     const url = new URL(returnTo, request.url);
     url.searchParams.set("error", !entry ? "Entry not found." : "Only TASK or FOLLOW_UP entries can be completed.");
+    return NextResponse.redirect(url, 303);
+  }
+
+  const canEdit = canEditEntryOpsEntry({
+    canWriteEntries: canEditByRole,
+    context: visibilityContext,
+    entry,
+  });
+  if (!canEdit) {
+    console.warn("[entries.complete] Aborting: actor does not have entry completion permission", {
+      organizationId,
+      actorPersonId: scope.auth.personId,
+      unresolvedPersonLink: scope.auth.unresolvedPersonLink,
+    });
+    const url = new URL(returnTo, request.url);
+    url.searchParams.set("error", "You do not have permission to complete this entry.");
     return NextResponse.redirect(url, 303);
   }
 

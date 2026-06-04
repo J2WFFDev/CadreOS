@@ -6,7 +6,9 @@ import { RoleType, ScopeType } from "@prisma/client";
 import {
   buildEntryOpsAllWorkDefaultWhere,
   buildEntryOpsEntryDetailVisibilityWhere,
+  canEditEntryOpsEntry,
   canReadEntryOpsEntryDetail,
+  canSelfEditEntryOpsEntry,
   resolveEntryOpsAllWorkDefaultVisibility,
   type EntryOpsRoleAssignmentScope,
 } from "../../lib/entryops/visibility";
@@ -302,6 +304,132 @@ test("entry detail visibility allows active assignment relationship access", () 
       assignedToPersonId: null,
       teamId: null,
       assignments: [{ personId: "member-1", revokedAt: new Date("2026-01-01T00:00:00.000Z") }],
+    }),
+    false,
+  );
+});
+
+test("entry self-edit allows athlete owner independent of active persona", () => {
+  assert.equal(
+    canSelfEditEntryOpsEntry(
+      { actorPersonId: "athlete-1" },
+      {
+        createdByPersonId: "athlete-1",
+        assignedToPersonId: null,
+        teamId: null,
+      },
+    ),
+    true,
+  );
+});
+
+test("entry self-edit allows limited owner", () => {
+  assert.equal(
+    canSelfEditEntryOpsEntry(
+      { actorPersonId: "limited-1" },
+      {
+        createdByPersonId: "limited-1",
+        assignedToPersonId: null,
+        teamId: null,
+      },
+    ),
+    true,
+  );
+});
+
+test("entry self-edit allows direct assignee and active assignment participant", () => {
+  assert.equal(
+    canSelfEditEntryOpsEntry(
+      { actorPersonId: "assignee-1" },
+      {
+        createdByPersonId: "owner-1",
+        assignedToPersonId: "assignee-1",
+        teamId: null,
+      },
+    ),
+    true,
+  );
+
+  assert.equal(
+    canSelfEditEntryOpsEntry(
+      { actorPersonId: "participant-1" },
+      {
+        createdByPersonId: "owner-1",
+        assignedToPersonId: null,
+        teamId: null,
+        assignments: [{ personId: "participant-1", revokedAt: null }],
+      },
+    ),
+    true,
+  );
+});
+
+test("entry self-edit blocks unrelated athlete and revoked assignment participant", () => {
+  assert.equal(
+    canSelfEditEntryOpsEntry(
+      { actorPersonId: "athlete-2" },
+      {
+        createdByPersonId: "athlete-1",
+        assignedToPersonId: null,
+        teamId: null,
+      },
+    ),
+    false,
+  );
+
+  assert.equal(
+    canSelfEditEntryOpsEntry(
+      { actorPersonId: "participant-1" },
+      {
+        createdByPersonId: "owner-1",
+        assignedToPersonId: null,
+        teamId: null,
+        assignments: [{ personId: "participant-1", revokedAt: new Date("2026-01-01T00:00:00.000Z") }],
+      },
+    ),
+    false,
+  );
+});
+
+test("entry self-edit does not grant guardian dependent edit access", () => {
+  assert.equal(
+    canSelfEditEntryOpsEntry(
+      { actorPersonId: "guardian-1" },
+      {
+        createdByPersonId: "athlete-1",
+        assignedToPersonId: null,
+        teamId: null,
+      },
+    ),
+    false,
+  );
+});
+
+test("entry edit decision allows org admin write access to another entry", () => {
+  assert.equal(
+    canEditEntryOpsEntry({
+      canWriteEntries: true,
+      context: { actorPersonId: "admin-1" },
+      entry: {
+        createdByPersonId: "member-1",
+        assignedToPersonId: null,
+        teamId: null,
+      },
+    }),
+    true,
+  );
+});
+
+test("entry edit decision blocks unrelated non-writer", () => {
+  assert.equal(
+    canEditEntryOpsEntry({
+      canWriteEntries: false,
+      context: { actorPersonId: "athlete-2" },
+      entry: {
+        createdByPersonId: "athlete-1",
+        assignedToPersonId: null,
+        teamId: null,
+      },
     }),
     false,
   );

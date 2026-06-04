@@ -51,6 +51,7 @@ import { USER_SELECTABLE_ENTRY_TYPES } from "@/lib/entries/user-selectable-types
 import { formatEnumLabel } from "@/lib/follow-up-tasks";
 import {
   buildEntryOpsEntryDetailVisibilityWhere,
+  canEditEntryOpsEntry,
   resolveEntryOpsAllWorkDefaultVisibility,
   resolveEntryOpsVisibilityContext,
 } from "@/lib/entryops/visibility";
@@ -167,7 +168,13 @@ const entryBaseSelect = Prisma.validator<Prisma.EntryFindFirstArgs>()({
     updatedAt: true,
     sourceTaskId: true,
     sourceNoteId: true,
+    createdByPersonId: true,
     assignedToPersonId: true,
+    teamId: true,
+    assignments: {
+      select: { personId: true, revokedAt: true },
+      take: 40,
+    },
     createdBy: { select: { firstName: true, lastName: true } },
     updatedBy: { select: { firstName: true, lastName: true } },
     assignedTo: { select: { firstName: true, lastName: true } },
@@ -391,7 +398,7 @@ export default async function EntryDetailPage({
     actorPersonId: scope.auth.personId,
   });
   const canReadEntry = entryDetailVisibility.canRead;
-  const canEditEntry = entryAccess.level === "WRITE" || entryAccess.level === "MANAGE";
+  const canEditEntryByRole = entryAccess.level === "WRITE" || entryAccess.level === "MANAGE";
 
   if (!canReadEntry) {
     return (
@@ -420,6 +427,13 @@ export default async function EntryDetailPage({
       </section>
     );
   }
+
+  const canEditEntry = canEditEntryOpsEntry({
+    canWriteEntries: canEditEntryByRole,
+    context: visibilityContext,
+    entry,
+  });
+  const canEditEntryAdministrativeFields = canEditEntryByRole;
 
   const relatedItems = await listRelatedOperationalRecords({
     organizationId,
@@ -455,14 +469,14 @@ export default async function EntryDetailPage({
     (item) => item.node.nodeType !== "ENTRY" && item.node.nodeType !== "HABIT",
   );
   const [programs, teams] = await Promise.all([
-    canEditEntry
+    canEditEntryAdministrativeFields
       ? db.program.findMany({
           where: { organizationId },
           select: { id: true, name: true },
           orderBy: [{ name: "asc" }],
         })
       : Promise.resolve([]),
-    canEditEntry
+    canEditEntryAdministrativeFields
       ? db.team.findMany({
           where: { organizationId },
           select: { id: true, name: true, programId: true },
@@ -686,7 +700,7 @@ export default async function EntryDetailPage({
                     </select>
                   </div>
                 ) : null}
-                {entry.type === EntryType.EVENT ? (
+                {entry.type === EntryType.EVENT && canEditEntryAdministrativeFields ? (
                   <EventEntryMetadataFields
                     payload={eventPayloadForForm}
                     programs={programs}
@@ -925,7 +939,7 @@ export default async function EntryDetailPage({
                     </button>
                   </form>
                 ) : null}
-                {entry.type === EntryType.NOTE ? (
+                {canEditEntryByRole && entry.type === EntryType.NOTE ? (
                   <form action={`/entries/${entry.id}/convert-note-to-task`} method="post">
                     <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
                     <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
@@ -933,7 +947,7 @@ export default async function EntryDetailPage({
                     </button>
                   </form>
                 ) : null}
-                {entry.type === EntryType.TASK && entry.status !== EntryStatus.ARCHIVED ? (
+                {canEditEntryByRole && entry.type === EntryType.TASK && entry.status !== EntryStatus.ARCHIVED ? (
                   <form action={`/entries/${entry.id}/convert-task-to-habit`} method="post">
                     <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
                     <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
@@ -941,12 +955,14 @@ export default async function EntryDetailPage({
                     </button>
                   </form>
                 ) : null}
-                <form action={`/entries/${entry.id}/delete`} method="post">
-                  <input type="hidden" name="returnTo" value="/entries" />
-                  <button type="submit" className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300">
-                    Soft delete
-                  </button>
-                </form>
+                {canEditEntryByRole ? (
+                  <form action={`/entries/${entry.id}/delete`} method="post">
+                    <input type="hidden" name="returnTo" value="/entries" />
+                    <button type="submit" className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300">
+                      Soft delete
+                    </button>
+                  </form>
+                ) : null}
               </div>
             </section>
           ) : (
