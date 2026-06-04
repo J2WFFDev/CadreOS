@@ -153,6 +153,40 @@ export function buildEntryOpsEntryDetailVisibilityWhere(
   return buildEntryOpsAllWorkDefaultWhere(visibility);
 }
 
+export async function resolveEntryOpsEntryActionVisibilityWhere(input: {
+  organizationId: string;
+  actorPersonId: string | null;
+}): Promise<Prisma.EntryWhereInput> {
+  const visibilityContext = await resolveEntryOpsVisibilityContext(input);
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility(visibilityContext);
+  return buildEntryOpsEntryDetailVisibilityWhere(visibility);
+}
+
+export async function countVisibleEntryOpsActionEntries(input: {
+  organizationId: string;
+  actorPersonId: string | null;
+  entryIds: string[];
+}): Promise<number> {
+  const entryIds = unique(input.entryIds);
+  if (entryIds.length === 0) {
+    return 0;
+  }
+
+  const visibilityWhere = await resolveEntryOpsEntryActionVisibilityWhere({
+    organizationId: input.organizationId,
+    actorPersonId: input.actorPersonId,
+  });
+
+  return db.entry.count({
+    where: {
+      organizationId: input.organizationId,
+      id: { in: entryIds },
+      deletedAt: null,
+      AND: [visibilityWhere],
+    },
+  });
+}
+
 export function canReadEntryOpsEntryDetail(
   visibility: EntryOpsAllWorkDefaultVisibility,
   entry: EntryOpsEntryDetailSnapshot,

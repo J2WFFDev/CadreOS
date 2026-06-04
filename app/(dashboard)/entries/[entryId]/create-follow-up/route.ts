@@ -2,6 +2,7 @@ import { EntryPriority, EntryType, TaskStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { resolveEntryOpsEntryActionVisibilityWhere } from "@/lib/entryops/visibility";
 import { resolveOrCreateEntryDefaultInboxList } from "@/lib/entries/lists";
 import { buildTaskEntryProjection, deriveEntryFollowUpDraft, writeEntryActivity } from "@/lib/entries/service";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
@@ -26,6 +27,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   }
   const organizationId = scope.organizationId;
   const actorPersonId = scope.auth.personId;
+  const entryVisibilityWhere = await resolveEntryOpsEntryActionVisibilityWhere({
+    organizationId,
+    actorPersonId,
+  });
 
   try {
     await Promise.all([
@@ -45,7 +50,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   }
 
   const sourceEntry = await db.entry.findFirst({
-    where: { id: entryId, organizationId, deletedAt: null },
+    where: { id: entryId, organizationId, deletedAt: null, AND: [entryVisibilityWhere] },
     select: {
       id: true,
       title: true,

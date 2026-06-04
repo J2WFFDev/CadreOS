@@ -38,6 +38,7 @@ import {
   logEntryTypePayloadSchemaIssue,
 } from "@/lib/entries/schema-guard";
 import { USER_SELECTABLE_ENTRY_TYPES } from "@/lib/entries/user-selectable-types";
+import { resolveEntryOpsEntryActionVisibilityWhere } from "@/lib/entryops/visibility";
 import { mapEntryStatusToTaskStatus, writeEntryActivity } from "@/lib/entries/service";
 import { ENTRY_ACTIVITY_ACTIONS, canWriteEntries } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
@@ -141,6 +142,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(url, 303);
   }
   const organizationId = scope.organizationId;
+  const entryVisibilityWhere = await resolveEntryOpsEntryActionVisibilityWhere({
+    organizationId,
+    actorPersonId: scope.auth.personId,
+  });
 
   const canEdit = await canWriteEntries({ organizationId, actorPersonId: scope.auth.personId });
   console.log("[entries.update] canWriteEntries result", {
@@ -233,7 +238,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
   try {
     const entry = await db.entry.findFirst({
-      where: { id: entryId, organizationId: organizationId, deletedAt: null },
+      where: { id: entryId, organizationId: organizationId, deletedAt: null, AND: [entryVisibilityWhere] },
       select: {
         id: true,
         type: true,

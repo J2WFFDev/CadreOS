@@ -6,6 +6,7 @@ import {
   isEntryObjectLinkTargetType,
 } from "@/lib/entries/object-links";
 import { db } from "@/lib/db";
+import { resolveEntryOpsEntryActionVisibilityWhere } from "@/lib/entryops/visibility";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { mapEntryObjectLinkTargetToGraphNodeType, linkOperationalRecords } from "@/lib/operational-graph";
 import { linkEntryToObject } from "@/lib/operational-entry";
@@ -32,6 +33,10 @@ export async function POST(request: Request) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
   const organizationId = scope.organizationId;
+  const entryVisibilityWhere = await resolveEntryOpsEntryActionVisibilityWhere({
+    organizationId,
+    actorPersonId: scope.auth.personId,
+  });
 
   try {
     await requirePermission({
@@ -45,7 +50,7 @@ export async function POST(request: Request) {
 
   const [entryExists, targetExists] = await Promise.all([
     db.entry.findFirst({
-      where: { id: entryId, organizationId: organizationId, deletedAt: null },
+      where: { id: entryId, organizationId: organizationId, deletedAt: null, AND: [entryVisibilityWhere] },
       select: { id: true },
     }),
     entryObjectTargetExists({

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { resolveEntryOpsEntryActionVisibilityWhere } from "@/lib/entryops/visibility";
 import { writeEntryActivity } from "@/lib/entries/service";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
@@ -19,6 +20,10 @@ export async function POST(request: Request) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
   const organizationId = scope.organizationId;
+  const entryVisibilityWhere = await resolveEntryOpsEntryActionVisibilityWhere({
+    organizationId,
+    actorPersonId: scope.auth.personId,
+  });
 
   try {
     await requirePermission({
@@ -27,6 +32,20 @@ export async function POST(request: Request) {
       action: "entry.update",
     });
   } catch {
+    return NextResponse.redirect(new URL(returnTo, request.url), 303);
+  }
+
+  const entries = await db.entry.findMany({
+    where: {
+      organizationId: organizationId,
+      id: { in: [fromEntryId, toEntryId] },
+      deletedAt: null,
+      AND: [entryVisibilityWhere],
+    },
+    select: { id: true },
+  });
+
+  if (entries.length !== 2) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
 
