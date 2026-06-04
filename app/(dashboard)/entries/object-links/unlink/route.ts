@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { defaultRelationshipTypeForEntryObjectTarget, isEntryObjectLinkTargetType } from "@/lib/entries/object-links";
+import { db } from "@/lib/db";
+import { resolveEntryOpsEntryActionVisibilityWhere } from "@/lib/entryops/visibility";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { mapEntryObjectLinkTargetToGraphNodeType, unlinkOperationalRecords } from "@/lib/operational-graph";
 import { unlinkEntryFromObject } from "@/lib/operational-entry";
@@ -27,6 +29,10 @@ export async function POST(request: Request) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
   const organizationId = scope.organizationId;
+  const entryVisibilityWhere = await resolveEntryOpsEntryActionVisibilityWhere({
+    organizationId,
+    actorPersonId: scope.auth.personId,
+  });
 
   try {
     await requirePermission({
@@ -34,6 +40,15 @@ export async function POST(request: Request) {
       organizationId: organizationId,
       action: "entry.update",
     });
+
+    const entryExists = await db.entry.findFirst({
+      where: { id: entryId, organizationId: organizationId, deletedAt: null, AND: [entryVisibilityWhere] },
+      select: { id: true },
+    });
+
+    if (!entryExists) {
+      return NextResponse.redirect(new URL(returnTo, request.url), 303);
+    }
 
     await unlinkEntryFromObject({
       organizationId: organizationId,

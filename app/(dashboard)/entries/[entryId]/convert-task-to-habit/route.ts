@@ -8,6 +8,7 @@ import {
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { resolveEntryOpsEntryActionVisibilityWhere } from "@/lib/entryops/visibility";
 import { buildTaskToHabitCreateData } from "@/lib/habits/task-conversion";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
@@ -27,6 +28,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
   const organizationId = scope.organizationId;
   const actorPersonId = scope.auth.personId;
+  const entryVisibilityWhere = await resolveEntryOpsEntryActionVisibilityWhere({
+    organizationId,
+    actorPersonId,
+  });
 
   try {
     await requirePermission({
@@ -47,24 +52,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
 
-  const existingConversion = await db.operationalRelationship.findFirst({
-    where: {
-      organizationId,
-      fromNodeType: OperationalGraphNodeType.HABIT,
-      toNodeType: OperationalGraphNodeType.ENTRY,
-      toNodeId: entryId,
-      relationshipType: OperationalRelationshipType.CREATED_FROM,
-      removedAt: null,
-    },
-    select: { fromNodeId: true },
-  });
-
-  if (existingConversion) {
-    return NextResponse.redirect(new URL(`/habits/${existingConversion.fromNodeId}`, request.url), 303);
-  }
-
   const entry = await db.entry.findFirst({
-    where: { id: entryId, organizationId, deletedAt: null },
+    where: { id: entryId, organizationId, deletedAt: null, AND: [entryVisibilityWhere] },
     select: {
       id: true,
       title: true,
@@ -83,6 +72,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
   if (!entry || entry.type !== EntryType.TASK || entry.status === EntryStatus.ARCHIVED) {
     return NextResponse.redirect(new URL(returnTo, request.url), 303);
+  }
+
+  const existingConversion = await db.operationalRelationship.findFirst({
+    where: {
+      organizationId,
+      fromNodeType: OperationalGraphNodeType.HABIT,
+      toNodeType: OperationalGraphNodeType.ENTRY,
+      toNodeId: entry.id,
+      relationshipType: OperationalRelationshipType.CREATED_FROM,
+      removedAt: null,
+    },
+    select: { fromNodeId: true },
+  });
+
+  if (existingConversion) {
+    return NextResponse.redirect(new URL(`/habits/${existingConversion.fromNodeId}`, request.url), 303);
   }
 
   const habit = await db.$transaction(async (tx) => {

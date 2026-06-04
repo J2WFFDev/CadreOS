@@ -1,6 +1,7 @@
 import { OperationalGraphNodeType, OperationalRelationshipType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { countVisibleEntryOpsActionEntries } from "@/lib/entryops/visibility";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { unlinkOperationalRecords } from "@/lib/operational-graph";
@@ -39,6 +40,12 @@ export async function POST(request: Request) {
   }
 
   const organizationId = scope.organizationId;
+  const entryNodeIds = Array.from(
+    new Set([
+      ...(fromNodeType === OperationalGraphNodeType.ENTRY ? [fromNodeId] : []),
+      ...(toNodeType === OperationalGraphNodeType.ENTRY ? [toNodeId] : []),
+    ]),
+  );
 
   try {
     await requirePermission({
@@ -46,6 +53,17 @@ export async function POST(request: Request) {
       organizationId,
       action: "entry.update",
     });
+
+    if (
+      entryNodeIds.length > 0 &&
+      (await countVisibleEntryOpsActionEntries({
+        organizationId,
+        actorPersonId: scope.auth.personId,
+        entryIds: entryNodeIds,
+      })) !== entryNodeIds.length
+    ) {
+      return NextResponse.redirect(new URL(returnTo, request.url), 303);
+    }
 
     await unlinkOperationalRecords({
       organizationId,
