@@ -13,6 +13,7 @@ import { db } from "@/lib/db";
 import { mapEntryPriorityToInboxPriority, shouldRouteEntryToInbox } from "@/lib/entries/inbox";
 import { resolveOrCreateDefaultList } from "@/lib/entries/lists";
 import { parseQuickAddEntryInput } from "@/lib/entries/parser";
+import { canQuickCaptureCreateForAssignee } from "@/lib/entries/quick-capture-permissions";
 import {
   ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE,
   getEntryListSchemaIssue,
@@ -204,6 +205,31 @@ export async function POST(request: Request) {
   const scopedTeamId = contextTarget?.targetType === EntryObjectLinkTargetType.TEAM ? contextTarget.targetId : null;
   const scopedEventId = contextTarget?.targetType === EntryObjectLinkTargetType.EVENT ? contextTarget.targetId : null;
 
+  const resolvedAssigneePersonId = rawAssigneePersonId
+    ? (
+        await db.person.findFirst({
+          where: { id: rawAssigneePersonId, organizationId: organizationId },
+          select: { id: true },
+        })
+      )?.id ?? null
+    : null;
+
+  if (rawAssigneePersonId && !resolvedAssigneePersonId) {
+    return NextResponse.redirect(
+      buildQuickCaptureRedirectUrl({
+        requestUrl: request.url,
+        returnTo,
+        values: redirectValues,
+        error: "Select a valid assignee for this work item.",
+        openQuickCapture: true,
+      }),
+      303,
+    );
+  }
+
+  const assignedToPersonId = resolvedAssigneePersonId ?? actorPersonId;
+
+  let hasTaskCreatePermission = false;
   try {
     await requirePermission({
       actorUserId: scope.auth.clerkUserId,
@@ -212,7 +238,19 @@ export async function POST(request: Request) {
       teamId: scopedTeamId,
       eventId: scopedEventId,
     });
+    hasTaskCreatePermission = true;
   } catch {
+    hasTaskCreatePermission = false;
+  }
+
+  if (
+    !canQuickCaptureCreateForAssignee({
+      actorPersonId,
+      assigneePersonId: assignedToPersonId,
+      hasContextTarget: Boolean(contextTarget),
+      hasTaskCreatePermission,
+    })
+  ) {
     return NextResponse.redirect(
       buildQuickCaptureRedirectUrl({
         requestUrl: request.url,
@@ -225,15 +263,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const resolvedAssigneePersonId = rawAssigneePersonId
-    ? (
-        await db.person.findFirst({
-          where: { id: rawAssigneePersonId, organizationId: organizationId },
-          select: { id: true },
-        })
-      )?.id ?? null
-    : null;
-  const assignedToPersonId = resolvedAssigneePersonId ?? actorPersonId;
   const inboxPriority = mapEntryPriorityToInboxPriority(EntryPriority[priority]);
   const shouldCreateInboxRoutingItem = shouldRouteEntryToInbox({
     entryType,
