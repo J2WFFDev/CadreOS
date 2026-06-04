@@ -38,7 +38,12 @@ import {
   logEntryTypePayloadSchemaIssue,
 } from "@/lib/entries/schema-guard";
 import { USER_SELECTABLE_ENTRY_TYPES } from "@/lib/entries/user-selectable-types";
-import { resolveEntryOpsEntryActionVisibilityWhere } from "@/lib/entryops/visibility";
+import {
+  buildEntryOpsEntryDetailVisibilityWhere,
+  canEditEntryOpsEntry,
+  resolveEntryOpsAllWorkDefaultVisibility,
+  resolveEntryOpsVisibilityContext,
+} from "@/lib/entryops/visibility";
 import { mapEntryStatusToTaskStatus, writeEntryActivity } from "@/lib/entries/service";
 import { ENTRY_ACTIVITY_ACTIONS, canWriteEntries } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
@@ -142,28 +147,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(url, 303);
   }
   const organizationId = scope.organizationId;
-  const entryVisibilityWhere = await resolveEntryOpsEntryActionVisibilityWhere({
+  const visibilityContext = await resolveEntryOpsVisibilityContext({
     organizationId,
     actorPersonId: scope.auth.personId,
   });
+  const entryVisibility = resolveEntryOpsAllWorkDefaultVisibility(visibilityContext);
+  const entryVisibilityWhere = buildEntryOpsEntryDetailVisibilityWhere(entryVisibility);
 
-  const canEdit = await canWriteEntries({ organizationId, actorPersonId: scope.auth.personId });
+  const canEditByRole = await canWriteEntries({ organizationId, actorPersonId: scope.auth.personId });
   console.log("[entries.update] canWriteEntries result", {
-    canEdit,
+    canEdit: canEditByRole,
     organizationId,
     actorPersonId: scope.auth.personId,
   });
-
-  if (!canEdit) {
-    console.warn("[entries.update] Aborting: actor does not have write permission", {
-      organizationId,
-      actorPersonId: scope.auth.personId,
-      unresolvedPersonLink: scope.auth.unresolvedPersonLink,
-    });
-    const url = new URL(returnTo, request.url);
-    url.searchParams.set("error", "You do not have permission to edit entries.");
-    return NextResponse.redirect(url, 303);
-  }
 
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
@@ -247,6 +243,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         status: true,
         priority: true,
         teamId: true,
+        createdByPersonId: true,
+        assignedToPersonId: true,
+        assignments: {
+          select: { personId: true, revokedAt: true },
+          take: 40,
+        },
         startDate: true,
         endDate: true,
         timezone: true,
@@ -271,6 +273,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       });
       const url = new URL(returnTo, request.url);
       url.searchParams.set("error", "Entry not found.");
+      return NextResponse.redirect(url, 303);
+    }
+
+    const canEdit = canEditEntryOpsEntry({
+      canWriteEntries: canEditByRole,
+      context: visibilityContext,
+      entry,
+    });
+    if (!canEdit) {
+      console.warn("[entries.update] Aborting: actor does not have entry edit permission", {
+        organizationId,
+        actorPersonId: scope.auth.personId,
+        unresolvedPersonLink: scope.auth.unresolvedPersonLink,
+      });
+      const url = new URL(returnTo, request.url);
+      url.searchParams.set("error", "You do not have permission to edit this entry.");
       return NextResponse.redirect(url, 303);
     }
     // Allow an existing legacy/internal type to remain unchanged while blocking conversion into hidden types.
@@ -362,6 +380,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       normalizeEventRecurrenceEnd(rawEventRecurrenceEndCondition) ?? existingEventPayload.recurrence.endCondition;
     const requestedRecurrenceEndDate = normalizeDateOnly(rawEventRecurrenceEndDate);
     const requestedRecurrenceOccurrenceCount = normalizePositiveInteger(rawEventRecurrenceOccurrenceCount);
+
+    if (!canEditByRole && hasEventFormFields) {
+      const isScopeChange =
+        (formData.has("eventCalendarScope") && requestedCalendarScope !== existingEventPayload.calendarScope) ||
+        (formData.has("eventProgramId") && requestedProgramId !== (existingEventPayload.programId ?? null)) ||
+        (formData.has("eventTeamId") && requestedTeamId !== (existingEventPayload.teamId ?? null));
+
+      if (isScopeChange) {
+        const url = new URL(returnTo, request.url);
+        url.searchParams.set("error", "You do not have permission to change entry scope.");
+        return NextResponse.redirect(url, 303);
+      }
+    }
 
     if (hasEventFormFields) {
       if (requestedCalendarScope === "PROGRAM" && !requestedProgramId) {

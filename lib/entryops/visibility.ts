@@ -219,6 +219,38 @@ export function canReadEntryOpsEntryDetail(
   return false;
 }
 
+export function canSelfEditEntryOpsEntry(
+  context: Pick<EntryOpsVisibilityContext, "actorPersonId">,
+  entry: EntryOpsEntryDetailSnapshot,
+): boolean {
+  const actorPersonId = context.actorPersonId;
+  if (!actorPersonId) {
+    return false;
+  }
+
+  if (entry.createdByPersonId === actorPersonId) {
+    return true;
+  }
+
+  if (entry.assignedToPersonId === actorPersonId) {
+    return true;
+  }
+
+  return (
+    entry.assignments?.some(
+      (assignment) => assignment.personId === actorPersonId && assignment.revokedAt === null,
+    ) ?? false
+  );
+}
+
+export function canEditEntryOpsEntry(input: {
+  canWriteEntries: boolean;
+  context: Pick<EntryOpsVisibilityContext, "actorPersonId">;
+  entry: EntryOpsEntryDetailSnapshot;
+}): boolean {
+  return input.canWriteEntries || canSelfEditEntryOpsEntry(input.context, input.entry);
+}
+
 export async function resolveEntryOpsVisibilityContext(input: {
   organizationId: string;
   actorPersonId: string | null;
