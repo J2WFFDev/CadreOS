@@ -33,7 +33,6 @@ import {
   parseEventEntryPayload,
 } from "@/lib/entries/event-payload";
 import { readFirstSearchParam, shouldShowQuickCaptureSuccessBanner } from "@/lib/entries/entry-detail-query-state";
-import { buildLegacyContextLinks } from "@/lib/entries/legacy-context";
 import {
   JOURNAL_PAYLOAD_VISIBILITY_VALUES,
   type JournalPayloadVisibility,
@@ -76,6 +75,25 @@ function formatPersonName(person: { firstName: string; lastName: string } | null
   if (!person) return "—";
   const fullName = `${person.firstName} ${person.lastName}`.trim();
   return fullName || "—";
+}
+
+function formatEntryListDisplay(
+  listId: string | null,
+  availableLists: Awaited<ReturnType<typeof fetchListsForActor>>,
+): { label: string; href: string | null } {
+  if (!listId) {
+    return { label: "Unlisted legacy item", href: null };
+  }
+
+  const list = availableLists.find((candidate) => candidate.id === listId);
+  if (!list) {
+    return { label: "View list", href: `/lists/${listId}` };
+  }
+
+  return {
+    label: list.isInbox ? `${list.name} (Inbox)` : list.name,
+    href: `/lists/${list.id}`,
+  };
 }
 
 function summarizeEntryActivityMetadata(metadataJson: string | null) {
@@ -414,18 +432,6 @@ export default async function EntryDetailPage({
   const relatedOperationalItems = relatedItems.filter(
     (item) => item.node.nodeType !== "ENTRY" && item.node.nodeType !== "HABIT",
   );
-  const followUpEntries = await db.entry.findMany({
-    where: {
-      organizationId,
-      parentEntryId: entry.id,
-      deletedAt: null,
-      sourceTaskId: { not: null },
-    },
-    select: {
-      id: true,
-      title: true,
-    },
-  });
   const [programs, teams] = await Promise.all([
     canEditEntry
       ? db.program.findMany({
@@ -445,7 +451,7 @@ export default async function EntryDetailPage({
 
   // Arc 24D.4: Fetch available lists for the list picker.
   let availableLists: Awaited<ReturnType<typeof fetchListsForActor>> = [];
-  if (canEditEntry && !listAssignmentUnavailable) {
+  if (!listAssignmentUnavailable) {
     try {
       availableLists = await fetchListsForActor({ organizationId, actorPersonId: scope.auth.personId });
     } catch (error) {
@@ -464,13 +470,6 @@ export default async function EntryDetailPage({
     }
   }
 
-  const legacyContextLinks = buildLegacyContextLinks({
-    sourceTaskId: entry.sourceTaskId,
-    sourceNoteId: entry.sourceNoteId,
-    followUpEntries,
-  });
-  const hasLegacyContext = legacyContextLinks.length > 0;
-
   const detailConfig = getEntryDetailConfig(entry.type);
   const decisionPayloadRecord = entry.typePayloads.find((payload) => payload.entryType === EntryType.DECISION) ?? null;
   const eventPayloadRecord = entry.typePayloads.find((payload) => payload.entryType === EntryType.EVENT) ?? null;
@@ -488,7 +487,8 @@ export default async function EntryDetailPage({
     normalizeEventTimezone(entry.timezone) ??
     DEFAULT_EVENT_TIMEZONE;
   const eventPayloadForForm = { ...storedEventPayload, timezone: resolvedEventTimezone };
-  const linkedContextCount = relationshipItems.length + legacyContextLinks.length;
+  const linkedItemCount = relationshipItems.length;
+  const listDisplay = formatEntryListDisplay(entry.listId, availableLists);
 
   return (
     <section className="space-y-6">
@@ -928,19 +928,19 @@ export default async function EntryDetailPage({
 
         <aside className="space-y-4">
           <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-            <h3 className="font-semibold">Context</h3>
+            <h3 className="font-semibold">Details</h3>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
               <div>
                   <dt className="text-xs text-zinc-500 dark:text-zinc-400">List</dt>
                   <dd>
                     {listAssignmentUnavailable ? (
                       <span className="text-amber-700 dark:text-amber-300">{ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}</span>
-                    ) : entry.listId ? (
-                      <Link href={`/lists/${entry.listId}`} className="underline">
-                        {availableLists.find((list) => list.id === entry.listId)?.name ?? "View list"}
+                    ) : listDisplay.href ? (
+                      <Link href={listDisplay.href} className="underline">
+                        {listDisplay.label}
                       </Link>
                     ) : (
-                      <span className="text-zinc-400 dark:text-zinc-500">Legacy: no list assigned</span>
+                      <span className="text-zinc-400 dark:text-zinc-500">{listDisplay.label}</span>
                     )}
                   </dd>
                 </div>
@@ -957,11 +957,11 @@ export default async function EntryDetailPage({
                   <dd>Role and relationship policy controlled</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Relationships</dt>
-                  <dd>{linkedContextCount}</dd>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Related items</dt>
+                  <dd>{linkedItemCount}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Linked operational records</dt>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Related records</dt>
                   <dd>{relatedOperationalItems.length}</dd>
                 </div>
             </dl>
@@ -991,7 +991,6 @@ export default async function EntryDetailPage({
       </div>
 
       <section className="space-y-4">
-        <h3 className="text-sm font-semibold">Context</h3>
         <RelationshipPanel
           sourceNodeType={OperationalGraphNodeType.ENTRY}
           sourceNodeId={entry.id}
@@ -1010,27 +1009,9 @@ export default async function EntryDetailPage({
           limitation="List relationships are hidden for now because list visibility is still broader than the conservative permission checks used for relationship linking."
         />
 
-        {hasLegacyContext ? (
-          <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-            <h3 className="text-sm font-semibold">Legacy context (read-only)</h3>
-            <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-              Existing source and follow-up references are shown for continuity while new linking flows use Related Items / Context.
-            </p>
-            <ul className="mt-2 space-y-2 text-sm">
-              {legacyContextLinks.map((item) => (
-                <li key={item.key} className="rounded-md border px-3 py-2">
-                  <Link href={item.href} className="underline">
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
         {relatedOperationalItems.length > 0 ? (
           <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-            <h3 className="text-sm font-semibold">Related operational records</h3>
+            <h3 className="text-sm font-semibold">Related records</h3>
             <ul className="mt-2 space-y-2 text-sm">
                 {relatedOperationalItems.map((item) => (
                   <li key={item.id} className="rounded-md border px-3 py-2">
