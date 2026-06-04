@@ -24,6 +24,14 @@ export type EntryOpsAllWorkDefaultVisibility = {
   reason: string;
 };
 
+export type EntryOpsEntryDetailSnapshot = {
+  createdByPersonId: string | null;
+  assignedToPersonId: string | null;
+  teamId: string | null;
+  team?: { programId: string | null } | null;
+  assignments?: Array<{ personId: string; revokedAt: Date | null }>;
+};
+
 function unique(values: Array<string | null | undefined>): string[] {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
 }
@@ -137,6 +145,44 @@ export function buildEntryOpsAllWorkDefaultWhere(
   }
 
   return or.length > 0 ? { OR: or } : { id: "__entryops_no_visible_entries__" };
+}
+
+export function buildEntryOpsEntryDetailVisibilityWhere(
+  visibility: EntryOpsAllWorkDefaultVisibility,
+): Prisma.EntryWhereInput {
+  return buildEntryOpsAllWorkDefaultWhere(visibility);
+}
+
+export function canReadEntryOpsEntryDetail(
+  visibility: EntryOpsAllWorkDefaultVisibility,
+  entry: EntryOpsEntryDetailSnapshot,
+): boolean {
+  if (!visibility.canRead) {
+    return false;
+  }
+
+  if (visibility.organizationWide) {
+    return true;
+  }
+
+  const visiblePersonIds = new Set(visibility.visiblePersonIds);
+  if (entry.createdByPersonId && visiblePersonIds.has(entry.createdByPersonId)) {
+    return true;
+  }
+  if (entry.assignedToPersonId && visiblePersonIds.has(entry.assignedToPersonId)) {
+    return true;
+  }
+  if (entry.assignments?.some((assignment) => assignment.revokedAt === null && visiblePersonIds.has(assignment.personId))) {
+    return true;
+  }
+  if (entry.teamId && visibility.teamIds.includes(entry.teamId)) {
+    return true;
+  }
+  if (entry.team?.programId && visibility.programIds.includes(entry.team.programId)) {
+    return true;
+  }
+
+  return false;
 }
 
 export async function resolveEntryOpsVisibilityContext(input: {

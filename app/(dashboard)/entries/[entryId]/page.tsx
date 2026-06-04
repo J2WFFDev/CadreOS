@@ -50,6 +50,11 @@ import {
 import { USER_SELECTABLE_ENTRY_TYPES } from "@/lib/entries/user-selectable-types";
 import { formatEnumLabel } from "@/lib/follow-up-tasks";
 import {
+  buildEntryOpsEntryDetailVisibilityWhere,
+  resolveEntryOpsAllWorkDefaultVisibility,
+  resolveEntryOpsVisibilityContext,
+} from "@/lib/entryops/visibility";
+import {
   hintForJournalPayloadVisibility,
   labelForJournalPayloadVisibility,
 } from "@/lib/journals/policy";
@@ -276,10 +281,17 @@ function normalizeFallbackEntryRecord(
 async function fetchEntryDetailRecord(
   organizationId: string,
   entryId: string,
+  visibilityWhere: Prisma.EntryWhereInput,
 ): Promise<{ entry: EntryDetailRecord | null; listAssignmentUnavailable: boolean; decisionPayloadUnavailable: boolean }> {
+  const where: Prisma.EntryWhereInput = {
+    organizationId,
+    deletedAt: null,
+    AND: [{ id: entryId }, visibilityWhere],
+  };
+
   try {
     const entry = await db.entry.findFirst({
-      where: { id: entryId, organizationId, deletedAt: null },
+      where,
       select: entryDetailSelect.select,
     });
 
@@ -307,7 +319,7 @@ async function fetchEntryDetailRecord(
     const hasDecisionSchemaIssue = Boolean(decisionSchemaIssue);
 
     const entry = await db.entry.findFirst({
-      where: { id: entryId, organizationId, deletedAt: null },
+      where,
       select: buildFallbackEntrySelect(hasListSchemaIssue, hasDecisionSchemaIssue),
     });
 
@@ -368,11 +380,17 @@ export default async function EntryDetailPage({
   }
   const organizationId = scope.organizationId;
 
+  const visibilityContext = await resolveEntryOpsVisibilityContext({
+    organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const entryDetailVisibility = resolveEntryOpsAllWorkDefaultVisibility(visibilityContext);
+
   const entryAccess = await resolveEntryAccess({
     organizationId,
     actorPersonId: scope.auth.personId,
   });
-  const canReadEntry = entryAccess.level !== "NONE";
+  const canReadEntry = entryDetailVisibility.canRead;
   const canEditEntry = entryAccess.level === "WRITE" || entryAccess.level === "MANAGE";
 
   if (!canReadEntry) {
@@ -385,7 +403,11 @@ export default async function EntryDetailPage({
     );
   }
 
-  const entryResult = await fetchEntryDetailRecord(organizationId, entryId);
+  const entryResult = await fetchEntryDetailRecord(
+    organizationId,
+    entryId,
+    buildEntryOpsEntryDetailVisibilityWhere(entryDetailVisibility),
+  );
   const entry = entryResult.entry;
   let listAssignmentUnavailable = entryResult.listAssignmentUnavailable;
   const decisionPayloadUnavailable = entryResult.decisionPayloadUnavailable;
