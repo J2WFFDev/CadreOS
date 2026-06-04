@@ -162,17 +162,18 @@ test("guardian and athlete can see GearOps without admin navigation", () => {
   }
 });
 
-test("guardian and athlete hide staff-only EntryOps links", () => {
+test("guardian and athlete see EntryOps UX links while filtering stays server-side", () => {
   for (const role of ["GUARDIAN", "ATHLETE"] as const) {
     const entryOpsGroup = getNavSidebarGroupsForUser(buildUser(role)).find((group) => group.key === "ENTRYOPS");
     assert.ok(entryOpsGroup);
 
     const hrefs = (entryOpsGroup?.items ?? []).map((item) => item.href);
-    assert.equal(hrefs.includes("/entries/inbox"), false);
+    assert.equal(hrefs.includes("/entries/inbox"), true);
+    assert.equal(hrefs.includes("/lists"), true);
+    assert.equal(hrefs.includes("/entries"), true);
+    assert.equal(hrefs.includes("/habits"), true);
+    assert.equal(hrefs.includes("/prompts"), true);
     assert.equal(hrefs.includes("/entries/review"), false);
-    assert.equal(hrefs.includes("/lists"), false);
-    assert.equal(hrefs.includes("/entries"), false);
-    assert.equal(hrefs.includes("/prompts"), false);
     assert.equal(hrefs.includes("/assigned"), false);
     assert.equal(hrefs.includes("/today"), false);
     assert.equal(hrefs.includes("/upcoming"), false);

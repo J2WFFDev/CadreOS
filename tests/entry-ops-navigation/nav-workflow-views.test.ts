@@ -199,18 +199,18 @@ test("NAV-012: simplified EntryOps items are visible to ADMIN role according to 
   assert.ok(hrefs.includes("/prompts"), "Journal Library not visible to ADMIN");
 });
 
-test("NAV-012b: Athlete EntryOps navigation keeps only allowed simplified links", () => {
+test("NAV-012b: Athlete EntryOps navigation exposes simplified UX entry points", () => {
   const groups = getNavSidebarGroupsForUser(buildUser("ATHLETE"));
   const entryOps = groups.find((g) => g.key === "ENTRYOPS");
   assert.ok(entryOps);
 
   const hrefs = entryOps.items.map((i) => i.href);
+  assert.ok(hrefs.includes("/entries/inbox"), "Inbox not visible to ATHLETE");
+  assert.ok(hrefs.includes("/lists"), "Lists not visible to ATHLETE");
+  assert.ok(hrefs.includes("/entries"), "All Work Items not visible to ATHLETE");
   assert.ok(hrefs.includes("/habits"), "Habits not visible to ATHLETE");
-  assert.equal(hrefs.includes("/entries/inbox"), false, "Inbox must be hidden for ATHLETE");
+  assert.ok(hrefs.includes("/prompts"), "Journal Library not visible to ATHLETE");
   assert.equal(hrefs.includes("/entries/review"), false, "Review must be hidden for ATHLETE");
-  assert.equal(hrefs.includes("/lists"), false, "Lists must be hidden for ATHLETE");
-  assert.equal(hrefs.includes("/entries"), false, "All entries must be hidden for ATHLETE");
-  assert.equal(hrefs.includes("/prompts"), false, "Journal Library must be hidden for ATHLETE");
   assert.equal(hrefs.includes("/assigned"), false, "My Work must be hidden for ATHLETE");
   assert.equal(hrefs.includes("/today"), false, "Today must be hidden for ATHLETE");
   assert.equal(hrefs.includes("/upcoming"), false, "Upcoming must be hidden for ATHLETE");
@@ -218,19 +218,19 @@ test("NAV-012b: Athlete EntryOps navigation keeps only allowed simplified links"
   assert.equal(hrefs.includes("/journals"), false, "Journals must be hidden for ATHLETE");
 });
 
-// ── NAV-013: PROMPT_LIBRARY_ROLES items still scoped correctly ─────────────
+// ── NAV-013: EntryOps nav visibility is not the security boundary ──────────
 
-test("NAV-013: Journal Library remains scoped to allowed roles and excluded for GUARDIAN", () => {
+test("NAV-013: Guardian EntryOps navigation exposes simplified UX entry points", () => {
   const guardianGroups = getNavSidebarGroupsForUser(buildUser("GUARDIAN"));
   const entryOps = guardianGroups.find((g) => g.key === "ENTRYOPS");
   assert.ok(entryOps);
 
-  const promptItem = entryOps.items.find((i) => i.key === "ENTRY_PROMPTS");
-  assert.equal(
-    promptItem,
-    undefined,
-    "Journal Library must not appear for GUARDIAN",
-  );
+  const hrefs = entryOps.items.map((i) => i.href);
+  assert.ok(hrefs.includes("/entries/inbox"), "Inbox not visible to GUARDIAN");
+  assert.ok(hrefs.includes("/lists"), "Lists not visible to GUARDIAN");
+  assert.ok(hrefs.includes("/entries"), "All Work Items not visible to GUARDIAN");
+  assert.ok(hrefs.includes("/habits"), "Habits not visible to GUARDIAN");
+  assert.ok(hrefs.includes("/prompts"), "Journal Library not visible to GUARDIAN");
 });
 
 // ── NAV-014: EntryOps group ordering matches simplified model ───────────────
