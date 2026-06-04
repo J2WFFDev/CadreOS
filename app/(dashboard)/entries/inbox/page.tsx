@@ -5,8 +5,12 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
+import {
+  buildEntryOpsEntryDetailVisibilityWhere,
+  resolveEntryOpsAllWorkDefaultVisibility,
+  resolveEntryOpsVisibilityContext,
+} from "@/lib/entryops/visibility";
 import { labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
-import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -31,12 +35,13 @@ export default async function EntryInboxPage() {
       </section>
     );
   }
-  const entryAccess = await resolveEntryAccess({
+  const visibilityContext = await resolveEntryOpsVisibilityContext({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
   });
+  const entryVisibility = resolveEntryOpsAllWorkDefaultVisibility(visibilityContext);
 
-  if (entryAccess.level === "NONE") {
+  if (!entryVisibility.canRead) {
     return (
       <section className="space-y-4">
         <PageHeader title="Inbox" description="Captured items waiting to be clarified and organized." />
@@ -50,6 +55,7 @@ export default async function EntryInboxPage() {
       organizationId: scope.organizationId,
       status: InboxItemStatus.OPEN,
       subjectRefType: "ENTRY",
+      ...(entryVisibility.organizationWide ? {} : { ownerPersonId: { in: entryVisibility.visiblePersonIds } }),
     },
     orderBy: [{ priority: "desc" }, { createdAt: "asc" }],
     select: {
@@ -65,12 +71,19 @@ export default async function EntryInboxPage() {
   const entryIds = Array.from(new Set(inboxItems.map((item) => item.subjectRefId)));
   const entries = entryIds.length
     ? await db.entry.findMany({
-        where: { organizationId: scope.organizationId, id: { in: entryIds }, deletedAt: null },
+        where: {
+          organizationId: scope.organizationId,
+          id: { in: entryIds },
+          deletedAt: null,
+          AND: [buildEntryOpsEntryDetailVisibilityWhere(entryVisibility)],
+        },
         select: { id: true, title: true, type: true, status: true, priority: true, updatedAt: true },
       })
     : [];
   const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
-  const rows = inboxItems.map((item) => ({ item, entry: entriesById.get(item.subjectRefId) ?? null }));
+  const rows = inboxItems
+    .map((item) => ({ item, entry: entriesById.get(item.subjectRefId) ?? null }))
+    .filter((row) => row.entry);
 
   return (
     <section className="space-y-4">

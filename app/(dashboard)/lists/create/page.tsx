@@ -4,9 +4,8 @@ import { EntryListScope } from "@prisma/client";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
-import { fetchListsForActor, labelForEntryListScope } from "@/lib/entries/lists";
+import { fetchListsForActor, labelForEntryListScope, resolveEntryListVisibility } from "@/lib/entries/lists";
 import { formatEntryListSetupIncompleteMessage, getEntryListSchemaIssue, logEntryListSchemaIssue } from "@/lib/entries/schema-guard";
-import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -44,12 +43,12 @@ export default async function CreateListPage({ searchParams }: { searchParams: P
 
   const { organizationId } = scope;
 
-  const entryAccess = await resolveEntryAccess({
+  const listVisibility = await resolveEntryListVisibility({
     organizationId,
     actorPersonId: scope.auth.personId,
   });
 
-  if (entryAccess.level === "NONE" || entryAccess.level === "READ") {
+  if (!listVisibility.canCreatePersonalList) {
     return (
       <section className="space-y-4">
         <PageHeader title="New List" description="Create a new work list." />
@@ -80,18 +79,23 @@ export default async function CreateListPage({ searchParams }: { searchParams: P
     );
   }
 
-  const [programs, teams] = await Promise.all([
-    db.program.findMany({
-      where: { organizationId },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-    db.team.findMany({
-      where: { organizationId },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
+  const [programs, teams] = listVisibility.canManageSharedLists
+    ? await Promise.all([
+        db.program.findMany({
+          where: { organizationId },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        }),
+        db.team.findMany({
+          where: { organizationId },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        }),
+      ])
+    : [[], []];
+  const scopeOptions = listVisibility.canManageSharedLists
+    ? Object.values(EntryListScope)
+    : [EntryListScope.PERSONAL];
 
   return (
     <section className="space-y-6">
@@ -118,7 +122,7 @@ export default async function CreateListPage({ searchParams }: { searchParams: P
             Scope <span className="text-red-500">*</span>
           </label>
           <select id="scope" name="scope" className="w-full rounded-md border px-3 py-2 text-sm">
-            {Object.values(EntryListScope).map((s) => (
+            {scopeOptions.map((s) => (
               <option key={s} value={s}>
                 {labelForEntryListScope(s)}
               </option>

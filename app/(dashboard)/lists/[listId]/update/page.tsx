@@ -1,7 +1,6 @@
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { fetchEntryList, labelForEntryListScope } from "@/lib/entries/lists";
-import { resolveEntryAccess } from "@/lib/operational-entry";
+import { fetchEntryList, labelForEntryListScope, resolveEntryListVisibility } from "@/lib/entries/lists";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -46,12 +45,12 @@ export default async function UpdateListPage({
 
   const { organizationId } = scope;
 
-  const entryAccess = await resolveEntryAccess({
+  const listVisibility = await resolveEntryListVisibility({
     organizationId,
     actorPersonId: scope.auth.personId,
   });
 
-  if (entryAccess.level === "NONE" || entryAccess.level === "READ") {
+  if (!listVisibility.canRead) {
     return (
       <section className="space-y-4">
         <PageHeader title="Edit List" description="Rename or archive this list." />
@@ -60,13 +59,23 @@ export default async function UpdateListPage({
     );
   }
 
-  const list = await fetchEntryList({ organizationId, listId });
+  const list = await fetchEntryList({ organizationId, listId, actorPersonId: scope.auth.personId });
 
   if (!list) {
     return (
       <section className="space-y-4">
         <PageHeader title="Edit List" description="Rename or archive this list." />
         <ErrorMessage message="This list does not exist or is not accessible." />
+      </section>
+    );
+  }
+
+  const canEditList = listVisibility.canManageSharedLists || list.ownerPersonId === scope.auth.personId;
+  if (!canEditList) {
+    return (
+      <section className="space-y-4">
+        <PageHeader title="Edit List" description="Rename or archive this list." />
+        <ErrorMessage message="You do not have permission to edit this list." />
       </section>
     );
   }

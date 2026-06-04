@@ -5,9 +5,8 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
-import { fetchListsForActor, labelForEntryListScope } from "@/lib/entries/lists";
+import { fetchListsForActor, labelForEntryListScope, resolveEntryListVisibility } from "@/lib/entries/lists";
 import { formatEntryListSetupIncompleteMessage, getEntryListSchemaIssue, logEntryListSchemaIssue } from "@/lib/entries/schema-guard";
-import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -42,12 +41,12 @@ export default async function ListsPage() {
 
   const { organizationId } = scope;
 
-  const entryAccess = await resolveEntryAccess({
+  const listVisibility = await resolveEntryListVisibility({
     organizationId,
     actorPersonId: scope.auth.personId,
   });
 
-  if (entryAccess.level === "NONE") {
+  if (!listVisibility.canRead) {
     return (
       <section className="space-y-4">
         <PageHeader title="Work Lists" description="Manage your personal and organizational work lists." />
@@ -56,7 +55,7 @@ export default async function ListsPage() {
     );
   }
 
-  const canWrite = entryAccess.level === "WRITE" || entryAccess.level === "MANAGE";
+  const canWrite = listVisibility.canCreatePersonalList;
 
   let setupIncompleteMessage = "";
   let allLists: Awaited<ReturnType<typeof fetchListsForActor>> = [];
@@ -78,13 +77,18 @@ export default async function ListsPage() {
     try {
       const entryCounts = await db.entry.groupBy({
         by: ["listId"],
-        where: { organizationId, deletedAt: null, listId: { not: null } },
-        _count: { id: true },
+        where: {
+          organizationId,
+          deletedAt: null,
+          listId: { not: null },
+          entryList: listVisibility.where,
+        },
+        _count: { listId: true },
       });
       countMap = new Map<string, number>(
         entryCounts
           .filter((row) => row.listId !== null)
-          .map((row) => [row.listId as string, row._count.id]),
+          .map((row) => [row.listId as string, row._count.listId]),
       );
     } catch (error) {
       const schemaIssue = getEntryListSchemaIssue(error);

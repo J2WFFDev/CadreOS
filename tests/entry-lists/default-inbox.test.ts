@@ -1,7 +1,12 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import { buildDefaultInboxListResolutionInput } from "../../lib/entries/lists";
+import { RoleType, ScopeType } from "@prisma/client";
+
+import {
+  buildDefaultInboxListResolutionInput,
+  buildEntryListVisibilityForActor,
+} from "../../lib/entries/lists";
 
 test("buildDefaultInboxListResolutionInput prefers team Inbox when team scope is present", () => {
   assert.deepEqual(
@@ -42,6 +47,70 @@ test("buildDefaultInboxListResolutionInput falls back to organization Inbox with
     {
       scope: "ORGANIZATION",
       organizationId: "org-1",
+    },
+  );
+});
+
+test("entry list visibility allows athlete or limited actor to manage own personal lists only", () => {
+  assert.deepEqual(
+    buildEntryListVisibilityForActor({
+      organizationId: "org-1",
+      actorPersonId: "athlete-1",
+      assignments: [{ roleType: RoleType.ATHLETE, scopeType: ScopeType.ORGANIZATION }],
+    }),
+    {
+      canRead: true,
+      canCreatePersonalList: true,
+      canManageSharedLists: false,
+      where: {
+        organizationId: "org-1",
+        isArchived: false,
+        scope: "PERSONAL",
+        ownerPersonId: "athlete-1",
+      },
+    },
+  );
+
+  assert.deepEqual(
+    buildEntryListVisibilityForActor({
+      organizationId: "org-1",
+      actorPersonId: "limited-1",
+      assignments: [],
+    }).where,
+    {
+      organizationId: "org-1",
+      isArchived: false,
+      scope: "PERSONAL",
+      ownerPersonId: "limited-1",
+    },
+  );
+});
+
+test("entry list visibility keeps unrelated or unlinked actors out", () => {
+  const visibility = buildEntryListVisibilityForActor({
+    organizationId: "org-1",
+    actorPersonId: null,
+    assignments: [],
+  });
+
+  assert.equal(visibility.canRead, false);
+  assert.equal(visibility.canCreatePersonalList, false);
+  assert.equal(visibility.canManageSharedLists, false);
+  assert.deepEqual(visibility.where, { id: "__entry_list_no_actor__" });
+});
+
+test("entry list visibility allows org admin broad list access", () => {
+  assert.deepEqual(
+    buildEntryListVisibilityForActor({
+      organizationId: "org-1",
+      actorPersonId: "admin-1",
+      assignments: [{ roleType: RoleType.ORGANIZATION_ADMIN, scopeType: ScopeType.ORGANIZATION }],
+    }),
+    {
+      canRead: true,
+      canCreatePersonalList: true,
+      canManageSharedLists: true,
+      where: { organizationId: "org-1", isArchived: false },
     },
   );
 });
