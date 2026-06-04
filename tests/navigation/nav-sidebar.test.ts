@@ -173,5 +173,11 @@ test("guardian and athlete hide staff-only EntryOps links", () => {
     assert.equal(hrefs.includes("/lists"), false);
     assert.equal(hrefs.includes("/entries"), false);
     assert.equal(hrefs.includes("/prompts"), false);
+    assert.equal(hrefs.includes("/assigned"), false);
+    assert.equal(hrefs.includes("/today"), false);
+    assert.equal(hrefs.includes("/upcoming"), false);
+    assert.equal(hrefs.includes("/feed"), false);
+    assert.equal(hrefs.includes("/journals"), false);
+    assert.equal(hrefs.includes("/prompt-assignments"), false);
   }
 });
