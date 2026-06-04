@@ -89,6 +89,7 @@ test("labelForActivityAction returns human-readable labels for known actions", (
   assert.equal(labelForActivityAction("entry.quick_add.task"), "Quick-added task");
   assert.equal(labelForActivityAction("entry.note_to_task_converted"), "Converted note to task");
   assert.equal(labelForActivityAction("entry.note_converted_to_task"), "Converted note to task");
+  assert.equal(labelForActivityAction("entry.task_to_habit_converted"), "Converted task to habit");
   assert.equal(labelForActivityAction("journal.draft_created"), "Journal draft created");
   assert.equal(labelForActivityAction("journal.draft_updated"), "Journal draft updated");
   assert.equal(labelForActivityAction("journal.submitted"), "Journal finalized");

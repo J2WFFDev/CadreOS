@@ -85,6 +85,7 @@ const ACTIVITY_ACTION_LABELS: Record<string, string> = {
   "entry.quick_add.generic": "Quick-added entry",
   "entry.note_to_task_converted": "Converted note to task",
   "entry.note_converted_to_task": "Converted note to task",
+  "entry.task_to_habit_converted": "Converted task to habit",
   "workflow.run_started": "Workflow run started",
   "workflow.step_completed": "Step completed",
   "workflow.run_completed": "Workflow completed",

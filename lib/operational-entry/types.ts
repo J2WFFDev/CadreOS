@@ -150,6 +150,7 @@ export const ENTRY_ACTIVITY_ACTIONS = {
   ENTRY_QUICK_ADD_NOTE: "entry.quick_add.note",
   ENTRY_QUICK_ADD_GENERIC: "entry.quick_add.generic",
   ENTRY_NOTE_TO_TASK_CONVERTED: "entry.note_to_task_converted",
+  ENTRY_TASK_TO_HABIT_CONVERTED: "entry.task_to_habit_converted",
   JOURNAL_DRAFT_CREATED: "journal.draft_created",
   JOURNAL_DRAFT_UPDATED: "journal.draft_updated",
   JOURNAL_SUBMITTED: "journal.submitted",
@@ -189,6 +190,7 @@ export const ENTRY_ACTIVITY_ACTIONS = {
   QUICK_ADD_NOTE: "entry.quick_add.note",
   QUICK_ADD_GENERIC: "entry.quick_add.generic",
   NOTE_TO_TASK_CONVERTED: "entry.note_to_task_converted",
+  TASK_TO_HABIT_CONVERTED: "entry.task_to_habit_converted",
 } as const;
 
 export type EntryActivityAction = (typeof ENTRY_ACTIVITY_ACTIONS)[keyof typeof ENTRY_ACTIVITY_ACTIONS];
