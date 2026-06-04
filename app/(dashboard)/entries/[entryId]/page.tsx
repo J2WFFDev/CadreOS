@@ -655,7 +655,7 @@ export default async function EntryDetailPage({
                       List
                     </label>
                     <select id="listId" name="listId" defaultValue={entry.listId ?? ""} className="w-full rounded-md border px-3 py-2 text-sm sm:w-80">
-                      <option value="">— No list —</option>
+                      {entry.listId ? null : <option value="">Assign Inbox on save</option>}
                       {availableLists.map((list) => (
                         <option key={list.id} value={list.id}>
                           {labelForEntryListScope(list.scope)}: {list.name}{list.isInbox ? " (Inbox)" : ""}
@@ -940,7 +940,7 @@ export default async function EntryDetailPage({
                         {availableLists.find((list) => list.id === entry.listId)?.name ?? "View list"}
                       </Link>
                     ) : (
-                      <span className="text-zinc-400 dark:text-zinc-500">None</span>
+                      <span className="text-zinc-400 dark:text-zinc-500">Legacy: no list assigned</span>
                     )}
                   </dd>
                 </div>

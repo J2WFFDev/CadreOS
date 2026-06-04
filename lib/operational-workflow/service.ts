@@ -17,6 +17,7 @@
 import { EntryStatus, EntryVisibility } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { resolveOrCreateEntryDefaultInboxList } from "@/lib/entries/lists";
 import { writeEntryActivity } from "@/lib/operational-entry";
 import {
   computeStepDueDate,
@@ -227,6 +228,10 @@ export async function startWorkflowRun(input: StartWorkflowRunInput) {
   const assignee = input.assignedToPersonId ?? input.startedByPersonId;
   const startedAt = new Date();
   const dueDate = computeStepDueDate(startedAt, firstStep.dueDaysOffset);
+  const defaultList = await resolveOrCreateEntryDefaultInboxList({
+    organizationId: input.organizationId,
+    actorPersonId: input.startedByPersonId,
+  });
 
   const run = await db.workflowRun.create({
     data: {
@@ -252,6 +257,7 @@ export async function startWorkflowRun(input: StartWorkflowRunInput) {
       status: EntryStatus.OPEN,
       priority: firstStep.priority ?? "MEDIUM",
       dueDate,
+      listId: defaultList.id,
     },
     select: { id: true },
   });
@@ -358,6 +364,10 @@ export async function advanceWorkflowRun(input: AdvanceWorkflowRunInput) {
   const prevAssignee = input.nextStepAssignedToPersonId ?? run.assignedToPersonId ?? run.startedByPersonId;
   const resolvedAssignee = nextStep.inheritAssignment ? prevAssignee : (input.nextStepAssignedToPersonId ?? run.assignedToPersonId ?? run.startedByPersonId);
   const dueDate = computeStepDueDate(run.startedAt, nextStep.dueDaysOffset);
+  const defaultList = await resolveOrCreateEntryDefaultInboxList({
+    organizationId: input.organizationId,
+    actorPersonId: input.actorPersonId,
+  });
 
   const nextEntry = await db.entry.create({
     data: {
@@ -371,6 +381,7 @@ export async function advanceWorkflowRun(input: AdvanceWorkflowRunInput) {
       status: EntryStatus.OPEN,
       priority: nextStep.priority ?? "MEDIUM",
       dueDate,
+      listId: defaultList.id,
     },
     select: { id: true },
   });

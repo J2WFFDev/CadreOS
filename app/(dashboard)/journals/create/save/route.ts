@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { writeEntryActivity } from "@/lib/entries/service";
+import { resolveOrCreateEntryDefaultInboxList } from "@/lib/entries/lists";
 import {
   createEmptyJournalEntryPayload,
   mapJournalPayloadVisibilityToEntryVisibility,
@@ -90,6 +91,11 @@ export async function POST(request: Request) {
       journalDate,
       journalAuthor: rawJournalAuthor,
     };
+    const defaultList = await resolveOrCreateEntryDefaultInboxList({
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+      teamId: primaryRosterMembership?.teamId ?? null,
+    });
 
     const entry = await db.entry.create({
       data: {
@@ -105,6 +111,7 @@ export async function POST(request: Request) {
         teamId: primaryRosterMembership?.teamId ?? null,
         journalPromptId,
         journalAssignmentId,
+        listId: defaultList.id,
       },
       select: { id: true },
     });

@@ -310,7 +310,7 @@ export async function POST(request: Request) {
           defaultListId,
         });
         listAssignmentWarning = ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE;
-        createdEntry = await createOperationalEntry(createEntryInput);
+        createdEntry = await createOperationalEntry({ ...createEntryInput, skipDefaultListAssignment: true });
       } else {
         throw entryErr;
       }

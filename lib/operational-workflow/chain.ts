@@ -15,6 +15,7 @@
 import { EntryStatus, EntryVisibility, OperationalRelationshipType } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { resolveOrCreateEntryDefaultInboxList } from "@/lib/entries/lists";
 import { writeEntryActivity } from "@/lib/operational-entry";
 import { computeStepDueDate, WORKFLOW_ACTIVITY_ACTIONS } from "./types";
 import type { FollowUpChainStep, StartFollowUpChainInput } from "./types";
@@ -59,6 +60,10 @@ export async function startFollowUpChain(input: StartFollowUpChainInput): Promis
     const step: FollowUpChainStep = input.steps[i];
     const assignee = step.assignedToPersonId ?? previousAssignee;
     const dueDate = computeStepDueDate(now, step.dueDaysOffset);
+    const defaultList = await resolveOrCreateEntryDefaultInboxList({
+      organizationId: input.organizationId,
+      actorPersonId: input.createdByPersonId,
+    });
 
     const entry = await db.entry.create({
       data: {
@@ -73,6 +78,7 @@ export async function startFollowUpChain(input: StartFollowUpChainInput): Promis
         priority: step.priority ?? "MEDIUM",
         dueDate,
         parentEntryId: previousEntryId,
+        listId: defaultList.id,
       },
       select: { id: true },
     });

@@ -12,6 +12,7 @@
 import { EntryAssignmentRole, EntryStatus, EntryVisibility, type Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { resolveOrCreateEntryDefaultInboxList } from "@/lib/entries/lists";
 import { emitEntryActivityAwareness } from "@/lib/notifications";
 import { ENTRY_ACTIVITY_ACTIONS } from "./types";
 import type {
@@ -31,6 +32,16 @@ import type {
  * use the quick-add route for legacy-compatible task/note creation.
  */
 export async function createOperationalEntry(input: CreateOperationalEntryInput) {
+  const defaultList =
+    !input.skipDefaultListAssignment && (input.listId === undefined || input.listId === null)
+      ? await resolveOrCreateEntryDefaultInboxList({
+          organizationId: input.organizationId,
+          actorPersonId: input.createdByPersonId,
+          teamId: input.teamId,
+        })
+      : null;
+  const listId = input.listId ?? defaultList?.id ?? null;
+
   const entry = await db.entry.create({
     data: {
       organizationId: input.organizationId,
@@ -54,7 +65,7 @@ export async function createOperationalEntry(input: CreateOperationalEntryInput)
       taskRecurrenceRule: input.taskRecurrenceRule ?? null,
       sourceTaskId: input.sourceTaskId ?? null,
       sourceNoteId: input.sourceNoteId ?? null,
-      ...(input.listId !== undefined && input.listId !== null ? { listId: input.listId } : {}),
+      ...(listId ? { listId } : {}),
     },
     select: { id: true, organizationId: true, type: true, status: true },
   });

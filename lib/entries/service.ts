@@ -1,6 +1,7 @@
 import { EntryPriority, EntryStatus, EntryType, EntryVisibility, TaskStatus } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { resolveOrCreateEntryDefaultInboxList } from "@/lib/entries/lists";
 export { writeEntryActivity } from "@/lib/operational-entry/service";
 
 export function mapTaskStatusToEntryStatus(status: TaskStatus): EntryStatus {
@@ -98,6 +99,10 @@ export async function upsertEntryFromTask(input: {
   };
 }) {
   const projection = buildTaskEntryProjection({ dueAt: input.task.dueAt, status: input.task.status });
+  const defaultList = await resolveOrCreateEntryDefaultInboxList({
+    organizationId: input.organizationId,
+    actorPersonId: input.task.createdByPersonId,
+  });
 
   return db.entry.upsert({
     where: { sourceTaskId: input.task.id },
@@ -118,6 +123,7 @@ export async function upsertEntryFromTask(input: {
       taskCompleted: projection.taskCompleted,
       completedAt: input.task.status === TaskStatus.DONE ? new Date() : null,
       sourceTaskId: input.task.id,
+      listId: defaultList.id,
     },
     update: {
       title: input.task.title,
@@ -145,6 +151,12 @@ export async function upsertEntryFromNote(input: {
     teamId: string | null;
   };
 }) {
+  const defaultList = await resolveOrCreateEntryDefaultInboxList({
+    organizationId: input.organizationId,
+    actorPersonId: input.note.authorPersonId,
+    teamId: input.note.teamId,
+  });
+
   return db.entry.upsert({
     where: { sourceNoteId: input.note.id },
     create: {
@@ -158,6 +170,7 @@ export async function upsertEntryFromNote(input: {
       status: EntryStatus.OPEN,
       priority: EntryPriority.MEDIUM,
       sourceNoteId: input.note.id,
+      listId: defaultList.id,
     },
     update: {
       teamId: input.note.teamId,

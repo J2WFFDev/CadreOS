@@ -32,6 +32,7 @@ import {
   parseJournalEntryPayload,
   serializeJournalEntryPayload,
 } from "@/lib/entries/journal-payload";
+import { resolveOrCreateEntryDefaultInboxList } from "@/lib/entries/lists";
 import {
   ENTRY_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE,
   logEntryTypePayloadSchemaIssue,
@@ -166,7 +167,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   const priorityValue = String(formData.get("priority") ?? "").trim().toUpperCase();
   const dueAtRaw = String(formData.get("dueAt") ?? "").trim();
   const hasDueAtField = formData.has("dueAt");
-  // Arc 24D.4: list assignment — empty string means "clear list", absent means "no change"
+  // Arc 24D.8X-C: list assignment — empty string means "assign default Inbox", absent means "no change"
   const rawListId = formData.has("listId") ? String(formData.get("listId") ?? "").trim() : undefined;
 
   const requestedType = Object.values(EntryType).includes(typeValue as EntryType) ? (typeValue as EntryType) : undefined;
@@ -240,6 +241,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         content: true,
         status: true,
         priority: true,
+        teamId: true,
         startDate: true,
         endDate: true,
         timezone: true,
@@ -328,7 +330,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     let resolvedListId: string | null | undefined;
     if (rawListId !== undefined) {
       if (rawListId === "") {
-        resolvedListId = null;
+        const defaultList = await resolveOrCreateEntryDefaultInboxList({
+          organizationId,
+          actorPersonId: scope.auth.personId,
+          teamId: entry.teamId,
+        });
+        resolvedListId = defaultList.id;
       } else {
         const listRecord = await db.entryList.findFirst({
           where: { id: rawListId, organizationId, isArchived: false },
