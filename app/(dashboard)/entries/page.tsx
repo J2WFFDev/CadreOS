@@ -5,9 +5,13 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
+import {
+  buildEntryOpsAllWorkDefaultWhere,
+  resolveEntryOpsAllWorkDefaultVisibility,
+  resolveEntryOpsVisibilityContext,
+} from "@/lib/entryops/visibility";
 import { buildDueWindowWhere, buildEntryOrderBy, parseEntryListFilter } from "@/lib/operational-feed/filters";
 import { formatDueDate, isOverdueFeedEntry, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
-import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
@@ -48,12 +52,13 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
     );
   }
 
-  const entryAccess = await resolveEntryAccess({
+  const visibilityContext = await resolveEntryOpsVisibilityContext({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
   });
+  const allWorkDefaultVisibility = resolveEntryOpsAllWorkDefaultVisibility(visibilityContext);
 
-  if (entryAccess.level === "NONE") {
+  if (!allWorkDefaultVisibility.canRead) {
     return (
       <section className="space-y-4">
         <PageHeader title="All Work Items" description="Unified tasks, notes, events, decisions, habits, and journals." />
@@ -86,12 +91,14 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   const now = new Date();
   const dueWhere = buildDueWindowWhere(filter.dueWindow, now);
   const orderBy = buildEntryOrderBy(filter.sort);
+  const defaultVisibilityWhere = buildEntryOpsAllWorkDefaultWhere(allWorkDefaultVisibility);
 
   const entries = await db.entry.findMany({
     where: {
       organizationId: scope.organizationId,
       deletedAt: null,
       type: { in: NON_JOURNAL_ENTRY_TYPES },
+      ...defaultVisibilityWhere,
       ...(filter.type ? { type: filter.type } : {}),
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.priority ? { priority: filter.priority } : {}),
@@ -115,7 +122,15 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
 
   // Load person list for assignee filter UI
   const people = await db.person.findMany({
-    where: { organizationId: scope.organizationId, lifecycleStatus: { not: "ARCHIVED" } },
+    where: {
+      organizationId: scope.organizationId,
+      lifecycleStatus: { not: "ARCHIVED" },
+      ...(allWorkDefaultVisibility.organizationWide
+        ? {}
+        : allWorkDefaultVisibility.visiblePersonIds.length > 0
+          ? { id: { in: allWorkDefaultVisibility.visiblePersonIds } }
+          : { id: "__entryops_no_visible_people__" }),
+    },
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     select: { id: true, firstName: true, lastName: true },
     take: 200,
