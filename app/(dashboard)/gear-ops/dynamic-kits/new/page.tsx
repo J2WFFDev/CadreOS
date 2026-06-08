@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { BackLink } from "@/components/dashboard/back-link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { GearOpsSubnav } from "@/components/gear-ops/subnav";
@@ -122,12 +124,12 @@ export default async function NewDynamicKitPage() {
             >
               Create Dynamic Kit
             </button>
-            <a
+            <Link
               href="/gear-ops/dynamic-kits"
               className="rounded-md border px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               Cancel
-            </a>
+            </Link>
           </div>
         </form>
       </div>

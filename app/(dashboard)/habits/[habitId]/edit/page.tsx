@@ -1,4 +1,4 @@
-import { HabitFrequency, HabitStatus, HabitTrackingMode } from "@prisma/client";
+import { HabitFrequency, HabitTrackingMode } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 

@@ -43,12 +43,38 @@ for (const migrationDir of migrations) {
     knownTables.add(match[1]);
   }
 
+  // A repair migration may safely add an FK only when the target table exists.
+  // Track REFERENCES targets guarded in the same DO block by:
+  // IF to_regclass('"TargetTable"') IS NOT NULL
+  const guardedReferenceBlocks = [];
+  const doBlockPattern = /DO\s+\$\$([\s\S]*?)END\s+\$\$;/gi;
+  let doBlockMatch;
+  while ((doBlockMatch = doBlockPattern.exec(sql)) !== null) {
+    const block = doBlockMatch[1];
+    const guardedTables = new Set();
+    const toRegclassPattern = /to_regclass\(\s*'\"?([A-Za-z_][A-Za-z0-9_]*)\"?'\s*\)\s+IS\s+NOT\s+NULL/gi;
+    while ((match = toRegclassPattern.exec(block)) !== null) {
+      guardedTables.add(match[1]);
+    }
+
+    if (guardedTables.size > 0) {
+      guardedReferenceBlocks.push({
+        start: doBlockMatch.index,
+        end: doBlockMatch.index + doBlockMatch[0].length,
+        tables: guardedTables,
+      });
+    }
+  }
+
   // Verify every REFERENCES target is a known table (quoted or unquoted identifiers).
   // Matches: REFERENCES "TableName"( or REFERENCES TableName(
   const refPattern = /REFERENCES\s+"?([A-Za-z_][A-Za-z0-9_]*)"?\s*\(/gi;
   while ((match = refPattern.exec(sql)) !== null) {
     const table = match[1];
-    if (!knownTables.has(table)) {
+    const isGuarded = guardedReferenceBlocks.some(
+      (block) => match.index >= block.start && match.index < block.end && block.tables.has(table),
+    );
+    if (!knownTables.has(table) && !isGuarded) {
       console.error(
         `[FAIL] ${migrationDir}: REFERENCES "${table}" — table not yet created in this or any earlier migration.`
       );
