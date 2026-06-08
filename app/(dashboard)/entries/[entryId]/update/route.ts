@@ -41,6 +41,10 @@ import { USER_SELECTABLE_ENTRY_TYPES } from "@/lib/entries/user-selectable-types
 import {
   buildEntryOpsEntryDetailVisibilityWhere,
   canEditEntryOpsEntry,
+  entryActionDeniedMessage,
+  ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE,
+  logEntryOpsAccessDecision,
+  resolveEntryOpsDetailAccessDecision,
   resolveEntryOpsAllWorkDefaultVisibility,
   resolveEntryOpsVisibilityContext,
 } from "@/lib/entryops/visibility";
@@ -266,13 +270,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     });
 
     if (!entry) {
-      console.warn("[entries.update] Aborting: entry not found", {
+      const existingEntry = await db.entry.findFirst({
+        where: { id: entryId, organizationId, deletedAt: null },
+        select: {
+          createdByPersonId: true,
+          assignedToPersonId: true,
+          teamId: true,
+          team: { select: { programId: true } },
+          assignments: { select: { personId: true, revokedAt: true }, take: 40 },
+        },
+      });
+      logEntryOpsAccessDecision({
+        workflow: "entries.update",
         entryId,
         organizationId,
-        found: Boolean(entry),
+        actorPersonId: scope.auth.personId,
+        decision: resolveEntryOpsDetailAccessDecision(visibilityContext, entryVisibility, existingEntry),
       });
       const url = new URL(returnTo, request.url);
-      url.searchParams.set("error", "Entry not found.");
+      url.searchParams.set("error", ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE);
       return NextResponse.redirect(url, 303);
     }
 
@@ -282,13 +298,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       entry,
     });
     if (!canEdit) {
-      console.warn("[entries.update] Aborting: actor does not have entry edit permission", {
+      logEntryOpsAccessDecision({
+        workflow: "entries.update",
+        entryId,
         organizationId,
         actorPersonId: scope.auth.personId,
-        unresolvedPersonLink: scope.auth.unresolvedPersonLink,
+        decision: { allowed: false, reasonCode: "ENTRY_ACTION_DENIED" },
       });
       const url = new URL(returnTo, request.url);
-      url.searchParams.set("error", "You do not have permission to edit this entry.");
+      url.searchParams.set("error", entryActionDeniedMessage("edit this work item"));
       return NextResponse.redirect(url, 303);
     }
     // Allow an existing legacy/internal type to remain unchanged while blocking conversion into hidden types.

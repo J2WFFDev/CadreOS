@@ -8,7 +8,15 @@ import {
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { resolveEntryOpsEntryActionVisibilityWhere } from "@/lib/entryops/visibility";
+import {
+  entryActionDeniedMessage,
+  ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE,
+  logEntryOpsAccessDecision,
+  resolveEntryOpsAllWorkDefaultVisibility,
+  resolveEntryOpsDetailAccessDecision,
+  resolveEntryOpsVisibilityContext,
+  buildEntryOpsEntryDetailVisibilityWhere,
+} from "@/lib/entryops/visibility";
 import { buildTaskToHabitCreateData } from "@/lib/habits/task-conversion";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
@@ -28,29 +36,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
   const organizationId = scope.organizationId;
   const actorPersonId = scope.auth.personId;
-  const entryVisibilityWhere = await resolveEntryOpsEntryActionVisibilityWhere({
+  const visibilityContext = await resolveEntryOpsVisibilityContext({
     organizationId,
     actorPersonId,
   });
-
-  try {
-    await requirePermission({
-      actorUserId: scope.auth.clerkUserId,
-      organizationId,
-      action: "entry.update",
-    });
-  } catch {
-    return NextResponse.redirect(new URL(returnTo, request.url), 303);
-  }
+  const entryVisibility = resolveEntryOpsAllWorkDefaultVisibility(visibilityContext);
+  const entryVisibilityWhere = buildEntryOpsEntryDetailVisibilityWhere(entryVisibility);
 
   const accessContext = await resolveHabitAccessContext({
     organizationId,
     actorPersonId,
   });
-
-  if (!canCreateHabit(accessContext)) {
-    return NextResponse.redirect(new URL(returnTo, request.url), 303);
-  }
 
   const entry = await db.entry.findFirst({
     where: { id: entryId, organizationId, deletedAt: null, AND: [entryVisibilityWhere] },
@@ -71,7 +67,69 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   });
 
   if (!entry || entry.type !== EntryType.TASK || entry.status === EntryStatus.ARCHIVED) {
-    return NextResponse.redirect(new URL(returnTo, request.url), 303);
+    const url = new URL(returnTo, request.url);
+    if (!entry) {
+      const existingEntry = await db.entry.findFirst({
+        where: { id: entryId, organizationId, deletedAt: null },
+        select: {
+          createdByPersonId: true,
+          assignedToPersonId: true,
+          teamId: true,
+          team: { select: { programId: true } },
+          assignments: { select: { personId: true, revokedAt: true }, take: 40 },
+        },
+      });
+      logEntryOpsAccessDecision({
+        workflow: "entries.convert-task-to-habit",
+        entryId,
+        organizationId,
+        actorPersonId,
+        decision: resolveEntryOpsDetailAccessDecision(visibilityContext, entryVisibility, existingEntry),
+      });
+      url.searchParams.set("error", ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE);
+    } else {
+      logEntryOpsAccessDecision({
+        workflow: "entries.convert-task-to-habit",
+        entryId,
+        organizationId,
+        actorPersonId,
+        decision: { allowed: false, reasonCode: "ENTRY_ACTION_DENIED" },
+      });
+      url.searchParams.set("error", "Only an active task can be converted to a habit.");
+    }
+    return NextResponse.redirect(url, 303);
+  }
+
+  if (!canCreateHabit(accessContext)) {
+    logEntryOpsAccessDecision({
+      workflow: "entries.convert-task-to-habit",
+      entryId,
+      organizationId,
+      actorPersonId,
+      decision: { allowed: false, reasonCode: "ENTRY_ACTION_DENIED" },
+    });
+    const url = new URL(returnTo, request.url);
+    url.searchParams.set("error", entryActionDeniedMessage("convert this task to a habit"));
+    return NextResponse.redirect(url, 303);
+  }
+
+  try {
+    await requirePermission({
+      actorUserId: scope.auth.clerkUserId,
+      organizationId,
+      action: "entry.update",
+    });
+  } catch {
+    logEntryOpsAccessDecision({
+      workflow: "entries.convert-task-to-habit",
+      entryId,
+      organizationId,
+      actorPersonId,
+      decision: { allowed: false, reasonCode: "ENTRY_ACTION_DENIED" },
+    });
+    const url = new URL(returnTo, request.url);
+    url.searchParams.set("error", entryActionDeniedMessage("convert this task to a habit"));
+    return NextResponse.redirect(url, 303);
   }
 
   const existingConversion = await db.operationalRelationship.findFirst({

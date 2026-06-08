@@ -32,6 +32,119 @@ export type EntryOpsEntryDetailSnapshot = {
   assignments?: Array<{ personId: string; revokedAt: Date | null }>;
 };
 
+export type EntryOpsAccessReasonCode =
+  | "ENTRY_NOT_FOUND"
+  | "ENTRY_VISIBILITY_DENIED"
+  | "ENTRY_ACTION_DENIED"
+  | "ENTRY_ASSIGNMENT_MISSING"
+  | "GUARDIAN_DEPENDENT_SCOPE_MISSING"
+  | "ELEVATED_SCOPE_MISSING"
+  | "ORG_ADMIN_OVERRIDE_APPLIED"
+  | "ENTRY_OWNER_ACCESS"
+  | "ENTRY_ASSIGNEE_ACCESS"
+  | "ENTRY_ASSIGNMENT_ACCESS"
+  | "GUARDIAN_DEPENDENT_SCOPE_APPLIED"
+  | "ELEVATED_SCOPE_APPLIED";
+
+export type EntryOpsAccessDecision = {
+  allowed: boolean;
+  reasonCode: EntryOpsAccessReasonCode;
+};
+
+export const ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE =
+  "This work item could not be found or you do not have access to it.";
+
+export function entryActionDeniedMessage(action: string): string {
+  return `You can view this work item, but you do not have permission to ${action}.`;
+}
+
+export function resolveEntryOpsDetailAccessDecision(
+  context: EntryOpsVisibilityContext,
+  visibility: EntryOpsAllWorkDefaultVisibility,
+  entry: EntryOpsEntryDetailSnapshot | null,
+): EntryOpsAccessDecision {
+  if (!entry) {
+    return { allowed: false, reasonCode: "ENTRY_NOT_FOUND" };
+  }
+
+  if (!visibility.canRead) {
+    return { allowed: false, reasonCode: "ENTRY_VISIBILITY_DENIED" };
+  }
+
+  if (visibility.organizationWide) {
+    return { allowed: true, reasonCode: "ORG_ADMIN_OVERRIDE_APPLIED" };
+  }
+
+  if (!context.actorPersonId) {
+    return { allowed: false, reasonCode: "ENTRY_VISIBILITY_DENIED" };
+  }
+
+  const actorPersonId = context.actorPersonId;
+  if (entry.createdByPersonId === actorPersonId) {
+    return { allowed: true, reasonCode: "ENTRY_OWNER_ACCESS" };
+  }
+  if (entry.assignedToPersonId === actorPersonId) {
+    return { allowed: true, reasonCode: "ENTRY_ASSIGNEE_ACCESS" };
+  }
+  if (entry.assignments?.some((assignment) => assignment.personId === actorPersonId && assignment.revokedAt === null)) {
+    return { allowed: true, reasonCode: "ENTRY_ASSIGNMENT_ACCESS" };
+  }
+
+  const dependentIds = context.linkedGuardianAthleteIds;
+  if (
+    (entry.createdByPersonId && dependentIds.has(entry.createdByPersonId)) ||
+    (entry.assignedToPersonId && dependentIds.has(entry.assignedToPersonId)) ||
+    entry.assignments?.some((assignment) => assignment.revokedAt === null && dependentIds.has(assignment.personId))
+  ) {
+    return { allowed: true, reasonCode: "GUARDIAN_DEPENDENT_SCOPE_APPLIED" };
+  }
+
+  if (
+    (entry.teamId && visibility.teamIds.includes(entry.teamId)) ||
+    (entry.team?.programId && visibility.programIds.includes(entry.team.programId))
+  ) {
+    return { allowed: true, reasonCode: "ELEVATED_SCOPE_APPLIED" };
+  }
+
+  if (context.assignments.some((assignment) => assignment.roleType === RoleType.PARENT_GUARDIAN)) {
+    return { allowed: false, reasonCode: "GUARDIAN_DEPENDENT_SCOPE_MISSING" };
+  }
+  if (visibility.teamIds.length > 0 || visibility.programIds.length > 0) {
+    return { allowed: false, reasonCode: "ELEVATED_SCOPE_MISSING" };
+  }
+  if (entry.assignments?.length) {
+    return { allowed: false, reasonCode: "ENTRY_ASSIGNMENT_MISSING" };
+  }
+
+  return { allowed: false, reasonCode: "ENTRY_VISIBILITY_DENIED" };
+}
+
+export function logEntryOpsAccessDecision(input: {
+  workflow: string;
+  entryId: string;
+  organizationId: string;
+  actorPersonId: string | null;
+  decision: EntryOpsAccessDecision;
+}): void {
+  const payload = {
+    workflow: input.workflow,
+    entryId: input.entryId,
+    organizationId: input.organizationId,
+    actorPersonId: input.actorPersonId,
+    allowed: input.decision.allowed,
+    reasonCode: input.decision.reasonCode,
+  };
+
+  if (input.decision.allowed) {
+    if (input.decision.reasonCode === "ORG_ADMIN_OVERRIDE_APPLIED") {
+      console.info("[entryops.access]", payload);
+    }
+    return;
+  }
+
+  console.warn("[entryops.access]", payload);
+}
+
 function unique(values: Array<string | null | undefined>): string[] {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
 }

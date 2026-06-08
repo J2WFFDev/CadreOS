@@ -27,6 +27,7 @@ import {
   canRestoreHabit,
   resolveHabitAccessContext,
 } from "@/lib/habits/access";
+import { habitAccessErrorMessage } from "@/lib/habits/access-feedback";
 import {
   badgeVariantForHabitStatus,
   computeCompletionCount,
@@ -128,6 +129,7 @@ export default async function HabitDetailPage({
   const showCompletionDetail = canReadCompletionDetail(accessContext, habitRecord);
   const duplicateCheckIn = readFirstSearchParam(resolvedSearchParams.duplicate) === "1";
   const invalidCheckInDate = readFirstSearchParam(resolvedSearchParams.invalidDate) === "1";
+  const accessErrorMessage = habitAccessErrorMessage(readFirstSearchParam(resolvedSearchParams.error) ?? null);
 
   const completionDates = habit.completions.map((c) => c.completedOn);
   const schedule = habit.schedules[0] ?? null;
@@ -229,6 +231,7 @@ export default async function HabitDetailPage({
           </div>
         }
       />
+      {accessErrorMessage ? <ErrorMessage message={accessErrorMessage} /> : null}
 
       <section className="rounded-lg border bg-white p-5 dark:bg-zinc-900">
         <h3 className="text-sm font-semibold">Main Item</h3>

@@ -2,7 +2,8 @@ import { HabitStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { canArchiveHabit, resolveHabitAccessContext } from "@/lib/habits/access";
+import { canArchiveHabit, canReadHabit, resolveHabitAccessContext } from "@/lib/habits/access";
+import { logHabitAccessFailure } from "@/lib/habits/access-feedback";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export async function POST(request: Request, { params }: { params: Promise<{ habitId: string }> }) {
@@ -24,15 +25,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
     },
   });
 
-  if (!habit) return NextResponse.redirect(new URL("/habits", request.url), 303);
+  if (!habit) {
+    logHabitAccessFailure({ workflow: "habits.archive", habitId, organizationId: scope.organizationId, actorPersonId: scope.auth.personId, reasonCode: "HABIT_NOT_FOUND" });
+    return NextResponse.redirect(new URL("/habits?error=HABIT_NOT_FOUND", request.url), 303);
+  }
 
   const accessContext = await resolveHabitAccessContext({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
   });
 
+  if (!canReadHabit(accessContext, habit)) {
+    logHabitAccessFailure({ workflow: "habits.archive", habitId, organizationId: scope.organizationId, actorPersonId: scope.auth.personId, reasonCode: "HABIT_VISIBILITY_DENIED" });
+    return NextResponse.redirect(new URL("/habits?error=HABIT_VISIBILITY_DENIED", request.url), 303);
+  }
+
   if (!canArchiveHabit(accessContext, habit)) {
-    return NextResponse.redirect(new URL(`/habits/${habitId}`, request.url), 303);
+    logHabitAccessFailure({ workflow: "habits.archive", habitId, organizationId: scope.organizationId, actorPersonId: scope.auth.personId, reasonCode: "HABIT_ARCHIVE_DENIED" });
+    return NextResponse.redirect(new URL(`/habits/${habitId}?error=HABIT_ARCHIVE_DENIED`, request.url), 303);
   }
 
   await db.habit.update({

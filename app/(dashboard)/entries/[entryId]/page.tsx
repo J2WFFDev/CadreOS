@@ -52,6 +52,9 @@ import { formatEnumLabel } from "@/lib/follow-up-tasks";
 import {
   buildEntryOpsEntryDetailVisibilityWhere,
   canEditEntryOpsEntry,
+  ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE,
+  logEntryOpsAccessDecision,
+  resolveEntryOpsDetailAccessDecision,
   resolveEntryOpsAllWorkDefaultVisibility,
   resolveEntryOpsVisibilityContext,
 } from "@/lib/entryops/visibility";
@@ -401,11 +404,18 @@ export default async function EntryDetailPage({
   const canEditEntryByRole = entryAccess.level === "WRITE" || entryAccess.level === "MANAGE";
 
   if (!canReadEntry) {
+    logEntryOpsAccessDecision({
+      workflow: "entries.detail",
+      entryId,
+      organizationId,
+      actorPersonId: scope.auth.personId,
+      decision: { allowed: false, reasonCode: "ENTRY_VISIBILITY_DENIED" },
+    });
     return (
       <section className="space-y-4">
         <BackLink href="/entries" label="All work" />
         <h2 className="text-2xl font-semibold tracking-tight">Work Item</h2>
-        <ErrorMessage message="You do not have permission to view work item details in this organization." />
+        <ErrorMessage message={ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE} />
       </section>
     );
   }
@@ -420,10 +430,27 @@ export default async function EntryDetailPage({
   const decisionPayloadUnavailable = entryResult.decisionPayloadUnavailable;
 
   if (!entry) {
+    const existingEntry = await db.entry.findFirst({
+      where: { id: entryId, organizationId, deletedAt: null },
+      select: {
+        createdByPersonId: true,
+        assignedToPersonId: true,
+        teamId: true,
+        team: { select: { programId: true } },
+        assignments: { select: { personId: true, revokedAt: true }, take: 40 },
+      },
+    });
+    logEntryOpsAccessDecision({
+      workflow: "entries.detail",
+      entryId,
+      organizationId,
+      actorPersonId: scope.auth.personId,
+      decision: resolveEntryOpsDetailAccessDecision(visibilityContext, entryDetailVisibility, existingEntry),
+    });
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Work Item</h2>
-        <ErrorMessage message="Work item not found in the active organization." />
+        <ErrorMessage message={ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE} />
       </section>
     );
   }
@@ -432,6 +459,13 @@ export default async function EntryDetailPage({
     canWriteEntries: canEditEntryByRole,
     context: visibilityContext,
     entry,
+  });
+  logEntryOpsAccessDecision({
+    workflow: "entries.detail",
+    entryId,
+    organizationId,
+    actorPersonId: scope.auth.personId,
+    decision: resolveEntryOpsDetailAccessDecision(visibilityContext, entryDetailVisibility, entry),
   });
   const canEditEntryAdministrativeFields = canEditEntryByRole;
 
@@ -967,7 +1001,7 @@ export default async function EntryDetailPage({
             </section>
           ) : (
             <div className="rounded-lg border bg-white p-4 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
-              Work item editing is unavailable for your role.
+              You can view this work item, but you do not have permission to edit it.
             </div>
           )}
         </div>

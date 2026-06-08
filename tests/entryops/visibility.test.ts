@@ -9,6 +9,9 @@ import {
   canEditEntryOpsEntry,
   canReadEntryOpsEntryDetail,
   canSelfEditEntryOpsEntry,
+  entryActionDeniedMessage,
+  ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE,
+  resolveEntryOpsDetailAccessDecision,
   resolveEntryOpsAllWorkDefaultVisibility,
   type EntryOpsRoleAssignmentScope,
 } from "../../lib/entryops/visibility";
@@ -432,5 +435,139 @@ test("entry edit decision blocks unrelated non-writer", () => {
       },
     }),
     false,
+  );
+});
+
+test("entry access decision distinguishes not found from visibility denied without changing safe user copy", () => {
+  const context = {
+    actorPersonId: "athlete-1",
+    assignments: [assignment({ roleType: RoleType.ATHLETE })],
+    linkedGuardianAthleteIds: new Set<string>(),
+  };
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility(context);
+
+  assert.equal(resolveEntryOpsDetailAccessDecision(context, visibility, null).reasonCode, "ENTRY_NOT_FOUND");
+  assert.equal(
+    resolveEntryOpsDetailAccessDecision(context, visibility, {
+      createdByPersonId: "athlete-2",
+      assignedToPersonId: null,
+      teamId: null,
+    }).reasonCode,
+    "ENTRY_VISIBILITY_DENIED",
+  );
+  assert.match(ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE, /could not be found or you do not have access/i);
+});
+
+test("entry access decision reports owner and assignee access", () => {
+  const context = {
+    actorPersonId: "athlete-1",
+    assignments: [assignment({ roleType: RoleType.ATHLETE })],
+    linkedGuardianAthleteIds: new Set<string>(),
+  };
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility(context);
+
+  assert.equal(
+    resolveEntryOpsDetailAccessDecision(context, visibility, {
+      createdByPersonId: "athlete-1",
+      assignedToPersonId: null,
+      teamId: null,
+    }).reasonCode,
+    "ENTRY_OWNER_ACCESS",
+  );
+  assert.equal(
+    resolveEntryOpsDetailAccessDecision(context, visibility, {
+      createdByPersonId: "coach-1",
+      assignedToPersonId: "athlete-1",
+      teamId: null,
+    }).reasonCode,
+    "ENTRY_ASSIGNEE_ACCESS",
+  );
+});
+
+test("entry access decision reports guardian dependent and org admin access", () => {
+  const guardianContext = {
+    actorPersonId: "guardian-1",
+    assignments: [assignment({ roleType: RoleType.PARENT_GUARDIAN })],
+    linkedGuardianAthleteIds: new Set(["athlete-1"]),
+  };
+  const guardianVisibility = resolveEntryOpsAllWorkDefaultVisibility(guardianContext);
+  assert.equal(
+    resolveEntryOpsDetailAccessDecision(guardianContext, guardianVisibility, {
+      createdByPersonId: "athlete-1",
+      assignedToPersonId: null,
+      teamId: null,
+    }).reasonCode,
+    "GUARDIAN_DEPENDENT_SCOPE_APPLIED",
+  );
+
+  const adminContext = {
+    actorPersonId: "admin-1",
+    assignments: [assignment({ roleType: RoleType.ORGANIZATION_ADMIN })],
+    linkedGuardianAthleteIds: new Set<string>(),
+  };
+  const adminVisibility = resolveEntryOpsAllWorkDefaultVisibility(adminContext);
+  assert.equal(
+    resolveEntryOpsDetailAccessDecision(adminContext, adminVisibility, {
+      createdByPersonId: "athlete-2",
+      assignedToPersonId: null,
+      teamId: null,
+    }).reasonCode,
+    "ORG_ADMIN_OVERRIDE_APPLIED",
+  );
+});
+
+test("entry access decision reports missing guardian, elevated, and assignment relationships", () => {
+  const guardianContext = {
+    actorPersonId: "guardian-1",
+    assignments: [assignment({ roleType: RoleType.PARENT_GUARDIAN })],
+    linkedGuardianAthleteIds: new Set(["athlete-1"]),
+  };
+  assert.equal(
+    resolveEntryOpsDetailAccessDecision(
+      guardianContext,
+      resolveEntryOpsAllWorkDefaultVisibility(guardianContext),
+      { createdByPersonId: "athlete-2", assignedToPersonId: null, teamId: null },
+    ).reasonCode,
+    "GUARDIAN_DEPENDENT_SCOPE_MISSING",
+  );
+
+  const directorContext = {
+    actorPersonId: "director-1",
+    assignments: [assignment({ roleType: RoleType.PROGRAM_DIRECTOR, scopeType: ScopeType.PROGRAM, programId: "program-1" })],
+    linkedGuardianAthleteIds: new Set<string>(),
+  };
+  assert.equal(
+    resolveEntryOpsDetailAccessDecision(
+      directorContext,
+      resolveEntryOpsAllWorkDefaultVisibility(directorContext),
+      { createdByPersonId: "athlete-2", assignedToPersonId: null, teamId: "team-2", team: { programId: "program-2" } },
+    ).reasonCode,
+    "ELEVATED_SCOPE_MISSING",
+  );
+
+  const athleteContext = {
+    actorPersonId: "athlete-1",
+    assignments: [assignment({ roleType: RoleType.ATHLETE })],
+    linkedGuardianAthleteIds: new Set<string>(),
+  };
+  assert.equal(
+    resolveEntryOpsDetailAccessDecision(
+      athleteContext,
+      resolveEntryOpsAllWorkDefaultVisibility(athleteContext),
+      {
+        createdByPersonId: "athlete-2",
+        assignedToPersonId: null,
+        teamId: null,
+        assignments: [{ personId: "athlete-3", revokedAt: null }],
+      },
+    ).reasonCode,
+    "ENTRY_ASSIGNMENT_MISSING",
+  );
+});
+
+test("entry action denied message clearly distinguishes visible-but-not-allowed actions", () => {
+  assert.equal(
+    entryActionDeniedMessage("archive this work item"),
+    "You can view this work item, but you do not have permission to archive this work item.",
   );
 });
