@@ -7,6 +7,7 @@ import { FilterTabs } from "@/components/dashboard/filter-tabs";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { canCreateHabit, canReadHabit, resolveHabitAccessContext } from "@/lib/habits/access";
+import { habitAccessErrorMessage } from "@/lib/habits/access-feedback";
 import { badgeVariantForHabitStatus, labelForHabitCadence, labelForHabitStatus } from "@/lib/habits/policy";
 import { formatShortDateTime } from "@/lib/format-date";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -40,6 +41,8 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
   }
 
   const statusFilter = normalizeStatusFilter(params.status);
+  const errorCode = Array.isArray(params.error) ? params.error[0] : params.error;
+  const accessErrorMessage = habitAccessErrorMessage(errorCode ?? null);
 
   const whereStatus =
     statusFilter === "active"
@@ -157,6 +160,7 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
           </div>
         }
       />
+      {accessErrorMessage ? <ErrorMessage message={accessErrorMessage} /> : null}
 
       {visibleHabits.length === 0 ? (
         <EmptyState

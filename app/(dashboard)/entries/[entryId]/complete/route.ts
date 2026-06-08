@@ -6,6 +6,10 @@ import { db } from "@/lib/db";
 import {
   buildEntryOpsEntryDetailVisibilityWhere,
   canEditEntryOpsEntry,
+  entryActionDeniedMessage,
+  ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE,
+  logEntryOpsAccessDecision,
+  resolveEntryOpsDetailAccessDecision,
   resolveEntryOpsAllWorkDefaultVisibility,
   resolveEntryOpsVisibilityContext,
 } from "@/lib/entryops/visibility";
@@ -88,7 +92,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       entryType: entry?.type ?? null,
     });
     const url = new URL(returnTo, request.url);
-    url.searchParams.set("error", !entry ? "Entry not found." : "Only TASK or FOLLOW_UP entries can be completed.");
+    if (!entry) {
+      const existingEntry = await db.entry.findFirst({
+        where: { id: entryId, organizationId, deletedAt: null },
+        select: {
+          createdByPersonId: true,
+          assignedToPersonId: true,
+          teamId: true,
+          team: { select: { programId: true } },
+          assignments: { select: { personId: true, revokedAt: true }, take: 40 },
+        },
+      });
+      logEntryOpsAccessDecision({
+        workflow: "entries.complete",
+        entryId,
+        organizationId,
+        actorPersonId: scope.auth.personId,
+        decision: resolveEntryOpsDetailAccessDecision(visibilityContext, entryVisibility, existingEntry),
+      });
+    }
+    url.searchParams.set("error", !entry ? ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE : "Only task work items can be completed.");
     return NextResponse.redirect(url, 303);
   }
 
@@ -98,13 +121,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     entry,
   });
   if (!canEdit) {
-    console.warn("[entries.complete] Aborting: actor does not have entry completion permission", {
+    logEntryOpsAccessDecision({
+      workflow: "entries.complete",
+      entryId,
       organizationId,
       actorPersonId: scope.auth.personId,
-      unresolvedPersonLink: scope.auth.unresolvedPersonLink,
+      decision: { allowed: false, reasonCode: "ENTRY_ACTION_DENIED" },
     });
     const url = new URL(returnTo, request.url);
-    url.searchParams.set("error", "You do not have permission to complete this entry.");
+    url.searchParams.set("error", entryActionDeniedMessage("complete this work item"));
     return NextResponse.redirect(url, 303);
   }
 

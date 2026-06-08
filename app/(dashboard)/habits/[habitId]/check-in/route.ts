@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { canCheckInHabit, resolveHabitAccessContext } from "@/lib/habits/access";
+import { canCheckInHabit, canReadHabit, resolveHabitAccessContext } from "@/lib/habits/access";
+import { logHabitAccessFailure } from "@/lib/habits/access-feedback";
 import { MAX_CHECKIN_NOTE_LENGTH, normalizeCompletedOn, parseHabitCountValue } from "@/lib/habits/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -25,15 +26,42 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
     },
   });
 
-  if (!habit) return NextResponse.redirect(new URL("/habits", request.url), 303);
+  if (!habit) {
+    logHabitAccessFailure({
+      workflow: "habits.check-in",
+      habitId,
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+      reasonCode: "HABIT_NOT_FOUND",
+    });
+    return NextResponse.redirect(new URL("/habits?error=HABIT_NOT_FOUND", request.url), 303);
+  }
 
   const accessContext = await resolveHabitAccessContext({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
   });
 
+  if (!canReadHabit(accessContext, habit)) {
+    logHabitAccessFailure({
+      workflow: "habits.check-in",
+      habitId,
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+      reasonCode: "HABIT_VISIBILITY_DENIED",
+    });
+    return NextResponse.redirect(new URL("/habits?error=HABIT_VISIBILITY_DENIED", request.url), 303);
+  }
+
   if (!canCheckInHabit(accessContext, habit)) {
-    return NextResponse.redirect(new URL(`/habits/${habitId}`, request.url), 303);
+    logHabitAccessFailure({
+      workflow: "habits.check-in",
+      habitId,
+      organizationId: scope.organizationId,
+      actorPersonId: scope.auth.personId,
+      reasonCode: "HABIT_CHECK_IN_DENIED",
+    });
+    return NextResponse.redirect(new URL(`/habits/${habitId}?error=HABIT_CHECK_IN_DENIED`, request.url), 303);
   }
 
   const formData = await request.formData();
