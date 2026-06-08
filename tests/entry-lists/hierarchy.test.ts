@@ -140,3 +140,31 @@ test("Program and Team container placement does not grant Entry visibility", () 
     ],
   });
 });
+
+test("guardian-derived list hierarchy does not broaden Entry visibility or Journal privacy", () => {
+  const listVisibility = buildEntryListVisibilityForActor({
+    organizationId: "org-1",
+    actorPersonId: "guardian-1",
+    assignments: [],
+    derivedProgramIds: ["program-dependent"],
+    derivedTeamIds: ["team-dependent"],
+  });
+  const entryVisibility = resolveEntryOpsAllWorkDefaultVisibility({
+    actorPersonId: "guardian-1",
+    assignments: [],
+    linkedGuardianAthleteIds: new Set(),
+  });
+
+  assert.deepEqual(listVisibility.programIds, ["program-dependent"]);
+  assert.deepEqual(listVisibility.teamIds, ["team-dependent"]);
+  assert.deepEqual(buildEntryOpsEntryDetailVisibilityWhere(entryVisibility), {
+    OR: [
+      { createdByPersonId: { in: ["guardian-1"] } },
+      { assignedToPersonId: { in: ["guardian-1"] } },
+      { assignments: { some: { personId: { in: ["guardian-1"] }, revokedAt: null } } },
+    ],
+  });
+  assert.deepEqual(entryVisibility.programIds, []);
+  assert.deepEqual(entryVisibility.teamIds, []);
+  assert.equal(entryVisibility.reason, "Default EntryOps view is limited to the actor's own work.");
+});

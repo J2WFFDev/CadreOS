@@ -154,6 +154,18 @@ test("limited viewer only sees the home group", () => {
   assert.equal(groups[0]?.key, "HOME");
 });
 
+test("linked member app fallback renders safe base navigation", () => {
+  const groups = getNavSidebarGroupsForUser({
+    id: "member-without-direct-role",
+    name: "Linked Member",
+    roles: ["LIMITED_VIEWER"],
+    activeRole: "LIMITED_VIEWER",
+    isDevPersona: false,
+  });
+
+  assert.deepEqual(groups.map((group) => group.key), ["HOME"]);
+});
+
 test("guardian and athlete can see GearOps without admin navigation", () => {
   for (const role of ["GUARDIAN", "ATHLETE"] as const) {
     const keys = getNavSidebarGroupsForUser(buildUser(role)).map((group) => group.key);

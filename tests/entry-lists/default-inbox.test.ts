@@ -146,6 +146,36 @@ test("entry list visibility exposes assigned Program and Team containers without
   });
 });
 
+test("guardian-derived context exposes dependent Program and Team containers only", () => {
+  const visibility = buildEntryListVisibilityForActor({
+    organizationId: "org-1",
+    actorPersonId: "guardian-1",
+    assignments: [],
+    derivedProgramIds: ["program-dependent"],
+    derivedTeamIds: ["team-dependent"],
+  });
+
+  assert.equal(visibility.canManageSharedLists, false);
+  assert.equal(visibility.organizationWide, false);
+  assert.deepEqual(visibility.programIds, ["program-dependent"]);
+  assert.deepEqual(visibility.teamIds, ["team-dependent"]);
+  assert.doesNotMatch(JSON.stringify(visibility.where), /ORGANIZATION/);
+  assert.doesNotMatch(JSON.stringify(visibility.where), /unrelated/);
+});
+
+test("direct Coach scope remains independent from guardian-derived context", () => {
+  const visibility = buildEntryListVisibilityForActor({
+    organizationId: "org-1",
+    actorPersonId: "coach-guardian-1",
+    assignments: [assignment(RoleType.COACH, ScopeType.TEAM, "program-coach", "team-coach")],
+    derivedProgramIds: ["program-dependent"],
+    derivedTeamIds: ["team-dependent"],
+  });
+
+  assert.deepEqual(visibility.programIds, ["program-dependent"]);
+  assert.deepEqual(visibility.teamIds, ["team-coach", "team-dependent"]);
+});
+
 test("entry list visibility includes archived containers but keeps unauthorized Admin shared lists out", () => {
   const athleteVisibility = buildEntryListVisibilityForActor({
     organizationId: "org-1",

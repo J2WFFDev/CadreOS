@@ -9,6 +9,7 @@
 import { EntryListScope, Prisma, RoleType, ScopeType } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { resolveGuardianDerivedScope } from "@/lib/guardian-derived-scope";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -171,6 +172,8 @@ export function buildEntryListVisibilityForActor(input: {
   organizationId: string;
   actorPersonId: string | null | undefined;
   assignments: EntryListRoleScope[];
+  derivedProgramIds?: string[];
+  derivedTeamIds?: string[];
 }): EntryListVisibility {
   const { organizationId, actorPersonId, assignments } = input;
 
@@ -187,16 +190,18 @@ export function buildEntryListVisibilityForActor(input: {
   }
 
   const canManageSharedLists = canManageSharedEntryLists(assignments);
-  const programIds = unique(
-    assignments
+  const programIds = unique([
+    ...assignments
       .filter((assignment) => assignment.scopeType === ScopeType.PROGRAM)
       .map((assignment) => assignment.programId),
-  );
-  const teamIds = unique(
-    assignments
+    ...(input.derivedProgramIds ?? []),
+  ]);
+  const teamIds = unique([
+    ...assignments
       .filter((assignment) => assignment.scopeType === ScopeType.TEAM)
       .map((assignment) => assignment.teamId),
-  );
+    ...(input.derivedTeamIds ?? []),
+  ]);
 
   if (canManageSharedLists) {
     return {
@@ -247,11 +252,23 @@ export async function resolveEntryListVisibility(input: {
   const { organizationId, actorPersonId } = input;
   if (!actorPersonId) return buildEntryListVisibilityForActor({ organizationId, actorPersonId, assignments: [] });
 
-  const assignments = await db.roleAssignment.findMany({
-    where: { organizationId, personId: actorPersonId },
-    select: { roleType: true, scopeType: true, programId: true, teamId: true },
+  const [assignments, guardianScope] = await Promise.all([
+    db.roleAssignment.findMany({
+      where: { organizationId, personId: actorPersonId },
+      select: { roleType: true, scopeType: true, programId: true, teamId: true },
+    }),
+    resolveGuardianDerivedScope({
+      organizationId,
+      guardianPersonId: actorPersonId,
+    }),
+  ]);
+  return buildEntryListVisibilityForActor({
+    organizationId,
+    actorPersonId,
+    assignments,
+    derivedProgramIds: guardianScope.derivedProgramIds,
+    derivedTeamIds: guardianScope.derivedTeamIds,
   });
-  return buildEntryListVisibilityForActor({ organizationId, actorPersonId, assignments });
 }
 
 // ── Fetch lists for actor ─────────────────────────────────────────────────────
