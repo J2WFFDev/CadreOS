@@ -7,6 +7,7 @@ import {
 } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { resolveJournalProtectedEntryVisibilityWhere } from "@/lib/entryops/visibility";
 import {
   canEditHabit,
   canReadHabit,
@@ -228,11 +229,13 @@ async function resolveEntryNodeSummary(input: {
   actorPersonId: string | null;
   entryId: string;
 }): Promise<RelationshipNodeSummary | null> {
+  const entryVisibilityWhere = await resolveJournalProtectedEntryVisibilityWhere(input);
   const entry = await db.entry.findFirst({
     where: {
       id: input.entryId,
       organizationId: input.organizationId,
       deletedAt: null,
+      AND: [entryVisibilityWhere],
     },
     select: {
       id: true,
@@ -753,12 +756,14 @@ export async function searchRelationshipTargets(input: {
       return [];
     }
 
+    const entryVisibilityWhere = await resolveJournalProtectedEntryVisibilityWhere(input);
     const entries = await db.entry.findMany({
       where: {
         organizationId: input.organizationId,
         deletedAt: null,
         type: { in: FOUNDATION_ENTRY_TYPES },
         status: { not: EntryStatus.ARCHIVED },
+        AND: [entryVisibilityWhere],
         ...(input.source.nodeType === OperationalGraphNodeType.ENTRY ? { id: { not: input.source.nodeId } } : {}),
         ...(trimmedQuery
           ? {

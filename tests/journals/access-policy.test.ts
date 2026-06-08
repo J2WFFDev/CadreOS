@@ -5,6 +5,8 @@ import { EntryStatus, EntryType, EntryVisibility, RoleType, ScopeType } from "@p
 
 import {
   canArchiveJournal,
+  buildJournalEntryVisibilityWhere,
+  buildJournalEntryEditWhere,
   canCreateJournal,
   canEditJournalDraft,
   canReadJournalEntry,
@@ -144,4 +146,68 @@ test("journal creation requires athlete or admin context", () => {
 
   assert.equal(canCreateJournal(athleteContext), true);
   assert.equal(canCreateJournal(assistantCoachContext), false);
+});
+
+test("journal query visibility does not grant access from team placement alone", () => {
+  const athleteContext = buildContext({
+    actorPersonId: "athlete-2",
+    assignments: [{ roleType: RoleType.ATHLETE, scopeType: ScopeType.TEAM, teamId: "team-1", programId: null }],
+  });
+
+  assert.deepEqual(buildJournalEntryVisibilityWhere(athleteContext), {
+    type: EntryType.JOURNAL,
+    OR: [{ createdByPersonId: "athlete-2" }],
+  });
+});
+
+test("assignee and active EntryAssignment do not broaden the existing Journal privacy policy", () => {
+  const context = buildContext({
+    actorPersonId: "athlete-2",
+    assignments: [{ roleType: RoleType.ATHLETE, scopeType: ScopeType.TEAM, teamId: "team-1", programId: null }],
+  });
+  const journal = buildEntry({
+    createdByPersonId: "athlete-1",
+    status: EntryStatus.OPEN,
+  });
+
+  assert.equal(canReadJournalEntry(context, journal), false);
+  assert.equal(canEditJournalDraft(context, journal), false);
+});
+
+test("journal query visibility preserves submitted guardian and scoped coach restrictions", () => {
+  const context = buildContext({
+    actorPersonId: "guardian-coach-1",
+    assignments: [
+      { roleType: RoleType.PARENT_GUARDIAN, scopeType: ScopeType.ORGANIZATION, teamId: null, programId: null },
+      { roleType: RoleType.COACH, scopeType: ScopeType.TEAM, teamId: "team-1", programId: null },
+    ],
+    linkedGuardianAthleteIds: new Set(["athlete-1"]),
+  });
+
+  assert.deepEqual(buildJournalEntryVisibilityWhere(context), {
+    type: EntryType.JOURNAL,
+    OR: [
+      { createdByPersonId: "guardian-coach-1" },
+      {
+        status: EntryStatus.DONE,
+        visibility: EntryVisibility.TEAM_STAFF,
+        OR: [{ teamId: { in: ["team-1"] } }],
+      },
+      {
+        status: EntryStatus.DONE,
+        visibility: EntryVisibility.ORGANIZATION_SCOPED,
+        createdByPersonId: { in: ["athlete-1"] },
+      },
+    ],
+  });
+});
+
+test("journal action query permits only the author while the journal is a draft", () => {
+  const context = buildContext({ actorPersonId: "athlete-1" });
+
+  assert.deepEqual(buildJournalEntryEditWhere(context), {
+    type: EntryType.JOURNAL,
+    status: EntryStatus.OPEN,
+    createdByPersonId: "athlete-1",
+  });
 });

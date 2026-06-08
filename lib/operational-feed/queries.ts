@@ -10,6 +10,7 @@
 import { EntryStatus, EntryType, HabitFrequency, HabitStatus, InboxItemStatus, type Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { resolveJournalProtectedEntryVisibilityWhere } from "@/lib/entryops/visibility";
 import { parseDecisionEntryPayload } from "@/lib/entries/decision-payload";
 import { parseEventEntryPayload } from "@/lib/entries/event-payload";
 import {
@@ -333,6 +334,7 @@ export function buildActionableWhere(
 export async function queryTodayEntries(ctx: FeedQueryContext): Promise<FeedEntryItem[]> {
   const now = ctx.now ?? new Date();
   const { tomorrowStart } = computeTodayWindow(now);
+  const entryVisibilityWhere = await resolveJournalProtectedEntryVisibilityWhere(ctx);
 
   const entries = await db.entry.findMany({
     where: {
@@ -340,6 +342,7 @@ export async function queryTodayEntries(ctx: FeedQueryContext): Promise<FeedEntr
       deletedAt: null,
       status: { in: [...ACTIVE_FEED_STATUSES] },
       ...buildActionableWhere({ before: tomorrowStart }, true),
+      AND: [entryVisibilityWhere],
     },
     orderBy: [{ dueDate: "asc" }, { priority: "desc" }, { updatedAt: "desc" }],
     select: FEED_ENTRY_ACTIONABLE_SELECT,
@@ -366,6 +369,7 @@ export async function queryTodayEntries(ctx: FeedQueryContext): Promise<FeedEntr
  */
 export async function queryAssignedEntries(ctx: FeedQueryContext): Promise<FeedEntryItem[]> {
   if (!ctx.actorPersonId) return [];
+  const entryVisibilityWhere = await resolveJournalProtectedEntryVisibilityWhere(ctx);
 
   const entries = await db.entry.findMany({
     where: {
@@ -373,6 +377,7 @@ export async function queryAssignedEntries(ctx: FeedQueryContext): Promise<FeedE
       deletedAt: null,
       status: { in: [...ACTIVE_FEED_STATUSES] },
       AND: [
+        entryVisibilityWhere,
         buildActionableWhere(null, true),
         {
           OR: [
@@ -446,6 +451,7 @@ export async function queryInboxEntries(ctx: FeedQueryContext): Promise<FeedEntr
 export async function queryUpcomingEntries(ctx: FeedQueryContext): Promise<FeedEntryItem[]> {
   const now = ctx.now ?? new Date();
   const { from, to } = computeUpcomingWindow(now, ctx.upcomingDays);
+  const entryVisibilityWhere = await resolveJournalProtectedEntryVisibilityWhere(ctx);
 
   const entries = await db.entry.findMany({
     where: {
@@ -453,6 +459,7 @@ export async function queryUpcomingEntries(ctx: FeedQueryContext): Promise<FeedE
       deletedAt: null,
       status: { in: [EntryStatus.OPEN, EntryStatus.IN_PROGRESS] },
       ...buildActionableWhere({ from, to }, true),
+      AND: [entryVisibilityWhere],
     },
     orderBy: [{ dueDate: "asc" }, { priority: "desc" }],
     select: FEED_ENTRY_ACTIONABLE_SELECT,
@@ -757,12 +764,14 @@ export async function queryReviewEntries(
   ctx: FeedQueryContext,
   options: { type?: EntryType } = {},
 ): Promise<ReviewEntryItem[]> {
+  const entryVisibilityWhere = await resolveJournalProtectedEntryVisibilityWhere(ctx);
   const entries = await db.entry.findMany({
     where: {
       organizationId: ctx.organizationId,
       deletedAt: null,
       status: { in: [...REVIEW_ENTRY_STATUSES] },
       ...(options.type ? { type: options.type } : {}),
+      AND: [entryVisibilityWhere],
     },
     orderBy: [{ updatedAt: "desc" }],
     select: REVIEW_ENTRY_SELECT,

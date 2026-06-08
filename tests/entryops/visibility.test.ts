@@ -5,7 +5,10 @@ import { RoleType, ScopeType } from "@prisma/client";
 
 import {
   buildEntryOpsAllWorkDefaultWhere,
+  buildEntryOpsActionVisibilityWhere,
   buildEntryOpsEntryDetailVisibilityWhere,
+  buildEntryOpsTypeAwareVisibilityWhere,
+  buildJournalProtectedEntryVisibilityWhere,
   canEditEntryOpsEntry,
   canReadEntryOpsEntryDetail,
   canSelfEditEntryOpsEntry,
@@ -570,4 +573,101 @@ test("entry action denied message clearly distinguishes visible-but-not-allowed 
     entryActionDeniedMessage("archive this work item"),
     "You can view this work item, but you do not have permission to archive this work item.",
   );
+});
+
+test("type-aware visibility intersects guardian Entry access with Journal privacy", () => {
+  const context = {
+    actorPersonId: "guardian-1",
+    assignments: [assignment({ roleType: RoleType.PARENT_GUARDIAN })],
+    linkedGuardianAthleteIds: new Set(["athlete-1"]),
+  };
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility(context);
+
+  assert.deepEqual(buildEntryOpsTypeAwareVisibilityWhere(context, visibility), {
+    AND: [
+      buildEntryOpsEntryDetailVisibilityWhere(visibility),
+      {
+        OR: [
+          { type: { not: "JOURNAL" } },
+          {
+            type: "JOURNAL",
+            OR: [
+              { createdByPersonId: "guardian-1" },
+              {
+                status: "DONE",
+                visibility: "ORGANIZATION_SCOPED",
+                createdByPersonId: { in: ["athlete-1"] },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+});
+
+test("type-aware visibility keeps org admin Journal override", () => {
+  const context = {
+    actorPersonId: "admin-1",
+    assignments: [assignment({ roleType: RoleType.ORGANIZATION_ADMIN })],
+    linkedGuardianAthleteIds: new Set<string>(),
+  };
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility(context);
+
+  assert.deepEqual(buildEntryOpsTypeAwareVisibilityWhere(context, visibility), {
+    AND: [
+      {},
+      {
+        OR: [
+          { type: { not: "JOURNAL" } },
+          { type: "JOURNAL" },
+        ],
+      },
+    ],
+  });
+});
+
+test("Journal-only protection preserves non-Journal query behavior", () => {
+  const context = {
+    actorPersonId: "athlete-1",
+    assignments: [assignment({ roleType: RoleType.ATHLETE })],
+    linkedGuardianAthleteIds: new Set<string>(),
+  };
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility(context);
+
+  assert.deepEqual(buildJournalProtectedEntryVisibilityWhere(context, visibility), {
+    OR: [
+      { type: { not: "JOURNAL" } },
+      {
+        AND: [
+          buildEntryOpsEntryDetailVisibilityWhere(visibility),
+          {
+            type: "JOURNAL",
+            OR: [{ createdByPersonId: "athlete-1" }],
+          },
+        ],
+      },
+    ],
+  });
+});
+
+test("generic Entry actions cannot bypass Journal draft edit policy", () => {
+  const context = {
+    actorPersonId: "admin-1",
+    assignments: [assignment({ roleType: RoleType.ORGANIZATION_ADMIN })],
+    linkedGuardianAthleteIds: new Set<string>(),
+  };
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility(context);
+
+  assert.deepEqual(buildEntryOpsActionVisibilityWhere(context, visibility), {
+    AND: [
+      {},
+      {
+        OR: [
+          { type: { not: "JOURNAL" } },
+          { type: "JOURNAL", status: "OPEN", createdByPersonId: "admin-1" },
+        ],
+      },
+    ],
+  });
 });

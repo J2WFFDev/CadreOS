@@ -1,6 +1,7 @@
-import { Prisma, RoleType, ScopeType } from "@prisma/client";
+import { EntryType, Prisma, RoleType, ScopeType } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { buildJournalEntryEditWhere, buildJournalEntryVisibilityWhere } from "@/lib/journals/access";
 
 export type EntryOpsRoleAssignmentScope = {
   roleType: RoleType;
@@ -266,13 +267,82 @@ export function buildEntryOpsEntryDetailVisibilityWhere(
   return buildEntryOpsAllWorkDefaultWhere(visibility);
 }
 
+export function buildEntryOpsTypeAwareVisibilityWhere(
+  context: EntryOpsVisibilityContext,
+  visibility: EntryOpsAllWorkDefaultVisibility,
+): Prisma.EntryWhereInput {
+  return {
+    AND: [
+      buildEntryOpsEntryDetailVisibilityWhere(visibility),
+      {
+        OR: [
+          { type: { not: EntryType.JOURNAL } },
+          buildJournalEntryVisibilityWhere(context),
+        ],
+      },
+    ],
+  };
+}
+
+export function buildJournalProtectedEntryVisibilityWhere(
+  context: EntryOpsVisibilityContext,
+  visibility: EntryOpsAllWorkDefaultVisibility,
+): Prisma.EntryWhereInput {
+  return {
+    OR: [
+      { type: { not: EntryType.JOURNAL } },
+      {
+        AND: [
+          buildEntryOpsEntryDetailVisibilityWhere(visibility),
+          buildJournalEntryVisibilityWhere(context),
+        ],
+      },
+    ],
+  };
+}
+
+export function buildEntryOpsActionVisibilityWhere(
+  context: EntryOpsVisibilityContext,
+  visibility: EntryOpsAllWorkDefaultVisibility,
+): Prisma.EntryWhereInput {
+  return {
+    AND: [
+      buildEntryOpsEntryDetailVisibilityWhere(visibility),
+      {
+        OR: [
+          { type: { not: EntryType.JOURNAL } },
+          buildJournalEntryEditWhere(context),
+        ],
+      },
+    ],
+  };
+}
+
 export async function resolveEntryOpsEntryActionVisibilityWhere(input: {
   organizationId: string;
   actorPersonId: string | null;
 }): Promise<Prisma.EntryWhereInput> {
   const visibilityContext = await resolveEntryOpsVisibilityContext(input);
   const visibility = resolveEntryOpsAllWorkDefaultVisibility(visibilityContext);
-  return buildEntryOpsEntryDetailVisibilityWhere(visibility);
+  return buildEntryOpsActionVisibilityWhere(visibilityContext, visibility);
+}
+
+export async function resolveEntryOpsTypeAwareVisibilityWhere(input: {
+  organizationId: string;
+  actorPersonId: string | null;
+}): Promise<Prisma.EntryWhereInput> {
+  const visibilityContext = await resolveEntryOpsVisibilityContext(input);
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility(visibilityContext);
+  return buildEntryOpsTypeAwareVisibilityWhere(visibilityContext, visibility);
+}
+
+export async function resolveJournalProtectedEntryVisibilityWhere(input: {
+  organizationId: string;
+  actorPersonId: string | null;
+}): Promise<Prisma.EntryWhereInput> {
+  const visibilityContext = await resolveEntryOpsVisibilityContext(input);
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility(visibilityContext);
+  return buildJournalProtectedEntryVisibilityWhere(visibilityContext, visibility);
 }
 
 export async function countVisibleEntryOpsActionEntries(input: {

@@ -8,6 +8,7 @@ import {
   type JournalPayloadVisibility,
 } from "@/lib/entries/journal-payload";
 import { canCreateJournal, resolveJournalAccessContext } from "@/lib/journals/access";
+import { canRespondToAssignment } from "@/lib/journals/prompt-access";
 import {
   MAX_JOURNAL_TITLE_LENGTH,
   labelForJournalPayloadVisibility,
@@ -78,17 +79,38 @@ export default async function CreateJournalPage({ searchParams }: { searchParams
           })
         : null;
 
-    assignmentContext =
-      assignmentIdParam && scope.organizationId
-        ? await db.journalAssignment.findFirst({
+    if (assignmentIdParam && scope.organizationId) {
+      const athleteTeamIds = (
+        await db.rosterMembership.findMany({
+          where: { organizationId: scope.organizationId, personId: scope.auth.personId ?? "" },
+          select: { teamId: true },
+        })
+      ).map((membership) => membership.teamId);
+      const assignment = await db.journalAssignment.findFirst({
             where: {
               id: assignmentIdParam,
               organizationId: scope.organizationId,
               promptId: promptContext?.id ?? "",
             },
-            select: { id: true, status: true, dueAt: true },
-          })
-        : null;
+            select: {
+              id: true,
+              promptId: true,
+              status: true,
+              dueAt: true,
+              assignedToAthletePersonId: true,
+              assignedToTeamId: true,
+              assignedByPersonId: true,
+            },
+          });
+      assignmentContext =
+        assignment && canRespondToAssignment(accessContext, assignment, athleteTeamIds)
+          ? { id: assignment.id, status: assignment.status, dueAt: assignment.dueAt }
+          : null;
+      if (!assignmentContext) {
+        promptContext = null;
+        queryErrorMessage = "This journal prompt assignment could not be found or you do not have access to it.";
+      }
+    }
   } catch (error) {
     const detail = describeSchemaUnavailableError(error);
     queryErrorMessage = isSchemaUnavailableError(error)

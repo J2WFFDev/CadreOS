@@ -2,6 +2,7 @@ import { EntryStatus, EntryType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { resolveEntryOpsTypeAwareVisibilityWhere } from "@/lib/entryops/visibility";
 import { writeEntryActivity } from "@/lib/entries/service";
 import { canRestoreJournal, resolveJournalAccessContext } from "@/lib/journals/access";
 import { saveJournalWorkflowStatus } from "@/lib/journals/workflow";
@@ -16,12 +17,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(new URL("/journals", request.url), 303);
   }
 
+  const entryVisibilityWhere = await resolveEntryOpsTypeAwareVisibilityWhere({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
   const journal = await db.entry.findFirst({
     where: {
       id: entryId,
       organizationId: scope.organizationId,
       type: EntryType.JOURNAL,
       deletedAt: null,
+      AND: [entryVisibilityWhere],
     },
     select: {
       id: true,

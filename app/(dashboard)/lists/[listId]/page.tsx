@@ -10,7 +10,7 @@ import {
   resolveEntryListVisibility,
 } from "@/lib/entries/lists";
 import {
-  buildEntryOpsEntryDetailVisibilityWhere,
+  buildEntryOpsTypeAwareVisibilityWhere,
   resolveEntryOpsAllWorkDefaultVisibility,
   resolveEntryOpsVisibilityContext,
 } from "@/lib/entryops/visibility";
@@ -83,7 +83,7 @@ export default async function ListDetailPage({ params }: { params: Promise<{ lis
       organizationId,
       listId,
       deletedAt: null,
-      AND: [buildEntryOpsEntryDetailVisibilityWhere(entryVisibility)],
+      AND: [buildEntryOpsTypeAwareVisibilityWhere(entryVisibilityContext, entryVisibility)],
     },
     orderBy: [{ createdAt: "desc" }],
     select: {

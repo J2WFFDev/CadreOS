@@ -39,7 +39,7 @@ import {
 } from "@/lib/entries/schema-guard";
 import { USER_SELECTABLE_ENTRY_TYPES } from "@/lib/entries/user-selectable-types";
 import {
-  buildEntryOpsEntryDetailVisibilityWhere,
+  buildEntryOpsTypeAwareVisibilityWhere,
   canEditEntryOpsEntry,
   entryActionDeniedMessage,
   ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE,
@@ -48,6 +48,7 @@ import {
   resolveEntryOpsAllWorkDefaultVisibility,
   resolveEntryOpsVisibilityContext,
 } from "@/lib/entryops/visibility";
+import { canCreateJournal, canEditJournalDraft } from "@/lib/journals/access";
 import { mapEntryStatusToTaskStatus, writeEntryActivity } from "@/lib/entries/service";
 import { ENTRY_ACTIVITY_ACTIONS, canWriteEntries } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
@@ -156,7 +157,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     actorPersonId: scope.auth.personId,
   });
   const entryVisibility = resolveEntryOpsAllWorkDefaultVisibility(visibilityContext);
-  const entryVisibilityWhere = buildEntryOpsEntryDetailVisibilityWhere(entryVisibility);
+  const entryVisibilityWhere = buildEntryOpsTypeAwareVisibilityWhere(visibilityContext, entryVisibility);
 
   const canEditByRole = await canWriteEntries({ organizationId, actorPersonId: scope.auth.personId });
   console.log("[entries.update] canWriteEntries result", {
@@ -245,6 +246,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         title: true,
         content: true,
         status: true,
+        visibility: true,
         priority: true,
         teamId: true,
         createdByPersonId: true,
@@ -292,11 +294,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       return NextResponse.redirect(url, 303);
     }
 
-    const canEdit = canEditEntryOpsEntry({
-      canWriteEntries: canEditByRole,
-      context: visibilityContext,
-      entry,
-    });
+    const canEdit =
+      entry.type === EntryType.JOURNAL
+        ? canEditJournalDraft(visibilityContext, {
+            ...entry,
+            teamProgramId: null,
+          })
+        : canEditEntryOpsEntry({
+            canWriteEntries: canEditByRole,
+            context: visibilityContext,
+            entry,
+          });
     if (!canEdit) {
       logEntryOpsAccessDecision({
         workflow: "entries.update",
@@ -322,6 +330,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       type = requestedType;
     }
     const nextEntryType = type ?? entry.type;
+    if (
+      nextEntryType === EntryType.JOURNAL &&
+      entry.type !== EntryType.JOURNAL &&
+      !canCreateJournal(visibilityContext)
+    ) {
+      const url = new URL(returnTo, request.url);
+      url.searchParams.set("error", entryActionDeniedMessage("convert this work item to a journal"));
+      return NextResponse.redirect(url, 303);
+    }
 
     // Arc 24D.5.1: Fetch Decision payload separately so a missing EntryTypePayload table
     // does not prevent the base entry lookup above from succeeding.

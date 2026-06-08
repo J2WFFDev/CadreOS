@@ -4,7 +4,11 @@ import Link from "next/link";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { canCreateJournal, canReadJournalEntry, resolveJournalAccessContext } from "@/lib/journals/access";
+import { canCreateJournal, resolveJournalAccessContext } from "@/lib/journals/access";
+import {
+  buildEntryOpsTypeAwareVisibilityWhere,
+  resolveEntryOpsAllWorkDefaultVisibility,
+} from "@/lib/entryops/visibility";
 import { parseJournalEntryPayload } from "@/lib/entries/journal-payload";
 import {
   hintForJournalVisibility,
@@ -69,6 +73,7 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
       organizationId: scope.organizationId,
       actorPersonId: scope.auth.personId,
     });
+    const entryVisibility = resolveEntryOpsAllWorkDefaultVisibility(accessContext);
 
     journals = await db.entry.findMany({
       where: {
@@ -80,6 +85,7 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
           : statusFilter === "archived"
             ? { status: EntryStatus.ARCHIVED }
             : {}),
+        AND: [buildEntryOpsTypeAwareVisibilityWhere(accessContext, entryVisibility)],
       },
       orderBy: [{ updatedAt: "desc" }],
       select: {
@@ -124,17 +130,7 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
     );
   }
 
-  const visibleJournals = journals.filter((journal) =>
-    canReadJournalEntry(accessContext, {
-      id: journal.id,
-      type: journal.type,
-      createdByPersonId: journal.createdByPersonId,
-      status: journal.status,
-      visibility: journal.visibility,
-      teamId: journal.teamId,
-      teamProgramId: journal.team?.programId ?? null,
-    }),
-  );
+  const visibleJournals = journals;
 
   const canCreate = canCreateJournal(accessContext);
 

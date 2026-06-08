@@ -11,6 +11,11 @@ import {
 } from "@/lib/entries/journal-payload";
 import { canEditJournalDraft, resolveJournalAccessContext } from "@/lib/journals/access";
 import {
+  buildEntryOpsTypeAwareVisibilityWhere,
+  ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE,
+  resolveEntryOpsAllWorkDefaultVisibility,
+} from "@/lib/entryops/visibility";
+import {
   MAX_JOURNAL_TITLE_LENGTH,
   hintForJournalPayloadVisibility,
   labelForJournalPayloadVisibility,
@@ -32,12 +37,18 @@ export default async function EditJournalDraftPage({ params }: { params: Promise
     );
   }
 
+  const accessContext = await resolveJournalAccessContext({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const entryVisibility = resolveEntryOpsAllWorkDefaultVisibility(accessContext);
   const journal = await db.entry.findFirst({
     where: {
       id: entryId,
       organizationId: scope.organizationId,
       type: EntryType.JOURNAL,
       deletedAt: null,
+      AND: [buildEntryOpsTypeAwareVisibilityWhere(accessContext, entryVisibility)],
     },
     select: {
       id: true,
@@ -61,15 +72,10 @@ export default async function EditJournalDraftPage({ params }: { params: Promise
     return (
       <section className="space-y-4">
         <BackLink href="/journals" label="Journals" />
-        <ErrorMessage message="Journal entry not found." />
+        <ErrorMessage message={ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE} />
       </section>
     );
   }
-
-  const accessContext = await resolveJournalAccessContext({
-    organizationId: scope.organizationId,
-    actorPersonId: scope.auth.personId,
-  });
 
   if (!canEditJournalDraft(accessContext, journal)) {
     return (
