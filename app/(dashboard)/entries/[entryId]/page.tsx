@@ -614,8 +614,8 @@ export default async function EntryDetailPage({
       {entry.type === EntryType.JOURNAL && entry.status === "DONE" ? (
         <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
           This journal is <strong>Final</strong> and locked for editing. To resume editing,{" "}
-          <Link href={`/journals/${entry.id}/reopen`} className="underline">
-            reopen it via the journal view
+          <Link href={`/journals/${entry.id}`} className="underline">
+            open the journal view to reopen it
           </Link>{" "}
           or use the Reopen button.
         </div>

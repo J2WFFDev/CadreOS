@@ -11,10 +11,10 @@ import { EntryStatus, EntryType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { resolveEntryOpsTypeAwareVisibilityWhere } from "@/lib/entryops/visibility";
 import { writeEntryActivity } from "@/lib/entries/service";
 import {
-  hasJournalAdminAccess,
+  buildJournalEntryVisibilityWhere,
+  canReopenJournal,
   resolveJournalAccessContext,
 } from "@/lib/journals/access";
 import { saveJournalWorkflowStatus } from "@/lib/journals/workflow";
@@ -29,7 +29,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(new URL("/journals", request.url), 303);
   }
 
-  const entryVisibilityWhere = await resolveEntryOpsTypeAwareVisibilityWhere({
+  const accessContext = await resolveJournalAccessContext({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
   });
@@ -39,12 +39,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       organizationId: scope.organizationId,
       type: EntryType.JOURNAL,
       deletedAt: null,
-      AND: [entryVisibilityWhere],
+      AND: [buildJournalEntryVisibilityWhere(accessContext)],
     },
     select: {
       id: true,
       type: true,
       status: true,
+      visibility: true,
       createdByPersonId: true,
       teamId: true,
       team: { select: { programId: true } },
@@ -65,15 +66,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);
   }
 
-  const accessContext = await resolveJournalAccessContext({
-    organizationId: scope.organizationId,
-    actorPersonId: scope.auth.personId,
-  });
-
-  // Only the author or an org admin may reopen
-  const isAuthor = scope.auth.personId === journal.createdByPersonId;
-  const isAdmin = hasJournalAdminAccess(accessContext);
-  if (!isAuthor && !isAdmin) {
+  if (!canReopenJournal(accessContext, journal)) {
     return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);
   }
 

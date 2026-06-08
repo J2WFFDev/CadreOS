@@ -8,7 +8,7 @@
  * notes are shown. Only metadata safe for guardian display is rendered.
  *
  * Access rules:
- * - Requires PARENT_GUARDIAN role assignment in the organization.
+ * - Requires an AthleteGuardianRelationship in the organization.
  * - Only athletes linked via AthleteGuardianRelationship are shown.
  * - Unlinked athletes are never visible through this view.
  */
@@ -22,7 +22,6 @@ import { db } from "@/lib/db";
 import { computeCompletionCount, computeCurrentStreak } from "@/lib/habits/policy";
 import { deriveGuardianAthleteJournalHabitSummary, type GuardianAthleteJournalHabitSummary } from "@/lib/journals/guardian-visibility";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { RoleType } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -144,7 +143,6 @@ export default async function GuardianSummaryPage() {
   const { organizationId } = scope;
   const actorPersonId = scope.auth.personId;
 
-  // Verify guardian role in this organization
   if (!actorPersonId) {
     return (
       <section className="space-y-4">
@@ -153,27 +151,6 @@ export default async function GuardianSummaryPage() {
           description="Guardian-safe view of journal and habit activity for linked athletes."
         />
         <ErrorMessage message="You must be signed in to view this page." />
-      </section>
-    );
-  }
-
-  const guardianRoleAssignment = await db.roleAssignment.findFirst({
-    where: {
-      organizationId,
-      personId: actorPersonId,
-      roleType: RoleType.PARENT_GUARDIAN,
-    },
-    select: { id: true },
-  });
-
-  if (!guardianRoleAssignment) {
-    return (
-      <section className="space-y-4">
-        <PageHeader
-          title="Athlete Summary"
-          description="Guardian-safe view of journal and habit activity for linked athletes."
-        />
-        <ErrorMessage message="This view is only available to guardians with linked athletes." />
       </section>
     );
   }

@@ -53,18 +53,15 @@ export async function resolveJournalAccessContext(input: {
     },
   });
 
-  const isGuardian = assignments.some((assignment) => assignment.roleType === RoleType.PARENT_GUARDIAN);
-  const guardianRelationships = isGuardian
-    ? await db.athleteGuardianRelationship.findMany({
-        where: {
-          organizationId: input.organizationId,
-          guardianPersonId: input.actorPersonId,
-        },
-        select: {
-          athletePersonId: true,
-        },
-      })
-    : [];
+  const guardianRelationships = await db.athleteGuardianRelationship.findMany({
+    where: {
+      organizationId: input.organizationId,
+      guardianPersonId: input.actorPersonId,
+    },
+    select: {
+      athletePersonId: true,
+    },
+  });
 
   return {
     actorPersonId: input.actorPersonId,
@@ -231,5 +228,10 @@ export function canArchiveJournal(context: JournalAccessContext, entry: JournalA
 }
 
 export function canRestoreJournal(context: JournalAccessContext, entry: JournalAccessEntry): boolean {
+  return canArchiveJournal(context, entry);
+}
+
+export function canReopenJournal(context: JournalAccessContext, entry: JournalAccessEntry): boolean {
+  if (entry.status !== EntryStatus.DONE) return false;
   return canArchiveJournal(context, entry);
 }

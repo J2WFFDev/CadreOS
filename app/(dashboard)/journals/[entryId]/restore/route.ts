@@ -2,9 +2,8 @@ import { EntryStatus, EntryType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { resolveEntryOpsTypeAwareVisibilityWhere } from "@/lib/entryops/visibility";
 import { writeEntryActivity } from "@/lib/entries/service";
-import { canRestoreJournal, resolveJournalAccessContext } from "@/lib/journals/access";
+import { buildJournalEntryVisibilityWhere, canRestoreJournal, resolveJournalAccessContext } from "@/lib/journals/access";
 import { saveJournalWorkflowStatus } from "@/lib/journals/workflow";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -17,7 +16,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(new URL("/journals", request.url), 303);
   }
 
-  const entryVisibilityWhere = await resolveEntryOpsTypeAwareVisibilityWhere({
+  const accessContext = await resolveJournalAccessContext({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
   });
@@ -27,7 +26,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       organizationId: scope.organizationId,
       type: EntryType.JOURNAL,
       deletedAt: null,
-      AND: [entryVisibilityWhere],
+      AND: [buildJournalEntryVisibilityWhere(accessContext)],
     },
     select: {
       id: true,
@@ -52,11 +51,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   if (journal.status !== EntryStatus.ARCHIVED) {
     return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);
   }
-
-  const accessContext = await resolveJournalAccessContext({
-    organizationId: scope.organizationId,
-    actorPersonId: scope.auth.personId,
-  });
 
   if (!canRestoreJournal(accessContext, journal)) {
     return NextResponse.redirect(new URL(`/journals/${entryId}`, request.url), 303);

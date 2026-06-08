@@ -49,6 +49,7 @@ import {
   resolveEntryOpsVisibilityContext,
 } from "@/lib/entryops/visibility";
 import { canCreateJournal, canEditJournalDraft } from "@/lib/journals/access";
+import { mapEntryStatusToJournalWorkflowStatus } from "@/lib/journals/policy";
 import { mapEntryStatusToTaskStatus, writeEntryActivity } from "@/lib/entries/service";
 import { ENTRY_ACTIVITY_ACTIONS, canWriteEntries } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
@@ -759,6 +760,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
           : journalPayloadRecord
             ? existingJournalPayload
             : { ...createEmptyJournalEntryPayload(), journalStatus: "DRAFT" as const };
+        if (status) {
+          journalPayload.journalStatus = mapEntryStatusToJournalWorkflowStatus(status);
+        }
 
         try {
           await db.entryTypePayload.upsert({
