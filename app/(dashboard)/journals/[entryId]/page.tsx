@@ -15,25 +15,23 @@ import {
 } from "@/lib/entry-relationships";
 import { parseJournalEntryPayload } from "@/lib/entries/journal-payload";
 import {
+  buildJournalEntryVisibilityWhere,
   canArchiveJournal,
   canEditJournalDraft,
+  canReopenJournal,
   canRestoreJournal,
   canSubmitJournal,
   hasJournalAdminAccess,
   resolveJournalAccessContext,
 } from "@/lib/journals/access";
-import {
-  buildEntryOpsTypeAwareVisibilityWhere,
-  ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE,
-  resolveEntryOpsAllWorkDefaultVisibility,
-} from "@/lib/entryops/visibility";
+import { ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE } from "@/lib/entryops/visibility";
 import {
   labelForJournalPayloadVisibility,
   labelForJournalWorkflowStatus,
   resolveJournalWorkflowStatus,
 } from "@/lib/journals/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { labelForActivityAction } from "@/lib/operational-feed/render";
+import { labelForActivityAction, labelForEntryStatus } from "@/lib/operational-feed/render";
 import { readFirstSearchParam } from "@/lib/entries/entry-detail-query-state";
 
 export const dynamic = "force-dynamic";
@@ -72,14 +70,13 @@ export default async function JournalDetailPage({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
   });
-  const entryVisibility = resolveEntryOpsAllWorkDefaultVisibility(accessContext);
   const journal = await db.entry.findFirst({
     where: {
       id: entryId,
       organizationId: scope.organizationId,
       type: EntryType.JOURNAL,
       deletedAt: null,
-      AND: [buildEntryOpsTypeAwareVisibilityWhere(accessContext, entryVisibility)],
+      AND: [buildJournalEntryVisibilityWhere(accessContext)],
     },
     select: {
       id: true,
@@ -137,7 +134,7 @@ export default async function JournalDetailPage({
   const canArchive = canArchiveJournal(accessContext, journal);
   const isFinal = journalStatus === "FINAL";
   const isArchived = journalStatus === "ARCHIVED";
-  const canReopen = isFinal && (isAuthor || isAdmin);
+  const canReopen = canReopenJournal(accessContext, journal);
   const canRestore = isArchived && canRestoreJournal(accessContext, journal);
   const lifecycleHintText =
     isFinal
@@ -183,6 +180,10 @@ export default async function JournalDetailPage({
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {labelForJournalPayloadVisibility(journalPayload.journalVisibility)}
           {lifecycleHintText}
+        </p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          Journal Workflow Status controls draft, final, and editing behavior. Entry Status is the operational state;
+          for Journals, Done maps to Final. Guardian visibility begins only when a Guardian-visible Journal is Final.
         </p>
       </div>
 
@@ -264,6 +265,10 @@ export default async function JournalDetailPage({
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Journal status</dt>
             <dd>{labelForJournalWorkflowStatus(journalStatus)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Entry status</dt>
+            <dd>{labelForEntryStatus(journal.status)}</dd>
           </div>
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Created</dt>

@@ -10,6 +10,7 @@ import {
   canCreateJournal,
   canEditJournalDraft,
   canReadJournalEntry,
+  canReopenJournal,
   canRestoreJournal,
   canSubmitJournal,
   hasJournalAdminAccess,
@@ -69,6 +70,37 @@ test("guardian can read linked submitted journal only when guardian visibility p
 
   assert.equal(canReadJournalEntry(context, submittedGuardianVisible), true);
   assert.equal(canReadJournalEntry(context, submittedPrivate), false);
+});
+
+test("relationship-linked guardian can read final Guardian-visible journal without a direct role assignment", () => {
+  const context = buildContext({
+    actorPersonId: "guardian-1",
+    assignments: [],
+    linkedGuardianAthleteIds: new Set(["athlete-1"]),
+  });
+
+  assert.equal(
+    canReadJournalEntry(
+      context,
+      buildEntry({
+        createdByPersonId: "athlete-1",
+        status: EntryStatus.DONE,
+        visibility: EntryVisibility.ORGANIZATION_SCOPED,
+      }),
+    ),
+    true,
+  );
+  assert.equal(
+    canReadJournalEntry(
+      context,
+      buildEntry({
+        createdByPersonId: "athlete-1",
+        status: EntryStatus.OPEN,
+        visibility: EntryVisibility.ORGANIZATION_SCOPED,
+      }),
+    ),
+    false,
+  );
 });
 
 test("coach access requires submitted + team visibility + scoped assignment", () => {
@@ -136,6 +168,35 @@ test("author can restore archived journal", () => {
   assert.equal(canRestoreJournal(context, entry), true);
 });
 
+test("reopen is limited to the final journal author or org admin", () => {
+  const finalJournal = buildEntry({ status: EntryStatus.DONE });
+  const adminContext = buildContext({
+    actorPersonId: "admin-1",
+    assignments: [
+      {
+        roleType: RoleType.ORGANIZATION_ADMIN,
+        scopeType: ScopeType.ORGANIZATION,
+        teamId: null,
+        programId: null,
+      },
+    ],
+  });
+  const guardianContext = buildContext({
+    actorPersonId: "guardian-1",
+    linkedGuardianAthleteIds: new Set(["actor-1"]),
+  });
+  const coachContext = buildContext({
+    actorPersonId: "coach-1",
+    assignments: [{ roleType: RoleType.COACH, scopeType: ScopeType.TEAM, teamId: "team-1", programId: null }],
+  });
+
+  assert.equal(canReopenJournal(buildContext(), finalJournal), true);
+  assert.equal(canReopenJournal(adminContext, finalJournal), true);
+  assert.equal(canReopenJournal(guardianContext, finalJournal), false);
+  assert.equal(canReopenJournal(coachContext, finalJournal), false);
+  assert.equal(canReopenJournal(buildContext(), buildEntry({ status: EntryStatus.OPEN })), false);
+});
+
 test("journal creation requires athlete or admin context", () => {
   const athleteContext = buildContext({
     assignments: [{ roleType: RoleType.ATHLETE, scopeType: ScopeType.TEAM, teamId: "team-1", programId: null }],
@@ -193,6 +254,26 @@ test("journal query visibility preserves submitted guardian and scoped coach res
         visibility: EntryVisibility.TEAM_STAFF,
         OR: [{ teamId: { in: ["team-1"] } }],
       },
+      {
+        status: EntryStatus.DONE,
+        visibility: EntryVisibility.ORGANIZATION_SCOPED,
+        createdByPersonId: { in: ["athlete-1"] },
+      },
+    ],
+  });
+});
+
+test("journal query visibility allows relationship-linked Guardian context without broadening draft access", () => {
+  const context = buildContext({
+    actorPersonId: "guardian-1",
+    assignments: [],
+    linkedGuardianAthleteIds: new Set(["athlete-1"]),
+  });
+
+  assert.deepEqual(buildJournalEntryVisibilityWhere(context), {
+    type: EntryType.JOURNAL,
+    OR: [
+      { createdByPersonId: "guardian-1" },
       {
         status: EntryStatus.DONE,
         visibility: EntryVisibility.ORGANIZATION_SCOPED,

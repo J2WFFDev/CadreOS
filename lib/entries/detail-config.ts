@@ -68,7 +68,7 @@ export function getEntryDetailConfig(type: EntryType): EntryDetailConfig {
       priorityLabel: "Priority",
       metadataDateLabel: null,
       dateFieldLabel: "Journal date",
-      guidance: "Capture journal metadata below. Final journals are locked for editing unless reopened.",
+      guidance: "Journal Workflow Status controls editing and visibility. Entry Status Done maps to Journal Final, which locks editing until reopened.",
     };
   }
 

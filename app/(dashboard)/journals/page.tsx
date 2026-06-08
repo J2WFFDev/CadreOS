@@ -4,11 +4,7 @@ import Link from "next/link";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { canCreateJournal, resolveJournalAccessContext } from "@/lib/journals/access";
-import {
-  buildEntryOpsTypeAwareVisibilityWhere,
-  resolveEntryOpsAllWorkDefaultVisibility,
-} from "@/lib/entryops/visibility";
+import { buildJournalEntryVisibilityWhere, canCreateJournal, resolveJournalAccessContext } from "@/lib/journals/access";
 import { parseJournalEntryPayload } from "@/lib/entries/journal-payload";
 import {
   hintForJournalVisibility,
@@ -73,8 +69,6 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
       organizationId: scope.organizationId,
       actorPersonId: scope.auth.personId,
     });
-    const entryVisibility = resolveEntryOpsAllWorkDefaultVisibility(accessContext);
-
     journals = await db.entry.findMany({
       where: {
         organizationId: scope.organizationId,
@@ -85,7 +79,7 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
           : statusFilter === "archived"
             ? { status: EntryStatus.ARCHIVED }
             : {}),
-        AND: [buildEntryOpsTypeAwareVisibilityWhere(accessContext, entryVisibility)],
+        AND: [buildJournalEntryVisibilityWhere(accessContext)],
       },
       orderBy: [{ updatedAt: "desc" }],
       select: {
@@ -189,8 +183,8 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
             <thead className="border-b bg-zinc-50 dark:bg-zinc-800/60">
               <tr>
                 <th className="px-4 py-3 font-medium">Journal</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Operational Status</th>
+                <th className="px-4 py-3 font-medium">Journal Workflow Status</th>
+                <th className="px-4 py-3 font-medium">Entry Status</th>
                 <th className="px-4 py-3 font-medium">Visibility</th>
                 <th className="px-4 py-3 font-medium">Author</th>
                 <th className="px-4 py-3 font-medium">Updated</th>
