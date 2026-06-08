@@ -1,8 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
-import { RoleType } from "@prisma/client";
+import { MemberLifecycleStatus, RoleType } from "@prisma/client";
 import { cookies } from "next/headers";
 
 import { isClerkConfigured } from "@/lib/auth";
+import { buildEffectiveAppRoles } from "@/lib/auth/app-context";
 import { APP_ROLES, type AppRole, type CurrentUser } from "@/lib/auth/current-user-types";
 import { DEV_PERSONA_COOKIE_NAME, getDevPersonaById, isDevPersonasEnabled } from "@/lib/auth/devPersonas";
 import { db } from "@/lib/db";
@@ -106,25 +107,39 @@ async function getClerkCurrentUser(): Promise<CurrentUser | null> {
     }
   }
 
-  const normalizedRoles = normalizeRoles(roleAssignments.map((assignment) => ROLE_TYPE_TO_APP_ROLE[assignment.roleType]));
-
+  const directRoles = normalizeRoles(roleAssignments.map((assignment) => ROLE_TYPE_TO_APP_ROLE[assignment.roleType]));
   let guardianAthleteIds: string[] = [];
+  let hasActiveGuardianDependent = false;
 
-  if (userAccount.personId && userAccount.organizationId && normalizedRoles.includes("GUARDIAN")) {
+  if (userAccount.personId && userAccount.organizationId) {
     try {
-      guardianAthleteIds = (
-        await db.athleteGuardianRelationship.findMany({
-          where: {
-            organizationId: userAccount.organizationId,
-            guardianPersonId: userAccount.personId,
+      const guardianRelationships = await db.athleteGuardianRelationship.findMany({
+        where: {
+          organizationId: userAccount.organizationId,
+          guardianPersonId: userAccount.personId,
+        },
+        select: {
+          athletePersonId: true,
+          athlete: {
+            select: { lifecycleStatus: true },
           },
-          select: { athletePersonId: true },
-        })
-      ).map((relationship) => relationship.athletePersonId);
+        },
+      });
+      hasActiveGuardianDependent = guardianRelationships.some(
+        (relationship) => relationship.athlete.lifecycleStatus === MemberLifecycleStatus.ACTIVE,
+      );
+      guardianAthleteIds = directRoles.includes("GUARDIAN")
+        ? guardianRelationships.map((relationship) => relationship.athletePersonId)
+        : [];
     } catch {
       guardianAthleteIds = [];
+      hasActiveGuardianDependent = false;
     }
   }
+  const effectiveRoles = buildEffectiveAppRoles({
+    directRoles,
+    hasGuardianDependentScope: hasActiveGuardianDependent,
+  });
 
   const name = `${userAccount.person?.firstName ?? ""} ${userAccount.person?.lastName ?? ""}`.trim() || "Clerk User";
 
@@ -132,11 +147,11 @@ async function getClerkCurrentUser(): Promise<CurrentUser | null> {
     id: userAccount.personId ?? userId,
     name,
     email: userAccount.person?.email ?? undefined,
-    roles: normalizedRoles,
-    activeRole: normalizedRoles[0],
+    roles: effectiveRoles,
+    activeRole: directRoles[0] ?? effectiveRoles[0],
     organizationId: userAccount.organizationId,
     teamIds: roleAssignments.flatMap((assignment) => (assignment.teamId ? [assignment.teamId] : [])),
-    athleteIds: normalizedRoles.includes("ATHLETE") && userAccount.personId ? [userAccount.personId] : [],
+    athleteIds: directRoles.includes("ATHLETE") && userAccount.personId ? [userAccount.personId] : [],
     guardianAthleteIds,
     isDevPersona: false,
   };
