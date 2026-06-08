@@ -20,8 +20,5 @@ export type CurrentUser = {
   teamIds?: string[];
   athleteIds?: string[];
   guardianAthleteIds?: string[];
-  dependentAthleteIds?: string[];
-  derivedProgramIds?: string[];
-  derivedTeamIds?: string[];
   isDevPersona?: boolean;
 };
