@@ -12,6 +12,7 @@ import {
   serializeJournalEntryPayload,
 } from "@/lib/entries/journal-payload";
 import { canCreateJournal, resolveJournalAccessContext } from "@/lib/journals/access";
+import { canRespondToAssignment } from "@/lib/journals/prompt-access";
 import { MAX_JOURNAL_TITLE_LENGTH } from "@/lib/journals/policy";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -62,15 +63,35 @@ export async function POST(request: Request) {
     }
 
     if (journalAssignmentId) {
+      const actorTeamIds = (
+        await db.rosterMembership.findMany({
+          where: {
+            organizationId: scope.organizationId,
+            personId: scope.auth.personId,
+          },
+          select: { teamId: true },
+        })
+      ).map((membership) => membership.teamId);
       const assignment = await db.journalAssignment.findFirst({
         where: {
           id: journalAssignmentId,
           organizationId: scope.organizationId,
           status: { in: [JournalAssignmentStatus.ACTIVE, JournalAssignmentStatus.PENDING] },
         },
-        select: { id: true },
+        select: {
+          id: true,
+          promptId: true,
+          assignedToAthletePersonId: true,
+          assignedToTeamId: true,
+          assignedByPersonId: true,
+          status: true,
+        },
       });
-      if (!assignment) {
+      if (
+        !assignment ||
+        assignment.promptId !== journalPromptId ||
+        !canRespondToAssignment(accessContext, assignment, actorTeamIds)
+      ) {
         return NextResponse.redirect(new URL("/journals/create", request.url), 303);
       }
     }

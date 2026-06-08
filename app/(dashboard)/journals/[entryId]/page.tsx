@@ -18,11 +18,15 @@ import {
   canArchiveJournal,
   canEditJournalDraft,
   canRestoreJournal,
-  canReadJournalEntry,
   canSubmitJournal,
   hasJournalAdminAccess,
   resolveJournalAccessContext,
 } from "@/lib/journals/access";
+import {
+  buildEntryOpsTypeAwareVisibilityWhere,
+  ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE,
+  resolveEntryOpsAllWorkDefaultVisibility,
+} from "@/lib/entryops/visibility";
 import {
   labelForJournalPayloadVisibility,
   labelForJournalWorkflowStatus,
@@ -64,12 +68,18 @@ export default async function JournalDetailPage({
     );
   }
 
+  const accessContext = await resolveJournalAccessContext({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const entryVisibility = resolveEntryOpsAllWorkDefaultVisibility(accessContext);
   const journal = await db.entry.findFirst({
     where: {
       id: entryId,
       organizationId: scope.organizationId,
       type: EntryType.JOURNAL,
       deletedAt: null,
+      AND: [buildEntryOpsTypeAwareVisibilityWhere(accessContext, entryVisibility)],
     },
     select: {
       id: true,
@@ -111,31 +121,7 @@ export default async function JournalDetailPage({
     return (
       <section className="space-y-4">
         <BackLink href="/journals" label="Journals" />
-        <ErrorMessage message="Journal entry not found in this organization." />
-      </section>
-    );
-  }
-
-  const accessContext = await resolveJournalAccessContext({
-    organizationId: scope.organizationId,
-    actorPersonId: scope.auth.personId,
-  });
-
-  const canRead = canReadJournalEntry(accessContext, {
-    id: journal.id,
-    type: journal.type,
-    createdByPersonId: journal.createdByPersonId,
-    status: journal.status,
-    visibility: journal.visibility,
-    teamId: journal.teamId,
-    teamProgramId: journal.team?.programId ?? null,
-  });
-
-  if (!canRead) {
-    return (
-      <section className="space-y-4">
-        <BackLink href="/journals" label="Journals" />
-        <ErrorMessage message="You do not have permission to view this journal." />
+        <ErrorMessage message={ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE} />
       </section>
     );
   }

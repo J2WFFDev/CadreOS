@@ -12,7 +12,7 @@ import {
 } from "@/lib/entries/lists";
 import { formatEntryListSetupIncompleteMessage, getEntryListSchemaIssue, logEntryListSchemaIssue } from "@/lib/entries/schema-guard";
 import {
-  buildEntryOpsEntryDetailVisibilityWhere,
+  buildEntryOpsTypeAwareVisibilityWhere,
   resolveEntryOpsAllWorkDefaultVisibility,
   resolveEntryOpsVisibilityContext,
 } from "@/lib/entryops/visibility";
@@ -149,7 +149,7 @@ export default async function ListsPage() {
           deletedAt: null,
           listId: { not: null },
           entryList: listVisibility.where,
-          AND: [buildEntryOpsEntryDetailVisibilityWhere(entryVisibility)],
+          AND: [buildEntryOpsTypeAwareVisibilityWhere(entryVisibilityContext, entryVisibility)],
         },
         _count: { listId: true },
       });

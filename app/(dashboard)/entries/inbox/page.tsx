@@ -6,7 +6,7 @@ import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
 import {
-  buildEntryOpsEntryDetailVisibilityWhere,
+  buildEntryOpsTypeAwareVisibilityWhere,
   resolveEntryOpsAllWorkDefaultVisibility,
   resolveEntryOpsVisibilityContext,
 } from "@/lib/entryops/visibility";
@@ -75,7 +75,7 @@ export default async function EntryInboxPage() {
           organizationId: scope.organizationId,
           id: { in: entryIds },
           deletedAt: null,
-          AND: [buildEntryOpsEntryDetailVisibilityWhere(entryVisibility)],
+          AND: [buildEntryOpsTypeAwareVisibilityWhere(visibilityContext, entryVisibility)],
         },
         select: { id: true, title: true, type: true, status: true, priority: true, updatedAt: true },
       })

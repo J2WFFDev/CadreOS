@@ -50,7 +50,7 @@ import {
 import { USER_SELECTABLE_ENTRY_TYPES } from "@/lib/entries/user-selectable-types";
 import { formatEnumLabel } from "@/lib/follow-up-tasks";
 import {
-  buildEntryOpsEntryDetailVisibilityWhere,
+  buildEntryOpsTypeAwareVisibilityWhere,
   canEditEntryOpsEntry,
   ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE,
   logEntryOpsAccessDecision,
@@ -62,6 +62,7 @@ import {
   hintForJournalPayloadVisibility,
   labelForJournalPayloadVisibility,
 } from "@/lib/journals/policy";
+import { canEditJournalDraft } from "@/lib/journals/access";
 import { labelForActivityAction } from "@/lib/operational-feed/render";
 import {
   labelForOperationalNodeType,
@@ -160,6 +161,7 @@ const entryBaseSelect = Prisma.validator<Prisma.EntryFindFirstArgs>()({
     content: true,
     tags: true,
     status: true,
+    visibility: true,
     priority: true,
     dueDate: true,
     dueTime: true,
@@ -423,7 +425,7 @@ export default async function EntryDetailPage({
   const entryResult = await fetchEntryDetailRecord(
     organizationId,
     entryId,
-    buildEntryOpsEntryDetailVisibilityWhere(entryDetailVisibility),
+    buildEntryOpsTypeAwareVisibilityWhere(visibilityContext, entryDetailVisibility),
   );
   const entry = entryResult.entry;
   let listAssignmentUnavailable = entryResult.listAssignmentUnavailable;
@@ -455,11 +457,18 @@ export default async function EntryDetailPage({
     );
   }
 
-  const canEditEntry = canEditEntryOpsEntry({
-    canWriteEntries: canEditEntryByRole,
-    context: visibilityContext,
-    entry,
-  });
+  const canEditEntry =
+    entry.type === EntryType.JOURNAL
+      ? canEditJournalDraft(visibilityContext, {
+          ...entry,
+          visibility: entry.visibility,
+          teamProgramId: null,
+        })
+      : canEditEntryOpsEntry({
+          canWriteEntries: canEditEntryByRole,
+          context: visibilityContext,
+          entry,
+        });
   logEntryOpsAccessDecision({
     workflow: "entries.detail",
     entryId,

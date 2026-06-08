@@ -1,4 +1,4 @@
-import { EntryStatus, EntryType, EntryVisibility, RoleType, ScopeType } from "@prisma/client";
+import { EntryStatus, EntryType, EntryVisibility, Prisma, RoleType, ScopeType } from "@prisma/client";
 
 import { db } from "@/lib/db";
 
@@ -132,6 +132,83 @@ export function canReadJournalEntry(context: JournalAccessContext, entry: Journa
   }
 
   return false;
+}
+
+export function buildJournalEntryVisibilityWhere(context: JournalAccessContext): Prisma.EntryWhereInput {
+  if (!context.actorPersonId) {
+    return { id: "__journals_no_visible_entries__" };
+  }
+
+  if (hasJournalAdminAccess(context)) {
+    return { type: EntryType.JOURNAL };
+  }
+
+  const submittedVisibility: Prisma.EntryWhereInput[] = [];
+  const coachAssignments = context.assignments.filter((assignment) => COACH_ROLE_TYPES.has(assignment.roleType));
+  const hasOrganizationCoachScope = coachAssignments.some(
+    (assignment) => assignment.scopeType === ScopeType.ORGANIZATION,
+  );
+  const coachTeamIds = Array.from(
+    new Set(
+      coachAssignments
+        .filter((assignment) => assignment.scopeType === ScopeType.TEAM)
+        .map((assignment) => assignment.teamId)
+        .filter((teamId): teamId is string => Boolean(teamId)),
+    ),
+  );
+  const coachProgramIds = Array.from(
+    new Set(
+      coachAssignments
+        .filter((assignment) => assignment.scopeType === ScopeType.PROGRAM)
+        .map((assignment) => assignment.programId)
+        .filter((programId): programId is string => Boolean(programId)),
+    ),
+  );
+
+  if (hasOrganizationCoachScope || coachTeamIds.length > 0 || coachProgramIds.length > 0) {
+    const scopeWhere: Prisma.EntryWhereInput =
+      hasOrganizationCoachScope
+        ? {}
+        : {
+            OR: [
+              ...(coachTeamIds.length > 0 ? [{ teamId: { in: coachTeamIds } }] : []),
+              ...(coachProgramIds.length > 0 ? [{ team: { programId: { in: coachProgramIds } } }] : []),
+            ],
+          };
+    submittedVisibility.push({
+      status: EntryStatus.DONE,
+      visibility: EntryVisibility.TEAM_STAFF,
+      ...scopeWhere,
+    });
+  }
+
+  if (context.linkedGuardianAthleteIds.size > 0) {
+    submittedVisibility.push({
+      status: EntryStatus.DONE,
+      visibility: EntryVisibility.ORGANIZATION_SCOPED,
+      createdByPersonId: { in: Array.from(context.linkedGuardianAthleteIds) },
+    });
+  }
+
+  return {
+    type: EntryType.JOURNAL,
+    OR: [
+      { createdByPersonId: context.actorPersonId },
+      ...submittedVisibility,
+    ],
+  };
+}
+
+export function buildJournalEntryEditWhere(context: JournalAccessContext): Prisma.EntryWhereInput {
+  if (!context.actorPersonId) {
+    return { id: "__journals_no_editable_entries__" };
+  }
+
+  return {
+    type: EntryType.JOURNAL,
+    status: EntryStatus.OPEN,
+    createdByPersonId: context.actorPersonId,
+  };
 }
 
 export function canEditJournalDraft(context: JournalAccessContext, entry: JournalAccessEntry): boolean {
