@@ -32,7 +32,7 @@ import {
   parseJournalEntryPayload,
   serializeJournalEntryPayload,
 } from "@/lib/entries/journal-payload";
-import { resolveOrCreateEntryDefaultInboxList } from "@/lib/entries/lists";
+import { resolveEntryListVisibility, resolveOrCreateEntryDefaultInboxList } from "@/lib/entries/lists";
 import {
   ENTRY_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE,
   logEntryTypePayloadSchemaIssue,
@@ -367,7 +367,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       }
     }
 
-    // Arc 24D.4: Validate listId belongs to this org before writing.
+    // Arc 24D.8Q: List container access is separate from Entry access.
     let resolvedListId: string | null | undefined;
     if (rawListId !== undefined) {
       if (rawListId === "") {
@@ -378,8 +378,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         });
         resolvedListId = defaultList.id;
       } else {
+        const listVisibility = await resolveEntryListVisibility({
+          organizationId,
+          actorPersonId: scope.auth.personId,
+        });
         const listRecord = await db.entryList.findFirst({
-          where: { id: rawListId, organizationId, isArchived: false },
+          where: {
+            id: rawListId,
+            organizationId,
+            isArchived: false,
+            AND: [listVisibility.where],
+          },
           select: { id: true },
         });
         if (!listRecord) {

@@ -1,22 +1,80 @@
 import Link from "next/link";
-import { EntryListScope } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
-import { fetchListsForActor, labelForEntryListScope, resolveEntryListVisibility } from "@/lib/entries/lists";
+import {
+  buildEntryListHierarchy,
+  type EntryListSummary,
+  fetchListsForActor,
+  resolveEntryListVisibility,
+} from "@/lib/entries/lists";
 import { formatEntryListSetupIncompleteMessage, getEntryListSchemaIssue, logEntryListSchemaIssue } from "@/lib/entries/schema-guard";
+import {
+  buildEntryOpsEntryDetailVisibilityWhere,
+  resolveEntryOpsAllWorkDefaultVisibility,
+  resolveEntryOpsVisibilityContext,
+} from "@/lib/entryops/visibility";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export const dynamic = "force-dynamic";
 
-const SCOPE_ORDER: EntryListScope[] = [
-  EntryListScope.PERSONAL,
-  EntryListScope.ORGANIZATION,
-  EntryListScope.PROGRAM,
-  EntryListScope.TEAM,
-];
+function ListTable({
+  lists,
+  countMap,
+  actorPersonId,
+  canManageSharedLists,
+}: {
+  lists: EntryListSummary[];
+  countMap: Map<string, number>;
+  actorPersonId: string | null;
+  canManageSharedLists: boolean;
+}) {
+  if (lists.length === 0) {
+    return <p className="text-sm text-zinc-500 dark:text-zinc-400">No lists in this container.</p>;
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border">
+      <table className="w-full text-sm">
+        <thead className="bg-zinc-50 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+          <tr>
+            <th className="px-4 py-2 text-left">Name</th>
+            <th className="px-4 py-2 text-left">Type</th>
+            <th className="px-4 py-2 text-right">Visible Work Items</th>
+            <th className="px-4 py-2 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y bg-white dark:bg-zinc-900">
+          {lists.map((list) => (
+            <tr key={list.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              <td className="px-4 py-2">
+                <Link href={`/lists/${list.id}`} className="font-medium underline">
+                  {list.name}
+                </Link>
+                {list.isArchived ? <span className="ml-2 text-xs text-zinc-400">[Archived]</span> : null}
+              </td>
+              <td className="px-4 py-2 text-zinc-500">
+                {list.isInbox ? "Inbox" : list.scope === "ORGANIZATION" ? "Shared" : list.scope === "PERSONAL" ? "Personal" : "Context"}
+              </td>
+              <td className="px-4 py-2 text-right text-zinc-500">{countMap.get(list.id) ?? 0}</td>
+              <td className="px-4 py-2 text-right">
+                {canManageSharedLists || list.ownerPersonId === actorPersonId ? (
+                  <Link href={`/lists/${list.id}/update`} className="text-xs underline">
+                    Edit
+                  </Link>
+                ) : (
+                  <span className="text-xs text-zinc-400">View only</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export default async function ListsPage() {
   const scope = await getOrganizationScope();
@@ -60,7 +118,11 @@ export default async function ListsPage() {
   let setupIncompleteMessage = "";
   let allLists: Awaited<ReturnType<typeof fetchListsForActor>> = [];
   try {
-    allLists = await fetchListsForActor({ organizationId, actorPersonId: scope.auth.personId });
+    allLists = await fetchListsForActor({
+      organizationId,
+      actorPersonId: scope.auth.personId,
+      includeArchived: true,
+    });
   } catch (error) {
     const schemaIssue = getEntryListSchemaIssue(error);
 
@@ -75,6 +137,11 @@ export default async function ListsPage() {
   let countMap = new Map<string, number>();
   if (!setupIncompleteMessage) {
     try {
+      const entryVisibilityContext = await resolveEntryOpsVisibilityContext({
+        organizationId,
+        actorPersonId: scope.auth.personId,
+      });
+      const entryVisibility = resolveEntryOpsAllWorkDefaultVisibility(entryVisibilityContext);
       const entryCounts = await db.entry.groupBy({
         by: ["listId"],
         where: {
@@ -82,6 +149,7 @@ export default async function ListsPage() {
           deletedAt: null,
           listId: { not: null },
           entryList: listVisibility.where,
+          AND: [buildEntryOpsEntryDetailVisibilityWhere(entryVisibility)],
         },
         _count: { listId: true },
       });
@@ -102,13 +170,33 @@ export default async function ListsPage() {
     }
   }
 
-  // Group by scope
-  const byScope = new Map<EntryListScope, typeof allLists>();
-  for (const list of allLists) {
-    const existing = byScope.get(list.scope) ?? [];
-    existing.push(list);
-    byScope.set(list.scope, existing);
-  }
+  const teams = await db.team.findMany({
+    where: {
+      organizationId,
+      ...(listVisibility.organizationWide
+        ? {}
+        : {
+            OR: [
+              { id: { in: listVisibility.teamIds } },
+              { programId: { in: listVisibility.programIds } },
+            ],
+          }),
+    },
+    select: { id: true, name: true, programId: true },
+  });
+  const visibleProgramIds = Array.from(new Set([...listVisibility.programIds, ...teams.map((team) => team.programId)]));
+  const programs = await db.program.findMany({
+    where: {
+      organizationId,
+      ...(listVisibility.organizationWide ? {} : { id: { in: visibleProgramIds } }),
+    },
+    select: { id: true, name: true },
+  });
+  const hierarchy = buildEntryListHierarchy({ visibility: listVisibility, lists: allLists, programs, teams });
+  const hasHierarchyContent =
+    hierarchy.personalLists.length > 0 ||
+    hierarchy.adminSharedLists.length > 0 ||
+    hierarchy.programs.length > 0;
 
   return (
     <section className="space-y-6">
@@ -123,62 +211,63 @@ export default async function ListsPage() {
 
       {setupIncompleteMessage ? <ErrorMessage message={setupIncompleteMessage} /> : null}
 
-      {allLists.length === 0 ? (
+      {!hasHierarchyContent ? (
         <EmptyState
           message={setupIncompleteMessage || (canWrite ? "No lists yet. Create your first list to start organizing work." : "No lists are available yet.")}
           {...(canWrite && !setupIncompleteMessage ? { actionHref: "/lists/create", actionLabel: "New list" } : {})}
         />
       ) : (
         <div className="space-y-6">
-          {SCOPE_ORDER.filter((s) => byScope.has(s)).map((scopeKey) => {
-            const lists = byScope.get(scopeKey) ?? [];
-            return (
-              <div key={scopeKey}>
-                <h2 className="mb-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
-                  {labelForEntryListScope(scopeKey)}
-                </h2>
-                <div className="overflow-hidden rounded-lg border">
-                  <table className="w-full text-sm">
-                    <thead className="bg-zinc-50 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                      <tr>
-                        <th className="px-4 py-2 text-left">Name</th>
-                        <th className="px-4 py-2 text-left">Inbox</th>
-                        <th className="px-4 py-2 text-right">Work Items</th>
-                        {canWrite ? <th className="px-4 py-2 text-right">Actions</th> : null}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y bg-white dark:bg-zinc-900">
-                      {lists.map((list) => (
-                        <tr key={list.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                          <td className="px-4 py-2">
-                            <Link href={`/lists/${list.id}`} className="font-medium underline">
-                              {list.name}
-                            </Link>
-                            {list.isArchived ? (
-                              <span className="ml-2 text-xs text-zinc-400">(archived)</span>
-                            ) : null}
-                          </td>
-                          <td className="px-4 py-2 text-zinc-500">
-                            {list.isInbox ? "✓" : "—"}
-                          </td>
-                          <td className="px-4 py-2 text-right text-zinc-500">
-                            {countMap.get(list.id) ?? 0}
-                          </td>
-                          {canWrite ? (
-                            <td className="px-4 py-2 text-right">
-                              <Link href={`/lists/${list.id}/update`} className="text-xs underline">
-                                Edit
-                              </Link>
-                            </td>
-                          ) : null}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+          <div className="space-y-2">
+            <h2 className="text-base font-semibold">Org</h2>
+            <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">Personal</p>
+            <ListTable
+              lists={hierarchy.personalLists}
+              countMap={countMap}
+              actorPersonId={scope.auth.personId}
+              canManageSharedLists={listVisibility.canManageSharedLists}
+            />
+          </div>
+
+          {hierarchy.adminSharedLists.length > 0 ? (
+            <div className="space-y-2">
+              <h2 className="text-base font-semibold">Admin</h2>
+              <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">Shared</p>
+              <ListTable
+                lists={hierarchy.adminSharedLists}
+                countMap={countMap}
+                actorPersonId={scope.auth.personId}
+                canManageSharedLists={listVisibility.canManageSharedLists}
+              />
+            </div>
+          ) : null}
+
+          {hierarchy.programs.map((program) => (
+            <div key={program.id} className="space-y-4 border-t pt-5">
+              <div className="space-y-2">
+                <h2 className="text-base font-semibold">{program.name}</h2>
+                <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">Program</p>
+                <ListTable
+                  lists={program.lists}
+                  countMap={countMap}
+                  actorPersonId={scope.auth.personId}
+                  canManageSharedLists={listVisibility.canManageSharedLists}
+                />
               </div>
-            );
-          })}
+              {program.teams.map((team) => (
+                <div key={team.id} className="ml-4 space-y-2 border-l pl-4">
+                  <h3 className="text-sm font-semibold">{team.name}</h3>
+                  <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">Team</p>
+                  <ListTable
+                    lists={team.lists}
+                    countMap={countMap}
+                    actorPersonId={scope.auth.personId}
+                    canManageSharedLists={listVisibility.canManageSharedLists}
+                  />
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       )}
     </section>
