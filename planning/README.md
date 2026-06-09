@@ -1,5 +1,10 @@
 # CadreOS Planning Index
 
+> **Current source of truth:** Start with
+> [`docs/current/README.md`](../docs/current/README.md). This index preserves
+> detailed arc and roadmap history; its status summaries may lag current
+> implementation direction.
+
 CadreOS is an **Athlete Program Operating System**.
 
 ## Release 1 Arc Status

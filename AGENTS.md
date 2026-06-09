@@ -10,6 +10,21 @@ J2WFFDev/CadreOS
 Default branch:
 main
 
+## Read Before Changes
+
+Read these documents before planning or implementing changes:
+
+1. `docs/current/README.md`
+2. `docs/current/roadmap.md`
+3. `docs/current/arc-log.md`
+4. `docs/current/open-issues.md`
+5. `docs/product/CURRENT_PRODUCT_DECISIONS.md`
+
+`docs/current/` is the current documentation source of truth unless a newer
+explicit instruction says otherwise. Older files under `planning/`, including
+roadmaps, may be historical and must not override `docs/current/` unless they
+are explicitly updated and identified as current.
+
 ## User Role
 
 The user acts as Systems Engineer / Product Owner / Program Manager.
