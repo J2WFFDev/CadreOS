@@ -13,6 +13,10 @@ test("Journal detail submits reopen through the POST action route", () => {
 
   assert.match(detailPage, /action=\{`\/journals\/\$\{journal\.id\}\/reopen`\} method="post"/);
   assert.match(reopenRoute, /export async function POST\(/);
+  assert.match(reopenRoute, /status: EntryStatus\.OPEN/);
+  assert.match(reopenRoute, /journalStatus: "DRAFT"/);
+  assert.match(reopenRoute, /new URL\(`\/journals\/\$\{entryId\}`/);
+  assert.doesNotMatch(reopenRoute, /new URL\("\/dashboard"/);
 });
 
 test("generic Entry detail links to the Journal view instead of GET-navigating to the POST-only reopen route", () => {
@@ -63,4 +67,12 @@ test("Guardian Summary derives access from relationships instead of requiring a 
   assert.match(guardianSummaryPage, /athleteGuardianRelationship\.findMany/);
   assert.doesNotMatch(guardianSummaryPage, /roleAssignment\.findFirst/);
   assert.doesNotMatch(guardianSummaryPage, /PARENT_GUARDIAN/);
+});
+
+test("Journal route guard permits existing EntryOps roles while navigation remains separate", () => {
+  const accessControl = source("../../lib/auth/access-control.ts");
+  const journalLayout = source("../../app/(dashboard)/journals/layout.tsx");
+
+  assert.match(accessControl, /journal:[\s\S]*?allowedRoles: WORKOPS_ROLES/);
+  assert.match(journalLayout, /requireModuleAccess\("journal"\)/);
 });

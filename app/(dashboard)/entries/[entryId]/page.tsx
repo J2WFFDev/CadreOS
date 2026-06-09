@@ -633,7 +633,7 @@ export default async function EntryDetailPage({
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-4">
           <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-            <h3 className="text-sm font-semibold">Main Item</h3>
+            <h3 className="text-sm font-semibold">Details</h3>
             <p className="mt-2 text-sm whitespace-pre-wrap">{entry.content?.trim() ? entry.content : detailConfig.emptySummary}</p>
             {entry.tags.length > 0 ? (
               <ul className="mt-3 flex flex-wrap gap-2">

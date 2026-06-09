@@ -12,8 +12,6 @@ import {
 } from "@/lib/quick-capture";
 
 type QuickCaptureLauncherProps = {
-  assignees: Array<{ id: string; name: string }>;
-  defaultAssigneePersonId: string | null;
   disabled?: boolean;
 };
 
@@ -24,7 +22,7 @@ const DUE_SHORTCUTS: Array<{ value: QuickCaptureDueShortcut; label: string }> = 
 ];
 
 const PRIORITIES: QuickCapturePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
-export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disabled = false }: QuickCaptureLauncherProps) {
+export function QuickCaptureLauncher({ disabled = false }: QuickCaptureLauncherProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
@@ -91,8 +89,6 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
   }, [isOpen]);
 
   const returnTo = pathname || "/dashboard";
-  const defaultAssignee = defaultAssigneePersonId ?? "";
-
   return (
     <>
       <button
@@ -195,37 +191,21 @@ export function QuickCaptureLauncher({ assignees, defaultAssigneePersonId, disab
                 </div>
               ) : null}
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <label htmlFor="assigneePersonId" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                    Assign
-                  </label>
-                  <select id="assigneePersonId" name="assigneePersonId" defaultValue={defaultAssignee} className="w-full rounded-md border px-3 py-2 text-sm">
-                    <option value="">Unassigned</option>
-                    {assignees.map((assignee) => (
-                      <option key={assignee.id} value={assignee.id}>
-                        {assignee.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">Due shortcut</span>
-                  <div className="flex flex-wrap gap-2">
-                    {DUE_SHORTCUTS.map((shortcut) => (
-                      <button
-                        key={shortcut.value}
-                        type="button"
-                        onClick={() => setDueShortcut((value) => (value === shortcut.value ? "" : shortcut.value))}
-                        className={`rounded-md border px-2 py-1 text-xs ${
-                          dueShortcut === shortcut.value ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                        }`}
-                      >
-                        {shortcut.label}
-                      </button>
-                    ))}
-                  </div>
+              <div className="space-y-1">
+                <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">Due shortcut</span>
+                <div className="flex flex-wrap gap-2">
+                  {DUE_SHORTCUTS.map((shortcut) => (
+                    <button
+                      key={shortcut.value}
+                      type="button"
+                      onClick={() => setDueShortcut((value) => (value === shortcut.value ? "" : shortcut.value))}
+                      className={`rounded-md border px-2 py-1 text-xs ${
+                        dueShortcut === shortcut.value ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                      }`}
+                    >
+                      {shortcut.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 

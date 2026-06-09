@@ -197,6 +197,25 @@ test("reopen is limited to the final journal author or org admin", () => {
   assert.equal(canReopenJournal(buildContext(), buildEntry({ status: EntryStatus.OPEN })), false);
 });
 
+test("reopened Guardian-visible journal becomes hidden from its linked guardian", () => {
+  const guardianContext = buildContext({
+    actorPersonId: "guardian-1",
+    linkedGuardianAthleteIds: new Set(["athlete-1"]),
+  });
+
+  assert.equal(
+    canReadJournalEntry(
+      guardianContext,
+      buildEntry({
+        createdByPersonId: "athlete-1",
+        status: EntryStatus.OPEN,
+        visibility: EntryVisibility.ORGANIZATION_SCOPED,
+      }),
+    ),
+    false,
+  );
+});
+
 test("journal creation requires athlete or admin context", () => {
   const athleteContext = buildContext({
     assignments: [{ roleType: RoleType.ATHLETE, scopeType: ScopeType.TEAM, teamId: "team-1", programId: null }],

@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 import test from "node:test";
 
 import type { AppRole, CurrentUser } from "../../lib/auth/current-user-types";
-import { MODULE_ACCESS_MAP } from "../../lib/auth/access-control";
+import { canAccessModule, MODULE_ACCESS_MAP } from "../../lib/auth/access-control";
 import { CADREOS_NAV_GROUPS } from "../../lib/navigation/cadreos-nav";
 import {
   APPROVED_CADREOS_GROUP_ITEMS,
@@ -192,5 +192,6 @@ test("guardian and athlete see EntryOps UX links while filtering stays server-si
     assert.equal(hrefs.includes("/feed"), false);
     assert.equal(hrefs.includes("/journals"), false);
     assert.equal(hrefs.includes("/prompt-assignments"), false);
+    assert.equal(canAccessModule(buildUser(role), "journal"), true);
   }
 });
