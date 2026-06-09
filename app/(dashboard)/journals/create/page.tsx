@@ -182,7 +182,7 @@ export default async function CreateJournalPage({ searchParams }: { searchParams
           <label htmlFor="content" className="text-sm font-medium">
             Journal body
           </label>
-          <textarea id="content" name="content" required rows={12} className="w-full rounded-md border px-3 py-2 text-sm" />
+          <textarea id="content" name="content" rows={12} className="w-full rounded-md border px-3 py-2 text-sm" />
           <p className="text-xs text-zinc-500 dark:text-zinc-400">Sensitive content is never shown in broad feed/activity surfaces.</p>
         </div>
 

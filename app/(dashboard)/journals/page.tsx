@@ -164,7 +164,7 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
             </Link>
             {canCreate ? (
               <Link href="/journals/create" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-                Create journal
+                New Journal Entry
               </Link>
             ) : null}
           </div>
@@ -175,7 +175,7 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
         <EmptyState
           message="No journals are visible for the selected filter and role scope."
           actionHref={canCreate ? "/journals/create" : "/dashboard"}
-          actionLabel={canCreate ? "Create first journal" : "Back to dashboard"}
+          actionLabel={canCreate ? "Create Journal Entry" : "Back to dashboard"}
         />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">

@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     return NextResponse.redirect(new URL("/journals", request.url), 303);
   }
 
-  if (!title || !content) {
+  if (!title) {
     return NextResponse.redirect(new URL("/journals/create", request.url), 303);
   }
 

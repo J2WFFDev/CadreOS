@@ -43,7 +43,6 @@ function buildQuickCaptureRedirectUrl(input: {
     details: string;
     priority: string;
     dueShortcut: string;
-    assigneePersonId: string;
     contextTargetType: string;
     contextTargetId: string;
   };
@@ -59,7 +58,6 @@ function buildQuickCaptureRedirectUrl(input: {
   url.searchParams.set("details", input.values.details);
   url.searchParams.set("priority", input.values.priority);
   url.searchParams.set("dueShortcut", input.values.dueShortcut);
-  url.searchParams.set("assigneePersonId", input.values.assigneePersonId);
   url.searchParams.set("contextTargetType", input.values.contextTargetType);
   url.searchParams.set("contextTargetId", input.values.contextTargetId);
 
@@ -125,7 +123,6 @@ export async function POST(request: Request) {
   const effectiveInput = rawInput || combinedInput;
   const rawPriority = String(formData.get("priority") ?? "").trim().toUpperCase();
   const rawDueShortcut = String(formData.get("dueShortcut") ?? "").trim().toUpperCase();
-  const rawAssigneePersonId = String(formData.get("assigneePersonId") ?? "").trim();
   const rawContextTargetType = String(formData.get("contextTargetType") ?? "").trim().toUpperCase();
   const rawContextTargetId = String(formData.get("contextTargetId") ?? "").trim();
   const returnTo = resolveSafeReturnPath(String(formData.get("returnTo") ?? ""), "/dashboard");
@@ -134,7 +131,6 @@ export async function POST(request: Request) {
     details: rawDetails,
     priority: rawPriority,
     dueShortcut: rawDueShortcut,
-    assigneePersonId: rawAssigneePersonId,
     contextTargetType: rawContextTargetType,
     contextTargetId: rawContextTargetId,
   };
@@ -191,7 +187,7 @@ export async function POST(request: Request) {
   const dueDate = dueDateFromShortcut ?? parsed.dueDate;
   const dueTime = dueDateFromShortcut ? null : parsed.dueTime;
   const priority = normalizeQuickCapturePriority(rawPriority, parsed.priority);
-  const content = rawDetails || parsed.content;
+  const content = rawDetails;
   const title = rawTitle || parsed.title;
   const tags = Array.from(new Set(parsed.tags));
   const dueAt = mergeDueAt(dueDate, dueTime);
@@ -205,29 +201,7 @@ export async function POST(request: Request) {
   const scopedTeamId = contextTarget?.targetType === EntryObjectLinkTargetType.TEAM ? contextTarget.targetId : null;
   const scopedEventId = contextTarget?.targetType === EntryObjectLinkTargetType.EVENT ? contextTarget.targetId : null;
 
-  const resolvedAssigneePersonId = rawAssigneePersonId
-    ? (
-        await db.person.findFirst({
-          where: { id: rawAssigneePersonId, organizationId: organizationId },
-          select: { id: true },
-        })
-      )?.id ?? null
-    : null;
-
-  if (rawAssigneePersonId && !resolvedAssigneePersonId) {
-    return NextResponse.redirect(
-      buildQuickCaptureRedirectUrl({
-        requestUrl: request.url,
-        returnTo,
-        values: redirectValues,
-        error: "Select a valid assignee for this work item.",
-        openQuickCapture: true,
-      }),
-      303,
-    );
-  }
-
-  const assignedToPersonId = resolvedAssigneePersonId ?? actorPersonId;
+  const assignedToPersonId = actorPersonId;
 
   let hasTaskCreatePermission = false;
   try {

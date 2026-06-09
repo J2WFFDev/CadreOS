@@ -50,7 +50,7 @@ export const MODULE_ACCESS_MAP: Record<ModuleKey, ModuleAccessDefinition> = {
     key: "journal",
     label: "Journal",
     path: "/journals",
-    allowedRoles: STAFF_ROLES,
+    allowedRoles: WORKOPS_ROLES,
   },
   gearOps: {
     key: "gearOps",

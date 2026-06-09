@@ -8,7 +8,6 @@ import { GearOfflineProvider } from "@/components/gear-ops/offline-provider";
 import { NavSidebar } from "@/components/nav-sidebar";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getDevPersonaById, getDevPersonaFeatureStatus } from "@/lib/auth/devPersonas";
-import { db } from "@/lib/db";
 import { countUnreadNotificationsForPerson } from "@/lib/notifications";
 import { getOrganizationScope } from "@/lib/organization-context";
 
@@ -21,15 +20,6 @@ export default async function DashboardLayout({
   const currentUser = await getCurrentUser();
   const devFeatureStatus = getDevPersonaFeatureStatus();
   const shouldShowLinkingBanner = scope.auth.unresolvedPersonLink;
-  const assignees =
-    scope.databaseReady && scope.organizationId
-      ? await db.person.findMany({
-          where: { organizationId: scope.organizationId, lifecycleStatus: { not: "ARCHIVED" } },
-          orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
-          select: { id: true, firstName: true, lastName: true },
-          take: 200,
-        })
-      : [];
   const unreadNotificationCount =
     scope.databaseReady && scope.organizationId && scope.auth.personId
       ? await countUnreadNotificationsForPerson(scope.organizationId, scope.auth.personId)
@@ -52,11 +42,7 @@ export default async function DashboardLayout({
         <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
           CadreOS
         </Link>
-        <QuickCaptureLauncher
-          assignees={assignees.map((person) => ({ id: person.id, name: `${person.firstName} ${person.lastName}`.trim() }))}
-          defaultAssigneePersonId={scope.auth.personId}
-          disabled={!scope.databaseReady || !scope.organizationId}
-        />
+        <QuickCaptureLauncher disabled={!scope.databaseReady || !scope.organizationId} />
         <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
           {devFeatureStatus.enabled ? (
             <DevPersonaSwitcher currentPersonaId={currentUser?.isDevPersona ? currentUser.id : null} />

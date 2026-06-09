@@ -188,7 +188,7 @@ export default async function JournalDetailPage({
       </div>
 
       <section className="space-y-4">
-        <h3 className="text-sm font-semibold">Main Item</h3>
+        <h3 className="text-sm font-semibold">Journal content</h3>
         {journal.journalPrompt ? (
           <article className="rounded-lg border bg-zinc-50 p-4 dark:bg-zinc-800">
             <div className="flex items-center justify-between gap-2">

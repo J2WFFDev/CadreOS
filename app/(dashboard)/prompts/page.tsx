@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
-import { resolveJournalAccessContext } from "@/lib/journals/access";
+import { canCreateJournal, resolveJournalAccessContext } from "@/lib/journals/access";
 import { canManagePromptLibrary, canReadPromptLibrary } from "@/lib/journals/prompt-access";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { describeSchemaUnavailableError, isSchemaUnavailableError } from "@/lib/workflows";
@@ -61,6 +61,7 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
   }
 
   const canManage = canManagePromptLibrary(accessContext);
+  const canCreate = canCreateJournal(accessContext);
   const activeFilter = normalizeActiveFilter(params.active);
   let loadErrorMessage: string | null = null;
   let prompts: PromptListRow[] | null = null;
@@ -142,6 +143,14 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
                 className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black"
               >
                 Create prompt
+              </Link>
+            ) : null}
+            {canCreate ? (
+              <Link
+                href="/journals/create"
+                className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black"
+              >
+                New Journal Entry
               </Link>
             ) : null}
           </div>
