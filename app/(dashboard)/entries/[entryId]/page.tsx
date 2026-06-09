@@ -4,6 +4,7 @@ import {
   Prisma,
   EntryStatus,
   EntryType,
+  EntryVisibility,
   OperationalGraphNodeType,
 } from "@prisma/client";
 
@@ -511,7 +512,7 @@ export default async function EntryDetailPage({
   const relatedOperationalItems = relatedItems.filter(
     (item) => item.node.nodeType !== "ENTRY" && item.node.nodeType !== "HABIT",
   );
-  const [programs, teams] = await Promise.all([
+  const [programs, teams, people] = await Promise.all([
     canEditEntryAdministrativeFields
       ? db.program.findMany({
           where: { organizationId },
@@ -524,6 +525,13 @@ export default async function EntryDetailPage({
           where: { organizationId },
           select: { id: true, name: true, programId: true },
           orderBy: [{ name: "asc" }],
+        })
+      : Promise.resolve([]),
+    canEditEntryAdministrativeFields
+      ? db.person.findMany({
+          where: { organizationId, lifecycleStatus: { not: "ARCHIVED" } },
+          select: { id: true, firstName: true, lastName: true },
+          orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
         })
       : Promise.resolve([]),
   ]);
@@ -632,20 +640,6 @@ export default async function EntryDetailPage({
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-4">
-          <section className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-            <h3 className="text-sm font-semibold">Details</h3>
-            <p className="mt-2 text-sm whitespace-pre-wrap">{entry.content?.trim() ? entry.content : detailConfig.emptySummary}</p>
-            {entry.tags.length > 0 ? (
-              <ul className="mt-3 flex flex-wrap gap-2">
-                {entry.tags.map((tag) => (
-                  <li key={tag} className="rounded-full border px-2 py-0.5 text-xs">
-                    {tag}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </section>
-
           {canEditEntry ? (
             <section className="space-y-3 rounded-lg border bg-white p-4 dark:bg-zinc-900">
               <form action={`/entries/${entry.id}/update`} method="post" className="space-y-3">
@@ -741,6 +735,47 @@ export default async function EntryDetailPage({
                         </option>
                       ))}
                     </select>
+                  </div>
+                ) : null}
+                {canEditEntryAdministrativeFields ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label htmlFor="assignedToPersonId" className="text-sm font-medium">
+                        Assignee
+                      </label>
+                      <select
+                        id="assignedToPersonId"
+                        name="assignedToPersonId"
+                        defaultValue={entry.assignedToPersonId ?? ""}
+                        className="w-full rounded-md border px-3 py-2 text-sm"
+                      >
+                        <option value="">Unassigned</option>
+                        {people.map((person) => (
+                          <option key={person.id} value={person.id}>
+                            {formatPersonName(person)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {entry.type !== EntryType.JOURNAL ? (
+                      <div className="space-y-1">
+                        <label htmlFor="visibility" className="text-sm font-medium">
+                          Visibility
+                        </label>
+                        <select
+                          id="visibility"
+                          name="visibility"
+                          defaultValue={entry.visibility}
+                          className="w-full rounded-md border px-3 py-2 text-sm"
+                        >
+                          {Object.values(EntryVisibility).map((value) => (
+                            <option key={value} value={value}>
+                              {formatEnumLabel(value)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
                 {entry.type === EntryType.EVENT && canEditEntryAdministrativeFields ? (
@@ -1017,7 +1052,7 @@ export default async function EntryDetailPage({
 
         <aside className="space-y-4">
           <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-            <h3 className="font-semibold">Details</h3>
+            <h3 className="font-semibold">Entry Metadata</h3>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
               <div>
                   <dt className="text-xs text-zinc-500 dark:text-zinc-400">List</dt>
@@ -1056,7 +1091,7 @@ export default async function EntryDetailPage({
             </dl>
           </div>
           <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-            <h3 className="font-semibold">Metadata</h3>
+            <h3 className="font-semibold">Record History</h3>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
                 <div>
                   <dt className="text-xs text-zinc-500 dark:text-zinc-400">Created by</dt>

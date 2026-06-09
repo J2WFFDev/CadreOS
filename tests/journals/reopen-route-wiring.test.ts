@@ -76,3 +76,13 @@ test("Journal route guard permits existing EntryOps roles while navigation remai
   assert.match(accessControl, /journal:[\s\S]*?allowedRoles: WORKOPS_ROLES/);
   assert.match(journalLayout, /requireModuleAccess\("journal"\)/);
 });
+
+test("generic EntryOps visibility derives Guardian scope from relationships without fake roles", () => {
+  const visibilitySource = source("../../lib/entryops/visibility.ts");
+
+  assert.match(visibilitySource, /athleteGuardianRelationship\.findMany/);
+  assert.doesNotMatch(
+    visibilitySource,
+    /const isGuardian = assignments\.some[\s\S]*?\? await db\.athleteGuardianRelationship\.findMany/,
+  );
+});

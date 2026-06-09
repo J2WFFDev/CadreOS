@@ -6,7 +6,7 @@ import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
 import {
-  buildEntryOpsAllWorkDefaultWhere,
+  buildEntryOpsTypeAwareVisibilityWhere,
   resolveEntryOpsAllWorkDefaultVisibility,
   resolveEntryOpsVisibilityContext,
 } from "@/lib/entryops/visibility";
@@ -17,7 +17,7 @@ import { getOrganizationScope } from "@/lib/organization-context";
 export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
-const NON_JOURNAL_ENTRY_TYPES = Object.values(EntryType).filter((entryType) => entryType !== EntryType.JOURNAL);
+const ALL_ENTRY_TYPES = Object.values(EntryType);
 
 function readParam(searchParams: SearchParams, key: string) {
   const value = searchParams[key];
@@ -83,7 +83,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
 
   const filter = parseEntryListFilter(
     rawParams,
-    NON_JOURNAL_ENTRY_TYPES,
+    ALL_ENTRY_TYPES,
     Object.values(EntryStatus),
     Object.values(EntryPriority),
   );
@@ -91,14 +91,13 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   const now = new Date();
   const dueWhere = buildDueWindowWhere(filter.dueWindow, now);
   const orderBy = buildEntryOrderBy(filter.sort);
-  const defaultVisibilityWhere = buildEntryOpsAllWorkDefaultWhere(allWorkDefaultVisibility);
+  const defaultVisibilityWhere = buildEntryOpsTypeAwareVisibilityWhere(visibilityContext, allWorkDefaultVisibility);
 
   const entries = await db.entry.findMany({
     where: {
       organizationId: scope.organizationId,
       deletedAt: null,
-      type: { in: NON_JOURNAL_ENTRY_TYPES },
-      ...defaultVisibilityWhere,
+      AND: [defaultVisibilityWhere],
       ...(filter.type ? { type: filter.type } : {}),
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.priority ? { priority: filter.priority } : {}),
@@ -174,7 +173,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
             </label>
             <select id="type" name="type" defaultValue={filter.type ?? ""} className="w-full rounded-md border px-2 py-1.5 text-sm">
               <option value="">All types</option>
-              {NON_JOURNAL_ENTRY_TYPES.map((v) => (
+              {ALL_ENTRY_TYPES.map((v) => (
                 <option key={v} value={v}>{labelForEntryType(v)}</option>
               ))}
             </select>

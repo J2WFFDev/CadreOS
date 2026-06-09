@@ -40,7 +40,7 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
   if (!scope.databaseReady || !scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Prompt Library" description="Manage reusable journal prompts." />
+        <PageHeader title="Journal Library" description="Manage reusable journal prompts and create Journal entries." />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load prompts right now."} />
       </section>
     );
@@ -54,7 +54,7 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
   if (!canReadPromptLibrary(accessContext)) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Prompt Library" description="Manage reusable journal prompts." />
+        <PageHeader title="Journal Library" description="Manage reusable journal prompts and create Journal entries." />
         <ErrorMessage message="You do not have permission to view the prompt library." />
       </section>
     );
@@ -93,7 +93,7 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
   if (!prompts) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Prompt Library" description="Manage reusable journal prompts." />
+        <PageHeader title="Journal Library" description="Manage reusable journal prompts and create Journal entries." />
         <EmptyState
           message={loadErrorMessage ?? "Journal prompts are planned for a future EntryOps workflow."}
           actionHref="/entries"
@@ -106,7 +106,7 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
   return (
     <section className="space-y-4">
       <PageHeader
-        title="Prompt Library"
+        title="Journal Library"
         description="Reusable journal prompts staff and coaches can assign to athletes."
         actions={
           <div className="flex items-center gap-2">

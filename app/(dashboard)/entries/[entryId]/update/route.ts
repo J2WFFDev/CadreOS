@@ -1,4 +1,4 @@
-import { EntryPriority, EntryStatus, EntryType } from "@prisma/client";
+import { EntryPriority, EntryStatus, EntryType, EntryVisibility } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
@@ -176,6 +176,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   const hasDueAtField = formData.has("dueAt");
   // Arc 24D.8X-C: list assignment — empty string means "assign default Inbox", absent means "no change"
   const rawListId = formData.has("listId") ? String(formData.get("listId") ?? "").trim() : undefined;
+  const rawAssignedToPersonId = formData.has("assignedToPersonId")
+    ? String(formData.get("assignedToPersonId") ?? "").trim()
+    : undefined;
+  const rawVisibility = formData.has("visibility") ? String(formData.get("visibility") ?? "").trim() : undefined;
 
   const requestedType = Object.values(EntryType).includes(typeValue as EntryType) ? (typeValue as EntryType) : undefined;
   const status = Object.values(EntryStatus).includes(statusValue as EntryStatus) ? (statusValue as EntryStatus) : undefined;
@@ -331,6 +335,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       type = requestedType;
     }
     const nextEntryType = type ?? entry.type;
+    if (!canEditByRole && (rawAssignedToPersonId !== undefined || rawVisibility !== undefined)) {
+      const url = new URL(returnTo, request.url);
+      url.searchParams.set("error", entryActionDeniedMessage("change assignment or visibility"));
+      return NextResponse.redirect(url, 303);
+    }
     if (
       nextEntryType === EntryType.JOURNAL &&
       entry.type !== EntryType.JOURNAL &&
@@ -417,6 +426,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         resolvedListId = listRecord.id;
       }
     }
+
+    let resolvedAssignedToPersonId: string | null | undefined;
+    if (rawAssignedToPersonId !== undefined) {
+      if (rawAssignedToPersonId === "") {
+        resolvedAssignedToPersonId = null;
+      } else {
+        const person = await db.person.findFirst({
+          where: { id: rawAssignedToPersonId, organizationId, lifecycleStatus: { not: "ARCHIVED" } },
+          select: { id: true },
+        });
+        if (!person) {
+          const url = new URL(returnTo, request.url);
+          url.searchParams.set("error", "The selected assignee is not available.");
+          return NextResponse.redirect(url, 303);
+        }
+        resolvedAssignedToPersonId = person.id;
+      }
+    }
+
+    const resolvedVisibility =
+      rawVisibility !== undefined && Object.values(EntryVisibility).includes(rawVisibility as EntryVisibility)
+        ? (rawVisibility as EntryVisibility)
+        : undefined;
 
     const requestedCalendarScope = normalizeEventCalendarScope(rawEventCalendarScope) ?? existingEventPayload.calendarScope;
     const requestedProgramId = normalizeOptionalId(rawEventProgramId);
@@ -516,6 +548,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       ...(dueDateUpdate !== undefined ? dueDateUpdate : {}),
       ...(eventDateUpdate !== undefined ? eventDateUpdate : {}),
       ...(resolvedListId !== undefined ? { listId: resolvedListId } : {}),
+      ...(resolvedAssignedToPersonId !== undefined ? { assignedToPersonId: resolvedAssignedToPersonId } : {}),
+      ...(resolvedVisibility !== undefined && nextEntryType !== EntryType.JOURNAL
+        ? { visibility: resolvedVisibility }
+        : {}),
       ...(scope.auth.personId ? { updatedByPersonId: scope.auth.personId } : {}),
       version: { increment: 1 },
     };

@@ -20,7 +20,7 @@ test("task detail config preserves due-date editing", () => {
   const config = getEntryDetailConfig(EntryType.TASK);
 
   assert.equal(config.titleLabel, "Title");
-  assert.equal(config.contentLabel, "Content");
+  assert.equal(config.contentLabel, "Details");
   assert.equal(config.statusLabel, "Status");
   assert.equal(config.metadataDateLabel, "Due");
   assert.equal(config.dateFieldLabel, "Due date");
