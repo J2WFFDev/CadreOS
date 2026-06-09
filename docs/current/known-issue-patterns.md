@@ -1,0 +1,74 @@
+# Known Issue Patterns
+
+These recurring patterns are supported by repository documentation and should
+be checked during planning, implementation, and validation.
+
+## Schema Detection And Query Complexity
+
+- Old and new relationship representations can overlap, duplicate display, or
+  drift when mirrored writes partially fail.
+- Query helpers must apply actor, organization, program/team, ownership,
+  assignment, and guardian-derived scope consistently.
+- Historical planning can describe models or capabilities that later arcs
+  changed; verify current schema/code before relying on an older audit.
+
+Sources: [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.md)
+and [`Arc 24D.8X-F`](../planning/arc-24d-8x-f-entryops-role-visibility-design.md).
+
+## Database Setup Confusion
+
+- Existing databases may need baseline/inventory workflows, while routine
+  future changes use committed Prisma migrations.
+- Pooled versus direct database URLs and incomplete migration history can
+  create misleading setup failures.
+
+Source: [`README.md`](../../README.md).
+
+## Deployment And Build Confusion
+
+- `main` and non-`main` branches have different Vercel deployment behavior.
+- Local validation has known warnings that should not be mistaken for new
+  failures.
+- Build/release identity should remain visible in screenshots.
+
+Sources: [`README.md`](../../README.md),
+[`Local Agent Validation Baseline`](../dev/local-agent-validation-baseline.md),
+and [`Current Product Decisions`](../product/CURRENT_PRODUCT_DECISIONS.md).
+
+## Role, Permission, And Visibility Validation
+
+- Navigation visibility is not action permission.
+- Broad module access must not replace per-record visibility and scoped
+  mutation checks.
+- Guardian-derived access, self-service owner flows, and staff/admin scope
+  frequently require separate policies and tests.
+
+Sources: [`Sidebar Taxonomy`](../navigation/sidebar-taxonomy.md) and
+[`Arc 24D.8X-F`](../planning/arc-24d-8x-f-entryops-role-visibility-design.md).
+
+## GearOps Readiness And Operational Truth
+
+- Custody, maintenance, readiness, pending actions, and event requirements can
+  make an item appear unavailable or make dashboard counts look unexpected.
+- Server-confirmed activity remains authoritative; pending/offline actions can
+  explain temporary discrepancies.
+
+Sources: [`GearOps Troubleshooting`](../product/gear-ops/troubleshooting.md) and
+[`GearOps Known Limitations`](../product/gear-ops/known-limitations-and-deferred-scope.md).
+
+## Mobile And Offline Limitations
+
+- Mobile web readiness is current direction; full native/offline capability is
+  deferred.
+- Offline-safe field capture must remain separate from high-conflict admin,
+  security, and custody-sensitive actions.
+
+Sources: [`Mobile App Roadmap`](../future/mobile-app-roadmap.md),
+[`Offline Sync Roadmap`](../future/offline-sync-roadmap.md), and
+[`UI/UX Decision Log`](../product/design-system/ui-ux-decision-log.md).
+
+## Needs Confirmation
+
+- Whether the current MemberOps runtime fully resolves all Arc 24C/26A gaps.
+- Whether Arc 24D.9B relationship normalization or a 24D.8 List/Journal slice
+  is the next active implementation priority.

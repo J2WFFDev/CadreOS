@@ -1,5 +1,9 @@
 # CadreOS MVP Roadmap (Phase 7A Recenter)
 
+> **Historical roadmap.** Superseded by
+> [`docs/current/roadmap.md`](../docs/current/roadmap.md) for current
+> implementation direction. Retained for planning history.
+
 ## Purpose
 
 This roadmap re-centers CadreOS after FieldOps MVP completion and identifies the next highest-value MVP slice.
