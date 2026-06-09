@@ -28,7 +28,9 @@ test("Quick Capture does not expose or accept person assignment", () => {
 
 test("Quick Capture detail view uses Details instead of duplicate Main Item wording", () => {
   const detailPage = source("../../app/(dashboard)/entries/[entryId]/page.tsx");
+  const detailConfig = source("../../lib/entries/detail-config.ts");
 
   assert.doesNotMatch(detailPage, />Main Item</);
-  assert.match(detailPage, />Details</);
+  assert.match(detailPage, /\{detailConfig\.contentLabel\}/);
+  assert.match(detailConfig, /contentLabel: "Details"/);
 });

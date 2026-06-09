@@ -69,6 +69,18 @@ test("guardian All Work Items default includes own and dependent athletes", () =
   });
 });
 
+test("relationship-derived guardian All Work Items does not require a Guardian RoleAssignment", () => {
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility({
+    actorPersonId: "guardian-1",
+    assignments: [],
+    linkedGuardianAthleteIds: new Set(["athlete-1"]),
+  });
+
+  assert.equal(visibility.canRead, true);
+  assert.deepEqual(visibility.visiblePersonIds, ["guardian-1", "athlete-1"]);
+  assert.match(visibility.reason, /Guardian default/);
+});
+
 test("athlete All Work Items default is own items only", () => {
   const visibility = resolveEntryOpsAllWorkDefaultVisibility({
     actorPersonId: "athlete-1",

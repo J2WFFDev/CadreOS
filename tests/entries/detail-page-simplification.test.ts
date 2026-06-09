@@ -26,13 +26,19 @@ test("entry detail page removes duplicate and legacy linking sections", () => {
   assert.equal(source.includes("Related operational items"), false);
 });
 
-test("entry detail page keeps details, main form actions, metadata, relationships, and activity sections", () => {
+test("entry detail page keeps one editable details field, clear metadata, relationships, and activity sections", () => {
   const detailSource = read(detailPagePath);
   const relationshipSource = read(relationshipPanelPath);
 
   assert.equal(detailSource.includes("Main Item"), false);
-  assert.equal(detailSource.includes(">Details</h3>"), true);
-  assert.equal(detailSource.includes("Metadata"), true);
+  assert.equal(detailSource.includes(">Details</h3>"), false);
+  assert.equal(detailSource.includes("{detailConfig.contentLabel}"), true);
+  assert.equal(detailSource.includes("Entry Metadata"), true);
+  assert.equal(detailSource.includes("Record History"), true);
+  assert.equal(detailSource.includes('name="assignedToPersonId"'), true);
+  assert.equal(detailSource.includes('name="status"'), true);
+  assert.equal(detailSource.includes('name="listId"'), true);
+  assert.equal(detailSource.includes('name="visibility"'), true);
   assert.equal(detailSource.includes("Complete task"), true);
   assert.equal(detailSource.includes("Soft delete"), true);
   assert.equal(detailSource.includes("Activity / history"), true);

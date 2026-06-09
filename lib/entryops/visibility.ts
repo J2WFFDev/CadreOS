@@ -200,7 +200,9 @@ export function resolveEntryOpsAllWorkDefaultVisibility(
     };
   }
 
-  const isGuardian = context.assignments.some((assignment) => assignment.roleType === RoleType.PARENT_GUARDIAN);
+  const isGuardian =
+    context.linkedGuardianAthleteIds.size > 0 ||
+    context.assignments.some((assignment) => assignment.roleType === RoleType.PARENT_GUARDIAN);
   if (isGuardian) {
     return {
       canRead: true,
@@ -459,16 +461,13 @@ export async function resolveEntryOpsVisibilityContext(input: {
     },
   });
 
-  const isGuardian = assignments.some((assignment) => assignment.roleType === RoleType.PARENT_GUARDIAN);
-  const guardianRelationships = isGuardian
-    ? await db.athleteGuardianRelationship.findMany({
-        where: {
-          organizationId: input.organizationId,
-          guardianPersonId: input.actorPersonId,
-        },
-        select: { athletePersonId: true },
-      })
-    : [];
+  const guardianRelationships = await db.athleteGuardianRelationship.findMany({
+    where: {
+      organizationId: input.organizationId,
+      guardianPersonId: input.actorPersonId,
+    },
+    select: { athletePersonId: true },
+  });
 
   return {
     actorPersonId: input.actorPersonId,
