@@ -95,3 +95,48 @@ docs/milestones/
 
 - PR #330: Arc DevOps.2 - local validation baseline documentation
 - PR #331: Arc DevOps.3 - small app-code change trial
+
+- ## Documentation Maintenance Rule
+
+For every implementation task, evaluate whether the change affects current documentation.
+
+Update the relevant docs when the task changes:
+
+* current roadmap or next arc: `docs/current/roadmap.md`
+* completed work or arc status: `docs/current/arc-log.md`
+* active bugs or test findings: `docs/current/open-issues.md`
+* recurring failure patterns: `docs/current/known-issue-patterns.md`
+* product, architecture, naming, visibility, or workflow decisions: `docs/current/decisions.md`
+* agent/operator guidance: `AGENTS.md`
+
+If no documentation update is needed, state that explicitly in the final response.
+
+## Codex Efficiency Rule
+
+Use the smallest safe scope for each task.
+
+Prefer:
+
+* targeted file/directory inspection,
+* narrow implementation changes,
+* documentation-only validation for documentation-only PRs,
+* focused tests for affected modules,
+* full build/typecheck only when the change could affect app behavior or integration.
+
+Avoid:
+
+* broad rewrites,
+* unrelated cleanup,
+* full-repo searches unless necessary,
+* full test/build runs for markdown-only changes,
+* changing dependencies, schema, auth, permissions, routes, or deployment config unless the task explicitly requires it.
+
+Final response must include:
+
+1. Summary
+2. Files changed
+3. Docs updated, or why not
+4. Checks run
+5. Risks / unknowns
+6. Recommended next step
+
