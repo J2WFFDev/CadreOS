@@ -44,6 +44,7 @@ import {
   fetchListsForActor,
   labelForEntryListContext,
 } from "@/lib/entries/lists";
+import { resolveEntryLifecycleAction } from "@/lib/entries/lifecycle";
 import {
   ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE,
   ENTRY_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE,
@@ -75,6 +76,7 @@ import {
 } from "@/lib/operational-graph";
 import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
+import { canPerformAction } from "@/lib/permissions";
 
 const EVENT_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE =
   "Event metadata is temporarily unavailable until setup is complete.";
@@ -409,7 +411,11 @@ export default async function EntryDetailPage({
   });
   const canReadEntry = entryDetailVisibility.canRead;
   const canEditEntryByRole = entryAccess.level === "WRITE" || entryAccess.level === "MANAGE";
-  const canManageEntryLifecycle = entryAccess.level === "MANAGE";
+  const canManageEntryLifecycle = await canPerformAction({
+    actorUserId: scope.auth.clerkUserId,
+    organizationId,
+    action: "entry.delete",
+  });
 
   if (!canReadEntry) {
     logEntryOpsAccessDecision({
@@ -483,6 +489,11 @@ export default async function EntryDetailPage({
     decision: resolveEntryOpsDetailAccessDecision(visibilityContext, entryDetailVisibility, entry),
   });
   const canEditEntryAdministrativeFields = canEditEntryByRole;
+  const lifecycleAction = resolveEntryLifecycleAction({
+    canManageLifecycle: canManageEntryLifecycle,
+    status: entry.status,
+    type: entry.type,
+  });
 
   const relatedItems = await listRelatedOperationalRecords({
     organizationId,
@@ -647,22 +658,27 @@ export default async function EntryDetailPage({
           This Entry is archived. Archive removes it from default working views but does not delete it or change its metadata.
         </div>
       ) : null}
-      {canManageEntryLifecycle && entry.type !== EntryType.JOURNAL ? (
-        <div className="flex flex-wrap gap-2">
-          {entry.status === EntryStatus.ARCHIVED ? (
-            <form action={`/entries/${entry.id}/restore`} method="post">
-              <button type="submit" className="rounded-md border border-emerald-300 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300">
-                Restore Entry
-              </button>
-            </form>
-          ) : (
-            <form action={`/entries/${entry.id}/delete`} method="post">
-              <input type="hidden" name="returnTo" value="/entries?status=ARCHIVED" />
-              <button type="submit" className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300">
-                Archive Entry
-              </button>
-            </form>
-          )}
+      {lifecycleAction ? (
+        <div className="space-y-1">
+          <div className="flex flex-wrap gap-2">
+            {lifecycleAction === "RESTORE" ? (
+              <form action={`/entries/${entry.id}/restore`} method="post">
+                <button type="submit" className="rounded-md border border-emerald-300 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300">
+                  Restore entry
+                </button>
+              </form>
+            ) : (
+              <form action={`/entries/${entry.id}/delete`} method="post">
+                <input type="hidden" name="returnTo" value="/entries?status=ARCHIVED" />
+                <button type="submit" className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300">
+                  Archive entry
+                </button>
+              </form>
+            )}
+          </div>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Done means completed. Archive removes this Entry from normal working views without deleting it.
+          </p>
         </div>
       ) : null}
       {detailConfig.guidance ? (
