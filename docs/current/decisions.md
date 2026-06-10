@@ -28,6 +28,12 @@ Source: [`CURRENT_PRODUCT_DECISIONS.md`](../product/CURRENT_PRODUCT_DECISIONS.md
   experiences are additive.
 - Product experience should be Today-first and role-filtered while remaining
   module-backed.
+- All Work Items is named **All Entries**. All Entries is the authorized
+  oversight/browse surface and displays each Entry's list/context placement.
+- Inbox is always actor-scoped, including for organization admins.
+- Quick Capture is actor-scoped and does not provide dependent-Athlete
+  assignment. Low-context captures route to the actor's Inbox under current
+  routing policy.
 
 Sources: [`Sidebar Taxonomy`](../navigation/sidebar-taxonomy.md),
 [`CURRENT_PRODUCT_DECISIONS.md`](../product/CURRENT_PRODUCT_DECISIONS.md), and
@@ -35,8 +41,13 @@ Sources: [`Sidebar Taxonomy`](../navigation/sidebar-taxonomy.md),
 
 ## Roles, Visibility, And Archive Behavior
 
-- Guardian access is relationship-scoped; unrelated athlete/member data must
-  remain denied.
+- Guardian app visibility is derived from active Guardian relationships;
+  unrelated athlete/member data must remain denied.
+- Guardians may see linked Athlete personal list context, but list visibility
+  does not grant visibility to every Entry in that list.
+- Linked Guardians may read Final/Done Guardian-visible dependent Journals.
+  Draft, Private, and staff-only Journals remain hidden. Reopen behavior must
+  preserve these visibility boundaries.
 - Navigation exposure does not grant mutation rights.
 - Entry owners can self-edit within bounded policy, while conversion,
   reassignment, ownership changes, cross-person assignment, and scope changes
@@ -46,6 +57,26 @@ Sources: [`Sidebar Taxonomy`](../navigation/sidebar-taxonomy.md),
 
 Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-controls.md)
 and [`Arc 26E`](../../planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md).
+
+## Entry Organization, Visibility, And Responsibility
+
+- List/context placement is **organization**.
+- Visibility is **sharing**.
+- Assignment is **responsibility**.
+- Moving an Entry among Personal, Admin, Program, or Team contexts must not
+  change its visibility, assignment, creator/owner, or team responsibility.
+- Program/Team placement does not grant Entry visibility or assignment.
+- Organization-admin cross-user oversight belongs in All Entries/Admin views,
+  not in another person's Inbox.
+
+## Habits In EntryOps
+
+- Active Habit definitions or assigned Habit records may appear in All Entries
+  when presented as Entry-like work objects.
+- Habit check-ins and Habit activity remain activity/history unless explicitly
+  modeled as Entries.
+- Current All Entries/Habit work does not create generated Habit occurrence
+  Entries. Additional Today redesign/integration remains future roadmap work.
 
 ## Platform Direction
 

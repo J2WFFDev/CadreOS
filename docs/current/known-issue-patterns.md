@@ -42,6 +42,15 @@ and [`Current Product Decisions`](../product/CURRENT_PRODUCT_DECISIONS.md).
   mutation checks.
 - Guardian-derived access, self-service owner flows, and staff/admin scope
   frequently require separate policies and tests.
+- List/context placement is organization only. It must not be treated as an
+  Entry visibility grant, assignment change, or ownership change.
+- Guardian-visible linked Athlete list containers do not imply access to every
+  Entry in those containers. Journal visibility is narrower still.
+- Inbox queries must remain actor-scoped even for organization admins;
+  cross-user oversight belongs in All Entries/Admin views.
+- Habit definitions, Habit check-ins, and Habit activity are different record
+  classes. Do not render check-ins/activity as Entries unless explicitly
+  modeled that way.
 
 Sources: [`Sidebar Taxonomy`](../navigation/sidebar-taxonomy.md) and
 [`Arc 24D.8X-F`](../planning/arc-24d-8x-f-entryops-role-visibility-design.md).
@@ -70,5 +79,5 @@ Sources: [`Mobile App Roadmap`](../future/mobile-app-roadmap.md),
 ## Needs Confirmation
 
 - Whether the current MemberOps runtime fully resolves all Arc 24C/26A gaps.
-- Whether Arc 24D.9B relationship normalization or a 24D.8 List/Journal slice
-  is the next active implementation priority.
+- Whether Arc 24D.9B relationship normalization or terminology cleanup is the
+  next priority.
