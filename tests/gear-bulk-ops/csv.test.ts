@@ -9,8 +9,17 @@ test("buildGearImportTemplateCsv emits expected required headers", () => {
 
   assert.equal(
     header,
-    "item_name,category,template_key,description,serial_number,asset_tag,qr_identifier,owner_source,location,readiness_status,condition,quantity,low_threshold,notes,active",
+    "item_name,category,template_key,description,serial_number,asset_tag,asset_id,qr_identifier,owner_source,location,readiness_status,condition,quantity,low_threshold,notes,active",
   );
+});
+
+test("buildGearImportTemplateCsv keeps sample rows aligned with the template headers", () => {
+  const rows = buildGearImportTemplateCsv().trim().split("\n");
+  const headerCount = rows[0].split(",").length;
+
+  for (const row of rows.slice(1)) {
+    assert.equal(row.split(",").length, headerCount);
+  }
 });
 
 test("parseGearImportCsv handles quoted values and aliases", () => {
