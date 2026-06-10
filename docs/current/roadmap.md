@@ -35,6 +35,9 @@ committed.
 - Arc 24D.8U Creator/Owner/Author/Assignee terminology cleanup is complete,
   separating system history, Journal author context, responsibility,
   organization, and access language without behavior changes.
+- Arc 24D.8S EntryOps lifecycle cleanup is complete, normalizing non-archived
+  working views and generic Entry archive/restore while preserving existing
+  permissions and Journal/Habit policy.
 - The GearOps CSV `asset_id` baseline fix and UI.1 collapsible
   sidebar/independent scrolling work are complete.
 
@@ -47,7 +50,7 @@ The latest merged EntryOps implementation work on `main` includes Arc
 also fixes the GearOps CSV `asset_id` baseline and completes UI.1 collapsible
 sidebar and independent content/sidebar scrolling.
 
-The next EntryOps slice after Arc 24D.8U is **needs product-owner
+The next EntryOps slice after Arc 24D.8S is **needs product-owner
 confirmation**. Current candidates include:
 
 - Arc 24D.9B: normalize relationship labels and direction semantics.

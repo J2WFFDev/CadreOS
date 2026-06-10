@@ -11,6 +11,7 @@ import {
   resolveEntryOpsVisibilityContext,
 } from "@/lib/entryops/visibility";
 import { fetchListsForActor, labelForEntryListContext } from "@/lib/entries/lists";
+import { buildEntryLifecycleWhere } from "@/lib/entries/lifecycle";
 import { canReadHabit, resolveHabitAccessContext } from "@/lib/habits/access";
 import { buildDueWindowWhere, buildEntryOrderBy, parseEntryListFilter } from "@/lib/operational-feed/filters";
 import { formatDueDate, isOverdueFeedEntry, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
@@ -98,11 +99,9 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   const entries = await db.entry.findMany({
     where: {
       organizationId: scope.organizationId,
-      deletedAt: null,
+      ...buildEntryLifecycleWhere(filter.status),
       AND: [defaultVisibilityWhere],
       ...(filter.type ? { type: filter.type } : {}),
-      ...(filter.status ? { status: filter.status } : {}),
-      ...(!filter.status ? { status: { in: [EntryStatus.OPEN, EntryStatus.IN_PROGRESS] } } : {}),
       ...(filter.priority ? { priority: filter.priority } : {}),
       ...(filter.assigneePersonId ? { assignedToPersonId: filter.assigneePersonId } : {}),
       ...(dueWhere ?? {}),
@@ -257,7 +256,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
               Status
             </label>
             <select id="status" name="status" defaultValue={filter.status ?? ""} className="w-full rounded-md border px-2 py-1.5 text-sm">
-              <option value="">Active</option>
+              <option value="">Active / not archived</option>
               {Object.values(EntryStatus).map((v) => (
                 <option key={v} value={v}>{labelForEntryStatus(v)}</option>
               ))}

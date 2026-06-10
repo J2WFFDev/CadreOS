@@ -302,7 +302,7 @@ async function fetchEntryDetailRecord(
 ): Promise<{ entry: EntryDetailRecord | null; listAssignmentUnavailable: boolean; decisionPayloadUnavailable: boolean }> {
   const where: Prisma.EntryWhereInput = {
     organizationId,
-    deletedAt: null,
+    OR: [{ deletedAt: null }, { status: EntryStatus.ARCHIVED }],
     AND: [{ id: entryId }, visibilityWhere],
   };
 
@@ -409,6 +409,7 @@ export default async function EntryDetailPage({
   });
   const canReadEntry = entryDetailVisibility.canRead;
   const canEditEntryByRole = entryAccess.level === "WRITE" || entryAccess.level === "MANAGE";
+  const canManageEntryLifecycle = entryAccess.level === "MANAGE";
 
   if (!canReadEntry) {
     logEntryOpsAccessDecision({
@@ -469,7 +470,7 @@ export default async function EntryDetailPage({
           visibility: entry.visibility,
           teamProgramId: null,
         })
-      : canEditEntryOpsEntry({
+      : entry.status !== EntryStatus.ARCHIVED && canEditEntryOpsEntry({
           canWriteEntries: canEditEntryByRole,
           context: visibilityContext,
           entry,
@@ -589,7 +590,12 @@ export default async function EntryDetailPage({
     <section className="space-y-6">
       <div className="space-y-1">
         <BackLink href="/entries" label="All Entries" />
-        <h2 className="text-2xl font-semibold tracking-tight">{entry.title}</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-2xl font-semibold tracking-tight">{entry.title}</h2>
+          <span className="rounded-full border px-2 py-0.5 text-xs font-medium">
+            {entry.status === EntryStatus.ARCHIVED ? "Archived" : "Active / not archived"}
+          </span>
+        </div>
       </div>
 
       {routeError ? (
@@ -634,6 +640,29 @@ export default async function EntryDetailPage({
             open the journal view to reopen it
           </Link>{" "}
           or use the Reopen button.
+        </div>
+      ) : null}
+      {entry.status === EntryStatus.ARCHIVED ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          This Entry is archived. Archive removes it from default working views but does not delete it or change its metadata.
+        </div>
+      ) : null}
+      {canManageEntryLifecycle && entry.type !== EntryType.JOURNAL ? (
+        <div className="flex flex-wrap gap-2">
+          {entry.status === EntryStatus.ARCHIVED ? (
+            <form action={`/entries/${entry.id}/restore`} method="post">
+              <button type="submit" className="rounded-md border border-emerald-300 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300">
+                Restore Entry
+              </button>
+            </form>
+          ) : (
+            <form action={`/entries/${entry.id}/delete`} method="post">
+              <input type="hidden" name="returnTo" value="/entries?status=ARCHIVED" />
+              <button type="submit" className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300">
+                Archive Entry
+              </button>
+            </form>
+          )}
         </div>
       ) : null}
       {detailConfig.guidance ? (
@@ -686,7 +715,7 @@ export default async function EntryDetailPage({
                       {detailConfig.statusLabel}
                     </label>
                     <select id="status" name="status" defaultValue={entry.status} className="w-full rounded-md border px-3 py-2 text-sm">
-                      {Object.values(EntryStatus).map((value) => (
+                      {Object.values(EntryStatus).filter((value) => value !== EntryStatus.ARCHIVED).map((value) => (
                         <option key={value} value={value}>
                           {value}
                         </option>
@@ -1047,14 +1076,6 @@ export default async function EntryDetailPage({
                     <input type="hidden" name="returnTo" value={`/entries/${entry.id}`} />
                     <button type="submit" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
                       Convert task to habit
-                    </button>
-                  </form>
-                ) : null}
-                {canEditEntryByRole ? (
-                  <form action={`/entries/${entry.id}/delete`} method="post">
-                    <input type="hidden" name="returnTo" value="/entries" />
-                    <button type="submit" className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300">
-                      Soft delete
                     </button>
                   </form>
                 ) : null}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { InboxItemStatus } from "@prisma/client";
+import { EntryStatus, InboxItemStatus } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
@@ -75,6 +75,7 @@ export default async function EntryInboxPage() {
           organizationId: scope.organizationId,
           id: { in: entryIds },
           deletedAt: null,
+          status: { not: EntryStatus.ARCHIVED },
           AND: [buildEntryOpsTypeAwareVisibilityWhere(visibilityContext, entryVisibility)],
         },
         select: { id: true, title: true, type: true, status: true, priority: true, updatedAt: true },

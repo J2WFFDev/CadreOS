@@ -300,6 +300,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       return NextResponse.redirect(url, 303);
     }
 
+    if (entry.status === EntryStatus.ARCHIVED || status === EntryStatus.ARCHIVED) {
+      const url = new URL(returnTo, request.url);
+      url.searchParams.set("error", entryActionDeniedMessage("change archived lifecycle state from the normal editor"));
+      return NextResponse.redirect(url, 303);
+    }
+
     const canEdit =
       entry.type === EntryType.JOURNAL
         ? canEditJournalDraft(visibilityContext, {
@@ -958,9 +964,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         status && status !== entry.status
           ? status === EntryStatus.DONE
             ? ENTRY_ACTIVITY_ACTIONS.ENTRY_COMPLETED
-            : status === EntryStatus.ARCHIVED
-              ? ENTRY_ACTIVITY_ACTIONS.ENTRY_ARCHIVED
-              : ENTRY_ACTIVITY_ACTIONS.ENTRY_STATUS_CHANGED
+            : ENTRY_ACTIVITY_ACTIONS.ENTRY_STATUS_CHANGED
           : ENTRY_ACTIVITY_ACTIONS.ENTRY_UPDATED;
 
       console.log("[entries.update] writing activity record", { action: activityAction });

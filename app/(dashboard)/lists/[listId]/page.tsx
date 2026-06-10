@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EntryStatus } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
@@ -83,6 +84,7 @@ export default async function ListDetailPage({ params }: { params: Promise<{ lis
       organizationId,
       listId,
       deletedAt: null,
+      status: { not: EntryStatus.ARCHIVED },
       AND: [buildEntryOpsTypeAwareVisibilityWhere(entryVisibilityContext, entryVisibility)],
     },
     orderBy: [{ createdAt: "desc" }],

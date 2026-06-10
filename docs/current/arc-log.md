@@ -13,7 +13,8 @@
 | Arc 24D.8Q-C All Entries, Guardian Lists, and movement validation | Completed / merged | [`Arc 24D.8Q-C`](../planning/arc-24d-8q-c-all-entries-guardian-lists-validation.md) |
 | Arc 24D.8Q-D Guardian grouping, context labels, destinations, and active Habits | Completed / merged | PR #365 |
 | Arc 24D.8R Journal workflow/access UX | Completed / merged | Journal workflow, visibility, and reopen behavior |
-| Arc 24D.8U Creator/Owner/Author/Assignee terminology cleanup | Completed / pending merge | User-facing label, helper-text, test, and documentation normalization without policy changes |
+| Arc 24D.8U Creator/Owner/Author/Assignee terminology cleanup | Completed / merged | User-facing label, helper-text, test, and documentation normalization without policy changes |
+| Arc 24D.8S EntryOps archive, restore, active state, and lifecycle cleanup | Completed / pending merge | [`Arc 24D.8S`](../planning/arc-24d-8s-entryops-lifecycle-validation.md) |
 | Arc 24D.10.4, 24D.11, 24D.12 | Marked complete | [`planning/README.md`](../../planning/README.md) |
 | Arc 25F GearOps role/approval validation | Delivered | [`planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md`](../../planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md) |
 | GearOps CSV `asset_id` baseline | Fixed / merged | PR #366 |
@@ -44,6 +45,9 @@ Implemented current behavior includes:
 - Creator/Created by, Journal Author, task Assignee, Context/List, and
   Visibility now use distinct user-facing terminology; Owner transfer remains
   unsupported.
+- Default working views exclude archived records; explicit archived views
+  preserve actor visibility, and generic Entry restore returns to the recorded
+  pre-archive workflow status without changing metadata.
 
 The newest detailed planning audit found is Arc 24D.9A Entry Relationships
 Foundation Audit, which recommends 24D.9B. The next priority **needs
