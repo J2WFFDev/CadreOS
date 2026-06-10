@@ -137,6 +137,7 @@ test("Program and Team container placement does not grant Entry visibility", () 
       { createdByPersonId: { in: ["coach-1"] } },
       { assignedToPersonId: { in: ["coach-1"] } },
       { assignments: { some: { personId: { in: ["coach-1"] }, revokedAt: null } } },
+      { entryList: { scope: "PERSONAL", ownerPersonId: { in: ["coach-1"] } } },
     ],
   });
 });
@@ -162,6 +163,7 @@ test("guardian-derived list hierarchy does not broaden Entry visibility or Journ
       { createdByPersonId: { in: ["guardian-1"] } },
       { assignedToPersonId: { in: ["guardian-1"] } },
       { assignments: { some: { personId: { in: ["guardian-1"] }, revokedAt: null } } },
+      { entryList: { scope: "PERSONAL", ownerPersonId: { in: ["guardian-1"] } } },
     ],
   });
   assert.deepEqual(entryVisibility.programIds, []);

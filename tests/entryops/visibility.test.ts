@@ -28,7 +28,7 @@ function assignment(input: Partial<EntryOpsRoleAssignmentScope> & { roleType: Ro
   };
 }
 
-test("org admin All Work Items default is organization-wide", () => {
+test("org admin All Entries default is organization-wide", () => {
   const visibility = resolveEntryOpsAllWorkDefaultVisibility({
     actorPersonId: "admin-1",
     assignments: [assignment({ roleType: RoleType.ORGANIZATION_ADMIN })],
@@ -41,7 +41,7 @@ test("org admin All Work Items default is organization-wide", () => {
   assert.deepEqual(buildEntryOpsAllWorkDefaultWhere(visibility), {});
 });
 
-test("guardian All Work Items default includes own and dependent athletes", () => {
+test("guardian All Entries default includes own and dependent athletes", () => {
   const visibility = resolveEntryOpsAllWorkDefaultVisibility({
     actorPersonId: "guardian-1",
     assignments: [assignment({ roleType: RoleType.PARENT_GUARDIAN })],
@@ -65,11 +65,33 @@ test("guardian All Work Items default includes own and dependent athletes", () =
           },
         },
       },
+      {
+        entryList: {
+          scope: "PERSONAL",
+          ownerPersonId: { in: ["guardian-1", "athlete-1", "athlete-2"] },
+        },
+      },
     ],
   });
 });
 
-test("relationship-derived guardian All Work Items does not require a Guardian RoleAssignment", () => {
+test("guardian dependent Entry visibility is workflow-state agnostic and includes dependent personal lists", () => {
+  const visibility = resolveEntryOpsAllWorkDefaultVisibility({
+    actorPersonId: "guardian-1",
+    assignments: [],
+    linkedGuardianAthleteIds: new Set(["athlete-1"]),
+  });
+  const where = buildEntryOpsAllWorkDefaultWhere(visibility);
+  const serialized = JSON.stringify(where);
+
+  assert.match(serialized, /athlete-1/);
+  assert.match(serialized, /entryList/);
+  assert.match(serialized, /PERSONAL/);
+  assert.doesNotMatch(serialized, /OPEN|DONE|ARCHIVED/);
+  assert.doesNotMatch(serialized, /athlete-2/);
+});
+
+test("relationship-derived guardian All Entries does not require a Guardian RoleAssignment", () => {
   const visibility = resolveEntryOpsAllWorkDefaultVisibility({
     actorPersonId: "guardian-1",
     assignments: [],
@@ -81,7 +103,7 @@ test("relationship-derived guardian All Work Items does not require a Guardian R
   assert.match(visibility.reason, /Guardian default/);
 });
 
-test("athlete All Work Items default is own items only", () => {
+test("athlete All Entries default is own items only", () => {
   const visibility = resolveEntryOpsAllWorkDefaultVisibility({
     actorPersonId: "athlete-1",
     assignments: [assignment({ roleType: RoleType.ATHLETE })],
@@ -95,7 +117,7 @@ test("athlete All Work Items default is own items only", () => {
   assert.deepEqual(visibility.programIds, []);
 });
 
-test("limited/no-role actor All Work Items default is own items only", () => {
+test("limited/no-role actor All Entries default is own items only", () => {
   const visibility = resolveEntryOpsAllWorkDefaultVisibility({
     actorPersonId: "limited-1",
     assignments: [],
@@ -107,7 +129,7 @@ test("limited/no-role actor All Work Items default is own items only", () => {
   assert.deepEqual(visibility.visiblePersonIds, ["limited-1"]);
 });
 
-test("coach All Work Items default is own items until explicit scope expansion is added", () => {
+test("coach All Entries default is own items until explicit scope expansion is added", () => {
   const visibility = resolveEntryOpsAllWorkDefaultVisibility({
     actorPersonId: "coach-1",
     assignments: [

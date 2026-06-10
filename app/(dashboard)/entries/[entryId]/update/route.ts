@@ -253,6 +253,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
         status: true,
         visibility: true,
         priority: true,
+        listId: true,
         teamId: true,
         createdByPersonId: true,
         assignedToPersonId: true,
@@ -404,6 +405,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
           teamId: entry.teamId,
         });
         resolvedListId = defaultList.id;
+      } else if (rawListId === entry.listId) {
+        resolvedListId = entry.listId;
       } else {
         const listVisibility = await resolveEntryListVisibility({
           organizationId,
@@ -414,7 +417,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
             id: rawListId,
             organizationId,
             isArchived: false,
-            AND: [listVisibility.where],
+            AND: [listVisibility.destinationWhere],
           },
           select: { id: true },
         });

@@ -39,7 +39,11 @@ import {
   type JournalPayloadVisibility,
   parseJournalEntryPayload,
 } from "@/lib/entries/journal-payload";
-import { fetchListsForActor, labelForEntryListScope } from "@/lib/entries/lists";
+import {
+  fetchEntryListDestinationsForActor,
+  fetchListsForActor,
+  labelForEntryListScope,
+} from "@/lib/entries/lists";
 import {
   ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE,
   ENTRY_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE,
@@ -416,7 +420,7 @@ export default async function EntryDetailPage({
     });
     return (
       <section className="space-y-4">
-        <BackLink href="/entries" label="All work" />
+        <BackLink href="/entries" label="All Entries" />
         <h2 className="text-2xl font-semibold tracking-tight">Work Item</h2>
         <ErrorMessage message={ENTRY_NOT_FOUND_OR_ACCESS_DENIED_MESSAGE} />
       </section>
@@ -538,9 +542,13 @@ export default async function EntryDetailPage({
 
   // Arc 24D.4: Fetch available lists for the list picker.
   let availableLists: Awaited<ReturnType<typeof fetchListsForActor>> = [];
+  let destinationLists: Awaited<ReturnType<typeof fetchEntryListDestinationsForActor>> = [];
   if (!listAssignmentUnavailable) {
     try {
       availableLists = await fetchListsForActor({ organizationId, actorPersonId: scope.auth.personId });
+      destinationLists = canEditEntry
+        ? await fetchEntryListDestinationsForActor({ organizationId, actorPersonId: scope.auth.personId })
+        : [];
     } catch (error) {
       const schemaIssue = getEntryListSchemaIssue(error);
 
@@ -580,7 +588,7 @@ export default async function EntryDetailPage({
   return (
     <section className="space-y-6">
       <div className="space-y-1">
-        <BackLink href="/entries" label="All work" />
+        <BackLink href="/entries" label="All Entries" />
         <h2 className="text-2xl font-semibold tracking-tight">{entry.title}</h2>
       </div>
 
@@ -722,14 +730,17 @@ export default async function EntryDetailPage({
                     <label className="text-sm font-medium">List</label>
                     <p className="text-sm text-amber-700 dark:text-amber-300">{ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}</p>
                   </div>
-                ) : availableLists.length > 0 ? (
+                ) : destinationLists.length > 0 ? (
                   <div className="space-y-1">
                     <label htmlFor="listId" className="text-sm font-medium">
                       List
                     </label>
                     <select id="listId" name="listId" defaultValue={entry.listId ?? ""} className="w-full rounded-md border px-3 py-2 text-sm sm:w-80">
                       {entry.listId ? null : <option value="">Assign Inbox on save</option>}
-                      {availableLists.map((list) => (
+                      {entry.listId && !destinationLists.some((list) => list.id === entry.listId) ? (
+                        <option value={entry.listId}>{listDisplay.label} (current only)</option>
+                      ) : null}
+                      {destinationLists.map((list) => (
                         <option key={list.id} value={list.id}>
                           {labelForEntryListScope(list.scope)}: {list.name}{list.isInbox ? " (Inbox)" : ""}
                         </option>

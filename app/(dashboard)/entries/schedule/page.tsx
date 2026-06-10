@@ -157,7 +157,7 @@ export default async function EntryEventSchedulePage({ searchParams }: { searchP
         actions={
           <div className="flex items-center gap-2">
             <Link href="/entries" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              All work
+              All Entries
             </Link>
             <Link href="/entries/inbox" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
               Work inbox

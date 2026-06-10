@@ -75,7 +75,7 @@ test("NAV-003: simplified EntryOps nav items have correct user-facing labels", (
 
   assert.equal(itemByKey.get("ENTRY_INBOX")?.label, "Inbox");
   assert.equal(itemByKey.get("ENTRY_LISTS")?.label, "Lists");
-  assert.equal(itemByKey.get("ENTRY_ALL")?.label, "All Work Items");
+  assert.equal(itemByKey.get("ENTRY_ALL")?.label, "All Entries");
   assert.equal(itemByKey.get("ENTRY_HABITS")?.label, "Habits");
   assert.equal(itemByKey.get("ENTRY_JOURNALS")?.label, "Journals");
 });
@@ -199,7 +199,7 @@ test("NAV-012: simplified EntryOps items are visible to ADMIN role according to 
   const hrefs = entryOps.items.map((i) => i.href);
   assert.ok(hrefs.includes("/lists/inbox"), "Inbox not visible to ADMIN");
   assert.ok(hrefs.includes("/lists"), "Lists not visible to ADMIN");
-  assert.ok(hrefs.includes("/entries"), "All Work Items not visible to ADMIN");
+  assert.ok(hrefs.includes("/entries"), "All Entries not visible to ADMIN");
   assert.ok(hrefs.includes("/habits"), "Habits not visible to ADMIN");
   assert.ok(hrefs.includes("/journals"), "Journals not visible to ADMIN");
 });
@@ -212,7 +212,7 @@ test("NAV-012b: Athlete EntryOps navigation exposes simplified UX entry points",
   const hrefs = entryOps.items.map((i) => i.href);
   assert.ok(hrefs.includes("/lists/inbox"), "Inbox not visible to ATHLETE");
   assert.ok(hrefs.includes("/lists"), "Lists not visible to ATHLETE");
-  assert.ok(hrefs.includes("/entries"), "All Work Items not visible to ATHLETE");
+  assert.ok(hrefs.includes("/entries"), "All Entries not visible to ATHLETE");
   assert.ok(hrefs.includes("/habits"), "Habits not visible to ATHLETE");
   assert.ok(hrefs.includes("/journals"), "Journals not visible to ATHLETE");
   assert.equal(hrefs.includes("/entries/review"), false, "Review must be hidden for ATHLETE");
@@ -233,7 +233,7 @@ test("NAV-013: Guardian EntryOps navigation exposes simplified UX entry points",
   const hrefs = entryOps.items.map((i) => i.href);
   assert.ok(hrefs.includes("/lists/inbox"), "Inbox not visible to GUARDIAN");
   assert.ok(hrefs.includes("/lists"), "Lists not visible to GUARDIAN");
-  assert.ok(hrefs.includes("/entries"), "All Work Items not visible to GUARDIAN");
+  assert.ok(hrefs.includes("/entries"), "All Entries not visible to GUARDIAN");
   assert.ok(hrefs.includes("/habits"), "Habits not visible to GUARDIAN");
   assert.ok(hrefs.includes("/journals"), "Journals not visible to GUARDIAN");
 });

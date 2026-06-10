@@ -140,7 +140,7 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
       }),
       activeItem({
         key: "ENTRY_ALL",
-        label: "All Work Items",
+        label: "All Entries",
         href: "/entries",
         moduleKey: "entry",
       }),

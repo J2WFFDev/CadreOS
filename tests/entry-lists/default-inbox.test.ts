@@ -7,6 +7,7 @@ import {
   buildDefaultInboxListResolutionInput,
   buildEntryListVisibilityForActor,
   DEFAULT_PERSONAL_LIST_NAMES,
+  labelForEntryListContext,
   sortPersonalEntryLists,
 } from "../../lib/entries/lists";
 
@@ -74,9 +75,14 @@ test("entry list visibility allows athlete or limited actor to manage own person
       canCreatePersonalList: true,
       canManageSharedLists: false,
       organizationWide: false,
+      dependentPersonIds: [],
       programIds: [],
       teamIds: [],
       where: {
+        organizationId: "org-1",
+        OR: [{ scope: "PERSONAL", ownerPersonId: { in: ["athlete-1"] } }],
+      },
+      destinationWhere: {
         organizationId: "org-1",
         OR: [{ scope: "PERSONAL", ownerPersonId: "athlete-1" }],
       },
@@ -91,7 +97,7 @@ test("entry list visibility allows athlete or limited actor to manage own person
     }).where,
     {
       organizationId: "org-1",
-      OR: [{ scope: "PERSONAL", ownerPersonId: "limited-1" }],
+      OR: [{ scope: "PERSONAL", ownerPersonId: { in: ["limited-1"] } }],
     },
   );
 });
@@ -108,6 +114,7 @@ test("entry list visibility keeps unrelated or unlinked actors out", () => {
   assert.equal(visibility.canManageSharedLists, false);
   assert.equal(visibility.organizationWide, false);
   assert.deepEqual(visibility.where, { id: "__entry_list_no_actor__" });
+  assert.deepEqual(visibility.destinationWhere, { id: "__entry_list_no_actor__" });
 });
 
 test("entry list visibility gives org admin shared context without unrelated personal lists", () => {
@@ -122,9 +129,17 @@ test("entry list visibility gives org admin shared context without unrelated per
       canCreatePersonalList: true,
       canManageSharedLists: true,
       organizationWide: true,
+      dependentPersonIds: [],
       programIds: [],
       teamIds: [],
       where: {
+        organizationId: "org-1",
+        OR: [
+          { scope: "PERSONAL", ownerPersonId: "admin-1" },
+          { scope: { not: "PERSONAL" } },
+        ],
+      },
+      destinationWhere: {
         organizationId: "org-1",
         OR: [
           { scope: "PERSONAL", ownerPersonId: "admin-1" },
@@ -163,6 +178,13 @@ test("entry list visibility exposes assigned Program and Team containers without
   assert.deepEqual(visibility.where, {
     organizationId: "org-1",
     OR: [
+      { scope: "PERSONAL", ownerPersonId: { in: ["coach-1"] } },
+      { scope: "TEAM", teamId: { in: ["team-1"] } },
+    ],
+  });
+  assert.deepEqual(visibility.destinationWhere, {
+    organizationId: "org-1",
+    OR: [
       { scope: "PERSONAL", ownerPersonId: "coach-1" },
       { scope: "TEAM", teamId: { in: ["team-1"] } },
     ],
@@ -174,6 +196,7 @@ test("guardian-derived context exposes dependent Program and Team containers onl
     organizationId: "org-1",
     actorPersonId: "guardian-1",
     assignments: [],
+    dependentPersonIds: ["athlete-dependent"],
     derivedProgramIds: ["program-dependent"],
     derivedTeamIds: ["team-dependent"],
   });
@@ -182,6 +205,9 @@ test("guardian-derived context exposes dependent Program and Team containers onl
   assert.equal(visibility.organizationWide, false);
   assert.deepEqual(visibility.programIds, ["program-dependent"]);
   assert.deepEqual(visibility.teamIds, ["team-dependent"]);
+  assert.deepEqual(visibility.dependentPersonIds, ["athlete-dependent"]);
+  assert.match(JSON.stringify(visibility.where), /athlete-dependent/);
+  assert.doesNotMatch(JSON.stringify(visibility.destinationWhere), /athlete-dependent|program-dependent|team-dependent/);
   assert.doesNotMatch(JSON.stringify(visibility.where), /ORGANIZATION/);
   assert.doesNotMatch(JSON.stringify(visibility.where), /unrelated/);
 });
@@ -208,4 +234,14 @@ test("entry list visibility includes archived containers but keeps unauthorized 
 
   assert.doesNotMatch(JSON.stringify(athleteVisibility.where), /isArchived/);
   assert.doesNotMatch(JSON.stringify(athleteVisibility.where), /ORGANIZATION/);
+});
+
+test("list context labels distinguish Inbox, Personal, Program, Team, and Admin containers", () => {
+  const list = (name: string, scope: EntryListScope, isInbox = false) => ({ name, scope, isInbox });
+
+  assert.equal(labelForEntryListContext(list("Inbox", EntryListScope.PERSONAL, true)), "Inbox");
+  assert.equal(labelForEntryListContext(list("Ideas", EntryListScope.PERSONAL)), "Personal: Ideas");
+  assert.equal(labelForEntryListContext(list("Season Plan", EntryListScope.PROGRAM)), "Program: Season Plan");
+  assert.equal(labelForEntryListContext(list("Practice", EntryListScope.TEAM)), "Team: Practice");
+  assert.equal(labelForEntryListContext(list("GearOps", EntryListScope.ORGANIZATION)), "Admin: GearOps");
 });
