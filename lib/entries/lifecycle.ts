@@ -1,4 +1,18 @@
-import { EntryStatus, type Prisma } from "@prisma/client";
+import { EntryStatus, EntryType, type Prisma } from "@prisma/client";
+
+export type EntryLifecycleAction = "ARCHIVE" | "RESTORE";
+
+export function resolveEntryLifecycleAction(input: {
+  canManageLifecycle: boolean;
+  status: EntryStatus;
+  type: EntryType;
+}): EntryLifecycleAction | null {
+  if (!input.canManageLifecycle || input.type === EntryType.JOURNAL) {
+    return null;
+  }
+
+  return input.status === EntryStatus.ARCHIVED ? "RESTORE" : "ARCHIVE";
+}
 
 export function buildEntryLifecycleWhere(status?: EntryStatus): Prisma.EntryWhereInput {
   if (status === EntryStatus.ARCHIVED) {

@@ -14,7 +14,8 @@
 | Arc 24D.8Q-D Guardian grouping, context labels, destinations, and active Habits | Completed / merged | PR #365 |
 | Arc 24D.8R Journal workflow/access UX | Completed / merged | Journal workflow, visibility, and reopen behavior |
 | Arc 24D.8U Creator/Owner/Author/Assignee terminology cleanup | Completed / merged | User-facing label, helper-text, test, and documentation normalization without policy changes |
-| Arc 24D.8S EntryOps archive, restore, active state, and lifecycle cleanup | Completed / pending merge | [`Arc 24D.8S`](../planning/arc-24d-8s-entryops-lifecycle-validation.md) |
+| Arc 24D.8S EntryOps archive, restore, active state, and lifecycle cleanup | Completed / merged | [`Arc 24D.8S`](../planning/arc-24d-8s-entryops-lifecycle-validation.md) |
+| Arc 24D.8S-A discoverable Entry archive and restore actions | Completed / pending merge | [`Arc 24D.8S-A`](../planning/arc-24d-8s-a-discoverable-lifecycle-actions.md) |
 | Arc 24D.10.4, 24D.11, 24D.12 | Marked complete | [`planning/README.md`](../../planning/README.md) |
 | Arc 25F GearOps role/approval validation | Delivered | [`planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md`](../../planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md) |
 | GearOps CSV `asset_id` baseline | Fixed / merged | PR #366 |

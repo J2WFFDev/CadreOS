@@ -40,8 +40,8 @@ test("entry detail page keeps one editable details field, clear metadata, relati
   assert.equal(detailSource.includes('name="listId"'), true);
   assert.equal(detailSource.includes('name="visibility"'), true);
   assert.equal(detailSource.includes("Complete task"), true);
-  assert.equal(detailSource.includes("Archive Entry"), true);
-  assert.equal(detailSource.includes("Restore Entry"), true);
+  assert.equal(detailSource.includes("Archive entry"), true);
+  assert.equal(detailSource.includes("Restore entry"), true);
   assert.equal(detailSource.includes("Soft delete"), false);
   assert.equal(detailSource.includes("Activity / history"), true);
   assert.equal(detailSource.includes('action="/relationships/link"'), false);

@@ -1,8 +1,53 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { EntryStatus } from "@prisma/client";
+import { EntryStatus, EntryType } from "@prisma/client";
 
-import { buildEntryLifecycleWhere, resolveEntryRestoreStatus } from "../../lib/entries/lifecycle";
+import {
+  buildEntryLifecycleWhere,
+  resolveEntryLifecycleAction,
+  resolveEntryRestoreStatus,
+} from "../../lib/entries/lifecycle";
+
+test("authorized active Task receives a discoverable archive action", () => {
+  assert.equal(
+    resolveEntryLifecycleAction({
+      canManageLifecycle: true,
+      status: EntryStatus.DONE,
+      type: EntryType.TASK,
+    }),
+    "ARCHIVE",
+  );
+});
+
+test("authorized archived Task receives a discoverable restore action", () => {
+  assert.equal(
+    resolveEntryLifecycleAction({
+      canManageLifecycle: true,
+      status: EntryStatus.ARCHIVED,
+      type: EntryType.TASK,
+    }),
+    "RESTORE",
+  );
+});
+
+test("unauthorized actors and generic Journal detail receive no lifecycle action", () => {
+  assert.equal(
+    resolveEntryLifecycleAction({
+      canManageLifecycle: false,
+      status: EntryStatus.OPEN,
+      type: EntryType.TASK,
+    }),
+    null,
+  );
+  assert.equal(
+    resolveEntryLifecycleAction({
+      canManageLifecycle: true,
+      status: EntryStatus.ARCHIVED,
+      type: EntryType.JOURNAL,
+    }),
+    null,
+  );
+});
 
 test("default Entry lifecycle query includes every non-archived active workflow state", () => {
   assert.deepEqual(buildEntryLifecycleWhere(), {

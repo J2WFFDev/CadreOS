@@ -44,8 +44,13 @@ test("restore clears historical deletion and returns to the pre-archive workflow
 });
 
 test("normal editing cannot bypass explicit lifecycle actions", () => {
-  assert.match(detailPage, /Archive Entry/);
-  assert.match(detailPage, /Restore Entry/);
+  assert.match(detailPage, /Archive entry/);
+  assert.match(detailPage, /Restore entry/);
+  assert.doesNotMatch(detailPage, />Delete entry</);
+  assert.match(detailPage, /canPerformAction\(\{/);
+  assert.match(detailPage, /action: "entry\.delete"/);
+  assert.match(detailPage, /resolveEntryLifecycleAction\(\{/);
+  assert.match(detailPage, /Done means completed\. Archive removes this Entry from normal working views without deleting it\./);
   assert.match(detailPage, /status !== EntryStatus\.ARCHIVED/);
   assert.match(updateRoute, /entry\.status === EntryStatus\.ARCHIVED \|\| status === EntryStatus\.ARCHIVED/);
 });
