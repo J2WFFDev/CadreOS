@@ -43,5 +43,11 @@ This document captures the current active product decisions and is the source of
   visibility fields; the existing team link is an assignment field, not
   Program/Team Context/List placement or fan-out. Team recurring Habit
   assignment/fan-out, compliance dashboards, and advanced streak analytics
-  remain future work.
+  remain future work. **My Habits** is the current created/assigned Habit
+  management surface; **Habit Library** is reserved for a future predefined
+  catalog. Athlete self-service Habit creation is self-only with no team
+  assignment. Normal user-facing Habit lifecycle is Active, Paused, and
+  Archived; `COMPLETED` remains legacy/internal, and progress/schedule signals
+  are not lifecycle. Tracking units use controlled choices with Custom
+  preservation.
   Additional Today redesign/integration remains future roadmap work.

@@ -34,7 +34,7 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
   if (!scope.databaseReady || !scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Habit Library" description="Create and manage recurring behaviors without creating Tasks for check-ins." />
+        <PageHeader title="My Habits" description="Track Habits you created or that were assigned to you." />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load habits right now."} />
       </section>
     );
@@ -119,7 +119,7 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
   if (!accessContext || !habits) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Habit Library" description="Create and manage recurring behaviors without creating Tasks for check-ins." />
+        <PageHeader title="My Habits" description="Track Habits you created or that were assigned to you." />
         <ErrorMessage message={loadErrorMessage ?? "Unable to load habits right now."} />
       </section>
     );
@@ -141,8 +141,8 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
   return (
     <section className="space-y-4">
       <PageHeader
-        title="Habit Library"
-        description="Create and manage Habit definitions. Check-ins stay in activity/history and do not create Tasks."
+        title="My Habits"
+        description="Track Habits you created or that were assigned to you. Check-ins stay in activity/history."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <FilterTabs
@@ -156,7 +156,7 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
             />
             {canCreate ? (
               <Link href="/habits/create" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
-                Create habit
+                Create a Habit
               </Link>
             ) : null}
           </div>
@@ -166,9 +166,9 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
 
       {visibleHabits.length === 0 ? (
         <EmptyState
-          message="No habits are visible for the selected filter and your current access."
+          message={statusFilter === "active" ? "No active Habits yet. Create a Habit for yourself to begin tracking it." : "No Habits are visible for the selected filter and your current access."}
           actionHref={canCreate ? "/habits/create" : "/dashboard"}
-          actionLabel={canCreate ? "Create first habit" : "Back to dashboard"}
+          actionLabel={canCreate ? "Create a Habit" : "Back to dashboard"}
         />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">

@@ -118,6 +118,21 @@ export function canCreateHabit(context: HabitAccessContext): boolean {
   );
 }
 
+/** Existing staff roles may assign a Habit to another Athlete or a single team. */
+export function canAssignHabitToOthers(context: HabitAccessContext): boolean {
+  if (!context.actorPersonId) return false;
+  return context.assignments.some((assignment) => STAFF_ROLE_TYPES.has(assignment.roleType));
+}
+
+export function isHabitAssignmentAllowed(
+  context: HabitAccessContext,
+  assignment: { athletePersonId: string; assignedToTeamId: string | null },
+): boolean {
+  if (!context.actorPersonId || !assignment.athletePersonId) return false;
+  if (canAssignHabitToOthers(context)) return true;
+  return assignment.athletePersonId === context.actorPersonId && assignment.assignedToTeamId === null;
+}
+
 /**
  * A habit is readable if:
  * - the actor is org admin/director

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { canCreateHabit, resolveHabitAccessContext } from "@/lib/habits/access";
+import { canCreateHabit, isHabitAssignmentAllowed, resolveHabitAccessContext } from "@/lib/habits/access";
 import {
   buildHabitCreateData,
   createHabitActivitySafely,
@@ -33,6 +33,10 @@ export async function POST(request: Request) {
   const validationError = getHabitCreateValidationError(input);
   if (validationError) {
     return NextResponse.redirect(new URL(`/habits/create?error=${validationError}`, request.url), 303);
+  }
+
+  if (!isHabitAssignmentAllowed(accessContext, input)) {
+    return NextResponse.redirect(new URL("/habits/create?error=assignment_denied", request.url), 303);
   }
 
   // Validate athlete belongs to the organization

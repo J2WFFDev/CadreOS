@@ -6,6 +6,7 @@ import { HabitStatus, RoleType, ScopeType } from "@prisma/client";
 import type { HabitAccessContext, HabitRecord } from "../../lib/habits/access";
 import {
   canArchiveHabit,
+  canAssignHabitToOthers,
   canCheckInHabit,
   canCompleteHabit,
   canCreateHabit,
@@ -15,6 +16,7 @@ import {
   canReadHabit,
   canRestoreHabit,
   hasHabitAdminAccess,
+  isHabitAssignmentAllowed,
 } from "../../lib/habits/access";
 
 function buildContext(input?: Partial<HabitAccessContext>): HabitAccessContext {
@@ -107,6 +109,26 @@ test("guardian cannot create habit", () => {
 
 test("unauthenticated user cannot create habit", () => {
   assert.equal(canCreateHabit(buildContext({ actorPersonId: null })), false);
+});
+
+test("Athlete self-service assignment is limited to self with no team", () => {
+  const context = buildContext({ assignments: [athleteAssignment] });
+
+  assert.equal(canAssignHabitToOthers(context), false);
+  assert.equal(isHabitAssignmentAllowed(context, { athletePersonId: "actor-1", assignedToTeamId: null }), true);
+  assert.equal(isHabitAssignmentAllowed(context, { athletePersonId: "other-athlete", assignedToTeamId: null }), false);
+  assert.equal(isHabitAssignmentAllowed(context, { athletePersonId: "actor-1", assignedToTeamId: "team-1" }), false);
+});
+
+test("Coach and Admin retain existing Habit assignment capability", () => {
+  assert.equal(canAssignHabitToOthers(buildContext({ assignments: [coachAssignment] })), true);
+  assert.equal(
+    isHabitAssignmentAllowed(buildContext({ assignments: [adminAssignment] }), {
+      athletePersonId: "other-athlete",
+      assignedToTeamId: "team-1",
+    }),
+    true,
+  );
 });
 
 // ── canReadHabit ─────────────────────────────────────────────────────────────

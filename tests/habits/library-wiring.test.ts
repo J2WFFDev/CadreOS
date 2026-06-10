@@ -11,17 +11,20 @@ const libraryPage = source("../../app/(dashboard)/habits/page.tsx");
 const createPage = source("../../app/(dashboard)/habits/create/page.tsx");
 const createRoute = source("../../app/(dashboard)/habits/create/save/route.ts");
 const detailPage = source("../../app/(dashboard)/habits/[habitId]/page.tsx");
+const editPage = source("../../app/(dashboard)/habits/[habitId]/edit/page.tsx");
+const editRoute = source("../../app/(dashboard)/habits/[habitId]/edit/update/route.ts");
 const checkInRoute = source("../../app/(dashboard)/habits/[habitId]/check-in/route.ts");
 const archiveRoute = source("../../app/(dashboard)/habits/[habitId]/archive/route.ts");
 const restoreRoute = source("../../app/(dashboard)/habits/[habitId]/restore/route.ts");
 const schema = source("../../prisma/schema.prisma");
 
-test("Habit Library defaults to active definitions and exposes create and archive discovery", () => {
-  assert.match(libraryPage, /title="Habit Library"/);
+test("My Habits defaults to active definitions and reserves Habit Library terminology", () => {
+  assert.match(libraryPage, /title="My Habits"/);
+  assert.doesNotMatch(libraryPage, /Habit Library/);
   assert.match(libraryPage, /return "active"/);
   assert.match(libraryPage, /status: HabitStatus\.ACTIVE/);
   assert.match(libraryPage, /href="\/habits\/create"/);
-  assert.match(libraryPage, /Create first habit/);
+  assert.match(libraryPage, /Create a Habit for yourself/);
   assert.match(libraryPage, /href: "\/habits\?status=archived"/);
   assert.match(libraryPage, />Last check-in</);
   assert.match(libraryPage, />Context \/ List</);
@@ -33,7 +36,30 @@ test("direct Habit creation uses the Habit model and does not create a Task or E
   assert.match(createPage, /Existing team assignment/);
   assert.match(createPage, /does not fan out or create Habits for team members/);
   assert.match(createRoute, /db\.habit\.create/);
+  assert.match(createRoute, /isHabitAssignmentAllowed/);
+  assert.match(createPage, /canAssignOthers \?/);
+  assert.match(createPage, /Athlete self-service Habits are created for yourself/);
   assert.doesNotMatch(createRoute, /db\.entry\.create|EntryType\.TASK|db\.task/);
+});
+
+test("Habit editability keeps assignment conservative and uses controlled units", () => {
+  assert.match(detailPage, /canEdit \?/);
+  assert.match(editPage, /canAssignOthers \?/);
+  assert.match(editPage, /Assignment cannot be changed in Athlete self-service/);
+  assert.match(editRoute, /canAssignHabitToOthers/);
+  assert.match(editRoute, /resolvedAthletePersonId/);
+  assert.match(createPage, /name="targetUnitOption"/);
+  assert.match(editPage, /name="targetUnitOption"/);
+  assert.match(editPage, /resolveHabitTargetUnitSelection/);
+});
+
+test("normal Habit lifecycle UI exposes Active, Paused, and Archived without a completion action", () => {
+  assert.match(libraryPage, /label: "Active"/);
+  assert.match(libraryPage, /label: "Paused"/);
+  assert.match(libraryPage, /label: "Archived"/);
+  assert.doesNotMatch(detailPage, /Mark complete|canCompleteHabit/);
+  assert.match(detailPage, />Last check-in</);
+  assert.match(detailPage, />End date</);
 });
 
 test("Habit detail presents metadata, last check-in, authorized check-in, and history", () => {

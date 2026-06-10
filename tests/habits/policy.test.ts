@@ -5,6 +5,7 @@ import { EntryStatus, HabitFrequency, HabitStatus } from "@prisma/client";
 
 import {
   badgeVariantForHabitStatus,
+  CUSTOM_HABIT_TARGET_UNIT,
   computeCompletionCount,
   computeCurrentStreak,
   descriptionForHabitStatus,
@@ -20,10 +21,12 @@ import {
   MAX_HABIT_TITLE_LENGTH,
   normalizeCompletedOn,
   normalizeHabitScheduleDays,
+  normalizeHabitTargetUnit,
   normalizeTrackingMode,
   parseHabitCountValue,
   resolveAllEntriesHabitStatus,
   resolveLatestHabitCheckIn,
+  resolveHabitTargetUnitSelection,
 } from "../../lib/habits/policy";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -94,7 +97,7 @@ test("labelForHabitCadence clarifies unset and weekly cadence", () => {
 test("descriptionForHabitStatus distinguishes check-in lifecycle states", () => {
   assert.match(descriptionForHabitStatus(HabitStatus.ACTIVE), /receive scheduled check-ins/);
   assert.match(descriptionForHabitStatus(HabitStatus.PAUSED), /do not accept check-ins/);
-  assert.match(descriptionForHabitStatus(HabitStatus.COMPLETED), /finished/);
+  assert.match(descriptionForHabitStatus(HabitStatus.COMPLETED), /legacy completed record/);
   assert.match(descriptionForHabitStatus(HabitStatus.ARCHIVED), /retained for history/);
 });
 
@@ -288,12 +291,20 @@ test("deriveSafeHabitActivityText falls back to generic label for unknown action
 
 // ── Arc 24D.8: labelForHabitStatus COMPLETED ──────────────────────────────────
 
-test("labelForHabitStatus returns Completed for COMPLETED", () => {
-  assert.equal(labelForHabitStatus("COMPLETED"), "Completed");
+test("labelForHabitStatus identifies COMPLETED as legacy/internal", () => {
+  assert.equal(labelForHabitStatus("COMPLETED"), "Legacy completed");
 });
 
 test("badgeVariantForHabitStatus returns completed for COMPLETED", () => {
   assert.equal(badgeVariantForHabitStatus("COMPLETED"), "completed");
+});
+
+test("controlled Habit units preserve known and custom existing values", () => {
+  assert.deepEqual(resolveHabitTargetUnitSelection("minutes"), { option: "minutes", custom: "" });
+  assert.deepEqual(resolveHabitTargetUnitSelection("laps"), { option: CUSTOM_HABIT_TARGET_UNIT, custom: "laps" });
+  assert.equal(normalizeHabitTargetUnit({ option: "reps", custom: "" }), "reps");
+  assert.equal(normalizeHabitTargetUnit({ option: CUSTOM_HABIT_TARGET_UNIT, custom: " bottles " }), "bottles");
+  assert.equal(normalizeHabitTargetUnit({ option: "", custom: "", legacy: "laps" }), "laps");
 });
 
 // ── Arc 24D.8: deriveSafeHabitActivityText with habitTitle ────────────────────

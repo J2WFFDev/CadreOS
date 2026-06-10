@@ -4,8 +4,14 @@ import { notFound } from "next/navigation";
 
 import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { canEditHabit, resolveHabitAccessContext } from "@/lib/habits/access";
-import { MAX_HABIT_DESCRIPTION_LENGTH, MAX_HABIT_TITLE_LENGTH } from "@/lib/habits/policy";
+import { canAssignHabitToOthers, canEditHabit, resolveHabitAccessContext } from "@/lib/habits/access";
+import {
+  CUSTOM_HABIT_TARGET_UNIT,
+  HABIT_TARGET_UNIT_OPTIONS,
+  MAX_HABIT_DESCRIPTION_LENGTH,
+  MAX_HABIT_TITLE_LENGTH,
+  resolveHabitTargetUnitSelection,
+} from "@/lib/habits/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
 import { db } from "@/lib/db";
 
@@ -66,23 +72,25 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
     );
   }
 
+  const canAssignOthers = canAssignHabitToOthers(accessContext);
   const [athletes, teams] = await Promise.all([
-    db.person.findMany({
+    canAssignOthers ? db.person.findMany({
       where: {
         organizationId: scope.organizationId,
         roles: { some: { roleType: "ATHLETE", organizationId: scope.organizationId } },
       },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       select: { id: true, firstName: true, lastName: true },
-    }),
-    db.team.findMany({
+    }) : Promise.resolve([]),
+    canAssignOthers ? db.team.findMany({
       where: { organizationId: scope.organizationId },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
-    }),
+    }) : Promise.resolve([]),
   ]);
 
   const schedule = habit.schedules[0];
+  const targetUnitSelection = resolveHabitTargetUnitSelection(habit.targetUnit);
 
   return (
     <section className="space-y-4">
@@ -122,41 +130,30 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="athletePersonId" className="block text-sm font-medium">Athlete <span className="text-red-500">*</span></label>
-          <select
-            id="athletePersonId"
-            name="athletePersonId"
-            required
-            defaultValue={habit.athletePersonId}
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
-          >
-            <option value="">— Select athlete —</option>
-            {athletes.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.firstName} {a.lastName}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="space-y-1">
-          <label htmlFor="assignedToTeamId" className="block text-sm font-medium">Existing team assignment <span className="text-zinc-400">(optional)</span></label>
-          <select
-            id="assignedToTeamId"
-            name="assignedToTeamId"
-            defaultValue={habit.assignedToTeamId ?? ""}
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
-          >
-            <option value="">— No team assignment —</option>
-            {teams.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-zinc-500">This does not fan out or create recurring Habits for team members.</p>
-        </div>
+        {canAssignOthers ? (
+          <>
+            <div className="space-y-1">
+              <label htmlFor="athletePersonId" className="block text-sm font-medium">Assigned Athlete <span className="text-red-500">*</span></label>
+              <select id="athletePersonId" name="athletePersonId" required defaultValue={habit.athletePersonId} className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800">
+                <option value="">— Select athlete —</option>
+                {athletes.map((athlete) => <option key={athlete.id} value={athlete.id}>{athlete.firstName} {athlete.lastName}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="assignedToTeamId" className="block text-sm font-medium">Existing team assignment <span className="text-zinc-400">(optional)</span></label>
+              <select id="assignedToTeamId" name="assignedToTeamId" defaultValue={habit.assignedToTeamId ?? ""} className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800">
+                <option value="">— No team assignment —</option>
+                {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+              </select>
+              <p className="text-xs text-zinc-500">This does not fan out or create recurring Habits for team members.</p>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Assignment</p>
+            <p className="text-sm">Assignment cannot be changed in Athlete self-service.</p>
+          </div>
+        )}
 
         <fieldset className="space-y-3 rounded-md border p-4">
           <legend className="px-1 text-sm font-medium">Tracking mode</legend>
@@ -188,14 +185,14 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="targetUnit" className="block text-sm font-medium">Unit <span className="text-zinc-400">(optional, e.g. reps, minutes)</span></label>
-              <input
-                id="targetUnit"
-                name="targetUnit"
-                type="text"
-                defaultValue={habit.targetUnit ?? ""}
-                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
-              />
+              <label htmlFor="targetUnitOption" className="block text-sm font-medium">Unit <span className="text-zinc-400">(optional)</span></label>
+              <select id="targetUnitOption" name="targetUnitOption" defaultValue={targetUnitSelection.option} className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800">
+                <option value="">— Select unit —</option>
+                {HABIT_TARGET_UNIT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                <option value={CUSTOM_HABIT_TARGET_UNIT}>Custom</option>
+              </select>
+              <label htmlFor="targetUnitCustom" className="block text-xs font-medium text-zinc-500">Custom unit</label>
+              <input id="targetUnitCustom" name="targetUnitCustom" type="text" defaultValue={targetUnitSelection.custom} placeholder="Used only when Custom is selected" className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800" />
             </div>
           </div>
         </fieldset>
