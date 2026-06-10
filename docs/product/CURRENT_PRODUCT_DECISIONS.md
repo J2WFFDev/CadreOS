@@ -13,3 +13,7 @@ This document captures the current active product decisions and is the source of
 - **AdminOps** should not contain Programs or Seasons.
 - **Account/Profile** should move toward top-right header ownership.
 - Build/release identity must be visible in screenshots.
+- Entry placement is organizational context only. Visibility controls who can see an Entry, and assignment controls who is responsible; moving an Entry between Personal, Admin, Program, or Team contexts must not change either.
+- All Entries defaults to active Entries and active Habit definitions. Inactive or archived records require an explicit status filter; Habit check-ins and Habit activity rows remain separate and are not rendered as Entries.
+- Guardian-linked athlete Personal lists are grouped by athlete and remain read-only Guardian context.
+- Broader Today changes are future work and are not part of the current Entry list/context model.

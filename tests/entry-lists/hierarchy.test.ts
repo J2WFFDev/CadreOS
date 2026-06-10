@@ -38,6 +38,8 @@ function scopedVisibility() {
 test("hierarchy shows connected Program and Team containers in alphabetical order", () => {
   const hierarchy = buildEntryListHierarchy({
     visibility: scopedVisibility(),
+    actorPersonId: "coach-1",
+    relatedPeople: [],
     lists: [
       list({ id: "personal-z", name: "Zeta", scope: EntryListScope.PERSONAL, ownerPersonId: "coach-1" }),
       list({ id: "personal-a", name: "Alpha", scope: EntryListScope.PERSONAL, ownerPersonId: "coach-1" }),
@@ -73,6 +75,8 @@ test("program-scoped hierarchy shows all teams in the connected Program and pres
   });
   const hierarchy = buildEntryListHierarchy({
     visibility,
+    actorPersonId: "director-1",
+    relatedPeople: [],
     lists: [
       list({
         id: "archived-list",
@@ -96,6 +100,8 @@ test("program-scoped hierarchy shows all teams in the connected Program and pres
 test("Admin shared containers are hidden from scoped users and shown to Org Admin", () => {
   const sharedList = list({ id: "admin-list", name: "GearOps", scope: EntryListScope.ORGANIZATION });
   const base = {
+    actorPersonId: "actor-1",
+    relatedPeople: [],
     lists: [sharedList],
     programs: [],
     teams: [],
@@ -116,6 +122,31 @@ test("Admin shared containers are hidden from scoped users and shown to Org Admi
     ],
   });
   assert.deepEqual(buildEntryListHierarchy({ visibility: adminVisibility, ...base }).adminSharedLists, [sharedList]);
+});
+
+test("guardian personal lists are grouped by related athlete instead of blending into Personal", () => {
+  const visibility = buildEntryListVisibilityForActor({
+    organizationId: "org-1",
+    actorPersonId: "guardian-1",
+    assignments: [],
+    dependentPersonIds: ["athlete-1"],
+  });
+  const hierarchy = buildEntryListHierarchy({
+    visibility,
+    actorPersonId: "guardian-1",
+    relatedPeople: [{ id: "athlete-1", firstName: "Avery", lastName: "Athlete" }],
+    lists: [
+      list({ id: "guardian-inbox", name: "Inbox", scope: EntryListScope.PERSONAL, ownerPersonId: "guardian-1", isInbox: true }),
+      list({ id: "athlete-inbox", name: "Inbox", scope: EntryListScope.PERSONAL, ownerPersonId: "athlete-1", isInbox: true }),
+      list({ id: "athlete-ideas", name: "Sugar Ideas", scope: EntryListScope.PERSONAL, ownerPersonId: "athlete-1" }),
+    ],
+    programs: [],
+    teams: [],
+  });
+
+  assert.deepEqual(hierarchy.personalLists.map((item) => item.id), ["guardian-inbox"]);
+  assert.deepEqual(hierarchy.relatedAthletes.map((group) => group.name), ["Avery Athlete"]);
+  assert.deepEqual(hierarchy.relatedAthletes[0]?.lists.map((item) => item.id), ["athlete-inbox", "athlete-ideas"]);
 });
 
 test("Program and Team container placement does not grant Entry visibility", () => {

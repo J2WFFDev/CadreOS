@@ -22,6 +22,9 @@ export type EntryListSummary = {
   ownerPersonId: string | null;
   programId: string | null;
   teamId: string | null;
+  owner?: { firstName: string; lastName: string } | null;
+  program?: { name: string } | null;
+  team?: { name: string } | null;
 };
 
 type EntryListRoleScope = {
@@ -56,6 +59,11 @@ export type EntryListHierarchyProgram = {
 
 export type EntryListHierarchy = {
   personalLists: EntryListSummary[];
+  relatedAthletes: Array<{
+    id: string;
+    name: string;
+    lists: EntryListSummary[];
+  }>;
   adminSharedLists: EntryListSummary[];
   programs: EntryListHierarchyProgram[];
 };
@@ -255,6 +263,8 @@ export function buildEntryListVisibilityForActor(input: {
   dependentPersonIds?: string[];
   derivedProgramIds?: string[];
   derivedTeamIds?: string[];
+  destinationProgramIds?: string[];
+  destinationTeamIds?: string[];
 }): EntryListVisibility {
   const { organizationId, actorPersonId, assignments } = input;
 
@@ -284,6 +294,8 @@ export function buildEntryListVisibilityForActor(input: {
       .filter((assignment) => assignment.scopeType === ScopeType.TEAM)
       .map((assignment) => assignment.teamId),
   );
+  const athleteDestinationProgramIds = unique(input.destinationProgramIds ?? []);
+  const destinationTeamIds = unique([...directTeamIds, ...(input.destinationTeamIds ?? [])]);
   const programIds = unique([
     ...directProgramIds,
     ...(input.derivedProgramIds ?? []),
@@ -347,8 +359,11 @@ export function buildEntryListVisibilityForActor(input: {
       { scope: EntryListScope.TEAM, team: { programId: { in: directProgramIds } } },
     );
   }
-  if (directTeamIds.length > 0) {
-    destinationScopes.push({ scope: EntryListScope.TEAM, teamId: { in: directTeamIds } });
+  if (athleteDestinationProgramIds.length > 0) {
+    destinationScopes.push({ scope: EntryListScope.PROGRAM, programId: { in: athleteDestinationProgramIds } });
+  }
+  if (destinationTeamIds.length > 0) {
+    destinationScopes.push({ scope: EntryListScope.TEAM, teamId: { in: destinationTeamIds } });
   }
 
   return {
@@ -377,7 +392,7 @@ export async function resolveEntryListVisibility(input: {
   const { organizationId, actorPersonId } = input;
   if (!actorPersonId) return buildEntryListVisibilityForActor({ organizationId, actorPersonId, assignments: [] });
 
-  const [assignments, guardianScope] = await Promise.all([
+  const [assignments, guardianScope, athleteRoster] = await Promise.all([
     db.roleAssignment.findMany({
       where: { organizationId, personId: actorPersonId },
       select: { roleType: true, scopeType: true, programId: true, teamId: true },
@@ -386,7 +401,25 @@ export async function resolveEntryListVisibility(input: {
       organizationId,
       guardianPersonId: actorPersonId,
     }),
+    db.rosterMembership.findMany({
+      where: {
+        organizationId,
+        personId: actorPersonId,
+        rosterRole: RoleType.ATHLETE,
+      },
+      select: {
+        teamId: true,
+        team: { select: { programId: true } },
+        season: { select: { startDate: true, endDate: true } },
+      },
+    }),
   ]);
+  const now = new Date();
+  const activeAthleteRoster = athleteRoster.filter(
+    (membership) =>
+      (!membership.season.startDate || membership.season.startDate <= now) &&
+      (!membership.season.endDate || membership.season.endDate >= now),
+  );
   return buildEntryListVisibilityForActor({
     organizationId,
     actorPersonId,
@@ -394,6 +427,8 @@ export async function resolveEntryListVisibility(input: {
     dependentPersonIds: guardianScope.dependentAthleteIds,
     derivedProgramIds: guardianScope.derivedProgramIds,
     derivedTeamIds: guardianScope.derivedTeamIds,
+    destinationProgramIds: activeAthleteRoster.map((membership) => membership.team.programId),
+    destinationTeamIds: activeAthleteRoster.map((membership) => membership.teamId),
   });
 }
 
@@ -432,6 +467,9 @@ export async function fetchListsForActor(input: {
       ownerPersonId: true,
       programId: true,
       teamId: true,
+      owner: { select: { firstName: true, lastName: true } },
+      program: { select: { name: true } },
+      team: { select: { name: true } },
     },
   });
 
@@ -462,6 +500,9 @@ export async function fetchEntryListDestinationsForActor(input: {
       ownerPersonId: true,
       programId: true,
       teamId: true,
+      owner: { select: { firstName: true, lastName: true } },
+      program: { select: { name: true } },
+      team: { select: { name: true } },
     },
   });
 }
@@ -469,6 +510,8 @@ export async function fetchEntryListDestinationsForActor(input: {
 export function buildEntryListHierarchy(input: {
   visibility: EntryListVisibility;
   lists: EntryListSummary[];
+  actorPersonId: string | null;
+  relatedPeople: Array<{ id: string; firstName: string; lastName: string }>;
   programs: Array<{ id: string; name: string }>;
   teams: Array<{ id: string; name: string; programId: string }>;
 }): EntryListHierarchy {
@@ -509,7 +552,23 @@ export function buildEntryListHierarchy(input: {
     }));
 
   return {
-    personalLists: sortPersonalEntryLists(input.lists.filter((list) => list.scope === EntryListScope.PERSONAL)),
+    personalLists: sortPersonalEntryLists(
+      input.lists.filter(
+        (list) => list.scope === EntryListScope.PERSONAL && list.ownerPersonId === input.actorPersonId,
+      ),
+    ),
+    relatedAthletes: input.relatedPeople
+      .map((person) => ({
+        id: person.id,
+        name: `${person.firstName} ${person.lastName}`.trim() || "Related athlete",
+        lists: sortPersonalEntryLists(
+          input.lists.filter(
+            (list) => list.scope === EntryListScope.PERSONAL && list.ownerPersonId === person.id,
+          ),
+        ),
+      }))
+      .filter((person) => person.lists.length > 0)
+      .sort(compareNames),
     adminSharedLists: visibility.organizationWide
       ? input.lists.filter((list) => list.scope === EntryListScope.ORGANIZATION).sort(compareNames)
       : [],
@@ -551,6 +610,9 @@ export async function fetchEntryList(input: {
       ownerPersonId: true,
       programId: true,
       teamId: true,
+      owner: { select: { firstName: true, lastName: true } },
+      program: { select: { name: true } },
+      team: { select: { name: true } },
     },
   });
 }
@@ -565,8 +627,17 @@ export function labelForEntryListScope(scope: EntryListScope): string {
   return scope;
 }
 
-export function labelForEntryListContext(list: Pick<EntryListSummary, "name" | "scope" | "isInbox">): string {
-  if (list.isInbox && list.scope === EntryListScope.PERSONAL) return "Inbox";
+export function labelForEntryListContext(
+  list: Pick<EntryListSummary, "name" | "scope"> &
+    Partial<Pick<EntryListSummary, "ownerPersonId" | "owner" | "program" | "team">>,
+  actorPersonId?: string | null,
+): string {
+  if (list.scope === EntryListScope.PERSONAL) {
+    const ownerName = list.owner ? `${list.owner.firstName} ${list.owner.lastName}`.trim() : "";
+    return `${ownerName && list.ownerPersonId !== actorPersonId ? ownerName : "Personal"}: ${list.name}`;
+  }
   if (list.scope === EntryListScope.ORGANIZATION) return `Admin: ${list.name}`;
+  if (list.scope === EntryListScope.PROGRAM) return `Program: ${list.program?.name ?? list.name}`;
+  if (list.scope === EntryListScope.TEAM) return `Team: ${list.team?.name ?? list.name}`;
   return `${labelForEntryListScope(list.scope)}: ${list.name}`;
 }

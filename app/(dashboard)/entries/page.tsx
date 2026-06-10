@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { EntryPriority, EntryStatus, EntryType } from "@prisma/client";
+import { EntryPriority, EntryStatus, EntryType, HabitStatus } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
@@ -11,6 +11,7 @@ import {
   resolveEntryOpsVisibilityContext,
 } from "@/lib/entryops/visibility";
 import { fetchListsForActor, labelForEntryListContext } from "@/lib/entries/lists";
+import { canReadHabit, resolveHabitAccessContext } from "@/lib/habits/access";
 import { buildDueWindowWhere, buildEntryOrderBy, parseEntryListFilter } from "@/lib/operational-feed/filters";
 import { formatDueDate, isOverdueFeedEntry, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -101,6 +102,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
       AND: [defaultVisibilityWhere],
       ...(filter.type ? { type: filter.type } : {}),
       ...(filter.status ? { status: filter.status } : {}),
+      ...(!filter.status ? { status: { in: [EntryStatus.OPEN, EntryStatus.IN_PROGRESS] } } : {}),
       ...(filter.priority ? { priority: filter.priority } : {}),
       ...(filter.assigneePersonId ? { assignedToPersonId: filter.assigneePersonId } : {}),
       ...(dueWhere ?? {}),
@@ -120,6 +122,47 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
     },
     take: 300,
   });
+  const includeActiveHabits =
+    (!filter.type || filter.type === EntryType.HABIT) &&
+    !filter.status &&
+    !filter.priority &&
+    filter.dueWindow === "all";
+  const habitAccessContext = includeActiveHabits
+    ? await resolveHabitAccessContext({
+        organizationId: scope.organizationId,
+        actorPersonId: scope.auth.personId,
+      })
+    : null;
+  const activeHabits = includeActiveHabits
+    ? await db.habit.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          status: HabitStatus.ACTIVE,
+          ...(filter.assigneePersonId ? { athletePersonId: filter.assigneePersonId } : {}),
+        },
+        orderBy: { updatedAt: "desc" },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          athletePersonId: true,
+          assignedToTeamId: true,
+          createdByPersonId: true,
+          updatedAt: true,
+          athlete: { select: { firstName: true, lastName: true } },
+          assignedToTeam: { select: { programId: true } },
+        },
+        take: 300,
+      })
+    : [];
+  const visibleActiveHabits = habitAccessContext
+    ? activeHabits.filter((habit) =>
+        canReadHabit(habitAccessContext, {
+          ...habit,
+          teamProgramId: habit.assignedToTeam?.programId ?? null,
+        }),
+      )
+    : [];
   const actorVisibleLists = await fetchListsForActor({
     organizationId: scope.organizationId,
     actorPersonId: scope.auth.personId,
@@ -139,6 +182,9 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
           ownerPersonId: true,
           programId: true,
           teamId: true,
+          owner: { select: { firstName: true, lastName: true } },
+          program: { select: { name: true } },
+          team: { select: { name: true } },
         },
       })
     : [];
@@ -211,7 +257,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
               Status
             </label>
             <select id="status" name="status" defaultValue={filter.status ?? ""} className="w-full rounded-md border px-2 py-1.5 text-sm">
-              <option value="">Any status</option>
+              <option value="">Active</option>
               {Object.values(EntryStatus).map((v) => (
                 <option key={v} value={v}>{labelForEntryStatus(v)}</option>
               ))}
@@ -290,7 +336,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
         </div>
       </form>
 
-      {entries.length === 0 ? (
+      {entries.length === 0 && visibleActiveHabits.length === 0 ? (
         <EmptyState message="No Entries match the current filters." actionHref="/dashboard" actionLabel="Back to dashboard" />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
@@ -329,7 +375,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
                     <td className="px-4 py-3 text-zinc-500">
                       {entry.listId
                         ? visibleListsById.has(entry.listId)
-                          ? labelForEntryListContext(visibleListsById.get(entry.listId)!)
+                          ? labelForEntryListContext(visibleListsById.get(entry.listId)!, scope.auth.personId)
                           : "Restricted list"
                         : "Unlisted"}
                     </td>
@@ -337,6 +383,22 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
                   </tr>
                 );
               })}
+              {visibleActiveHabits.map((habit) => (
+                <tr key={`habit-${habit.id}`} className="border-b last:border-b-0">
+                  <td className="px-4 py-3">
+                    <Link href={`/habits/${habit.id}`} className="underline">
+                      {habit.title}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500">Habit</td>
+                  <td className="px-4 py-3">Active</td>
+                  <td className="px-4 py-3">—</td>
+                  <td className="px-4 py-3">—</td>
+                  <td className="px-4 py-3 text-zinc-500">{formatAssigneeName(habit.athlete)}</td>
+                  <td className="px-4 py-3 text-zinc-500">Unlisted</td>
+                  <td className="px-4 py-3 text-zinc-500">{habit.updatedAt.toISOString().slice(0, 16).replace("T", " ")}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

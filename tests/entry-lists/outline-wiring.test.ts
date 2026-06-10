@@ -36,9 +36,16 @@ test("Inbox is protected and its sidebar route uses the personal Inbox working v
   const updatePage = source("../../app/(dashboard)/lists/[listId]/update/page.tsx");
   const updateRoute = source("../../app/(dashboard)/lists/[listId]/actions/update/route.ts");
 
-  assert.match(listsPage, /list\.isInbox \? "\/lists\/inbox"/);
+  assert.match(listsPage, /list\.isInbox && list\.ownerPersonId === actorPersonId \? "\/lists\/inbox"/);
   assert.match(inboxPage, /entries\/inbox\/page/);
   assert.match(detailPage, /!list\.isInbox/);
   assert.match(updatePage, /Inbox is a protected default list and cannot be edited or removed/);
   assert.match(updateRoute, /if \(list\.isInbox\)/);
+});
+
+test("Lists page separates Guardian-linked athlete lists into Related Athletes groups", () => {
+  const page = source("../../app/(dashboard)/lists/page.tsx");
+
+  assert.match(page, />Related Athletes<\/h2>/);
+  assert.match(page, /hierarchy\.relatedAthletes\.map/);
 });

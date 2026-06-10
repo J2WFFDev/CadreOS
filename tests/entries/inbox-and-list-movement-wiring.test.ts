@@ -22,4 +22,7 @@ test("Entry movement picker and update route use authorized destination lists", 
   assert.match(detailPage, /destinationLists\.map/);
   assert.match(updateRoute, /listVisibility\.destinationWhere/);
   assert.match(updateRoute, /rawListId === entry\.listId/);
+  assert.match(detailPage, /Context organizes the Entry\. Visibility controls who can see it\. Assignment controls who is responsible\./);
+  assert.match(detailPage, /labelForEntryListContext/);
+  assert.match(updateRoute, /\.\.\.\(resolvedListId !== undefined \? \{ listId: resolvedListId \} : \{\}\)/);
 });

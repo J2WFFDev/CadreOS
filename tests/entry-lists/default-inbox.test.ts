@@ -225,6 +225,20 @@ test("direct Coach scope remains independent from guardian-derived context", () 
   assert.deepEqual(visibility.teamIds, ["team-coach", "team-dependent"]);
 });
 
+test("active athlete roster context is an authorized movement destination without broadening guardian destinations", () => {
+  const visibility = buildEntryListVisibilityForActor({
+    organizationId: "org-1",
+    actorPersonId: "athlete-1",
+    assignments: [],
+    destinationProgramIds: ["program-roster"],
+    destinationTeamIds: ["team-roster"],
+  });
+
+  assert.match(JSON.stringify(visibility.destinationWhere), /program-roster/);
+  assert.match(JSON.stringify(visibility.destinationWhere), /team-roster/);
+  assert.doesNotMatch(JSON.stringify(visibility.where), /program-roster|team-roster/);
+});
+
 test("entry list visibility includes archived containers but keeps unauthorized Admin shared lists out", () => {
   const athleteVisibility = buildEntryListVisibilityForActor({
     organizationId: "org-1",
@@ -239,9 +253,10 @@ test("entry list visibility includes archived containers but keeps unauthorized 
 test("list context labels distinguish Inbox, Personal, Program, Team, and Admin containers", () => {
   const list = (name: string, scope: EntryListScope, isInbox = false) => ({ name, scope, isInbox });
 
-  assert.equal(labelForEntryListContext(list("Inbox", EntryListScope.PERSONAL, true)), "Inbox");
+  assert.equal(labelForEntryListContext(list("Inbox", EntryListScope.PERSONAL, true)), "Personal: Inbox");
   assert.equal(labelForEntryListContext(list("Ideas", EntryListScope.PERSONAL)), "Personal: Ideas");
-  assert.equal(labelForEntryListContext(list("Season Plan", EntryListScope.PROGRAM)), "Program: Season Plan");
-  assert.equal(labelForEntryListContext(list("Practice", EntryListScope.TEAM)), "Team: Practice");
+  assert.equal(labelForEntryListContext({ ...list("Inbox", EntryListScope.PERSONAL, true), ownerPersonId: "athlete-1", owner: { firstName: "Avery", lastName: "Athlete" } }, "guardian-1"), "Avery Athlete: Inbox");
+  assert.equal(labelForEntryListContext({ ...list("Season Plan", EntryListScope.PROGRAM), program: { name: "Program A" } }), "Program: Program A");
+  assert.equal(labelForEntryListContext({ ...list("Practice", EntryListScope.TEAM), team: { name: "Team 1" } }), "Team: Team 1");
   assert.equal(labelForEntryListContext(list("GearOps", EntryListScope.ORGANIZATION)), "Admin: GearOps");
 });

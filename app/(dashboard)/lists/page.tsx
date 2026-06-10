@@ -52,7 +52,7 @@ function ListTable({
           {lists.map((list) => (
             <tr key={list.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800">
               <td className="px-4 py-2">
-                <Link href={list.isInbox ? "/lists/inbox" : `/lists/${list.id}`} className="font-medium underline">
+                <Link href={list.isInbox && list.ownerPersonId === actorPersonId ? "/lists/inbox" : `/lists/${list.id}`} className="font-medium underline">
                   {list.name}
                 </Link>
                 {list.isArchived ? <span className="ml-2 text-xs text-zinc-400">[Archived]</span> : null}
@@ -178,7 +178,7 @@ export default async function ListsPage() {
     }
   }
 
-  const teams = await db.team.findMany({
+  const [teams, relatedPeople] = await Promise.all([db.team.findMany({
     where: {
       organizationId,
       ...(listVisibility.organizationWide
@@ -191,7 +191,10 @@ export default async function ListsPage() {
           }),
     },
     select: { id: true, name: true, programId: true },
-  });
+  }), db.person.findMany({
+    where: { organizationId, id: { in: listVisibility.dependentPersonIds } },
+    select: { id: true, firstName: true, lastName: true },
+  })]);
   const visibleProgramIds = Array.from(new Set([...listVisibility.programIds, ...teams.map((team) => team.programId)]));
   const programs = await db.program.findMany({
     where: {
@@ -200,9 +203,17 @@ export default async function ListsPage() {
     },
     select: { id: true, name: true },
   });
-  const hierarchy = buildEntryListHierarchy({ visibility: listVisibility, lists: allLists, programs, teams });
+  const hierarchy = buildEntryListHierarchy({
+    visibility: listVisibility,
+    lists: allLists,
+    actorPersonId: scope.auth.personId,
+    relatedPeople,
+    programs,
+    teams,
+  });
   const hasHierarchyContent =
     hierarchy.personalLists.length > 0 ||
+    hierarchy.relatedAthletes.length > 0 ||
     hierarchy.adminSharedLists.length > 0 ||
     hierarchy.programs.length > 0;
 
@@ -281,6 +292,23 @@ export default async function ListsPage() {
               canManageSharedLists={listVisibility.canManageSharedLists}
             />
           </div>
+
+          {hierarchy.relatedAthletes.length > 0 ? (
+            <div className="space-y-3">
+              <h2 className="text-base font-semibold">Related Athletes</h2>
+              {hierarchy.relatedAthletes.map((athlete) => (
+                <div key={athlete.id} className="space-y-2">
+                  <h3 className="text-sm font-medium">{athlete.name}</h3>
+                  <ListTable
+                    lists={athlete.lists}
+                    countMap={countMap}
+                    actorPersonId={scope.auth.personId}
+                    canManageSharedLists={false}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : null}
 
           {hierarchy.adminSharedLists.length > 0 ? (
             <div className="space-y-2">

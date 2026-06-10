@@ -42,7 +42,7 @@ import {
 import {
   fetchEntryListDestinationsForActor,
   fetchListsForActor,
-  labelForEntryListScope,
+  labelForEntryListContext,
 } from "@/lib/entries/lists";
 import {
   ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE,
@@ -727,13 +727,13 @@ export default async function EntryDetailPage({
                 {/* Arc 24D.4: List assignment */}
                 {listAssignmentUnavailable ? (
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">List</label>
+                    <label className="text-sm font-medium">Organization context</label>
                     <p className="text-sm text-amber-700 dark:text-amber-300">{ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}</p>
                   </div>
                 ) : destinationLists.length > 0 ? (
                   <div className="space-y-1">
                     <label htmlFor="listId" className="text-sm font-medium">
-                      List
+                      Organization context
                     </label>
                     <select id="listId" name="listId" defaultValue={entry.listId ?? ""} className="w-full rounded-md border px-3 py-2 text-sm sm:w-80">
                       {entry.listId ? null : <option value="">Assign Inbox on save</option>}
@@ -742,10 +742,13 @@ export default async function EntryDetailPage({
                       ) : null}
                       {destinationLists.map((list) => (
                         <option key={list.id} value={list.id}>
-                          {labelForEntryListScope(list.scope)}: {list.name}{list.isInbox ? " (Inbox)" : ""}
+                          {labelForEntryListContext(list, scope.auth.personId)}
                         </option>
                       ))}
                     </select>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Context organizes the Entry. Visibility controls who can see it. Assignment controls who is responsible.
+                    </p>
                   </div>
                 ) : null}
                 {canEditEntryAdministrativeFields ? (
