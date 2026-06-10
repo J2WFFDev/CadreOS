@@ -30,7 +30,10 @@ This document captures the current active product decisions and is the source of
   grouped by Athlete and remain read-only Guardian context, but Journal access
   remains narrower: only Final/Done Guardian-visible dependent Journals are
   readable; Draft, Private, and staff-only Journals remain hidden.
-- All Entries defaults to active Entries and active Habit definitions.
-  Inactive or archived records require an explicit status filter; Habit
+- All Entries defaults to non-archived Entries and active Habit definitions.
+  Archived Entries and inactive or archived Habits require an explicit status
+  filter. Done/Final/completed is not archive. Archive preserves record
+  identity, metadata, visibility, and relationships; restore returns a generic
+  Entry to its recorded pre-archive workflow status when available. Habit
   check-ins/activity remain history unless explicitly modeled as Entries.
   Additional Today redesign/integration remains future roadmap work.

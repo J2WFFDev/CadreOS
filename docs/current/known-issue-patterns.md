@@ -56,6 +56,14 @@ and [`Current Product Decisions`](../product/CURRENT_PRODUCT_DECISIONS.md).
   Creator as mutable can imply unsupported policy changes.
 - Technical `scope` labels can blur organization with access. Prefer
   Context/List for organization and Visibility for who can see an Entry.
+- Completion and archive are separate lifecycle concepts. Default working
+  views should exclude archived records without hiding completed non-archived
+  records, and explicit archived views must retain existing visibility checks.
+- Do not combine archive with soft deletion. Historical generic Entries may
+  have both `ARCHIVED` status and `deletedAt`; lifecycle reads and restore must
+  account for them without weakening authorization.
+- Archive and restore mutations must not rewrite Creator, Author, Assignee,
+  Context/List, Visibility, or relationships.
 
 Sources: [`Sidebar Taxonomy`](../navigation/sidebar-taxonomy.md) and
 [`Arc 24D.8X-F`](../planning/arc-24d-8x-f-entryops-role-visibility-design.md).

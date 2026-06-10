@@ -52,11 +52,20 @@ Sources: [`Sidebar Taxonomy`](../navigation/sidebar-taxonomy.md),
 - Entry owners can self-edit within bounded policy, while conversion,
   reassignment, ownership changes, cross-person assignment, and scope changes
   remain elevated actions.
-- Generic Entry archive/restore rights and normalized restore behavior are not
-  fully decided. This remains an open decision, not an implied permission.
+- Archive is a preserved lifecycle state, not deletion and not completion.
+  Default working views exclude archived records; explicit archived filters
+  show archived records within the actor's existing visibility.
+- Generic Entry archive and restore use the existing elevated `entry.delete`
+  permission. This does not grant owner/assignee self-service archive rights.
+- Restoring a generic Entry returns it to its recorded pre-archive workflow
+  status when available, otherwise Open. Archive and restore preserve Creator,
+  Author, Assignee, Context/List, Visibility, and relationships.
+- Journal Final/Done and Habit completion activity remain distinct from
+  archive. Journal and Habit lifecycle actions keep their existing policies.
 
 Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-controls.md)
-and [`Arc 26E`](../../planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md).
+[`Arc 24D.8S`](../planning/arc-24d-8s-entryops-lifecycle-validation.md), and
+[`Arc 26E`](../../planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md).
 
 ## Entry Organization, Visibility, And Responsibility
 

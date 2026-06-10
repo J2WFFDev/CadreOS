@@ -5,8 +5,6 @@ not a claim that every issue is reproducible in current code.
 
 ## EntryOps
 
-- Generic Entry archive/restore policy is not settled; generic restore remains
-  deferred, and owner/assignee archive rights need a product decision.
 - Inbox routing cleanup for stale or unavailable routing rows remains deferred.
 - Dependent-athlete Quick Capture assignment for guardians remains deferred.
 - Relationship semantics can duplicate or drift across `EntryLink`,
@@ -14,7 +12,8 @@ not a claim that every issue is reproducible in current code.
   relationships.
 - Relationship direction labels and generic graph read visibility need
   normalization and stronger test coverage.
-Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-controls.md),
+Sources: [`Arc 24D.8S`](../planning/arc-24d-8s-entryops-lifecycle-validation.md),
+[`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-controls.md),
 [`Arc 24D.8X-O`](../planning/arc-24d-8x-o-fix-inbox-lists-owner-visibility.md),
 and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.md).
 

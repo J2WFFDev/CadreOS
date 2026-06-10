@@ -183,7 +183,8 @@ export default async function JournalDetailPage({
         </p>
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           Journal Workflow Status controls draft, final, and editing behavior. Entry Status is the operational state;
-          for Journals, Done maps to Final. Guardian visibility begins only when a Guardian-visible Journal is Final.
+          for Journals, Done maps to Final. Final is a completed workflow state, not an archive state. Guardian visibility
+          begins only when a Guardian-visible Journal is Final.
         </p>
       </div>
 

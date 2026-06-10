@@ -14,6 +14,7 @@ test("Journal detail submits reopen through the POST action route", () => {
   assert.match(detailPage, /action=\{`\/journals\/\$\{journal\.id\}\/reopen`\} method="post"/);
   assert.match(reopenRoute, /export async function POST\(/);
   assert.match(reopenRoute, /status: EntryStatus\.OPEN/);
+  assert.match(reopenRoute, /journal\.status !== EntryStatus\.DONE/);
   assert.match(reopenRoute, /journalStatus: "DRAFT"/);
   assert.match(reopenRoute, /new URL\(`\/journals\/\$\{entryId\}`/);
   assert.doesNotMatch(reopenRoute, /new URL\("\/dashboard"/);
@@ -39,7 +40,8 @@ test("Journal UI distinguishes workflow status from generic Entry status", () =>
   assert.match(journalsPage, />Journal Workflow Status</);
   assert.match(journalsPage, />Entry Status</);
   assert.match(journalDetailPage, /Done maps to Final/);
-  assert.match(journalDetailPage, /Guardian visibility begins only when a Guardian-visible Journal is Final/);
+  assert.match(journalDetailPage, /Final is a completed workflow state, not an archive state/);
+  assert.match(journalDetailPage, /Guardian visibility\s+begins only when a Guardian-visible Journal is Final/);
 });
 
 test("Journal list, detail, and actions use the same Journal visibility predicate", () => {

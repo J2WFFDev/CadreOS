@@ -35,11 +35,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   const entryVisibilityWhere = buildEntryOpsEntryDetailVisibilityWhere(entryVisibility);
 
   const entry = await db.entry.findFirst({
-    where: { id: entryId, organizationId: organizationId, deletedAt: null, AND: [entryVisibilityWhere] },
-    select: { id: true, sourceTaskId: true, type: true },
+    where: {
+      id: entryId,
+      organizationId: organizationId,
+      deletedAt: null,
+      status: { not: EntryStatus.ARCHIVED },
+      type: { not: EntryType.JOURNAL },
+      AND: [entryVisibilityWhere],
+    },
+    select: { id: true, sourceTaskId: true, type: true, status: true },
   });
 
-  if (!entry || entry.type === EntryType.JOURNAL) {
+  if (!entry) {
     const existingEntry = !entry
       ? await db.entry.findFirst({
           where: { id: entryId, organizationId, deletedAt: null },
@@ -85,24 +92,43 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(url, 303);
   }
 
-  await db.entry.update({
-    where: { id: entry.id },
-    data: { deletedAt: new Date(), status: EntryStatus.ARCHIVED, version: { increment: 1 } },
-  });
-
-  if (entry.sourceTaskId) {
-    await db.followUpTask.update({
-      where: { id: entry.sourceTaskId },
-      data: { status: TaskStatus.CANCELLED },
+  const archivedAt = new Date();
+  await db.$transaction(async (tx) => {
+    await tx.entry.update({
+      where: { id: entry.id },
+      data: {
+        deletedAt: null,
+        status: EntryStatus.ARCHIVED,
+        updatedByPersonId: scope.auth.personId,
+        version: { increment: 1 },
+      },
     });
-  }
+
+    await tx.entryStatusHistory.create({
+      data: {
+        organizationId,
+        entryId: entry.id,
+        fromStatus: entry.status,
+        toStatus: EntryStatus.ARCHIVED,
+        changedByPersonId: scope.auth.personId,
+        note: "Archived",
+      },
+    });
+
+    if (entry.sourceTaskId) {
+      await tx.followUpTask.updateMany({
+        where: { id: entry.sourceTaskId, organizationId },
+        data: { status: TaskStatus.CANCELLED },
+      });
+    }
+  });
 
   await writeEntryActivity({
     organizationId: organizationId,
     entryId: entry.id,
     actorPersonId: scope.auth.personId,
     action: ENTRY_ACTIVITY_ACTIONS.ENTRY_ARCHIVED,
-    metadata: { archivedAt: new Date().toISOString() },
+    metadata: { archivedAt: archivedAt.toISOString(), fromStatus: entry.status },
   });
 
   return NextResponse.redirect(new URL(returnTo, request.url), 303);
