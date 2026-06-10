@@ -33,8 +33,8 @@ test("entry detail page keeps one editable details field, clear metadata, relati
   assert.equal(detailSource.includes("Main Item"), false);
   assert.equal(detailSource.includes(">Details</h3>"), false);
   assert.equal(detailSource.includes("{detailConfig.contentLabel}"), true);
-  assert.equal(detailSource.includes("Entry Metadata"), true);
-  assert.equal(detailSource.includes("Record History"), true);
+  assert.equal(detailSource.includes("Entry context"), true);
+  assert.equal(detailSource.includes("System metadata"), true);
   assert.equal(detailSource.includes('name="assignedToPersonId"'), true);
   assert.equal(detailSource.includes('name="status"'), true);
   assert.equal(detailSource.includes('name="listId"'), true);

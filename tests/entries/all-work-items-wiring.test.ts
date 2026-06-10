@@ -9,7 +9,7 @@ test("All Entries includes Entries, Journals, and active Habit definitions throu
   const source = readFileSync(allWorkItemsPath, "utf8");
 
   assert.match(source, /title="All Entries"/);
-  assert.match(source, />List<\/th>/);
+  assert.match(source, />Context \/ List<\/th>/);
   assert.match(source, /labelForEntryListContext/);
   assert.match(source, /allWorkDefaultVisibility\.organizationWide/);
   assert.match(source, /oversightLists/);

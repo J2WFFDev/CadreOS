@@ -179,7 +179,7 @@ export default async function JournalsPage({ searchParams }: { searchParams: Pro
 
       {visibleJournals.length === 0 ? (
         <EmptyState
-          message="No journals are visible for the selected filter and role scope."
+          message="No journals are visible for the selected filter and current access."
           actionHref={canCreate ? "/journals/create" : "/dashboard"}
           actionLabel={canCreate ? "Create Journal Entry" : "Back to dashboard"}
         />

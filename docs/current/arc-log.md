@@ -13,6 +13,7 @@
 | Arc 24D.8Q-C All Entries, Guardian Lists, and movement validation | Completed / merged | [`Arc 24D.8Q-C`](../planning/arc-24d-8q-c-all-entries-guardian-lists-validation.md) |
 | Arc 24D.8Q-D Guardian grouping, context labels, destinations, and active Habits | Completed / merged | PR #365 |
 | Arc 24D.8R Journal workflow/access UX | Completed / merged | Journal workflow, visibility, and reopen behavior |
+| Arc 24D.8U Creator/Owner/Author/Assignee terminology cleanup | Completed / pending merge | User-facing label, helper-text, test, and documentation normalization without policy changes |
 | Arc 24D.10.4, 24D.11, 24D.12 | Marked complete | [`planning/README.md`](../../planning/README.md) |
 | Arc 25F GearOps role/approval validation | Delivered | [`planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md`](../../planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md) |
 | GearOps CSV `asset_id` baseline | Fixed / merged | PR #366 |
@@ -40,6 +41,9 @@ Implemented current behavior includes:
   or Journal visibility.
 - Journal Draft/Private/staff-only content remains hidden from Guardians;
   linked Guardians may read Final/Done Guardian-visible dependent Journals.
+- Creator/Created by, Journal Author, task Assignee, Context/List, and
+  Visibility now use distinct user-facing terminology; Owner transfer remains
+  unsupported.
 
 The newest detailed planning audit found is Arc 24D.9A Entry Relationships
 Foundation Audit, which recommends 24D.9B. The next priority **needs

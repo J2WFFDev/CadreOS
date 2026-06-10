@@ -684,12 +684,12 @@ export default async function TasksPage({
 
       <ReviewFocusPanel
         title="Operational review focus"
-        description="Keep unresolved, stale, urgent, and recently changed follow-up in one review lane. Current scope is preserved when these quick links are used."
+        description="Keep unresolved, stale, urgent, and recently changed follow-up in one review lane. The current view is preserved when these quick links are used."
         activeFilters={activeFilterLabels}
         defaultScope="No filters are active. Review spans all follow-up tasks in the current organization."
         stats={[
           {
-            label: "Tasks in current scope",
+            label: "Tasks in current view",
             value: filteredTasks.length,
             href: hasActiveFilters ? buildTaskHref({}) : "/tasks",
           },
@@ -725,7 +725,7 @@ export default async function TasksPage({
           },
         ]}
         links={[
-          { label: "Unresolved in current scope", href: buildTaskHref({ status: "", resolution: "unresolved" }) },
+          { label: "Unresolved in current view", href: buildTaskHref({ status: "", resolution: "unresolved" }) },
           { label: "Urgent follow-up", href: buildTaskHref({ status: "", resolution: "", ownershipIndicator: "urgent" }) },
           {
             label: "Stale unresolved review",
@@ -896,11 +896,11 @@ export default async function TasksPage({
                 <th className="px-4 py-3 font-medium">Title</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Assignee</th>
-                <th className="px-4 py-3 font-medium">Creator</th>
+                <th className="px-4 py-3 font-medium">Created by</th>
                 <th className="px-4 py-3 font-medium">Due date</th>
                 <th className="px-4 py-3 font-medium">Team context</th>
                 <th className="px-4 py-3 font-medium">Event context</th>
-                <th className="px-4 py-3 font-medium">Ownership indicator</th>
+                <th className="px-4 py-3 font-medium">Responsibility</th>
                 <th className="px-4 py-3 font-medium">Last updated</th>
                 <th className="px-4 py-3 font-medium">Guardian context</th>
                 <th className="px-4 py-3 font-medium">Source</th>
@@ -982,7 +982,7 @@ export default async function TasksPage({
                           </span>
                         ) : null}
                         <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-                          Assigned owner
+                          Assigned to assignee
                         </span>
                         {missingResponsibleContext ? (
                           <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">

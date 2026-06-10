@@ -22,6 +22,9 @@ This document captures the current active product decisions and is the source of
   is responsibility. Moving an Entry between Personal, Admin, Program, or Team
   contexts must not change visibility or assignment; Program/Team placement
   does not grant either.
+- Creator is immutable system history shown as Created by; Assignee is
+  responsibility; Journal Author is Journal-specific context; Owner remains a
+  mostly internal record concept and owner transfer is not implemented.
 - Guardian app visibility derives from active Guardian relationships and must
   not expose unrelated members. Guardian-linked Athlete Personal lists are
   grouped by Athlete and remain read-only Guardian context, but Journal access

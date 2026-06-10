@@ -60,6 +60,14 @@ and [`Arc 26E`](../../planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND
 
 ## Entry Organization, Visibility, And Responsibility
 
+- **Creator** is system history and is shown as **Created by**. Reassignment,
+  movement, completion, archive, restore, and reopen do not change Creator.
+- **Owner** is the mostly internal record/work-object ownership concept.
+  Owner transfer is not implemented, and Owner must not be presented as an
+  editable substitute for Creator or Assignee.
+- **Author** is Journal-specific writer/subject context. It is not assignment
+  or ownership transfer.
+- **Assignee** is the person responsible for completing task-like work.
 - List/context placement is **organization**.
 - Visibility is **sharing**.
 - Assignment is **responsibility**.
@@ -68,6 +76,7 @@ and [`Arc 26E`](../../planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND
 - Program/Team placement does not grant Entry visibility or assignment.
 - Organization-admin cross-user oversight belongs in All Entries/Admin views,
   not in another person's Inbox.
+- Program/Team context placement does not share or assign work.
 
 ## Habits In EntryOps
 

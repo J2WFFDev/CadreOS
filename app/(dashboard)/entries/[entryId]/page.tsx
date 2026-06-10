@@ -604,7 +604,7 @@ export default async function EntryDetailPage({
       ) : null}
       {shouldShowQuickCaptureSuccessBanner(quickCapturedParam) && !routeError ? (
         <div className="rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-300">
-          Captured as a task and routed to your inbox. Add details below when you are ready.
+          Created by you, assigned to you, and routed to your Inbox. Add details below when you are ready.
         </div>
       ) : null}
       {warningParam ? (
@@ -724,16 +724,16 @@ export default async function EntryDetailPage({
                     />
                   </div>
                 ) : null}
-                {/* Arc 24D.4: List assignment */}
+                {/* Arc 24D.4: Context / List organization */}
                 {listAssignmentUnavailable ? (
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">Organization context</label>
+                    <label className="text-sm font-medium">Context / List</label>
                     <p className="text-sm text-amber-700 dark:text-amber-300">{ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}</p>
                   </div>
                 ) : destinationLists.length > 0 ? (
                   <div className="space-y-1">
                     <label htmlFor="listId" className="text-sm font-medium">
-                      Organization context
+                      Context / List
                     </label>
                     <select id="listId" name="listId" defaultValue={entry.listId ?? ""} className="w-full rounded-md border px-3 py-2 text-sm sm:w-80">
                       {entry.listId ? null : <option value="">Assign Inbox on save</option>}
@@ -770,6 +770,9 @@ export default async function EntryDetailPage({
                           </option>
                         ))}
                       </select>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                        Assignee is responsible for completing the work.
+                      </p>
                     </div>
                     {entry.type !== EntryType.JOURNAL ? (
                       <div className="space-y-1">
@@ -1066,10 +1069,10 @@ export default async function EntryDetailPage({
 
         <aside className="space-y-4">
           <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-            <h3 className="font-semibold">Entry Metadata</h3>
+            <h3 className="font-semibold">Entry context</h3>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
               <div>
-                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">List</dt>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Context / List</dt>
                   <dd>
                     {listAssignmentUnavailable ? (
                       <span className="text-amber-700 dark:text-amber-300">{ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE}</span>
@@ -1083,16 +1086,16 @@ export default async function EntryDetailPage({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Assignment</dt>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Assignee</dt>
                   <dd>{formatPersonName(entry.assignedTo)}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Scope</dt>
-                  <dd>{entry.type === EntryType.EVENT ? "Program/Team event scope" : "Organization entry scope"}</dd>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Organized under</dt>
+                  <dd>{entry.type === EntryType.EVENT ? "Program / Team event context" : "Organization"}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-zinc-500 dark:text-zinc-400">Visibility</dt>
-                  <dd>Role and relationship policy controlled</dd>
+                  <dd>{formatEnumLabel(entry.visibility)}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-zinc-500 dark:text-zinc-400">Related items</dt>
@@ -1105,11 +1108,14 @@ export default async function EntryDetailPage({
             </dl>
           </div>
           <div className="rounded-lg border bg-white p-4 text-sm dark:bg-zinc-900">
-            <h3 className="font-semibold">Record History</h3>
+            <h3 className="font-semibold">System metadata</h3>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
                 <div>
                   <dt className="text-xs text-zinc-500 dark:text-zinc-400">Created by</dt>
                   <dd>{formatPersonName(entry.createdBy)}</dd>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Created by is system history and does not change when an Entry is reassigned.
+                  </p>
               </div>
                 <div>
                   <dt className="text-xs text-zinc-500 dark:text-zinc-400">Last updated by</dt>

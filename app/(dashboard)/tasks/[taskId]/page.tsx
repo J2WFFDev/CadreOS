@@ -503,7 +503,7 @@ export default async function TaskDetailPage({
             </dd>
           </div>
           <div>
-            <dt className="font-medium">Creator</dt>
+            <dt className="font-medium">Created by</dt>
             <dd className="text-zinc-600 dark:text-zinc-400">
               <Link href={`/people/${task.createdBy.id}`} className="underline">
                 {task.createdBy.firstName} {task.createdBy.lastName}

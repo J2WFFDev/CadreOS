@@ -9,8 +9,6 @@ not a claim that every issue is reproducible in current code.
   deferred, and owner/assignee archive rights need a product decision.
 - Inbox routing cleanup for stale or unavailable routing rows remains deferred.
 - Dependent-athlete Quick Capture assignment for guardians remains deferred.
-- Owner/Creator/Author/Assignee terminology is not yet normalized across
-  EntryOps and Journal surfaces.
 - Relationship semantics can duplicate or drift across `EntryLink`,
   `EntryObjectLink`, `OperationalRelationship`, parent links, and follow-up
   relationships.
@@ -22,6 +20,9 @@ and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.m
 
 ## EntryOps Policy Boundaries To Preserve
 
+- Creator/Created by is immutable system history in current workflows; Owner
+  transfer is not implemented.
+- Journal Author is Journal-specific and must not be treated as assignment.
 - Program/Team list placement must not grant Entry visibility or assignment.
 - Guardian-related Athlete list visibility must not expose unrelated members.
 - Habit check-ins and Habit activity remain history/activity unless explicitly

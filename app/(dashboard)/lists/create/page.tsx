@@ -119,7 +119,7 @@ export default async function CreateListPage({ searchParams }: { searchParams: P
 
         <div className="space-y-1">
           <label htmlFor="scope" className="text-sm font-medium">
-            Scope <span className="text-red-500">*</span>
+            Context type <span className="text-red-500">*</span>
           </label>
           <select id="scope" name="scope" className="w-full rounded-md border px-3 py-2 text-sm">
             {scopeOptions.map((s) => (
@@ -129,14 +129,14 @@ export default async function CreateListPage({ searchParams }: { searchParams: P
             ))}
           </select>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Personal lists belong to you. Organization lists are shared. Program/Team lists are scoped to their context.
+            Personal lists belong to you. Organization lists are shared. Program/Team lists are organized under their context.
           </p>
         </div>
 
         {programs.length > 0 ? (
           <div className="space-y-1">
             <label htmlFor="programId" className="text-sm font-medium">
-              Program <span className="text-xs text-zinc-400">(required for Program scope)</span>
+              Program <span className="text-xs text-zinc-400">(required for Program context)</span>
             </label>
             <select id="programId" name="programId" className="w-full rounded-md border px-3 py-2 text-sm">
               <option value="">— None —</option>
@@ -152,7 +152,7 @@ export default async function CreateListPage({ searchParams }: { searchParams: P
         {teams.length > 0 ? (
           <div className="space-y-1">
             <label htmlFor="teamId" className="text-sm font-medium">
-              Team <span className="text-xs text-zinc-400">(required for Team scope)</span>
+              Team <span className="text-xs text-zinc-400">(required for Team context)</span>
             </label>
             <select id="teamId" name="teamId" className="w-full rounded-md border px-3 py-2 text-sm">
               <option value="">— None —</option>

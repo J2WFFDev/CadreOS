@@ -164,7 +164,7 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
 
       {visibleHabits.length === 0 ? (
         <EmptyState
-          message="No habits are visible for the selected filter and your role scope."
+          message="No habits are visible for the selected filter and your current access."
           actionHref={canCreate ? "/habits/create" : "/dashboard"}
           actionLabel={canCreate ? "Create first habit" : "Back to dashboard"}
         />
