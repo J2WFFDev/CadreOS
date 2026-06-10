@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { resolveEntryRestoreStatus } from "@/lib/entries/lifecycle";
+import { canRestoreEntry } from "@/lib/entries/lifecycle-access";
 import { mapEntryStatusToTaskStatus, writeEntryActivity } from "@/lib/entries/service";
 import {
   buildEntryOpsEntryDetailVisibilityWhere,
@@ -12,7 +13,6 @@ import {
 } from "@/lib/entryops/visibility";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { requirePermission } from "@/lib/permissions";
 
 export async function POST(request: Request, { params }: { params: Promise<{ entryId: string }> }) {
   const { entryId } = await params;
@@ -36,20 +36,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       type: { not: EntryType.JOURNAL },
       AND: [buildEntryOpsEntryDetailVisibilityWhere(entryVisibility)],
     },
-    select: { id: true, sourceTaskId: true },
+    select: { id: true, sourceTaskId: true, createdByPersonId: true },
   });
 
   if (!entry) {
     return NextResponse.redirect(new URL("/entries?status=ARCHIVED", request.url), 303);
   }
 
-  try {
-    await requirePermission({
-      actorUserId: scope.auth.clerkUserId,
-      organizationId,
-      action: "entry.delete",
-    });
-  } catch {
+  const canRestore = await canRestoreEntry({
+    actorPersonId: scope.auth.personId,
+    actorUserId: scope.auth.clerkUserId,
+    organizationId,
+    entry,
+  });
+  if (!canRestore) {
     const url = new URL(`/entries/${entryId}`, request.url);
     url.searchParams.set("error", entryActionDeniedMessage("restore this work item"));
     return NextResponse.redirect(url, 303);

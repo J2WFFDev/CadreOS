@@ -34,6 +34,9 @@ This document captures the current active product decisions and is the source of
   Archived Entries and inactive or archived Habits require an explicit status
   filter. Done/Final/completed is not archive. Archive preserves record
   identity, metadata, visibility, and relationships; restore returns a generic
-  Entry to its recorded pre-archive workflow status when available. Habit
+  Entry to its recorded pre-archive workflow status when available. Entry
+  creators may archive and restore their own Entries; existing elevated
+  lifecycle permissions remain intact, while assignee-only access is not
+  broadened. Habit
   check-ins/activity remain history unless explicitly modeled as Entries.
   Additional Today redesign/integration remains future roadmap work.
