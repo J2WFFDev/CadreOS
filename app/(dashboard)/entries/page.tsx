@@ -13,6 +13,7 @@ import {
 import { fetchListsForActor, labelForEntryListContext } from "@/lib/entries/lists";
 import { buildEntryLifecycleWhere } from "@/lib/entries/lifecycle";
 import { canReadHabit, resolveHabitAccessContext } from "@/lib/habits/access";
+import { resolveAllEntriesHabitStatus } from "@/lib/habits/policy";
 import { buildDueWindowWhere, buildEntryOrderBy, parseEntryListFilter } from "@/lib/operational-feed/filters";
 import { formatDueDate, isOverdueFeedEntry, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -121,22 +122,23 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
     },
     take: 300,
   });
-  const includeActiveHabits =
+  const allEntriesHabitStatus = resolveAllEntriesHabitStatus(filter.status ?? null);
+  const includeHabits =
     (!filter.type || filter.type === EntryType.HABIT) &&
-    !filter.status &&
+    Boolean(allEntriesHabitStatus) &&
     !filter.priority &&
     filter.dueWindow === "all";
-  const habitAccessContext = includeActiveHabits
+  const habitAccessContext = includeHabits
     ? await resolveHabitAccessContext({
         organizationId: scope.organizationId,
         actorPersonId: scope.auth.personId,
       })
     : null;
-  const activeHabits = includeActiveHabits
+  const habits = includeHabits && allEntriesHabitStatus
     ? await db.habit.findMany({
         where: {
           organizationId: scope.organizationId,
-          status: HabitStatus.ACTIVE,
+          status: allEntriesHabitStatus,
           ...(filter.assigneePersonId ? { athletePersonId: filter.assigneePersonId } : {}),
         },
         orderBy: { updatedAt: "desc" },
@@ -154,8 +156,8 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
         take: 300,
       })
     : [];
-  const visibleActiveHabits = habitAccessContext
-    ? activeHabits.filter((habit) =>
+  const visibleHabits = habitAccessContext
+    ? habits.filter((habit) =>
         canReadHabit(habitAccessContext, {
           ...habit,
           teamProgramId: habit.assignedToTeam?.programId ?? null,
@@ -335,7 +337,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
         </div>
       </form>
 
-      {entries.length === 0 && visibleActiveHabits.length === 0 ? (
+      {entries.length === 0 && visibleHabits.length === 0 ? (
         <EmptyState message="No Entries match the current filters." actionHref="/dashboard" actionLabel="Back to dashboard" />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
@@ -382,7 +384,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
                   </tr>
                 );
               })}
-              {visibleActiveHabits.map((habit) => (
+              {visibleHabits.map((habit) => (
                 <tr key={`habit-${habit.id}`} className="border-b last:border-b-0">
                   <td className="px-4 py-3">
                     <Link href={`/habits/${habit.id}`} className="underline">
@@ -390,7 +392,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-zinc-500">Habit</td>
-                  <td className="px-4 py-3">Active</td>
+                  <td className="px-4 py-3">{habit.status === HabitStatus.ARCHIVED ? "Archived" : "Active"}</td>
                   <td className="px-4 py-3">—</td>
                   <td className="px-4 py-3">—</td>
                   <td className="px-4 py-3 text-zinc-500">{formatAssigneeName(habit.athlete)}</td>

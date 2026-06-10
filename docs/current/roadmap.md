@@ -38,6 +38,9 @@ committed.
 - Arc 24D.8S EntryOps lifecycle cleanup is complete, normalizing non-archived
   working views and generic Entry archive/restore while preserving existing
   permissions and Journal/Habit policy.
+- Arc 24D.8T Habit Library foundation is complete, clarifying the separate
+  Habit definition/check-in model, active and archived library behavior,
+  direct creation, detail/history, and All Entries lifecycle alignment.
 - The GearOps CSV `asset_id` baseline fix and UI.1 collapsible
   sidebar/independent scrolling work are complete.
 
@@ -50,7 +53,7 @@ The latest merged EntryOps implementation work on `main` includes Arc
 also fixes the GearOps CSV `asset_id` baseline and completes UI.1 collapsible
 sidebar and independent content/sidebar scrolling.
 
-The next EntryOps slice after Arc 24D.8S is **needs product-owner
+The next EntryOps slice after Arc 24D.8T is **needs product-owner
 confirmation**. Current candidates include:
 
 - Arc 24D.9B: normalize relationship labels and direction semantics.
@@ -59,6 +62,8 @@ confirmation**. Current candidates include:
 
 - Continue EntryOps coherence work: lifecycle policy, relationships,
   terminology, Journal/Habit integration, and role-safe visibility.
+- Habit team recurrence/fan-out, compliance dashboards, and advanced streak
+  analytics remain future work requiring explicit product and access policy.
 - Treat additional Today redesign/integration as future roadmap work; current
   EntryOps/List work must not imply generated Habit check-in Entries or a new
   Today model.

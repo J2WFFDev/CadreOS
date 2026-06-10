@@ -83,6 +83,7 @@ export default async function HabitDetailPage({
       targetUnit: true,
       createdAt: true,
       updatedAt: true,
+      lastCompletedAt: true,
       athlete: { select: { firstName: true, lastName: true } },
       assignedToTeam: { select: { name: true, programId: true } },
       createdBy: { select: { firstName: true, lastName: true } },
@@ -92,11 +93,11 @@ export default async function HabitDetailPage({
       },
       completions: {
         orderBy: { completedOn: "desc" },
-        select: { id: true, completedOn: true, note: true, athletePersonId: true, countValue: true },
+        select: { id: true, completedOn: true, note: true, athletePersonId: true, completedBy: true, countValue: true },
       },
       activities: {
         orderBy: { createdAt: "desc" },
-        select: { id: true, action: true, createdAt: true },
+        select: { id: true, action: true, actorPersonId: true, createdAt: true },
         take: 30,
       },
     },
@@ -167,6 +168,24 @@ export default async function HabitDetailPage({
   const creatorName = `${habit.createdBy.firstName} ${habit.createdBy.lastName}`.trim() || "Unknown";
   const trackingMode = habit.trackingMode;
   const linkedOperationalRecordCount = relationshipItems.length;
+  const activityActorIds = showCompletionDetail
+    ? Array.from(new Set([
+        ...habit.completions.map((completion) => completion.completedBy),
+        ...habit.activities.map((activity) => activity.actorPersonId),
+      ].filter((personId): personId is string => Boolean(personId))))
+    : [];
+  const activityActors = activityActorIds.length > 0
+    ? await db.person.findMany({
+        where: { organizationId: scope.organizationId, id: { in: activityActorIds } },
+        select: { id: true, firstName: true, lastName: true },
+      })
+    : [];
+  const activityActorNames = new Map(
+    activityActors.map((person) => [
+      person.id,
+      `${person.firstName} ${person.lastName}`.trim() || "Unknown",
+    ]),
+  );
 
   return (
     <section className="space-y-6">
@@ -254,15 +273,15 @@ export default async function HabitDetailPage({
         <dl className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">List</dt>
-            <dd className="mt-1 text-sm">Not assigned in habit workflow</dd>
+            <dd className="mt-1 text-sm">Not modeled for Habit definitions</dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Relationships</dt>
             <dd className="mt-1 text-sm">{relationshipItems.length}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Organized under</dt>
-            <dd className="mt-1 text-sm">{habit.assignedToTeam ? `Team: ${habit.assignedToTeam.name}` : "Organization"}</dd>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Existing team assignment</dt>
+            <dd className="mt-1 text-sm">{habit.assignedToTeam?.name ?? "None"}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Visibility</dt>
@@ -333,6 +352,10 @@ export default async function HabitDetailPage({
           <div>
             <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Total check-ins</dt>
             <dd className="mt-1 text-sm font-semibold">{completionCount}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Last check-in</dt>
+            <dd className="mt-1 text-sm">{habit.lastCompletedAt ? habit.lastCompletedAt.toISOString().slice(0, 10) : "No check-ins"}</dd>
           </div>
           {currentStreak !== null ? (
             <div>
@@ -444,6 +467,9 @@ export default async function HabitDetailPage({
                 <li key={activity.id} className="rounded-md border px-3 py-2">
                   <div className="font-medium">{labelForActivityAction(activity.action)}</div>
                   <div className="text-xs text-zinc-600 dark:text-zinc-400">{activity.createdAt.toISOString().slice(0, 16).replace("T", " ")} UTC</div>
+                  {showCompletionDetail && activity.actorPersonId ? (
+                    <div className="text-xs text-zinc-600 dark:text-zinc-400">Recorded by {activityActorNames.get(activity.actorPersonId) ?? "Unknown"}</div>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -463,6 +489,7 @@ export default async function HabitDetailPage({
                   <tr>
                     <th className="px-4 py-3 font-medium">Date</th>
                     {trackingMode === "COUNT" ? <th className="px-4 py-3 font-medium">Count</th> : null}
+                    {showCompletionDetail ? <th className="px-4 py-3 font-medium">Recorded by</th> : null}
                     {showCompletionDetail ? <th className="px-4 py-3 font-medium">Note</th> : null}
                   </tr>
                 </thead>
@@ -473,6 +500,11 @@ export default async function HabitDetailPage({
                       {trackingMode === "COUNT" ? (
                         <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                           {completion.countValue != null ? completion.countValue : <span className="text-zinc-400">—</span>}
+                        </td>
+                      ) : null}
+                      {showCompletionDetail ? (
+                        <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                          {completion.completedBy ? activityActorNames.get(completion.completedBy) ?? "Unknown" : "Unknown"}
                         </td>
                       ) : null}
                       {showCompletionDetail ? (

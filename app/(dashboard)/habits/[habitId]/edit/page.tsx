@@ -88,7 +88,7 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
     <section className="space-y-4">
       <PageHeader
         title="Edit Habit"
-        description="Update this habit's title, description, tracking mode, cadence, or assignment."
+        description="Update this habit's title, description, tracking mode, cadence, or existing assignment."
         actions={
           <Link href={`/habits/${habitId}`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
             Cancel
@@ -141,7 +141,7 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="assignedToTeamId" className="block text-sm font-medium">Team / Program <span className="text-zinc-400">(optional)</span></label>
+          <label htmlFor="assignedToTeamId" className="block text-sm font-medium">Existing team assignment <span className="text-zinc-400">(optional)</span></label>
           <select
             id="assignedToTeamId"
             name="assignedToTeamId"
@@ -155,6 +155,7 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
               </option>
             ))}
           </select>
+          <p className="text-xs text-zinc-500">This does not fan out or create recurring Habits for team members.</p>
         </div>
 
         <fieldset className="space-y-3 rounded-md border p-4">

@@ -3,7 +3,12 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { canCheckInHabit, canReadHabit, resolveHabitAccessContext } from "@/lib/habits/access";
 import { logHabitAccessFailure } from "@/lib/habits/access-feedback";
-import { MAX_CHECKIN_NOTE_LENGTH, normalizeCompletedOn, parseHabitCountValue } from "@/lib/habits/policy";
+import {
+  MAX_CHECKIN_NOTE_LENGTH,
+  normalizeCompletedOn,
+  parseHabitCountValue,
+  resolveLatestHabitCheckIn,
+} from "@/lib/habits/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
 
 export async function POST(request: Request, { params }: { params: Promise<{ habitId: string }> }) {
@@ -23,6 +28,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
       assignedToTeamId: true,
       createdByPersonId: true,
       status: true,
+      lastCompletedAt: true,
     },
   });
 
@@ -110,7 +116,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
   await Promise.all([
     db.habit.update({
       where: { id: habitId },
-      data: { lastCompletedAt: completedOn },
+      data: { lastCompletedAt: resolveLatestHabitCheckIn(habit.lastCompletedAt, completedOn) },
     }),
     db.habitActivity.create({
       data: {

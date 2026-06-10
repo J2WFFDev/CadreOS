@@ -34,7 +34,7 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
   if (!scope.databaseReady || !scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Habits" description="Track recurring behaviors and check-in history." />
+        <PageHeader title="Habit Library" description="Create and manage recurring behaviors without creating Tasks for check-ins." />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load habits right now."} />
       </section>
     );
@@ -67,6 +67,7 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
         createdByPersonId: string;
         createdAt: Date;
         updatedAt: Date;
+        lastCompletedAt: Date | null;
         athlete: { firstName: string; lastName: string };
         assignedToTeam: { name: string; programId: string } | null;
         schedules: Array<{ frequency: HabitFrequency; daysOfWeek: string | null }>;
@@ -94,6 +95,7 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
         createdByPersonId: true,
         createdAt: true,
         updatedAt: true,
+        lastCompletedAt: true,
         athlete: { select: { firstName: true, lastName: true } },
         assignedToTeam: { select: { name: true, programId: true } },
         schedules: { select: { frequency: true, daysOfWeek: true }, take: 1, orderBy: { createdAt: "asc" } },
@@ -117,7 +119,7 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
   if (!accessContext || !habits) {
     return (
       <section className="space-y-4">
-        <PageHeader title="Habits" description="Track recurring behaviors and check-in history." />
+        <PageHeader title="Habit Library" description="Create and manage recurring behaviors without creating Tasks for check-ins." />
         <ErrorMessage message={loadErrorMessage ?? "Unable to load habits right now."} />
       </section>
     );
@@ -139,8 +141,8 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
   return (
     <section className="space-y-4">
       <PageHeader
-        title="Habits"
-        description="Track recurring behaviors, check-ins, and completion streaks."
+        title="Habit Library"
+        description="Create and manage Habit definitions. Check-ins stay in activity/history and do not create Tasks."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <FilterTabs
@@ -176,7 +178,9 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
                 <th className="px-4 py-3 font-medium">Habit</th>
                 <th className="px-4 py-3 font-medium">Athlete</th>
                 <th className="px-4 py-3 font-medium">Cadence</th>
-                <th className="px-4 py-3 font-medium">Check-ins</th>
+                <th className="px-4 py-3 font-medium">Last check-in</th>
+                <th className="px-4 py-3 font-medium">Context / List</th>
+                <th className="px-4 py-3 font-medium">Visibility</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Updated</th>
               </tr>
@@ -191,9 +195,6 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
                       <Link href={`/habits/${habit.id}`} className="underline">
                         {habit.title}
                       </Link>
-                      {habit.assignedToTeam?.name ? (
-                        <p className="text-xs text-zinc-500">Team: {habit.assignedToTeam.name}</p>
-                      ) : null}
                     </td>
                     <td className="px-4 py-3">{athleteName}</td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
@@ -202,7 +203,12 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
                         daysOfWeek: schedule?.daysOfWeek ?? null,
                       })}
                     </td>
-                    <td className="px-4 py-3">{habit._count.completions}</td>
+                    <td className="px-4 py-3">
+                      {habit.lastCompletedAt ? formatShortDateTime(habit.lastCompletedAt) : "No check-ins"}
+                      <p className="text-xs text-zinc-500">{habit._count.completions} total</p>
+                    </td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">Not modeled for Habits</td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">Habit access policy</td>
                     <td className="px-4 py-3">
                       <StatusBadge variant={badgeVariantForHabitStatus(habit.status)} label={labelForHabitStatus(habit.status)} />
                     </td>

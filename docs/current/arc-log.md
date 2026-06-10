@@ -17,6 +17,7 @@
 | Arc 24D.8S EntryOps archive, restore, active state, and lifecycle cleanup | Completed / merged | [`Arc 24D.8S`](../planning/arc-24d-8s-entryops-lifecycle-validation.md) |
 | Arc 24D.8S-A discoverable Entry archive and restore actions | Completed / merged | [`Arc 24D.8S-A`](../planning/arc-24d-8s-a-discoverable-lifecycle-actions.md) |
 | Arc 24D.8S-B owner/creator Entry archive and restore | Completed / pending merge | [`Arc 24D.8S-B`](../planning/arc-24d-8s-b-owner-lifecycle-actions.md) |
+| Arc 24D.8T Habit Library foundation | Completed / pending merge | [`Arc 24D.8T`](../planning/arc-24d-8t-habit-library-foundation.md) |
 | Arc 24D.10.4, 24D.11, 24D.12 | Marked complete | [`planning/README.md`](../../planning/README.md) |
 | Arc 25F GearOps role/approval validation | Delivered | [`planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md`](../../planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md) |
 | GearOps CSV `asset_id` baseline | Fixed / merged | PR #366 |
@@ -50,6 +51,10 @@ Implemented current behavior includes:
 - Default working views exclude archived records; explicit archived views
   preserve actor visibility, and generic Entry restore returns to the recorded
   pre-archive workflow status without changing metadata.
+- Habit definitions use the separate Habit model; direct creation does not
+  require a Task, check-ins remain completion/activity history, active Habits
+  appear in All Entries by default, and archived Habits appear only through
+  explicit archived views.
 
 The newest detailed planning audit found is Arc 24D.9A Entry Relationships
 Foundation Audit, which recommends 24D.9B. The next priority **needs

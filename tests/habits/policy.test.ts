@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import { HabitFrequency, HabitStatus } from "@prisma/client";
+import { EntryStatus, HabitFrequency, HabitStatus } from "@prisma/client";
 
 import {
   badgeVariantForHabitStatus,
@@ -22,6 +22,8 @@ import {
   normalizeHabitScheduleDays,
   normalizeTrackingMode,
   parseHabitCountValue,
+  resolveAllEntriesHabitStatus,
+  resolveLatestHabitCheckIn,
 } from "../../lib/habits/policy";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -96,6 +98,13 @@ test("descriptionForHabitStatus distinguishes check-in lifecycle states", () => 
   assert.match(descriptionForHabitStatus(HabitStatus.ARCHIVED), /retained for history/);
 });
 
+test("All Entries maps default and archived lifecycle filters to Habit definitions only", () => {
+  assert.equal(resolveAllEntriesHabitStatus(null), HabitStatus.ACTIVE);
+  assert.equal(resolveAllEntriesHabitStatus(EntryStatus.ARCHIVED), HabitStatus.ARCHIVED);
+  assert.equal(resolveAllEntriesHabitStatus(EntryStatus.OPEN), null);
+  assert.equal(resolveAllEntriesHabitStatus(EntryStatus.DONE), null);
+});
+
 // ── badgeVariantForHabitStatus ────────────────────────────────────────────────
 
 test("badgeVariantForHabitStatus returns active for ACTIVE", () => {
@@ -129,6 +138,14 @@ test("normalizeCompletedOn does not mutate the input date", () => {
   const inputTime = input.getTime();
   normalizeCompletedOn(input);
   assert.equal(input.getTime(), inputTime);
+});
+
+test("resolveLatestHabitCheckIn keeps the latest date when a check-in is backdated", () => {
+  const latest = new Date("2026-06-10T00:00:00.000Z");
+  const backdated = new Date("2026-06-01T00:00:00.000Z");
+
+  assert.equal(resolveLatestHabitCheckIn(latest, backdated), latest);
+  assert.equal(resolveLatestHabitCheckIn(null, backdated), backdated);
 });
 
 test("parseHabitCountValue returns null for blank input", () => {

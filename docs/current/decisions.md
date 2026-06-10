@@ -90,10 +90,22 @@ Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-cont
 
 ## Habits In EntryOps
 
-- Active Habit definitions or assigned Habit records may appear in All Entries
-  when presented as Entry-like work objects.
-- Habit check-ins and Habit activity remain activity/history unless explicitly
-  modeled as Entries.
+- Habit definitions are stored as separate `Habit` records and appear in the
+  Habit Library. Direct Habit creation does not require a Task or Entry first.
+- Habit check-ins are stored as `HabitCompletion` records and corresponding
+  `HabitActivity` history. They do not create Tasks or separate All Entries
+  rows.
+- Active Habit definitions appear in All Entries by default. Archived Habit
+  definitions are hidden by default and appear through explicit archived
+  filters; restore returns them to active/default views with history intact.
+- Habit definitions do not currently have Entry Context/List or explicit
+  visibility fields. The existing `assignedToTeamId` field is an assignment
+  field, not Program/Team Context/List placement, and must not be described as
+  fan-out.
+- Guardian Habit access remains linked-athlete summary access under the
+  existing Habit policy; it does not grant check-in/edit/archive permission.
+- Team recurring Habit assignment/fan-out, compliance dashboards, and advanced
+  streak analytics remain future roadmap work.
 - Current All Entries/Habit work does not create generated Habit occurrence
   Entries. Additional Today redesign/integration remains future roadmap work.
 
