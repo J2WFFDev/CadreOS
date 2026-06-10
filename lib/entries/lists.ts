@@ -79,6 +79,84 @@ const INBOX_NAMES: Record<EntryListScope, string> = {
   TEAM: "Team Inbox",
 };
 
+export const DEFAULT_PERSONAL_LIST_NAMES = ["Inbox", "Outbox", "Knowledge", "Practice", "Skills"] as const;
+export const DEFAULT_ADMIN_SHARED_LIST_NAMES = ["FieldOps", "GearOps", "ResourceOps"] as const;
+
+const DEFAULT_PERSONAL_LIST_ORDER = new Map<string, number>(
+  DEFAULT_PERSONAL_LIST_NAMES.map((name, index) => [name, index]),
+);
+
+export function sortPersonalEntryLists(lists: EntryListSummary[]): EntryListSummary[] {
+  return [...lists].sort((a, b) => {
+    const aRank = a.isInbox ? 0 : (DEFAULT_PERSONAL_LIST_ORDER.get(a.name) ?? Number.MAX_SAFE_INTEGER);
+    const bRank = b.isInbox ? 0 : (DEFAULT_PERSONAL_LIST_ORDER.get(b.name) ?? Number.MAX_SAFE_INTEGER);
+    return aRank - bRank || a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  });
+}
+
+export async function ensureDefaultPersonalLists(input: {
+  organizationId: string;
+  ownerPersonId: string;
+}): Promise<void> {
+  await resolveOrCreateDefaultList({
+    scope: "PERSONAL",
+    organizationId: input.organizationId,
+    ownerPersonId: input.ownerPersonId,
+  });
+
+  const existing = await db.entryList.findMany({
+    where: {
+      organizationId: input.organizationId,
+      scope: EntryListScope.PERSONAL,
+      ownerPersonId: input.ownerPersonId,
+      name: { in: DEFAULT_PERSONAL_LIST_NAMES.slice(1) },
+    },
+    select: { name: true },
+  });
+  const existingNames = new Set(existing.map((list) => list.name));
+
+  for (const name of DEFAULT_PERSONAL_LIST_NAMES.slice(1)) {
+    if (!existingNames.has(name)) {
+      await db.entryList.create({
+        data: {
+          organizationId: input.organizationId,
+          ownerPersonId: input.ownerPersonId,
+          scope: EntryListScope.PERSONAL,
+          name,
+          isInbox: false,
+        },
+        select: { id: true },
+      });
+    }
+  }
+}
+
+export async function ensureDefaultAdminSharedLists(input: { organizationId: string }): Promise<void> {
+  const existing = await db.entryList.findMany({
+    where: {
+      organizationId: input.organizationId,
+      scope: EntryListScope.ORGANIZATION,
+      name: { in: [...DEFAULT_ADMIN_SHARED_LIST_NAMES] },
+    },
+    select: { name: true },
+  });
+  const existingNames = new Set(existing.map((list) => list.name));
+
+  for (const name of DEFAULT_ADMIN_SHARED_LIST_NAMES) {
+    if (!existingNames.has(name)) {
+      await db.entryList.create({
+        data: {
+          organizationId: input.organizationId,
+          scope: EntryListScope.ORGANIZATION,
+          name,
+          isInbox: false,
+        },
+        select: { id: true },
+      });
+    }
+  }
+}
+
 // ── Find-or-create default inbox ──────────────────────────────────────────────
 
 /**
@@ -211,7 +289,13 @@ export function buildEntryListVisibilityForActor(input: {
       organizationWide: true,
       programIds: [],
       teamIds: [],
-      where: { organizationId },
+      where: {
+        organizationId,
+        OR: [
+          { scope: EntryListScope.PERSONAL, ownerPersonId: actorPersonId },
+          { scope: { not: EntryListScope.PERSONAL } },
+        ],
+      },
     };
   }
 
@@ -355,7 +439,7 @@ export function buildEntryListHierarchy(input: {
     }));
 
   return {
-    personalLists: input.lists.filter((list) => list.scope === EntryListScope.PERSONAL).sort(compareNames),
+    personalLists: sortPersonalEntryLists(input.lists.filter((list) => list.scope === EntryListScope.PERSONAL)),
     adminSharedLists: visibility.organizationWide
       ? input.lists.filter((list) => list.scope === EntryListScope.ORGANIZATION).sort(compareNames)
       : [],

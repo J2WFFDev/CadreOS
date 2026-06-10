@@ -71,7 +71,7 @@ export default async function ListDetailPage({ params }: { params: Promise<{ lis
     );
   }
 
-  const canWrite = listVisibility.canManageSharedLists || list.ownerPersonId === scope.auth.personId;
+  const canWrite = !list.isInbox && (listVisibility.canManageSharedLists || list.ownerPersonId === scope.auth.personId);
   const entryVisibilityContext = await resolveEntryOpsVisibilityContext({
     organizationId,
     actorPersonId: scope.auth.personId,

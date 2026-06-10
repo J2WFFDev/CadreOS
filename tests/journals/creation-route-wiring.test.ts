@@ -13,6 +13,8 @@ test("Journal Library exposes direct Journal creation", () => {
 
   assert.match(journalsPage, /href="\/journals\/create"/);
   assert.match(journalsPage, /New Journal Entry/);
+  assert.match(journalsPage, /href="\/prompts"/);
+  assert.match(journalsPage, /Journal Prompts/);
   assert.match(promptLibraryPage, /canCreateJournal\(accessContext\)/);
   assert.match(promptLibraryPage, /title="Journal Library"/);
   assert.match(promptLibraryPage, /href="\/journals\/create"/);

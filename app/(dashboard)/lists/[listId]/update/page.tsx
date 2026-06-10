@@ -70,6 +70,15 @@ export default async function UpdateListPage({
     );
   }
 
+  if (list.isInbox) {
+    return (
+      <section className="space-y-4">
+        <PageHeader title="Inbox" description="Default personal work list." />
+        <ErrorMessage message="Inbox is a protected default list and cannot be edited or removed." />
+      </section>
+    );
+  }
+
   const canEditList = listVisibility.canManageSharedLists || list.ownerPersonId === scope.auth.personId;
   if (!canEditList) {
     return (

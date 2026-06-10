@@ -79,6 +79,11 @@ test("entry inbox route does not activate all entries root link", () => {
   assert.equal(isNavSidebarLinkActive("/entries/inbox", "/entries"), false);
 });
 
+test("personal Inbox route does not activate Lists root link", () => {
+  assert.equal(isNavSidebarLinkActive("/lists/inbox", "/lists/inbox"), true);
+  assert.equal(isNavSidebarLinkActive("/lists/inbox", "/lists"), false);
+});
+
 test("nested routes activate their parent link except dashboard", () => {
   assert.equal(isNavSidebarLinkActive("/gear-ops/items/item-1", "/gear-ops/items"), true);
   assert.equal(isNavSidebarLinkActive("/journals/entry-1", "/journals"), true);
@@ -180,17 +185,17 @@ test("guardian and athlete see EntryOps UX links while filtering stays server-si
     assert.ok(entryOpsGroup);
 
     const hrefs = (entryOpsGroup?.items ?? []).map((item) => item.href);
-    assert.equal(hrefs.includes("/entries/inbox"), true);
+    assert.equal(hrefs.includes("/lists/inbox"), true);
     assert.equal(hrefs.includes("/lists"), true);
     assert.equal(hrefs.includes("/entries"), true);
     assert.equal(hrefs.includes("/habits"), true);
-    assert.equal(hrefs.includes("/prompts"), true);
+    assert.equal(hrefs.includes("/prompts"), false);
     assert.equal(hrefs.includes("/entries/review"), false);
     assert.equal(hrefs.includes("/assigned"), false);
     assert.equal(hrefs.includes("/today"), false);
     assert.equal(hrefs.includes("/upcoming"), false);
     assert.equal(hrefs.includes("/feed"), false);
-    assert.equal(hrefs.includes("/journals"), false);
+    assert.equal(hrefs.includes("/journals"), true);
     assert.equal(hrefs.includes("/prompt-assignments"), false);
     assert.equal(canAccessModule(buildUser(role), "journal"), true);
   }

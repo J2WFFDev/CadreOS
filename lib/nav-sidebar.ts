@@ -27,6 +27,7 @@ export function getNavSidebarGroupsForUser(user: CurrentUser | null): readonly C
 
 export function isNavSidebarLinkActive(pathname: string, href: string): boolean {
   const isEntriesRoot = href === "/entries";
+  const isListsRoot = href === "/lists";
   const isEntrySubPath =
     pathname.startsWith("/entries/inbox") ||
     pathname.startsWith("/entries/review") ||
@@ -34,7 +35,10 @@ export function isNavSidebarLinkActive(pathname: string, href: string): boolean 
 
   return (
     pathname === href ||
-    (href !== "/dashboard" && pathname.startsWith(href + "/") && !(isEntriesRoot && isEntrySubPath))
+    (href !== "/dashboard" &&
+      pathname.startsWith(href + "/") &&
+      !(isEntriesRoot && isEntrySubPath) &&
+      !(isListsRoot && pathname.startsWith("/lists/inbox")))
   );
 }
 

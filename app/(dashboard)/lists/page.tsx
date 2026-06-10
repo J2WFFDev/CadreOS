@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { db } from "@/lib/db";
 import {
   buildEntryListHierarchy,
+  ensureDefaultAdminSharedLists,
+  ensureDefaultPersonalLists,
   type EntryListSummary,
   fetchListsForActor,
   resolveEntryListVisibility,
@@ -32,7 +34,7 @@ function ListTable({
   canManageSharedLists: boolean;
 }) {
   if (lists.length === 0) {
-    return <p className="text-sm text-zinc-500 dark:text-zinc-400">No lists in this container.</p>;
+    return <p className="text-sm text-zinc-500 dark:text-zinc-400">No lists available.</p>;
   }
 
   return (
@@ -50,7 +52,7 @@ function ListTable({
           {lists.map((list) => (
             <tr key={list.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800">
               <td className="px-4 py-2">
-                <Link href={`/lists/${list.id}`} className="font-medium underline">
+                <Link href={list.isInbox ? "/lists/inbox" : `/lists/${list.id}`} className="font-medium underline">
                   {list.name}
                 </Link>
                 {list.isArchived ? <span className="ml-2 text-xs text-zinc-400">[Archived]</span> : null}
@@ -60,7 +62,7 @@ function ListTable({
               </td>
               <td className="px-4 py-2 text-right text-zinc-500">{countMap.get(list.id) ?? 0}</td>
               <td className="px-4 py-2 text-right">
-                {canManageSharedLists || list.ownerPersonId === actorPersonId ? (
+                {!list.isInbox && (canManageSharedLists || list.ownerPersonId === actorPersonId) ? (
                   <Link href={`/lists/${list.id}/update`} className="text-xs underline">
                     Edit
                   </Link>
@@ -118,6 +120,12 @@ export default async function ListsPage() {
   let setupIncompleteMessage = "";
   let allLists: Awaited<ReturnType<typeof fetchListsForActor>> = [];
   try {
+    if (scope.auth.personId) {
+      await ensureDefaultPersonalLists({ organizationId, ownerPersonId: scope.auth.personId });
+    }
+    if (listVisibility.canManageSharedLists) {
+      await ensureDefaultAdminSharedLists({ organizationId });
+    }
     allLists = await fetchListsForActor({
       organizationId,
       actorPersonId: scope.auth.personId,
@@ -218,9 +226,54 @@ export default async function ListsPage() {
         />
       ) : (
         <div className="space-y-6">
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h2 className="text-base font-semibold">Org</h2>
-            <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">Personal</p>
+            {hierarchy.programs.length === 0 ? (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">No Program or Team work contexts are available.</p>
+            ) : (
+              <div className="overflow-hidden rounded-lg border bg-white dark:bg-zinc-900">
+                {hierarchy.programs.map((program) => (
+                  <div key={program.id} className="border-b p-3 last:border-b-0">
+                    <Link href={`/programs/${program.id}`} className="font-medium underline">
+                      {program.name}
+                    </Link>
+                    {program.lists.length > 0 ? (
+                      <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                        {program.lists.map((list) => (
+                          <Link key={list.id} href={`/lists/${list.id}`} className="rounded-full border px-2 py-0.5 underline">
+                            {list.name}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : null}
+                    {program.teams.length > 0 ? (
+                      <ul className="mt-2 space-y-1 border-l pl-4 text-sm">
+                        {program.teams.map((team) => (
+                          <li key={team.id}>
+                            <Link href={`/teams/${team.id}`} className="underline">
+                              {team.name}
+                            </Link>
+                            {team.lists.length > 0 ? (
+                              <div className="mt-1 flex flex-wrap gap-2 pl-2 text-xs">
+                                {team.lists.map((list) => (
+                                  <Link key={list.id} href={`/lists/${list.id}`} className="rounded-full border px-2 py-0.5 underline">
+                                    {list.name}
+                                  </Link>
+                                ))}
+                              </div>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-base font-semibold">Personal</h2>
             <ListTable
               lists={hierarchy.personalLists}
               countMap={countMap}
@@ -242,32 +295,6 @@ export default async function ListsPage() {
             </div>
           ) : null}
 
-          {hierarchy.programs.map((program) => (
-            <div key={program.id} className="space-y-4 border-t pt-5">
-              <div className="space-y-2">
-                <h2 className="text-base font-semibold">{program.name}</h2>
-                <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">Program</p>
-                <ListTable
-                  lists={program.lists}
-                  countMap={countMap}
-                  actorPersonId={scope.auth.personId}
-                  canManageSharedLists={listVisibility.canManageSharedLists}
-                />
-              </div>
-              {program.teams.map((team) => (
-                <div key={team.id} className="ml-4 space-y-2 border-l pl-4">
-                  <h3 className="text-sm font-semibold">{team.name}</h3>
-                  <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">Team</p>
-                  <ListTable
-                    lists={team.lists}
-                    countMap={countMap}
-                    actorPersonId={scope.auth.personId}
-                    canManageSharedLists={listVisibility.canManageSharedLists}
-                  />
-                </div>
-              ))}
-            </div>
-          ))}
         </div>
       )}
     </section>
