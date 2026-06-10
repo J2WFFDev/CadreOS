@@ -36,9 +36,11 @@ export type EntryListVisibility = {
   canCreatePersonalList: boolean;
   canManageSharedLists: boolean;
   organizationWide: boolean;
+  dependentPersonIds: string[];
   programIds: string[];
   teamIds: string[];
   where: Prisma.EntryListWhereInput;
+  destinationWhere: Prisma.EntryListWhereInput;
 };
 
 export type EntryListHierarchyProgram = {
@@ -250,6 +252,7 @@ export function buildEntryListVisibilityForActor(input: {
   organizationId: string;
   actorPersonId: string | null | undefined;
   assignments: EntryListRoleScope[];
+  dependentPersonIds?: string[];
   derivedProgramIds?: string[];
   derivedTeamIds?: string[];
 }): EntryListVisibility {
@@ -261,23 +264,32 @@ export function buildEntryListVisibilityForActor(input: {
       canCreatePersonalList: false,
       canManageSharedLists: false,
       organizationWide: false,
+      dependentPersonIds: [],
       programIds: [],
       teamIds: [],
       where: { id: "__entry_list_no_actor__" },
+      destinationWhere: { id: "__entry_list_no_actor__" },
     };
   }
 
   const canManageSharedLists = canManageSharedEntryLists(assignments);
-  const programIds = unique([
-    ...assignments
+  const dependentPersonIds = unique(input.dependentPersonIds ?? []);
+  const directProgramIds = unique(
+    assignments
       .filter((assignment) => assignment.scopeType === ScopeType.PROGRAM)
       .map((assignment) => assignment.programId),
+  );
+  const directTeamIds = unique(
+    assignments
+      .filter((assignment) => assignment.scopeType === ScopeType.TEAM)
+      .map((assignment) => assignment.teamId),
+  );
+  const programIds = unique([
+    ...directProgramIds,
     ...(input.derivedProgramIds ?? []),
   ]);
   const teamIds = unique([
-    ...assignments
-      .filter((assignment) => assignment.scopeType === ScopeType.TEAM)
-      .map((assignment) => assignment.teamId),
+    ...directTeamIds,
     ...(input.derivedTeamIds ?? []),
   ]);
 
@@ -287,9 +299,17 @@ export function buildEntryListVisibilityForActor(input: {
       canCreatePersonalList: true,
       canManageSharedLists: true,
       organizationWide: true,
+      dependentPersonIds: [],
       programIds: [],
       teamIds: [],
       where: {
+        organizationId,
+        OR: [
+          { scope: EntryListScope.PERSONAL, ownerPersonId: actorPersonId },
+          { scope: { not: EntryListScope.PERSONAL } },
+        ],
+      },
+      destinationWhere: {
         organizationId,
         OR: [
           { scope: EntryListScope.PERSONAL, ownerPersonId: actorPersonId },
@@ -302,7 +322,7 @@ export function buildEntryListVisibilityForActor(input: {
   const visibleScopes: Prisma.EntryListWhereInput[] = [
     {
       scope: EntryListScope.PERSONAL,
-      ownerPersonId: actorPersonId,
+      ownerPersonId: { in: unique([actorPersonId, ...dependentPersonIds]) },
     },
   ];
   if (programIds.length > 0) {
@@ -315,16 +335,37 @@ export function buildEntryListVisibilityForActor(input: {
     visibleScopes.push({ scope: EntryListScope.TEAM, teamId: { in: teamIds } });
   }
 
+  const destinationScopes: Prisma.EntryListWhereInput[] = [
+    {
+      scope: EntryListScope.PERSONAL,
+      ownerPersonId: actorPersonId,
+    },
+  ];
+  if (directProgramIds.length > 0) {
+    destinationScopes.push(
+      { scope: EntryListScope.PROGRAM, programId: { in: directProgramIds } },
+      { scope: EntryListScope.TEAM, team: { programId: { in: directProgramIds } } },
+    );
+  }
+  if (directTeamIds.length > 0) {
+    destinationScopes.push({ scope: EntryListScope.TEAM, teamId: { in: directTeamIds } });
+  }
+
   return {
     canRead: true,
     canCreatePersonalList: true,
     canManageSharedLists: false,
     organizationWide: false,
+    dependentPersonIds,
     programIds,
     teamIds,
     where: {
       organizationId,
       OR: visibleScopes,
+    },
+    destinationWhere: {
+      organizationId,
+      OR: destinationScopes,
     },
   };
 }
@@ -350,6 +391,7 @@ export async function resolveEntryListVisibility(input: {
     organizationId,
     actorPersonId,
     assignments,
+    dependentPersonIds: guardianScope.dependentAthleteIds,
     derivedProgramIds: guardianScope.derivedProgramIds,
     derivedTeamIds: guardianScope.derivedTeamIds,
   });
@@ -394,6 +436,34 @@ export async function fetchListsForActor(input: {
   });
 
   return lists;
+}
+
+export async function fetchEntryListDestinationsForActor(input: {
+  organizationId: string;
+  actorPersonId: string | null | undefined;
+}): Promise<EntryListSummary[]> {
+  const visibility = await resolveEntryListVisibility(input);
+
+  if (!visibility.canRead) {
+    return [];
+  }
+
+  return db.entryList.findMany({
+    where: {
+      AND: [visibility.destinationWhere, { isArchived: false }],
+    },
+    orderBy: [{ scope: "asc" }, { name: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      scope: true,
+      isInbox: true,
+      isArchived: true,
+      ownerPersonId: true,
+      programId: true,
+      teamId: true,
+    },
+  });
 }
 
 export function buildEntryListHierarchy(input: {
@@ -493,4 +563,10 @@ export function labelForEntryListScope(scope: EntryListScope): string {
   if (scope === EntryListScope.PROGRAM) return "Program";
   if (scope === EntryListScope.TEAM) return "Team";
   return scope;
+}
+
+export function labelForEntryListContext(list: Pick<EntryListSummary, "name" | "scope" | "isInbox">): string {
+  if (list.isInbox && list.scope === EntryListScope.PERSONAL) return "Inbox";
+  if (list.scope === EntryListScope.ORGANIZATION) return `Admin: ${list.name}`;
+  return `${labelForEntryListScope(list.scope)}: ${list.name}`;
 }

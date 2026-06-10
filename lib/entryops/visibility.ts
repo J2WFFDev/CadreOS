@@ -1,4 +1,4 @@
-import { EntryType, Prisma, RoleType, ScopeType } from "@prisma/client";
+import { EntryListScope, EntryType, Prisma, RoleType, ScopeType } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { buildJournalEntryEditWhere, buildJournalEntryVisibilityWhere } from "@/lib/journals/access";
@@ -179,7 +179,7 @@ export function resolveEntryOpsAllWorkDefaultVisibility(
       visiblePersonIds: [],
       teamIds: [],
       programIds: [],
-      reason: "Organization admin default can view all work items.",
+      reason: "Organization admin default can view all Entries.",
     };
   }
 
@@ -247,6 +247,12 @@ export function buildEntryOpsAllWorkDefaultWhere(
             personId: { in: visibility.visiblePersonIds },
             revokedAt: null,
           },
+        },
+      },
+      {
+        entryList: {
+          scope: EntryListScope.PERSONAL,
+          ownerPersonId: { in: visibility.visiblePersonIds },
         },
       },
     );

@@ -55,7 +55,7 @@ export default async function EntryInboxPage() {
       organizationId: scope.organizationId,
       status: InboxItemStatus.OPEN,
       subjectRefType: "ENTRY",
-      ...(entryVisibility.organizationWide ? {} : { ownerPersonId: { in: entryVisibility.visiblePersonIds } }),
+      ownerPersonId: scope.auth.personId ?? "__entry_inbox_no_actor__",
     },
     orderBy: [{ priority: "desc" }, { createdAt: "asc" }],
     select: {

@@ -10,6 +10,7 @@ import {
   resolveEntryOpsAllWorkDefaultVisibility,
   resolveEntryOpsVisibilityContext,
 } from "@/lib/entryops/visibility";
+import { fetchListsForActor, labelForEntryListContext } from "@/lib/entries/lists";
 import { buildDueWindowWhere, buildEntryOrderBy, parseEntryListFilter } from "@/lib/operational-feed/filters";
 import { formatDueDate, isOverdueFeedEntry, labelForEntryPriority, labelForEntryStatus, labelForEntryType } from "@/lib/operational-feed/render";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -37,7 +38,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   if (!scope.databaseReady) {
     return (
       <section className="space-y-4">
-        <PageHeader title="All Work Items" description="Unified tasks, notes, events, decisions, habits, and journals." />
+        <PageHeader title="All Entries" description="Unified tasks, notes, events, decisions, and journals." />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load entries right now."} />
       </section>
     );
@@ -46,7 +47,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   if (!scope.organizationId) {
     return (
       <section className="space-y-4">
-        <PageHeader title="All Work Items" description="Unified tasks, notes, events, decisions, habits, and journals." />
+        <PageHeader title="All Entries" description="Unified tasks, notes, events, decisions, and journals." />
         <ErrorMessage message="No organization context is available yet." />
       </section>
     );
@@ -61,7 +62,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   if (!allWorkDefaultVisibility.canRead) {
     return (
       <section className="space-y-4">
-        <PageHeader title="All Work Items" description="Unified tasks, notes, events, decisions, habits, and journals." />
+        <PageHeader title="All Entries" description="Unified tasks, notes, events, decisions, and journals." />
         <ErrorMessage message="You do not have permission to view work items in this organization." />
       </section>
     );
@@ -113,11 +114,36 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
       priority: true,
       dueDate: true,
       dueTime: true,
+      listId: true,
       updatedAt: true,
       assignedTo: { select: { firstName: true, lastName: true } },
     },
     take: 300,
   });
+  const actorVisibleLists = await fetchListsForActor({
+    organizationId: scope.organizationId,
+    actorPersonId: scope.auth.personId,
+  });
+  const oversightLists = allWorkDefaultVisibility.organizationWide
+    ? await db.entryList.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          id: { in: entries.map((entry) => entry.listId).filter((listId): listId is string => Boolean(listId)) },
+        },
+        select: {
+          id: true,
+          name: true,
+          scope: true,
+          isInbox: true,
+          isArchived: true,
+          ownerPersonId: true,
+          programId: true,
+          teamId: true,
+        },
+      })
+    : [];
+  const visibleLists = [...actorVisibleLists, ...oversightLists];
+  const visibleListsById = new Map(visibleLists.map((list) => [list.id, list]));
 
   // Load person list for assignee filter UI
   const people = await db.person.findMany({
@@ -140,8 +166,8 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   return (
     <section className="space-y-4">
       <PageHeader
-        title="All Work Items"
-        description="Browse and organize your active and archived work."
+        title="All Entries"
+        description="Browse and organize your authorized active and archived Entries."
         actions={
           <div className="flex items-center gap-2">
             <Link href="/entries/inbox" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
@@ -265,7 +291,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
       </form>
 
       {entries.length === 0 ? (
-        <EmptyState message="No work items match the current filters." actionHref="/dashboard" actionLabel="Back to dashboard" />
+        <EmptyState message="No Entries match the current filters." actionHref="/dashboard" actionLabel="Back to dashboard" />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white dark:bg-zinc-900">
           <table className="min-w-full text-left text-sm">
@@ -277,6 +303,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
                 <th className="px-4 py-3 font-medium">Priority</th>
                 <th className="px-4 py-3 font-medium">Due</th>
                 <th className="px-4 py-3 font-medium">Assignee</th>
+                <th className="px-4 py-3 font-medium">List</th>
                 <th className="px-4 py-3 font-medium">Updated</th>
               </tr>
             </thead>
@@ -299,6 +326,13 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
                       {overdue && <span className="ml-1.5 text-xs font-medium">overdue</span>}
                     </td>
                     <td className="px-4 py-3 text-zinc-500">{formatAssigneeName(entry.assignedTo)}</td>
+                    <td className="px-4 py-3 text-zinc-500">
+                      {entry.listId
+                        ? visibleListsById.has(entry.listId)
+                          ? labelForEntryListContext(visibleListsById.get(entry.listId)!)
+                          : "Restricted list"
+                        : "Unlisted"}
+                    </td>
                     <td className="px-4 py-3 text-zinc-500">{entry.updatedAt.toISOString().slice(0, 16).replace("T", " ")}</td>
                   </tr>
                 );
