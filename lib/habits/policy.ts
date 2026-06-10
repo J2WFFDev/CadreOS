@@ -5,7 +5,7 @@
  * No DB dependencies — fully testable.
  */
 
-import { HabitFrequency, HabitStatus, HabitTrackingMode } from "@prisma/client";
+import { EntryStatus, HabitFrequency, HabitStatus, HabitTrackingMode } from "@prisma/client";
 
 export const MAX_HABIT_TITLE_LENGTH = 160;
 export const MAX_HABIT_DESCRIPTION_LENGTH = 1000;
@@ -85,6 +85,12 @@ export function descriptionForHabitStatus(status: HabitStatus): string {
   return "Archived habits are retained for history and do not accept check-ins.";
 }
 
+export function resolveAllEntriesHabitStatus(entryStatus: EntryStatus | null): HabitStatus | null {
+  if (!entryStatus) return HabitStatus.ACTIVE;
+  if (entryStatus === EntryStatus.ARCHIVED) return HabitStatus.ARCHIVED;
+  return null;
+}
+
 // Arc 24D.8: Tracking mode labels
 export function labelForHabitTrackingMode(mode: HabitTrackingMode): string {
   if (mode === HabitTrackingMode.CHECKOFF) return "Check-off";
@@ -111,6 +117,11 @@ export function normalizeCompletedOn(date: Date): Date {
   const d = new Date(date);
   d.setUTCHours(0, 0, 0, 0);
   return d;
+}
+
+export function resolveLatestHabitCheckIn(current: Date | null, completedOn: Date): Date {
+  if (!current) return completedOn;
+  return current.getTime() > completedOn.getTime() ? current : completedOn;
 }
 
 export function parseHabitCountValue(raw: string | null | undefined): number | null {

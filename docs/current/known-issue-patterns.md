@@ -51,6 +51,9 @@ and [`Current Product Decisions`](../product/CURRENT_PRODUCT_DECISIONS.md).
 - Habit definitions, Habit check-ins, and Habit activity are different record
   classes. Do not render check-ins/activity as Entries unless explicitly
   modeled that way.
+- Habit `assignedToTeamId` is a legacy assignment field, not Entry Context/List
+  placement. Do not describe it as team fan-out or infer a general
+  Program/Team context visibility rule from it.
 - Creator, Owner, Author, and Assignee are distinct concepts. UI copy that
   calls an Assignee an Owner, calls a Journal Author an Assignee, or presents
   Creator as mutable can imply unsupported policy changes.

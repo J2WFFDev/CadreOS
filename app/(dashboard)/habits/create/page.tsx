@@ -117,7 +117,7 @@ export default async function CreateHabitPage({ searchParams }: { searchParams: 
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="assignedToTeamId" className="block text-sm font-medium">Team / Program <span className="text-zinc-400">(optional)</span></label>
+          <label htmlFor="assignedToTeamId" className="block text-sm font-medium">Existing team assignment <span className="text-zinc-400">(optional)</span></label>
           <select
             id="assignedToTeamId"
             name="assignedToTeamId"
@@ -130,6 +130,7 @@ export default async function CreateHabitPage({ searchParams }: { searchParams: 
               </option>
             ))}
           </select>
+          <p className="text-xs text-zinc-500">This uses the existing single-team Habit assignment. It does not fan out or create Habits for team members.</p>
         </div>
 
         <fieldset className="space-y-3 rounded-md border p-4">

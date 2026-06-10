@@ -26,6 +26,11 @@ and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.m
 - Guardian-related Athlete list visibility must not expose unrelated members.
 - Habit check-ins and Habit activity remain history/activity unless explicitly
   modeled as Entries or work objects.
+- Habit definitions currently have no Entry Context/List or explicit
+  visibility field. The existing team linkage is an assignment field and must
+  not be treated as Program/Team Context/List placement.
+- Team recurring Habit assignment/fan-out, Habit compliance dashboards, and
+  advanced streak analytics remain deferred.
 - Additional Today redesign/integration is future roadmap work, not an implied
   part of current All Entries behavior.
 

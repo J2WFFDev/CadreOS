@@ -18,7 +18,8 @@ test("All Entries includes Entries, Journals, and active Habit definitions throu
   assert.match(source, /db\.entry\.findMany/);
   assert.match(source, /db\.habit\.findMany/);
   assert.match(source, /canReadHabit/);
-  assert.match(source, /status: HabitStatus\.ACTIVE/);
+  assert.match(source, /resolveAllEntriesHabitStatus\(filter\.status \?\? null\)/);
+  assert.match(source, /status: allEntriesHabitStatus/);
   assert.match(source, /buildEntryLifecycleWhere\(filter\.status\)/);
   assert.doesNotMatch(source, /db\.habitCompletion\.findMany|db\.habitActivity\.findMany/);
   assert.doesNotMatch(source, /NON_JOURNAL_ENTRY_TYPES/);
