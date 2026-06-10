@@ -11,6 +11,8 @@ test("normal Inbox is always actor-scoped even for organization admins", () => {
   const inboxPage = source("../../app/(dashboard)/entries/inbox/page.tsx");
 
   assert.match(inboxPage, /ownerPersonId: scope\.auth\.personId/);
+  assert.match(inboxPage, />Assigned to<\/th>/);
+  assert.doesNotMatch(inboxPage, />Owner<\/th>/);
   assert.doesNotMatch(inboxPage, /entryVisibility\.organizationWide \? \{\}/);
 });
 

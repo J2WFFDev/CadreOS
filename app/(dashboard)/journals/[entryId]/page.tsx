@@ -229,15 +229,15 @@ export default async function JournalDetailPage({
             <dd>{relationshipItems.length}</dd>
           </div>
           <div>
-            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Scope</dt>
-            <dd>{journal.team?.name ? `Team: ${journal.team.name}` : "Organization journal scope"}</dd>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Organized under</dt>
+            <dd>{journal.team?.name ? `Team: ${journal.team.name}` : "Organization"}</dd>
           </div>
           <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Visibility</dt>
             <dd>{labelForJournalPayloadVisibility(journalPayload.journalVisibility)}</dd>
           </div>
           <div>
-            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Assignment</dt>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Prompt assignment</dt>
             <dd>{journal.journalAssignmentId ? "Assigned journal prompt" : "Unassigned journal entry"}</dd>
           </div>
           <div>
@@ -259,6 +259,10 @@ export default async function JournalDetailPage({
             <dd>{journalPayload.journalAuthor || formatPersonName(journal.createdBy)}</dd>
           </div>
           <div>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Created by</dt>
+            <dd>{formatPersonName(journal.createdBy)}</dd>
+          </div>
+          <div>
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">Visibility</dt>
             <dd>{labelForJournalPayloadVisibility(journalPayload.journalVisibility)}</dd>
           </div>
@@ -271,11 +275,11 @@ export default async function JournalDetailPage({
             <dd>{labelForEntryStatus(journal.status)}</dd>
           </div>
           <div>
-            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Created</dt>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Created date</dt>
             <dd>{formatDateTimeUTC(journal.createdAt)}</dd>
           </div>
           <div>
-            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Updated</dt>
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">Updated date</dt>
             <dd>{formatDateTimeUTC(journal.updatedAt)}</dd>
           </div>
           <div>

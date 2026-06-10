@@ -349,8 +349,8 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
                 <th className="px-4 py-3 font-medium">Priority</th>
                 <th className="px-4 py-3 font-medium">Due</th>
                 <th className="px-4 py-3 font-medium">Assignee</th>
-                <th className="px-4 py-3 font-medium">List</th>
-                <th className="px-4 py-3 font-medium">Updated</th>
+                <th className="px-4 py-3 font-medium">Context / List</th>
+                <th className="px-4 py-3 font-medium">Updated date</th>
               </tr>
             </thead>
             <tbody>

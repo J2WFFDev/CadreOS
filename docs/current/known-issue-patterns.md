@@ -51,6 +51,11 @@ and [`Current Product Decisions`](../product/CURRENT_PRODUCT_DECISIONS.md).
 - Habit definitions, Habit check-ins, and Habit activity are different record
   classes. Do not render check-ins/activity as Entries unless explicitly
   modeled that way.
+- Creator, Owner, Author, and Assignee are distinct concepts. UI copy that
+  calls an Assignee an Owner, calls a Journal Author an Assignee, or presents
+  Creator as mutable can imply unsupported policy changes.
+- Technical `scope` labels can blur organization with access. Prefer
+  Context/List for organization and Visibility for who can see an Entry.
 
 Sources: [`Sidebar Taxonomy`](../navigation/sidebar-taxonomy.md) and
 [`Arc 24D.8X-F`](../planning/arc-24d-8x-f-entryops-role-visibility-design.md).
@@ -79,5 +84,5 @@ Sources: [`Mobile App Roadmap`](../future/mobile-app-roadmap.md),
 ## Needs Confirmation
 
 - Whether the current MemberOps runtime fully resolves all Arc 24C/26A gaps.
-- Whether Arc 24D.9B relationship normalization or terminology cleanup is the
-  next priority.
+- Whether Arc 24D.9B relationship normalization is the next EntryOps priority
+  after Arc 24D.8U terminology cleanup.

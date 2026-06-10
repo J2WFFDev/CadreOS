@@ -32,6 +32,9 @@ committed.
   Habits is complete.
 - Arc 24D.8R Journal workflow/access UX is complete, including Final/Done
   Guardian-visible Journal access and bounded reopen behavior.
+- Arc 24D.8U Creator/Owner/Author/Assignee terminology cleanup is complete,
+  separating system history, Journal author context, responsibility,
+  organization, and access language without behavior changes.
 - The GearOps CSV `asset_id` baseline fix and UI.1 collapsible
   sidebar/independent scrolling work are complete.
 
@@ -44,11 +47,10 @@ The latest merged EntryOps implementation work on `main` includes Arc
 also fixes the GearOps CSV `asset_id` baseline and completes UI.1 collapsible
 sidebar and independent content/sidebar scrolling.
 
-The next EntryOps slice is **needs product-owner confirmation**. Current
-candidates include:
+The next EntryOps slice after Arc 24D.8U is **needs product-owner
+confirmation**. Current candidates include:
 
 - Arc 24D.9B: normalize relationship labels and direction semantics.
-- Owner/Creator/Author/Assignee terminology cleanup.
 
 ## Future Roadmap
 

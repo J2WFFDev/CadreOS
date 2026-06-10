@@ -469,7 +469,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
 
       if (isScopeChange) {
         const url = new URL(returnTo, request.url);
-        url.searchParams.set("error", "You do not have permission to change entry scope.");
+        url.searchParams.set("error", "You do not have permission to change Entry context.");
         return NextResponse.redirect(url, 303);
       }
     }
@@ -477,13 +477,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     if (hasEventFormFields) {
       if (requestedCalendarScope === "PROGRAM" && !requestedProgramId) {
         const url = new URL(returnTo, request.url);
-        url.searchParams.set("error", "Program scope requires selecting a program.");
+        url.searchParams.set("error", "Program context requires selecting a program.");
         return NextResponse.redirect(url, 303);
       }
 
       if (requestedCalendarScope === "TEAM" && !requestedTeamId) {
         const url = new URL(returnTo, request.url);
-        url.searchParams.set("error", "Team scope requires selecting a team.");
+        url.searchParams.set("error", "Team context requires selecting a team.");
         return NextResponse.redirect(url, 303);
       }
 

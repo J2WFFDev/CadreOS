@@ -234,7 +234,7 @@ export default async function HabitDetailPage({
       {accessErrorMessage ? <ErrorMessage message={accessErrorMessage} /> : null}
 
       <section className="rounded-lg border bg-white p-5 dark:bg-zinc-900">
-        <h3 className="text-sm font-semibold">Main Item</h3>
+        <h3 className="text-sm font-semibold">Habit details</h3>
         <p className="mt-2 text-sm whitespace-pre-wrap">{habit.description?.trim() ? habit.description : "No habit detail captured."}</p>
         <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">{descriptionForHabitStatus(habit.status)}</p>
         {duplicateCheckIn ? (
@@ -261,15 +261,15 @@ export default async function HabitDetailPage({
             <dd className="mt-1 text-sm">{relationshipItems.length}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Scope</dt>
-            <dd className="mt-1 text-sm">{habit.assignedToTeam ? `Team: ${habit.assignedToTeam.name}` : "Organization habit scope"}</dd>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Organized under</dt>
+            <dd className="mt-1 text-sm">{habit.assignedToTeam ? `Team: ${habit.assignedToTeam.name}` : "Organization"}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Visibility</dt>
             <dd className="mt-1 text-sm">Role and relationship policy controlled</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Assignment</dt>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Athlete</dt>
             <dd className="mt-1 text-sm">{athleteName}</dd>
           </div>
           <div>
@@ -307,7 +307,7 @@ export default async function HabitDetailPage({
             </div>
           ) : null}
           <div>
-            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Cadence</dt>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Frequency</dt>
             <dd className="mt-1 text-sm">
               {labelForHabitCadence({ frequency: frequency ?? null, daysOfWeek: schedule?.daysOfWeek ?? null })}
             </dd>
@@ -351,11 +351,11 @@ export default async function HabitDetailPage({
             <dd className="mt-1 text-sm">{creatorName}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Created</dt>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Created date</dt>
             <dd className="mt-1 text-sm text-zinc-500">{habit.createdAt.toISOString().slice(0, 10)}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Updated</dt>
+            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Updated date</dt>
             <dd className="mt-1 text-sm text-zinc-500">{habit.updatedAt.toISOString().slice(0, 10)}</dd>
           </div>
         </dl>

@@ -47,10 +47,10 @@ export async function POST(request: Request) {
     return NextResponse.redirect(new URL("/lists/create?error=A+linked+person+is+required+for+Personal+lists", request.url), 303);
   }
   if (listScope === EntryListScope.PROGRAM && !programId) {
-    return NextResponse.redirect(new URL("/lists/create?error=Program+ID+required+for+Program+scope", request.url), 303);
+    return NextResponse.redirect(new URL("/lists/create?error=Program+ID+required+for+Program+context", request.url), 303);
   }
   if (listScope === EntryListScope.TEAM && !teamId) {
-    return NextResponse.redirect(new URL("/lists/create?error=Team+ID+required+for+Team+scope", request.url), 303);
+    return NextResponse.redirect(new URL("/lists/create?error=Team+ID+required+for+Team+context", request.url), 303);
   }
 
   const ownerPersonId = listScope === EntryListScope.PERSONAL ? scope.auth.personId! : null;

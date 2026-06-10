@@ -108,7 +108,7 @@ export default async function EntryInboxPage() {
                 <th className="px-4 py-3 font-medium">Type</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Priority</th>
-                <th className="px-4 py-3 font-medium">Owner</th>
+                <th className="px-4 py-3 font-medium">Assigned to</th>
                 <th className="px-4 py-3 font-medium">Queued</th>
               </tr>
             </thead>

@@ -26,6 +26,15 @@ test("Quick Capture does not expose or accept person assignment", () => {
   assert.match(route, /const assignedToPersonId = actorPersonId;/);
 });
 
+test("Quick Capture explains creator, assignment, and Inbox defaults without an assignment field", () => {
+  const launcher = source("../../components/dashboard/quick-capture-launcher.tsx");
+  const detailPage = source("../../app/(dashboard)/entries/[entryId]/page.tsx");
+
+  assert.match(launcher, /creates the Entry as you, assigns the task to you, and routes it to your Inbox/);
+  assert.match(detailPage, /Created by you, assigned to you, and routed to your Inbox/);
+  assert.doesNotMatch(launcher, /<label[^>]*>Assign|<label[^>]*>Assignee/);
+});
+
 test("Quick Capture detail view uses Details instead of duplicate Main Item wording", () => {
   const detailPage = source("../../app/(dashboard)/entries/[entryId]/page.tsx");
   const detailConfig = source("../../lib/entries/detail-config.ts");
