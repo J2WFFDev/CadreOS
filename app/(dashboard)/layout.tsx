@@ -37,8 +37,8 @@ export default async function DashboardLayout({
     devFeatureStatus.nextPublicEnabled && !devFeatureStatus.enabled;
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-3 dark:bg-zinc-900">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 md:flex md:h-screen md:flex-col md:overflow-hidden">
+      <header className="sticky top-0 z-10 flex shrink-0 items-center justify-between border-b bg-white px-6 py-3 dark:bg-zinc-900">
         <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
           CadreOS
         </Link>
@@ -70,7 +70,7 @@ export default async function DashboardLayout({
           <UserButton />
         </div>
       </header>
-      <div className="flex min-h-[calc(100vh-49px)] flex-col md:h-[calc(100dvh-49px)] md:min-h-[calc(100dvh-49px)] md:flex-row md:overflow-hidden">
+      <div className="flex flex-col md:min-h-0 md:flex-1 md:flex-row md:overflow-hidden">
         <NavSidebar unreadNotificationCount={unreadNotificationCount} currentUser={currentUser} />
         <main className="flex-1 overflow-auto p-4 md:min-h-0 md:p-6">
           <div className="mx-auto w-full max-w-5xl space-y-4">
