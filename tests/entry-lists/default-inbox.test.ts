@@ -1,11 +1,13 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import { RoleType, ScopeType } from "@prisma/client";
+import { EntryListScope, RoleType, ScopeType } from "@prisma/client";
 
 import {
   buildDefaultInboxListResolutionInput,
   buildEntryListVisibilityForActor,
+  DEFAULT_PERSONAL_LIST_NAMES,
+  sortPersonalEntryLists,
 } from "../../lib/entries/lists";
 
 function assignment(
@@ -108,7 +110,7 @@ test("entry list visibility keeps unrelated or unlinked actors out", () => {
   assert.deepEqual(visibility.where, { id: "__entry_list_no_actor__" });
 });
 
-test("entry list visibility allows org admin broad list access", () => {
+test("entry list visibility gives org admin shared context without unrelated personal lists", () => {
   assert.deepEqual(
     buildEntryListVisibilityForActor({
       organizationId: "org-1",
@@ -122,9 +124,30 @@ test("entry list visibility allows org admin broad list access", () => {
       organizationWide: true,
       programIds: [],
       teamIds: [],
-      where: { organizationId: "org-1" },
+      where: {
+        organizationId: "org-1",
+        OR: [
+          { scope: "PERSONAL", ownerPersonId: "admin-1" },
+          { scope: { not: "PERSONAL" } },
+        ],
+      },
     },
   );
+});
+
+test("default personal lists put protected Inbox first, then Outbox, Knowledge, Practice, and Skills", () => {
+  assert.deepEqual(DEFAULT_PERSONAL_LIST_NAMES, ["Inbox", "Outbox", "Knowledge", "Practice", "Skills"]);
+
+  const sorted = sortPersonalEntryLists([
+    { id: "custom", name: "Alpha Custom", scope: EntryListScope.PERSONAL, isInbox: false, isArchived: false, ownerPersonId: "person-1", programId: null, teamId: null },
+    { id: "skills", name: "Skills", scope: EntryListScope.PERSONAL, isInbox: false, isArchived: false, ownerPersonId: "person-1", programId: null, teamId: null },
+    { id: "inbox", name: "Renamed Inbox", scope: EntryListScope.PERSONAL, isInbox: true, isArchived: false, ownerPersonId: "person-1", programId: null, teamId: null },
+    { id: "outbox", name: "Outbox", scope: EntryListScope.PERSONAL, isInbox: false, isArchived: false, ownerPersonId: "person-1", programId: null, teamId: null },
+    { id: "practice", name: "Practice", scope: EntryListScope.PERSONAL, isInbox: false, isArchived: false, ownerPersonId: "person-1", programId: null, teamId: null },
+    { id: "knowledge", name: "Knowledge", scope: EntryListScope.PERSONAL, isInbox: false, isArchived: false, ownerPersonId: "person-1", programId: null, teamId: null },
+  ]);
+
+  assert.deepEqual(sorted.map((list) => list.id), ["inbox", "outbox", "knowledge", "practice", "skills", "custom"]);
 });
 
 test("entry list visibility exposes assigned Program and Team containers without exposing Admin shared lists", () => {

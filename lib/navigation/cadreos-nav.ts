@@ -129,7 +129,7 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
       activeItem({
         key: "ENTRY_INBOX",
         label: "Inbox",
-        href: "/entries/inbox",
+        href: "/lists/inbox",
         moduleKey: "entry",
       }),
       activeItem({
@@ -151,9 +151,9 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
         moduleKey: "entry",
       }),
       activeItem({
-        key: "ENTRY_PROMPTS",
-        label: "Journal Library",
-        href: "/prompts",
+        key: "ENTRY_JOURNALS",
+        label: "Journals",
+        href: "/journals",
         moduleKey: "journal",
       }),
     ],

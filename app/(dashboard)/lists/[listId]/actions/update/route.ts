@@ -33,6 +33,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ lis
     return NextResponse.redirect(new URL("/lists?error=List+not+found", request.url), 303);
   }
 
+  if (list.isInbox) {
+    return NextResponse.redirect(new URL(`/lists/${list.id}?error=Inbox+cannot+be+edited+or+removed`, request.url), 303);
+  }
+
   const canEditList = listVisibility.canManageSharedLists || list.ownerPersonId === scope.auth.personId;
   if (!canEditList) {
     return NextResponse.redirect(new URL(`/lists/${listId}?error=Permission+denied`, request.url), 303);

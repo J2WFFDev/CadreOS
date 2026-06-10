@@ -42,7 +42,7 @@ test("NAV-001: EntryOps contains the simplified primary views", () => {
     "ENTRY_LISTS",
     "ENTRY_ALL",
     "ENTRY_HABITS",
-    "ENTRY_PROMPTS",
+    "ENTRY_JOURNALS",
   ];
 
   for (const key of requiredKeys) {
@@ -58,11 +58,11 @@ test("NAV-002: simplified EntryOps nav items point to the correct routes", () =>
 
   const itemByKey = new Map(entryOpsGroup.items.map((i) => [i.key, i]));
 
-  assert.equal(itemByKey.get("ENTRY_INBOX")?.href, "/entries/inbox");
+  assert.equal(itemByKey.get("ENTRY_INBOX")?.href, "/lists/inbox");
   assert.equal(itemByKey.get("ENTRY_LISTS")?.href, "/lists");
   assert.equal(itemByKey.get("ENTRY_ALL")?.href, "/entries");
   assert.equal(itemByKey.get("ENTRY_HABITS")?.href, "/habits");
-  assert.equal(itemByKey.get("ENTRY_PROMPTS")?.href, "/prompts");
+  assert.equal(itemByKey.get("ENTRY_JOURNALS")?.href, "/journals");
 });
 
 // ── NAV-003: Simplified nav labels are human-readable ───────────────────────
@@ -77,7 +77,7 @@ test("NAV-003: simplified EntryOps nav items have correct user-facing labels", (
   assert.equal(itemByKey.get("ENTRY_LISTS")?.label, "Lists");
   assert.equal(itemByKey.get("ENTRY_ALL")?.label, "All Work Items");
   assert.equal(itemByKey.get("ENTRY_HABITS")?.label, "Habits");
-  assert.equal(itemByKey.get("ENTRY_PROMPTS")?.label, "Journal Library");
+  assert.equal(itemByKey.get("ENTRY_JOURNALS")?.label, "Journals");
 });
 
 // ── NAV-004: FYP has been moved out of HOME ─────────────────────────────────
@@ -145,7 +145,7 @@ test("NAV-007: all simplified EntryOps views have active status", () => {
     "ENTRY_LISTS",
     "ENTRY_ALL",
     "ENTRY_HABITS",
-    "ENTRY_PROMPTS",
+    "ENTRY_JOURNALS",
   ];
 
   for (const key of workflowKeys) {
@@ -172,6 +172,11 @@ test("NAV-008b: /entries/inbox still does not activate /entries root", () => {
   assert.equal(isNavSidebarLinkActive("/entries/inbox", "/entries"), false);
 });
 
+test("NAV-008c: personal Inbox route activates Inbox without activating Lists root", () => {
+  assert.equal(isNavSidebarLinkActive("/lists/inbox", "/lists/inbox"), true);
+  assert.equal(isNavSidebarLinkActive("/lists/inbox", "/lists"), false);
+});
+
 // ── NAV-009: hidden routes remain direct routes but are not primary nav ─────
 
 test("NAV-009: deferred EntryOps routes are not primary nav items", () => {
@@ -179,7 +184,7 @@ test("NAV-009: deferred EntryOps routes are not primary nav items", () => {
   assert.ok(entryOpsGroup);
 
   const hrefs = entryOpsGroup.items.map((i) => i.href);
-  for (const hiddenHref of ["/assigned", "/today", "/upcoming", "/entries/review", "/feed", "/prompt-assignments", "/journals"]) {
+  for (const hiddenHref of ["/assigned", "/today", "/upcoming", "/entries/review", "/feed", "/prompt-assignments", "/prompts"]) {
     assert.equal(hrefs.includes(hiddenHref), false, `${hiddenHref} should not appear as primary EntryOps navigation`);
   }
 });
@@ -192,11 +197,11 @@ test("NAV-012: simplified EntryOps items are visible to ADMIN role according to 
   assert.ok(entryOps);
 
   const hrefs = entryOps.items.map((i) => i.href);
-  assert.ok(hrefs.includes("/entries/inbox"), "Inbox not visible to ADMIN");
+  assert.ok(hrefs.includes("/lists/inbox"), "Inbox not visible to ADMIN");
   assert.ok(hrefs.includes("/lists"), "Lists not visible to ADMIN");
   assert.ok(hrefs.includes("/entries"), "All Work Items not visible to ADMIN");
   assert.ok(hrefs.includes("/habits"), "Habits not visible to ADMIN");
-  assert.ok(hrefs.includes("/prompts"), "Journal Library not visible to ADMIN");
+  assert.ok(hrefs.includes("/journals"), "Journals not visible to ADMIN");
 });
 
 test("NAV-012b: Athlete EntryOps navigation exposes simplified UX entry points", () => {
@@ -205,17 +210,17 @@ test("NAV-012b: Athlete EntryOps navigation exposes simplified UX entry points",
   assert.ok(entryOps);
 
   const hrefs = entryOps.items.map((i) => i.href);
-  assert.ok(hrefs.includes("/entries/inbox"), "Inbox not visible to ATHLETE");
+  assert.ok(hrefs.includes("/lists/inbox"), "Inbox not visible to ATHLETE");
   assert.ok(hrefs.includes("/lists"), "Lists not visible to ATHLETE");
   assert.ok(hrefs.includes("/entries"), "All Work Items not visible to ATHLETE");
   assert.ok(hrefs.includes("/habits"), "Habits not visible to ATHLETE");
-  assert.ok(hrefs.includes("/prompts"), "Journal Library not visible to ATHLETE");
+  assert.ok(hrefs.includes("/journals"), "Journals not visible to ATHLETE");
   assert.equal(hrefs.includes("/entries/review"), false, "Review must be hidden for ATHLETE");
   assert.equal(hrefs.includes("/assigned"), false, "My Work must be hidden for ATHLETE");
   assert.equal(hrefs.includes("/today"), false, "Today must be hidden for ATHLETE");
   assert.equal(hrefs.includes("/upcoming"), false, "Upcoming must be hidden for ATHLETE");
   assert.equal(hrefs.includes("/feed"), false, "Activity Feed must be hidden for ATHLETE");
-  assert.equal(hrefs.includes("/journals"), false, "Journals must be hidden for ATHLETE");
+  assert.equal(hrefs.includes("/prompts"), false, "Journal Prompts stays secondary navigation");
 });
 
 // ── NAV-013: EntryOps nav visibility is not the security boundary ──────────
@@ -226,11 +231,11 @@ test("NAV-013: Guardian EntryOps navigation exposes simplified UX entry points",
   assert.ok(entryOps);
 
   const hrefs = entryOps.items.map((i) => i.href);
-  assert.ok(hrefs.includes("/entries/inbox"), "Inbox not visible to GUARDIAN");
+  assert.ok(hrefs.includes("/lists/inbox"), "Inbox not visible to GUARDIAN");
   assert.ok(hrefs.includes("/lists"), "Lists not visible to GUARDIAN");
   assert.ok(hrefs.includes("/entries"), "All Work Items not visible to GUARDIAN");
   assert.ok(hrefs.includes("/habits"), "Habits not visible to GUARDIAN");
-  assert.ok(hrefs.includes("/prompts"), "Journal Library not visible to GUARDIAN");
+  assert.ok(hrefs.includes("/journals"), "Journals not visible to GUARDIAN");
 });
 
 // ── NAV-014: EntryOps group ordering matches simplified model ───────────────
@@ -242,7 +247,7 @@ test("NAV-014: EntryOps items use the simplified primary sequence", () => {
   assert.equal(approvedEntryOpsItems[1], "ENTRY_LISTS");
   assert.equal(approvedEntryOpsItems[2], "ENTRY_ALL");
   assert.equal(approvedEntryOpsItems[3], "ENTRY_HABITS");
-  assert.equal(approvedEntryOpsItems[4], "ENTRY_PROMPTS");
+  assert.equal(approvedEntryOpsItems[4], "ENTRY_JOURNALS");
 });
 
 // ── NAV-015: EntryOps group order matches approved structure ────────────────
