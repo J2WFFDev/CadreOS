@@ -12,10 +12,10 @@ import {
   buildEntryOpsEntryDetailVisibilityWhere,
 } from "@/lib/entryops/visibility";
 import { writeEntryActivity } from "@/lib/entries/service";
+import { canArchiveEntry } from "@/lib/entries/lifecycle-access";
 import { ENTRY_ACTIVITY_ACTIONS } from "@/lib/operational-entry";
 import { resolveSafeReturnPath } from "@/lib/navigation-context";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { requirePermission } from "@/lib/permissions";
 
 export async function POST(request: Request, { params }: { params: Promise<{ entryId: string }> }) {
   const { entryId } = await params;
@@ -43,7 +43,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       type: { not: EntryType.JOURNAL },
       AND: [entryVisibilityWhere],
     },
-    select: { id: true, sourceTaskId: true, type: true, status: true },
+    select: { id: true, sourceTaskId: true, type: true, status: true, createdByPersonId: true },
   });
 
   if (!entry) {
@@ -73,13 +73,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
     return NextResponse.redirect(url, 303);
   }
 
-  try {
-    await requirePermission({
-      actorUserId: scope.auth.clerkUserId,
-      organizationId: organizationId,
-      action: "entry.delete",
-    });
-  } catch {
+  const canArchive = await canArchiveEntry({
+    actorPersonId: scope.auth.personId,
+    actorUserId: scope.auth.clerkUserId,
+    organizationId,
+    entry,
+  });
+  if (!canArchive) {
     logEntryOpsAccessDecision({
       workflow: "entries.archive",
       entryId,

@@ -77,13 +77,14 @@ test("meetsAccessLevel: level ordering is strictly monotone (NONE < READ < WRITE
 // as defined by resolveEntryAccess.  These are contract tests — they assert
 // the intended behaviour without making DB calls.
 
-test("access level model: MANAGE is required for delete and restore operations", () => {
+test("access level model: MANAGE remains the elevated delete and restore path", () => {
   // Guardians and unauthenticated actors must not be able to delete.
   assert.equal(meetsAccessLevel("NONE", "MANAGE"), false);
   assert.equal(meetsAccessLevel("READ", "MANAGE"), false);
   assert.equal(meetsAccessLevel("WRITE", "MANAGE"), false);
 
-  // Only MANAGE actors can delete.
+  // MANAGE actors retain elevated lifecycle access. Creator self-service is
+  // evaluated separately by the Entry lifecycle policy.
   assert.equal(meetsAccessLevel("MANAGE", "MANAGE"), true);
 });
 

@@ -11,12 +11,23 @@ const archiveRoute = source("../../app/(dashboard)/entries/[entryId]/delete/rout
 const restoreRoute = source("../../app/(dashboard)/entries/[entryId]/restore/route.ts");
 const detailPage = source("../../app/(dashboard)/entries/[entryId]/page.tsx");
 const updateRoute = source("../../app/(dashboard)/entries/[entryId]/update/route.ts");
+const lifecycleAccess = source("../../lib/entries/lifecycle-access.ts");
 
 test("generic Entry archive and restore share the existing archive permission boundary", () => {
+  assert.match(archiveRoute, /canArchiveEntry\(\{/);
+  assert.match(restoreRoute, /canRestoreEntry\(\{/);
   for (const route of [archiveRoute, restoreRoute]) {
-    assert.match(route, /action: "entry\.delete"/);
+    assert.match(route, /createdByPersonId: true/);
     assert.match(route, /type: \{ not: EntryType\.JOURNAL \}/);
   }
+});
+
+test("shared lifecycle policy permits creator or existing elevated permission without broadening assignee access", () => {
+  assert.match(lifecycleAccess, /canManageOwnEntryLifecycle\(input\)/);
+  assert.match(lifecycleAccess, /resolveEntryLifecycleAccess\(\{ \.\.\.input, hasElevatedPermission \}\)/);
+  assert.match(lifecycleAccess, /entry\.createdByPersonId === input\.actorPersonId/);
+  assert.match(lifecycleAccess, /action: "entry\.delete"/);
+  assert.doesNotMatch(lifecycleAccess, /assignedToPersonId/);
 });
 
 test("archive changes lifecycle state without deleting or rewriting Entry metadata", () => {
@@ -47,8 +58,8 @@ test("normal editing cannot bypass explicit lifecycle actions", () => {
   assert.match(detailPage, /Archive entry/);
   assert.match(detailPage, /Restore entry/);
   assert.doesNotMatch(detailPage, />Delete entry</);
-  assert.match(detailPage, /canPerformAction\(\{/);
-  assert.match(detailPage, /action: "entry\.delete"/);
+  assert.match(detailPage, /canManageEntryLifecycle\(\{/);
+  assert.match(detailPage, /entry: \{ createdByPersonId: entry\.createdByPersonId \}/);
   assert.match(detailPage, /resolveEntryLifecycleAction\(\{/);
   assert.match(detailPage, /Done means completed\. Archive removes this Entry from normal working views without deleting it\./);
   assert.match(detailPage, /status !== EntryStatus\.ARCHIVED/);

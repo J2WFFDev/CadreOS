@@ -44,6 +44,7 @@ import {
   fetchListsForActor,
   labelForEntryListContext,
 } from "@/lib/entries/lists";
+import { canManageEntryLifecycle } from "@/lib/entries/lifecycle-access";
 import { resolveEntryLifecycleAction } from "@/lib/entries/lifecycle";
 import {
   ENTRY_LIST_ASSIGNMENT_UNAVAILABLE_MESSAGE,
@@ -76,7 +77,6 @@ import {
 } from "@/lib/operational-graph";
 import { resolveEntryAccess } from "@/lib/operational-entry";
 import { getOrganizationScope } from "@/lib/organization-context";
-import { canPerformAction } from "@/lib/permissions";
 
 const EVENT_TYPE_PAYLOAD_UNAVAILABLE_MESSAGE =
   "Event metadata is temporarily unavailable until setup is complete.";
@@ -411,11 +411,6 @@ export default async function EntryDetailPage({
   });
   const canReadEntry = entryDetailVisibility.canRead;
   const canEditEntryByRole = entryAccess.level === "WRITE" || entryAccess.level === "MANAGE";
-  const canManageEntryLifecycle = await canPerformAction({
-    actorUserId: scope.auth.clerkUserId,
-    organizationId,
-    action: "entry.delete",
-  });
 
   if (!canReadEntry) {
     logEntryOpsAccessDecision({
@@ -469,6 +464,12 @@ export default async function EntryDetailPage({
     );
   }
 
+  const canManageLifecycle = await canManageEntryLifecycle({
+    actorPersonId: scope.auth.personId,
+    actorUserId: scope.auth.clerkUserId,
+    organizationId,
+    entry: { createdByPersonId: entry.createdByPersonId },
+  });
   const canEditEntry =
     entry.type === EntryType.JOURNAL
       ? canEditJournalDraft(visibilityContext, {
@@ -490,7 +491,7 @@ export default async function EntryDetailPage({
   });
   const canEditEntryAdministrativeFields = canEditEntryByRole;
   const lifecycleAction = resolveEntryLifecycleAction({
-    canManageLifecycle: canManageEntryLifecycle,
+    canManageLifecycle,
     status: entry.status,
     type: entry.type,
   });

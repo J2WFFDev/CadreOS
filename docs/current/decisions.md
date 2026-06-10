@@ -56,7 +56,8 @@ Sources: [`Sidebar Taxonomy`](../navigation/sidebar-taxonomy.md),
   Default working views exclude archived records; explicit archived filters
   show archived records within the actor's existing visibility.
 - Generic Entry archive and restore use the existing elevated `entry.delete`
-  permission. This does not grant owner/assignee self-service archive rights.
+  permission or creator self-service lifecycle access. Assignee-only access
+  does not grant archive/restore rights.
 - Restoring a generic Entry returns it to its recorded pre-archive workflow
   status when available, otherwise Open. Archive and restore preserve Creator,
   Author, Assignee, Context/List, Visibility, and relationships.
