@@ -19,7 +19,6 @@ import { readFirstSearchParam } from "@/lib/entries/entry-detail-query-state";
 import {
   canArchiveHabit,
   canCheckInHabit,
-  canCompleteHabit,
   canEditHabit,
   canPauseHabit,
   canReadCompletionDetail,
@@ -125,7 +124,6 @@ export default async function HabitDetailPage({
   const canArchive = canArchiveHabit(accessContext, habitRecord);
   const canPause = canPauseHabit(accessContext, habitRecord);
   const canCheckIn = canCheckInHabit(accessContext, habitRecord);
-  const canComplete = canCompleteHabit(accessContext, habitRecord);
   const canRestore = canRestoreHabit(accessContext, habitRecord);
   const showCompletionDetail = canReadCompletionDetail(accessContext, habitRecord);
   const duplicateCheckIn = readFirstSearchParam(resolvedSearchParams.duplicate) === "1";
@@ -214,16 +212,6 @@ export default async function HabitDetailPage({
                 </button>
               </form>
             ) : null}
-            {canComplete ? (
-              <form method="POST" action={`/habits/${habit.id}/complete`} className="inline">
-                <button
-                  type="submit"
-                  className="rounded-md border border-teal-200 px-3 py-1.5 text-sm text-teal-700 hover:bg-teal-50 dark:border-teal-900 dark:text-teal-400 dark:hover:bg-teal-900/20"
-                >
-                  Mark complete
-                </button>
-              </form>
-            ) : null}
             {canRestore ? (
               <form method="POST" action={`/habits/${habit.id}/restore`} className="inline">
                 <button
@@ -245,7 +233,7 @@ export default async function HabitDetailPage({
               </form>
             ) : null}
             <Link href="/habits" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              All habits
+              My Habits
             </Link>
           </div>
         }
@@ -365,7 +353,7 @@ export default async function HabitDetailPage({
           ) : null}
           {habit.completedAt ? (
             <div>
-              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Completed on</dt>
+              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Legacy completed date</dt>
               <dd className="mt-1 text-sm text-zinc-500">{habit.completedAt.toISOString().slice(0, 10)}</dd>
             </div>
           ) : null}

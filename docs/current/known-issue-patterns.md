@@ -54,6 +54,12 @@ and [`Current Product Decisions`](../product/CURRENT_PRODUCT_DECISIONS.md).
 - Habit `assignedToTeamId` is a legacy assignment field, not Entry Context/List
   placement. Do not describe it as team fan-out or infer a general
   Program/Team context visibility rule from it.
+- Do not call the current created/assigned Habit management page Habit Library;
+  that name is reserved for a future predefined catalog.
+- Athlete self-service assignment limits require both UI restriction and
+  server enforcement. Hiding an Athlete/team selector alone is insufficient.
+- Habit progress and schedule signals such as target met, streaks, cadence end
+  date, total check-ins, and last check-in must not be mapped to lifecycle.
 - Creator, Owner, Author, and Assignee are distinct concepts. UI copy that
   calls an Assignee an Owner, calls a Journal Author an Assignee, or presents
   Creator as mutable can imply unsupported policy changes.

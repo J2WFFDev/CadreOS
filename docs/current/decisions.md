@@ -90,8 +90,13 @@ Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-cont
 
 ## Habits In EntryOps
 
-- Habit definitions are stored as separate `Habit` records and appear in the
-  Habit Library. Direct Habit creation does not require a Task or Entry first.
+- Habit definitions are stored as separate `Habit` records and appear in **My
+  Habits**, the current created/assigned Habit management surface. Direct Habit
+  creation does not require a Task or Entry first.
+- **Habit Library** is reserved for a future predefined organized
+  catalog/template surface. It may eventually allow users to copy predefined
+  Habits to themselves and authorized staff to assign templates, but that
+  catalog is not implemented.
 - Habit check-ins are stored as `HabitCompletion` records and corresponding
   `HabitActivity` history. They do not create Tasks or separate All Entries
   rows.
@@ -104,6 +109,17 @@ Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-cont
   fan-out.
 - Guardian Habit access remains linked-athlete summary access under the
   existing Habit policy; it does not grant check-in/edit/archive permission.
+- Athlete self-service Habit creation is self-only and cannot set a team
+  assignment. Existing Coach/Admin assignment capability remains separate and
+  does not imply team fan-out.
+- Normal user-facing Habit lifecycle is Active, Paused, and Archived.
+  `COMPLETED` remains a legacy/internal enum state, not a normal lifecycle
+  action. Target met, cadence end date, streaks, total check-ins, and last
+  check-in are progress/schedule signals, not lifecycle statuses.
+- Tracking units use controlled choices with Custom preserving existing or
+  specialized labels.
+- Habit Context/List support is desired future work; team assignment is not
+  Context/List.
 - Team recurring Habit assignment/fan-out, compliance dashboards, and advanced
   streak analytics remain future roadmap work.
 - Current All Entries/Habit work does not create generated Habit occurrence

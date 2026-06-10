@@ -4,6 +4,7 @@ import {
   MAX_HABIT_DESCRIPTION_LENGTH,
   MAX_HABIT_TITLE_LENGTH,
   normalizeHabitScheduleDays,
+  normalizeHabitTargetUnit,
   normalizeCompletedOn,
   normalizeTrackingMode,
 } from "@/lib/habits/policy";
@@ -56,7 +57,11 @@ export function normalizeHabitCreateFormInput(formData: FormData): HabitCreateFo
   const endDateRaw = String(formData.get("endDate") ?? "").trim();
   const trackingMode = normalizeTrackingMode(String(formData.get("trackingMode") ?? "").trim());
   const targetCount = parsePositiveInt(String(formData.get("targetCount") ?? "").trim());
-  const targetUnit = String(formData.get("targetUnit") ?? "").trim() || null;
+  const targetUnit = normalizeHabitTargetUnit({
+    option: String(formData.get("targetUnitOption") ?? ""),
+    custom: String(formData.get("targetUnitCustom") ?? ""),
+    legacy: String(formData.get("targetUnit") ?? ""),
+  });
   const interval = parsePositiveInt(String(formData.get("interval") ?? "").trim());
 
   const startDate = parseOptionalDate(startDateRaw);
@@ -139,6 +144,7 @@ export async function createHabitActivitySafely(input: {
 export function getHabitCreateErrorMessage(code: string | null): string | null {
   if (code === "missing_title") return "Habit title is required.";
   if (code === "missing_athlete") return "Select an athlete before creating a habit.";
+  if (code === "assignment_denied") return "You can create a Habit only for yourself.";
   if (code === "schema_unavailable") return "Habit create is unavailable because required Habit schema is missing. Run the latest migrations and retry.";
   if (code === "create_failed") return "Unable to create habit right now. Please retry.";
   return null;

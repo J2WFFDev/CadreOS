@@ -69,13 +69,41 @@ test("HBT-CREATE-003: count tracking persists target fields", () => {
       athletePersonId: "athlete-1",
       trackingMode: "COUNT",
       targetCount: "25",
-      targetUnit: "reps",
+      targetUnitOption: "reps",
     }),
   );
 
   assert.equal(input.trackingMode, HabitTrackingMode.COUNT);
   assert.equal(input.targetCount, 25);
   assert.equal(input.targetUnit, "reps");
+});
+
+test("HBT-CREATE-003b: controlled Custom unit preserves the supplied label", () => {
+  const input = normalizeHabitCreateFormInput(
+    makeFormData({
+      title: "Hydration",
+      athletePersonId: "athlete-1",
+      trackingMode: "COUNT",
+      targetCount: "8",
+      targetUnitOption: "__CUSTOM__",
+      targetUnitCustom: "bottles",
+    }),
+  );
+
+  assert.equal(input.targetUnit, "bottles");
+});
+
+test("HBT-CREATE-003c: legacy free-text unit remains accepted without data loss", () => {
+  const input = normalizeHabitCreateFormInput(
+    makeFormData({
+      title: "Legacy Habit",
+      athletePersonId: "athlete-1",
+      trackingMode: "COUNT",
+      targetUnit: "laps",
+    }),
+  );
+
+  assert.equal(input.targetUnit, "laps");
 });
 
 test("HBT-CREATE-004: notes tracking mode is normalized safely", () => {

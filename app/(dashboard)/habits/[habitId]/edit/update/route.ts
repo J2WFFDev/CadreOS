@@ -2,11 +2,12 @@ import { HabitFrequency } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { canEditHabit, resolveHabitAccessContext } from "@/lib/habits/access";
+import { canAssignHabitToOthers, canEditHabit, resolveHabitAccessContext } from "@/lib/habits/access";
 import {
   MAX_HABIT_DESCRIPTION_LENGTH,
   MAX_HABIT_TITLE_LENGTH,
   normalizeHabitScheduleDays,
+  normalizeHabitTargetUnit,
   normalizeCompletedOn,
   normalizeTrackingMode,
 } from "@/lib/habits/policy";
@@ -61,23 +62,30 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
   const scheduleId = String(formData.get("scheduleId") ?? "").trim() || null;
   const trackingModeRaw = String(formData.get("trackingMode") ?? "").trim();
   const targetCountRaw = String(formData.get("targetCount") ?? "").trim();
-  const targetUnit = String(formData.get("targetUnit") ?? "").trim() || null;
+  const targetUnit = normalizeHabitTargetUnit({
+    option: String(formData.get("targetUnitOption") ?? ""),
+    custom: String(formData.get("targetUnitCustom") ?? ""),
+    legacy: String(formData.get("targetUnit") ?? ""),
+  });
+  const canAssignOthers = canAssignHabitToOthers(accessContext);
+  const resolvedAthletePersonId = canAssignOthers ? athletePersonId : habit.athletePersonId;
+  const resolvedAssignedToTeamId = canAssignOthers ? assignedToTeamId : habit.assignedToTeamId;
 
-  if (!title || !athletePersonId) {
+  if (!title || !resolvedAthletePersonId) {
     return NextResponse.redirect(new URL(`/habits/${habitId}/edit`, request.url), 303);
   }
 
   // Validate athlete belongs to org
   const athlete = await db.person.findFirst({
-    where: { id: athletePersonId, organizationId: scope.organizationId },
+    where: { id: resolvedAthletePersonId, organizationId: scope.organizationId },
     select: { id: true },
   });
   if (!athlete) return NextResponse.redirect(new URL(`/habits/${habitId}/edit`, request.url), 303);
 
   // Validate team if provided
-  if (assignedToTeamId) {
+  if (resolvedAssignedToTeamId) {
     const team = await db.team.findFirst({
-      where: { id: assignedToTeamId, organizationId: scope.organizationId },
+      where: { id: resolvedAssignedToTeamId, organizationId: scope.organizationId },
       select: { id: true },
     });
     if (!team) return NextResponse.redirect(new URL(`/habits/${habitId}/edit`, request.url), 303);
@@ -94,8 +102,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
     data: {
       title,
       description,
-      athletePersonId,
-      assignedToTeamId,
+      athletePersonId: resolvedAthletePersonId,
+      assignedToTeamId: resolvedAssignedToTeamId,
       trackingMode: trackingMode ?? undefined,
       targetCount,
       targetUnit,

@@ -29,6 +29,10 @@ and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.m
 - Habit definitions currently have no Entry Context/List or explicit
   visibility field. The existing team linkage is an assignment field and must
   not be treated as Program/Team Context/List placement.
+- Habit Context/List remains desired future work. Program/Team placement must
+  not imply visibility, assignment, or fan-out when it is designed.
+- A predefined Habit Library/catalog remains future work; My Habits is the
+  current created/assigned Habit management surface.
 - Team recurring Habit assignment/fan-out, Habit compliance dashboards, and
   advanced streak analytics remain deferred.
 - Additional Today redesign/integration is future roadmap work, not an implied

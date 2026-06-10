@@ -10,6 +10,27 @@ import { EntryStatus, HabitFrequency, HabitStatus, HabitTrackingMode } from "@pr
 export const MAX_HABIT_TITLE_LENGTH = 160;
 export const MAX_HABIT_DESCRIPTION_LENGTH = 1000;
 export const MAX_CHECKIN_NOTE_LENGTH = 500;
+export const MAX_HABIT_TARGET_UNIT_LENGTH = 80;
+
+export const HABIT_TARGET_UNIT_OPTIONS = [
+  { value: "done", label: "Done" },
+  { value: "reps", label: "Reps" },
+  { value: "sets", label: "Sets" },
+  { value: "minutes", label: "Minutes" },
+  { value: "hours", label: "Hours" },
+  { value: "sessions", label: "Sessions" },
+  { value: "rounds", label: "Rounds" },
+  { value: "miles", label: "Miles" },
+  { value: "yards", label: "Yards" },
+  { value: "meters", label: "Meters" },
+  { value: "ounces", label: "Ounces" },
+  { value: "glasses", label: "Glasses" },
+  { value: "pages", label: "Pages" },
+  { value: "entries", label: "Entries" },
+] as const;
+
+export const CUSTOM_HABIT_TARGET_UNIT = "__CUSTOM__";
+const HABIT_TARGET_UNIT_VALUES = new Set<string>(HABIT_TARGET_UNIT_OPTIONS.map((option) => option.value));
 
 const WEEKDAY_LABELS: Record<string, string> = {
   SUN: "Sun",
@@ -28,7 +49,7 @@ const WEEKDAY_ORDER = Object.keys(WEEKDAY_LABELS);
 export function labelForHabitStatus(status: HabitStatus): string {
   if (status === HabitStatus.ACTIVE) return "Active";
   if (status === HabitStatus.PAUSED) return "Paused";
-  if (status === HabitStatus.COMPLETED) return "Completed";
+  if (status === HabitStatus.COMPLETED) return "Legacy completed";
   return "Archived";
 }
 
@@ -81,7 +102,7 @@ export function labelForHabitCadence(input: {
 export function descriptionForHabitStatus(status: HabitStatus): string {
   if (status === HabitStatus.ACTIVE) return "Active habits can receive scheduled check-ins.";
   if (status === HabitStatus.PAUSED) return "Paused habits keep history but do not accept check-ins.";
-  if (status === HabitStatus.COMPLETED) return "Completed habits are finished and do not accept check-ins.";
+  if (status === HabitStatus.COMPLETED) return "This legacy completed record is retained internally and does not accept check-ins.";
   return "Archived habits are retained for history and do not accept check-ins.";
 }
 
@@ -122,6 +143,29 @@ export function normalizeCompletedOn(date: Date): Date {
 export function resolveLatestHabitCheckIn(current: Date | null, completedOn: Date): Date {
   if (!current) return completedOn;
   return current.getTime() > completedOn.getTime() ? current : completedOn;
+}
+
+export function resolveHabitTargetUnitSelection(targetUnit: string | null): {
+  option: string;
+  custom: string;
+} {
+  const value = targetUnit?.trim() ?? "";
+  if (!value) return { option: "", custom: "" };
+  if (HABIT_TARGET_UNIT_VALUES.has(value)) return { option: value, custom: "" };
+  return { option: CUSTOM_HABIT_TARGET_UNIT, custom: value };
+}
+
+export function normalizeHabitTargetUnit(input: {
+  option: string;
+  custom: string;
+  legacy?: string;
+}): string | null {
+  const option = input.option.trim();
+  if (HABIT_TARGET_UNIT_VALUES.has(option)) return option;
+  if (option === CUSTOM_HABIT_TARGET_UNIT) {
+    return input.custom.trim().slice(0, MAX_HABIT_TARGET_UNIT_LENGTH) || null;
+  }
+  return input.legacy?.trim().slice(0, MAX_HABIT_TARGET_UNIT_LENGTH) || null;
 }
 
 export function parseHabitCountValue(raw: string | null | undefined): number | null {
