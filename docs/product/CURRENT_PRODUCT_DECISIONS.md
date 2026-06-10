@@ -13,7 +13,21 @@ This document captures the current active product decisions and is the source of
 - **AdminOps** should not contain Programs or Seasons.
 - **Account/Profile** should move toward top-right header ownership.
 - Build/release identity must be visible in screenshots.
-- Entry placement is organizational context only. Visibility controls who can see an Entry, and assignment controls who is responsible; moving an Entry between Personal, Admin, Program, or Team contexts must not change either.
-- All Entries defaults to active Entries and active Habit definitions. Inactive or archived records require an explicit status filter; Habit check-ins and Habit activity rows remain separate and are not rendered as Entries.
-- Guardian-linked athlete Personal lists are grouped by athlete and remain read-only Guardian context.
-- Broader Today changes are future work and are not part of the current Entry list/context model.
+- All Work Items is named **All Entries**. All Entries displays authorized
+  Entries with their list/context placement; cross-user organization-admin
+  oversight belongs there or in Admin views.
+- Inbox and Quick Capture are actor-scoped. Quick Capture does not assign work
+  to a Guardian-linked dependent Athlete.
+- List/context placement is organization, visibility is sharing, and assignment
+  is responsibility. Moving an Entry between Personal, Admin, Program, or Team
+  contexts must not change visibility or assignment; Program/Team placement
+  does not grant either.
+- Guardian app visibility derives from active Guardian relationships and must
+  not expose unrelated members. Guardian-linked Athlete Personal lists are
+  grouped by Athlete and remain read-only Guardian context, but Journal access
+  remains narrower: only Final/Done Guardian-visible dependent Journals are
+  readable; Draft, Private, and staff-only Journals remain hidden.
+- All Entries defaults to active Entries and active Habit definitions.
+  Inactive or archived records require an explicit status filter; Habit
+  check-ins/activity remain history unless explicitly modeled as Entries.
+  Additional Today redesign/integration remains future roadmap work.

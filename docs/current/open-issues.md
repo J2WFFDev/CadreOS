@@ -7,19 +7,27 @@ not a claim that every issue is reproducible in current code.
 
 - Generic Entry archive/restore policy is not settled; generic restore remains
   deferred, and owner/assignee archive rights need a product decision.
-- Shared Program/Team/Admin List hierarchy and scoped coach/program-director
-  list visibility remain deferred.
 - Inbox routing cleanup for stale or unavailable routing rows remains deferred.
 - Dependent-athlete Quick Capture assignment for guardians remains deferred.
+- Owner/Creator/Author/Assignee terminology is not yet normalized across
+  EntryOps and Journal surfaces.
 - Relationship semantics can duplicate or drift across `EntryLink`,
   `EntryObjectLink`, `OperationalRelationship`, parent links, and follow-up
   relationships.
 - Relationship direction labels and generic graph read visibility need
   normalization and stronger test coverage.
-
 Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-controls.md),
 [`Arc 24D.8X-O`](../planning/arc-24d-8x-o-fix-inbox-lists-owner-visibility.md),
 and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.md).
+
+## EntryOps Policy Boundaries To Preserve
+
+- Program/Team list placement must not grant Entry visibility or assignment.
+- Guardian-related Athlete list visibility must not expose unrelated members.
+- Habit check-ins and Habit activity remain history/activity unless explicitly
+  modeled as Entries or work objects.
+- Additional Today redesign/integration is future roadmap work, not an implied
+  part of current All Entries behavior.
 
 ## MemberOps
 

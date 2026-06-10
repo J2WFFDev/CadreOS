@@ -6,8 +6,9 @@ CadreOS has an implemented operational foundation spanning organization,
 programs, seasons, teams, people, roles, events, attendance, EntryOps,
 FieldOps/ResourceOps, GearOps, reporting/review foundations, and role-aware
 access. Recent repository work is concentrated in the Arc 24D EntryOps family,
-including visibility, personal Inbox/Lists, habits, guardian context, and
-Journal workflow/access improvements.
+including actor-scoped Inbox, All Entries, personal and Guardian-visible Lists,
+Quick Capture, habits, Guardian-derived context, and Journal workflow/access
+improvements.
 
 This summary is intentionally conservative. Detailed capability status should
 be verified against the linked arc documents and current code before scope is
@@ -24,25 +25,38 @@ committed.
   marked complete.
 - Arc 24D.10.4 Entry Type Consistency, 24D.11 EntryOps Navigation, and 24D.12
   Role Experience/Permission Alignment are marked complete.
+- Arc 24D.8Q-C All Entries, Guardian Lists, and movement validation is complete.
+  It established actor-scoped Inbox, All Entries oversight, Guardian-linked
+  Athlete list visibility, and role-safe list movement boundaries.
+- Arc 24D.8Q-D Guardian grouping, context labels, destinations, and active
+  Habits is complete.
+- Arc 24D.8R Journal workflow/access UX is complete, including Final/Done
+  Guardian-visible Journal access and bounded reopen behavior.
+- The GearOps CSV `asset_id` baseline fix and UI.1 collapsible
+  sidebar/independent scrolling work are complete.
 
 See [`arc-log.md`](./arc-log.md) for conflicts and detailed links.
 
 ## Active / Next Arc Area
 
-The latest merged implementation work on `main` as of June 9, 2026 is in the
-Arc 24D EntryOps/Journal/visibility family. Several documents recommend
-different next slices:
+The latest merged EntryOps implementation work on `main` includes Arc
+24D.8Q-C, Arc 24D.8Q-D, and Arc 24D.8R. The latest merged cross-module work
+also fixes the GearOps CSV `asset_id` baseline and completes UI.1 collapsible
+sidebar and independent content/sidebar scrolling.
 
-- Arc 24D.8X-P: shared List hierarchy and scoped list visibility.
+The next EntryOps slice is **needs product-owner confirmation**. Current
+candidates include:
+
 - Arc 24D.9B: normalize relationship labels and direction semantics.
-- Recent merged work continues Arc 24D.8Q/8R guardian context and Journal flows.
-
-The single active next arc is **needs product-owner confirmation**.
+- Owner/Creator/Author/Assignee terminology cleanup.
 
 ## Future Roadmap
 
-- Continue EntryOps coherence work: lifecycle policy, Lists, relationships,
-  Journal/Habit integration, and role-safe visibility.
+- Continue EntryOps coherence work: lifecycle policy, relationships,
+  terminology, Journal/Habit integration, and role-safe visibility.
+- Treat additional Today redesign/integration as future roadmap work; current
+  EntryOps/List work must not imply generated Habit check-in Entries or a new
+  Today model.
 - Reconcile MemberOps RC1 capability audits with later Arc 26 validation docs.
 - Continue operational reporting/review only where role-safe scope and source
   data are reliable.
