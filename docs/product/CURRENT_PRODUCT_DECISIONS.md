@@ -48,6 +48,7 @@ This document captures the current active product decisions and is the source of
   catalog. Athlete self-service Habit creation is self-only with no team
   assignment. Normal user-facing Habit lifecycle is Active, Paused, and
   Archived; `COMPLETED` remains legacy/internal, and progress/schedule signals
-  are not lifecycle. Tracking units use controlled choices with Custom
-  preservation.
+  are not lifecycle. Tracking units use controlled choices; existing legacy
+  free-text values are preserved until replaced with a controlled choice.
+  Cadence frequency and weekly-day inputs use controlled selections.
   Additional Today redesign/integration remains future roadmap work.

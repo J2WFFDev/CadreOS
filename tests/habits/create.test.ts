@@ -78,22 +78,22 @@ test("HBT-CREATE-003: count tracking persists target fields", () => {
   assert.equal(input.targetUnit, "reps");
 });
 
-test("HBT-CREATE-003b: controlled Custom unit preserves the supplied label", () => {
+test("HBT-CREATE-003b: create rejects a forged custom target unit", () => {
   const input = normalizeHabitCreateFormInput(
     makeFormData({
       title: "Hydration",
       athletePersonId: "athlete-1",
       trackingMode: "COUNT",
       targetCount: "8",
-      targetUnitOption: "__CUSTOM__",
+      targetUnitOption: "__PRESERVE_EXISTING__",
       targetUnitCustom: "bottles",
     }),
   );
 
-  assert.equal(input.targetUnit, "bottles");
+  assert.equal(input.targetUnit, null);
 });
 
-test("HBT-CREATE-003c: legacy free-text unit remains accepted without data loss", () => {
+test("HBT-CREATE-003c: create rejects a forged legacy free-text unit", () => {
   const input = normalizeHabitCreateFormInput(
     makeFormData({
       title: "Legacy Habit",
@@ -103,7 +103,7 @@ test("HBT-CREATE-003c: legacy free-text unit remains accepted without data loss"
     }),
   );
 
-  assert.equal(input.targetUnit, "laps");
+  assert.equal(input.targetUnit, null);
 });
 
 test("HBT-CREATE-004: notes tracking mode is normalized safely", () => {
@@ -155,16 +155,17 @@ test("HBT-CREATE-006: explicit schedule values are preserved in create payload",
   assert.equal(createData.schedules?.create.daysOfWeek, "MON,WED,FRI");
 });
 
-test("HBT-CREATE-006b: weekly schedule days are normalized before persistence", () => {
-  const input = normalizeHabitCreateFormInput(
-    makeFormData({
-      title: "Sprint intervals",
-      athletePersonId: "athlete-1",
-      frequency: "WEEKLY",
-      daysOfWeek: "fri, bad-day mon",
-      startDate: "2026-05-31",
-    }),
-  );
+test("HBT-CREATE-006b: controlled weekly-day selections are normalized before persistence", () => {
+  const formData = makeFormData({
+    title: "Sprint intervals",
+    athletePersonId: "athlete-1",
+    frequency: "WEEKLY",
+    startDate: "2026-05-31",
+  });
+  formData.append("daysOfWeek", "FRI");
+  formData.append("daysOfWeek", "bad-day");
+  formData.append("daysOfWeek", "MON");
+  const input = normalizeHabitCreateFormInput(formData);
 
   const createData = buildHabitCreateData(input, {
     organizationId: "org-1",

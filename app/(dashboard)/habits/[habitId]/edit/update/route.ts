@@ -36,6 +36,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
       assignedToTeamId: true,
       createdByPersonId: true,
       status: true,
+      targetUnit: true,
     },
   });
 
@@ -56,7 +57,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
   const athletePersonId = String(formData.get("athletePersonId") ?? "").trim();
   const assignedToTeamId = String(formData.get("assignedToTeamId") ?? "").trim() || null;
   const frequencyRaw = String(formData.get("frequency") ?? "").trim();
-  const daysOfWeek = normalizeHabitScheduleDays(String(formData.get("daysOfWeek") ?? ""));
+  const daysOfWeek = normalizeHabitScheduleDays(formData.getAll("daysOfWeek").map(String).join(","));
   const startDateRaw = String(formData.get("startDate") ?? "").trim();
   const endDateRaw = String(formData.get("endDate") ?? "").trim();
   const scheduleId = String(formData.get("scheduleId") ?? "").trim() || null;
@@ -64,8 +65,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ hab
   const targetCountRaw = String(formData.get("targetCount") ?? "").trim();
   const targetUnit = normalizeHabitTargetUnit({
     option: String(formData.get("targetUnitOption") ?? ""),
-    custom: String(formData.get("targetUnitCustom") ?? ""),
-    legacy: String(formData.get("targetUnit") ?? ""),
+    legacy: habit.targetUnit,
   });
   const canAssignOthers = canAssignHabitToOthers(accessContext);
   const resolvedAthletePersonId = canAssignOthers ? athletePersonId : habit.athletePersonId;

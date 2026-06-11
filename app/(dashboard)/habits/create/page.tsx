@@ -5,8 +5,8 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { canAssignHabitToOthers, canCreateHabit, resolveHabitAccessContext } from "@/lib/habits/access";
 import { getHabitCreateErrorMessage } from "@/lib/habits/create";
 import {
-  CUSTOM_HABIT_TARGET_UNIT,
   HABIT_TARGET_UNIT_OPTIONS,
+  HABIT_WEEKDAY_OPTIONS,
   MAX_HABIT_DESCRIPTION_LENGTH,
   MAX_HABIT_TITLE_LENGTH,
 } from "@/lib/habits/policy";
@@ -164,10 +164,7 @@ export default async function CreateHabitPage({ searchParams }: { searchParams: 
               <select id="targetUnitOption" name="targetUnitOption" className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800">
                 <option value="">— Select unit —</option>
                 {HABIT_TARGET_UNIT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                <option value={CUSTOM_HABIT_TARGET_UNIT}>Custom</option>
               </select>
-              <label htmlFor="targetUnitCustom" className="block text-xs font-medium text-zinc-500">Custom unit</label>
-              <input id="targetUnitCustom" name="targetUnitCustom" type="text" placeholder="Used only when Custom is selected" className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800" />
             </div>
           </div>
         </fieldset>
@@ -189,15 +186,16 @@ export default async function CreateHabitPage({ searchParams }: { searchParams: 
             </select>
           </div>
 
-          <div className="space-y-1">
-            <label htmlFor="daysOfWeek" className="block text-sm font-medium">Weekly days <span className="text-zinc-400">(MON,WED,FRI)</span></label>
-            <input
-              id="daysOfWeek"
-              name="daysOfWeek"
-              type="text"
-              placeholder="MON,WED,FRI"
-              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
-            />
+          <div className="space-y-2">
+            <p className="block text-sm font-medium">Weekly days</p>
+            <div className="flex flex-wrap gap-3">
+              {HABIT_WEEKDAY_OPTIONS.map((option) => (
+                <label key={option.value} className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" name="daysOfWeek" value={option.value} />
+                  {option.label}
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

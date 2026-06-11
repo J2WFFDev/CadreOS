@@ -17,8 +17,9 @@
   not exposed as a normal action.
 - Target met, cadence end date, streaks, total check-ins, and last check-in are
   progress/schedule signals, not lifecycle statuses.
-- Tracking units use controlled choices with Custom preserving unknown or
-  specialized existing values.
+- Tracking units use controlled choices. Unknown legacy values are preserved
+  until an authorized editor selects a controlled replacement.
+- Cadence frequency and weekly days use controlled selections.
 - Habit Context/List remains future work. Team assignment is not Context/List,
   and Program/Team placement must not imply visibility, assignment, or fan-out.
 
@@ -46,7 +47,8 @@
 - [ ] HAB-A-012: Completed is not shown as a normal lifecycle action.
 - [ ] HAB-A-013: Progress/schedule signals do not change lifecycle.
 - [ ] HAB-A-014: Tracking unit uses a controlled selection.
-- [ ] HAB-A-015: Existing/custom unit values are preserved.
+- [ ] HAB-A-015: Existing legacy unit values are preserved without allowing new
+  free-text units.
 - [ ] HAB-A-016: Check-in remains activity/history only.
 - [ ] HAB-A-017: Check-in does not create a Task.
 - [ ] HAB-A-018: Check-in does not create a separate All Entries row.
