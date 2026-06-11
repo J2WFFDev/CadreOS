@@ -52,9 +52,9 @@ See [`arc-log.md`](./arc-log.md) for conflicts and detailed links.
 ## Active / Next Arc Area
 
 The latest merged EntryOps implementation work on `main` includes Arc
-24D.8Q-C, Arc 24D.8Q-D, and Arc 24D.8R. The latest merged cross-module work
-also fixes the GearOps CSV `asset_id` baseline and completes UI.1 collapsible
-sidebar and independent content/sidebar scrolling.
+24D.8Q-C, Arc 24D.8Q-D, Arc 24D.8R, and Arc 24D.8T-A. The latest merged
+cross-module work also fixes the GearOps CSV `asset_id` baseline and completes
+UI.1 collapsible sidebar and independent content/sidebar scrolling.
 
 The next EntryOps slice after Arc 24D.8T-A is **needs product-owner
 confirmation**. Current candidates include:
@@ -67,9 +67,11 @@ confirmation**. Current candidates include:
   terminology, Journal/Habit integration, and role-safe visibility.
 - Habit team recurrence/fan-out, compliance dashboards, and advanced streak
   analytics remain future work requiring explicit product and access policy.
-- A predefined Habit Library/catalog and Habit Context/List support remain
-  future work. Program/Team Context/List placement must not imply visibility,
-  assignment, or fan-out.
+- Habit Library is a future template catalog. It may provide known templates
+  that users can add to My Habits and that authorized staff can assign.
+- Habit Context/List placement remains future work. The current
+  `assignedToTeamId` assignment field is not Context/List, and future
+  Program/Team placement must not imply visibility, assignment, or fan-out.
 - Treat additional Today redesign/integration as future roadmap work; current
   EntryOps/List work must not imply generated Habit check-in Entries or a new
   Today model.

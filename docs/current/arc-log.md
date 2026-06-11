@@ -18,7 +18,7 @@
 | Arc 24D.8S-A discoverable Entry archive and restore actions | Completed / merged | [`Arc 24D.8S-A`](../planning/arc-24d-8s-a-discoverable-lifecycle-actions.md) |
 | Arc 24D.8S-B owner/creator Entry archive and restore | Completed / pending merge | [`Arc 24D.8S-B`](../planning/arc-24d-8s-b-owner-lifecycle-actions.md) |
 | Arc 24D.8T Habit management foundation | Completed / merged | [`Arc 24D.8T`](../planning/arc-24d-8t-habit-library-foundation.md) |
-| Arc 24D.8T-A Habit terminology, ownership, editability, and status cleanup | Completed / pending merge | [`Arc 24D.8T-A`](../planning/arc-24d-8t-a-habit-terminology-ownership-status.md) |
+| Arc 24D.8T-A Habit terminology, ownership, editability, and status cleanup | Completed / merged | [PR #374](https://github.com/J2WFFDev/CadreOS/pull/374) |
 | Arc 24D.10.4, 24D.11, 24D.12 | Marked complete | [`planning/README.md`](../../planning/README.md) |
 | Arc 25F GearOps role/approval validation | Delivered | [`planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md`](../../planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md) |
 | GearOps CSV `asset_id` baseline | Fixed / merged | PR #366 |
@@ -28,10 +28,11 @@
 ## Latest Known Work
 
 The latest merged EntryOps work on `main` includes Arc 24D.8Q-C All Entries,
-Guardian Lists, and movement validation plus Arc 24D.8R Journal
-workflow/access UX and Arc 24D.8Q-D Guardian grouping, context labels,
-destinations, and active Habits. The GearOps CSV `asset_id` baseline fix and
-UI.1 collapsible sidebar/independent scrolling work are also merged.
+Guardian Lists, and movement validation; Arc 24D.8R Journal workflow/access
+UX; Arc 24D.8Q-D Guardian grouping, context labels, destinations, and active
+Habits; and Arc 24D.8T-A Habit terminology and lifecycle cleanup. The GearOps
+CSV `asset_id` baseline fix and UI.1 collapsible sidebar/independent scrolling
+work are also merged.
 
 Implemented current behavior includes:
 
@@ -52,14 +53,21 @@ Implemented current behavior includes:
 - Default working views exclude archived records; explicit archived views
   preserve actor visibility, and generic Entry restore returns to the recorded
   pre-archive workflow status without changing metadata.
-- Habit definitions use the separate Habit model; direct creation does not
-  require a Task, check-ins remain completion/activity history, active Habits
-  appear in All Entries by default, and archived Habits appear only through
-  explicit archived views.
+- Habit definitions use separate `Habit` records, recurrence uses
+  `HabitSchedule`, and check-ins use `HabitCompletion`. Successful check-ins
+  write `HabitActivity` and update `lastCompletedAt`; they do not create Tasks,
+  Entries, or separate All Entries rows.
 - My Habits is the current created/assigned Habit management surface. Habit
-  Library is reserved for a future predefined catalog. Athlete self-service
-  creation is self-only with no team assignment; normal lifecycle presentation
-  is Active, Paused, and Archived.
+  Library is a future template catalog where users can add known templates.
+  Athlete self-service creation is self-only; authorized Coach/Admin users
+  retain assignment capability.
+- Normal user-facing Habit lifecycle is Active, Paused, and Archived.
+  Completed is not a normal user-facing lifecycle option. Target met, streak,
+  completion count, last check-in, cadence, and end date remain
+  progress/schedule signals.
+- Guardian Habit access remains summary-only. Habit Context/List does not
+  exist in the current model, and `assignedToTeamId` is assignment rather than
+  Context/List.
 
 The newest detailed planning audit found is Arc 24D.9A Entry Relationships
 Foundation Audit, which recommends 24D.9B. The next priority **needs

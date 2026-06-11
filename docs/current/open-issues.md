@@ -24,15 +24,20 @@ and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.m
 - Journal Author is Journal-specific and must not be treated as assignment.
 - Program/Team list placement must not grant Entry visibility or assignment.
 - Guardian-related Athlete list visibility must not expose unrelated members.
-- Habit check-ins and Habit activity remain history/activity unless explicitly
-  modeled as Entries or work objects.
+- Habit definitions, recurrence, check-ins, and activity remain separate
+  `Habit`, `HabitSchedule`, `HabitCompletion`, and `HabitActivity` records.
+  Successful check-ins update `lastCompletedAt`; they do not create Tasks,
+  Entries, or separate All Entries rows.
 - Habit definitions currently have no Entry Context/List or explicit
   visibility field. The existing team linkage is an assignment field and must
   not be treated as Program/Team Context/List placement.
 - Habit Context/List remains desired future work. Program/Team placement must
   not imply visibility, assignment, or fan-out when it is designed.
-- A predefined Habit Library/catalog remains future work; My Habits is the
-  current created/assigned Habit management surface.
+- Habit Library is a future template catalog; My Habits is the current
+  created/assigned Habit management surface. A future library may offer known
+  templates that users can add and authorized staff can assign.
+- Tracking units should remain controlled selections rather than unrestricted
+  free text. Custom is an explicit selection in the agreed product vocabulary.
 - Team recurring Habit assignment/fan-out, Habit compliance dashboards, and
   advanced streak analytics remain deferred.
 - Additional Today redesign/integration is future roadmap work, not an implied
