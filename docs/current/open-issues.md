@@ -33,9 +33,9 @@ and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.m
   not be treated as Program/Team Context/List placement.
 - Habit Context/List remains desired future work. Program/Team placement must
   not imply visibility, assignment, or fan-out when it is designed.
-- A predefined organized Habit Library/catalog remains future work; My Habits
-  is the current created/assigned Habit management surface. A future library
-  may offer known templates that users can add and authorized staff can assign.
+- Habit Library is a future template catalog; My Habits is the current
+  created/assigned Habit management surface. A future library may offer known
+  templates that users can add and authorized staff can assign.
 - Tracking units should remain controlled selections rather than unrestricted
   free text. Custom is an explicit selection in the agreed product vocabulary.
 - Team recurring Habit assignment/fan-out, Habit compliance dashboards, and

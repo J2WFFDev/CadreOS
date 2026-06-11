@@ -93,10 +93,9 @@ Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-cont
 - Habit definitions are stored as separate `Habit` records and appear in **My
   Habits**, the current created/assigned Habit management surface. Direct Habit
   creation does not require a Task or Entry first.
-- **Habit Library** is reserved for a future predefined organized
-  catalog/template list. It may eventually allow users to add known templates
-  to My Habits and authorized staff to assign templates, but that catalog is
-  not implemented.
+- **Habit Library** is a future template catalog. It may eventually allow
+  users to add known templates to My Habits and authorized staff to assign
+  templates, but that catalog is not implemented.
 - Habit recurrence is stored in `HabitSchedule`. Habit check-ins are stored as
   `HabitCompletion` records; successful check-ins write `HabitActivity` and
   update `lastCompletedAt`. Check-ins do not create Tasks, Entries, or separate

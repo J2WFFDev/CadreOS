@@ -43,8 +43,7 @@ committed.
   direct creation, detail/history, and All Entries lifecycle alignment.
 - Arc 24D.8T-A Habit terminology, ownership, editability, and status cleanup is
   complete, establishing My Habits, Athlete self-service assignment limits,
-  simplified lifecycle presentation, and the controlled tracking-unit product
-  direction.
+  simplified lifecycle presentation, and controlled tracking units.
 - The GearOps CSV `asset_id` baseline fix and UI.1 collapsible
   sidebar/independent scrolling work are complete.
 
@@ -68,9 +67,8 @@ confirmation**. Current candidates include:
   terminology, Journal/Habit integration, and role-safe visibility.
 - Habit team recurrence/fan-out, compliance dashboards, and advanced streak
   analytics remain future work requiring explicit product and access policy.
-- A predefined organized Habit Library/catalog remains future work. It may
-  provide known templates that users can add to My Habits and that authorized
-  staff can assign.
+- Habit Library is a future template catalog. It may provide known templates
+  that users can add to My Habits and that authorized staff can assign.
 - Habit Context/List placement remains future work. The current
   `assignedToTeamId` assignment field is not Context/List, and future
   Program/Team placement must not imply visibility, assignment, or fan-out.

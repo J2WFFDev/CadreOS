@@ -18,7 +18,7 @@
 | Arc 24D.8S-A discoverable Entry archive and restore actions | Completed / merged | [`Arc 24D.8S-A`](../planning/arc-24d-8s-a-discoverable-lifecycle-actions.md) |
 | Arc 24D.8S-B owner/creator Entry archive and restore | Completed / pending merge | [`Arc 24D.8S-B`](../planning/arc-24d-8s-b-owner-lifecycle-actions.md) |
 | Arc 24D.8T Habit management foundation | Completed / merged | [`Arc 24D.8T`](../planning/arc-24d-8t-habit-library-foundation.md) |
-| Arc 24D.8T-A Habit terminology, ownership, editability, and status cleanup | Completed / merged | PR #374 |
+| Arc 24D.8T-A Habit terminology, ownership, editability, and status cleanup | Completed / merged | [PR #374](https://github.com/J2WFFDev/CadreOS/pull/374) |
 | Arc 24D.10.4, 24D.11, 24D.12 | Marked complete | [`planning/README.md`](../../planning/README.md) |
 | Arc 25F GearOps role/approval validation | Delivered | [`planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md`](../../planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md) |
 | GearOps CSV `asset_id` baseline | Fixed / merged | PR #366 |
@@ -58,9 +58,9 @@ Implemented current behavior includes:
   write `HabitActivity` and update `lastCompletedAt`; they do not create Tasks,
   Entries, or separate All Entries rows.
 - My Habits is the current created/assigned Habit management surface. Habit
-  Library is reserved for a future predefined organized catalog/template list
-  where users can add known templates. Athlete self-service creation is
-  self-only; authorized Coach/Admin users retain assignment capability.
+  Library is a future template catalog where users can add known templates.
+  Athlete self-service creation is self-only; authorized Coach/Admin users
+  retain assignment capability.
 - Normal user-facing Habit lifecycle is Active, Paused, and Archived.
   Completed is not a normal user-facing lifecycle option. Target met, streak,
   completion count, last check-in, cadence, and end date remain
