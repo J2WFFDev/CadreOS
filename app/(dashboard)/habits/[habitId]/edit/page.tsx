@@ -10,6 +10,7 @@ import {
   HABIT_WEEKDAY_OPTIONS,
   MAX_HABIT_DESCRIPTION_LENGTH,
   MAX_HABIT_TITLE_LENGTH,
+  normalizeHabitScheduleDays,
   PRESERVE_EXISTING_HABIT_TARGET_UNIT,
   resolveHabitTargetUnitSelection,
 } from "@/lib/habits/policy";
@@ -92,7 +93,7 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
 
   const schedule = habit.schedules[0];
   const targetUnitSelection = resolveHabitTargetUnitSelection(habit.targetUnit);
-  const selectedWeekdays = new Set(schedule?.daysOfWeek?.split(",") ?? []);
+  const selectedWeekdays = new Set(normalizeHabitScheduleDays(schedule?.daysOfWeek)?.split(",") ?? []);
 
   return (
     <section className="space-y-4">

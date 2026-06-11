@@ -302,6 +302,7 @@ test("badgeVariantForHabitStatus returns completed for COMPLETED", () => {
 test("controlled Habit units preserve existing legacy values without accepting new free text", () => {
   assert.deepEqual(resolveHabitTargetUnitSelection("minutes"), { option: "minutes", existing: "" });
   assert.deepEqual(resolveHabitTargetUnitSelection("laps"), { option: PRESERVE_EXISTING_HABIT_TARGET_UNIT, existing: "laps" });
+  assert.equal(resolveHabitTargetUnitSelection("x".repeat(100)).existing.length, 80);
   assert.equal(normalizeHabitTargetUnit({ option: "reps" }), "reps");
   assert.equal(normalizeHabitTargetUnit({ option: PRESERVE_EXISTING_HABIT_TARGET_UNIT, legacy: "laps" }), "laps");
   assert.equal(normalizeHabitTargetUnit({ option: "", legacy: "laps" }), null);

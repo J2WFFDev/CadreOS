@@ -57,6 +57,7 @@ test("Habit editability keeps assignment conservative and uses controlled units"
   assert.match(editPage, /type="checkbox" name="daysOfWeek"/);
   assert.doesNotMatch(createPage, /name="daysOfWeek"\s+type="text"/);
   assert.doesNotMatch(editPage, /name="daysOfWeek"\s+type="text"/);
+  assert.match(editPage, /normalizeHabitScheduleDays\(schedule\?\.daysOfWeek\)/);
   assert.match(editRoute, /legacy: habit\.targetUnit/);
 });
 

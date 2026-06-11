@@ -159,7 +159,7 @@ export function resolveHabitTargetUnitSelection(targetUnit: string | null): {
   option: string;
   existing: string;
 } {
-  const value = targetUnit?.trim() ?? "";
+  const value = targetUnit?.trim().slice(0, MAX_HABIT_TARGET_UNIT_LENGTH) ?? "";
   if (!value) return { option: "", existing: "" };
   if (HABIT_TARGET_UNIT_VALUES.has(value)) return { option: value, existing: "" };
   return { option: PRESERVE_EXISTING_HABIT_TARGET_UNIT, existing: value };
