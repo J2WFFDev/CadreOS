@@ -6,10 +6,12 @@ import { ErrorMessage } from "@/components/dashboard/error-message";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { canAssignHabitToOthers, canEditHabit, resolveHabitAccessContext } from "@/lib/habits/access";
 import {
-  CUSTOM_HABIT_TARGET_UNIT,
   HABIT_TARGET_UNIT_OPTIONS,
+  HABIT_WEEKDAY_OPTIONS,
   MAX_HABIT_DESCRIPTION_LENGTH,
   MAX_HABIT_TITLE_LENGTH,
+  normalizeHabitScheduleDays,
+  PRESERVE_EXISTING_HABIT_TARGET_UNIT,
   resolveHabitTargetUnitSelection,
 } from "@/lib/habits/policy";
 import { getOrganizationScope } from "@/lib/organization-context";
@@ -91,6 +93,7 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
 
   const schedule = habit.schedules[0];
   const targetUnitSelection = resolveHabitTargetUnitSelection(habit.targetUnit);
+  const selectedWeekdays = new Set(normalizeHabitScheduleDays(schedule?.daysOfWeek)?.split(",") ?? []);
 
   return (
     <section className="space-y-4">
@@ -189,10 +192,13 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
               <select id="targetUnitOption" name="targetUnitOption" defaultValue={targetUnitSelection.option} className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800">
                 <option value="">— Select unit —</option>
                 {HABIT_TARGET_UNIT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                <option value={CUSTOM_HABIT_TARGET_UNIT}>Custom</option>
+                {targetUnitSelection.existing ? (
+                  <option value={PRESERVE_EXISTING_HABIT_TARGET_UNIT}>
+                    Existing unit: {targetUnitSelection.existing}
+                  </option>
+                ) : null}
               </select>
-              <label htmlFor="targetUnitCustom" className="block text-xs font-medium text-zinc-500">Custom unit</label>
-              <input id="targetUnitCustom" name="targetUnitCustom" type="text" defaultValue={targetUnitSelection.custom} placeholder="Used only when Custom is selected" className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800" />
+              {targetUnitSelection.existing ? <p className="text-xs text-zinc-500">The existing legacy unit is preserved until you select a controlled unit.</p> : null}
             </div>
           </div>
         </fieldset>
@@ -213,15 +219,16 @@ export default async function EditHabitPage({ params }: { params: Promise<{ habi
               <option value={HabitFrequency.CUSTOM}>Custom</option>
             </select>
           </div>
-          <div className="space-y-1">
-            <label htmlFor="daysOfWeek" className="block text-sm font-medium">Weekly days <span className="text-zinc-400">(MON,WED,FRI)</span></label>
-            <input
-              id="daysOfWeek"
-              name="daysOfWeek"
-              type="text"
-              defaultValue={schedule?.daysOfWeek ?? ""}
-              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
-            />
+          <div className="space-y-2">
+            <p className="block text-sm font-medium">Weekly days</p>
+            <div className="flex flex-wrap gap-3">
+              {HABIT_WEEKDAY_OPTIONS.map((option) => (
+                <label key={option.value} className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" name="daysOfWeek" value={option.value} defaultChecked={selectedWeekdays.has(option.value)} />
+                  {option.label}
+                </label>
+              ))}
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1">

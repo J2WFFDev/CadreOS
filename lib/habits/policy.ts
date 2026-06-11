@@ -29,8 +29,18 @@ export const HABIT_TARGET_UNIT_OPTIONS = [
   { value: "entries", label: "Entries" },
 ] as const;
 
-export const CUSTOM_HABIT_TARGET_UNIT = "__CUSTOM__";
+export const PRESERVE_EXISTING_HABIT_TARGET_UNIT = "__PRESERVE_EXISTING__";
 const HABIT_TARGET_UNIT_VALUES = new Set<string>(HABIT_TARGET_UNIT_OPTIONS.map((option) => option.value));
+
+export const HABIT_WEEKDAY_OPTIONS = [
+  { value: "MON", label: "Mon" },
+  { value: "TUE", label: "Tue" },
+  { value: "WED", label: "Wed" },
+  { value: "THU", label: "Thu" },
+  { value: "FRI", label: "Fri" },
+  { value: "SAT", label: "Sat" },
+  { value: "SUN", label: "Sun" },
+] as const;
 
 const WEEKDAY_LABELS: Record<string, string> = {
   SUN: "Sun",
@@ -42,7 +52,7 @@ const WEEKDAY_LABELS: Record<string, string> = {
   SAT: "Sat",
 };
 
-const WEEKDAY_ORDER = Object.keys(WEEKDAY_LABELS);
+const WEEKDAY_ORDER = HABIT_WEEKDAY_OPTIONS.map((option) => option.value);
 
 // ── Label helpers ─────────────────────────────────────────────────────────────
 
@@ -147,25 +157,24 @@ export function resolveLatestHabitCheckIn(current: Date | null, completedOn: Dat
 
 export function resolveHabitTargetUnitSelection(targetUnit: string | null): {
   option: string;
-  custom: string;
+  existing: string;
 } {
-  const value = targetUnit?.trim() ?? "";
-  if (!value) return { option: "", custom: "" };
-  if (HABIT_TARGET_UNIT_VALUES.has(value)) return { option: value, custom: "" };
-  return { option: CUSTOM_HABIT_TARGET_UNIT, custom: value };
+  const value = targetUnit?.trim().slice(0, MAX_HABIT_TARGET_UNIT_LENGTH) ?? "";
+  if (!value) return { option: "", existing: "" };
+  if (HABIT_TARGET_UNIT_VALUES.has(value)) return { option: value, existing: "" };
+  return { option: PRESERVE_EXISTING_HABIT_TARGET_UNIT, existing: value };
 }
 
 export function normalizeHabitTargetUnit(input: {
   option: string;
-  custom: string;
-  legacy?: string;
+  legacy?: string | null;
 }): string | null {
   const option = input.option.trim();
   if (HABIT_TARGET_UNIT_VALUES.has(option)) return option;
-  if (option === CUSTOM_HABIT_TARGET_UNIT) {
-    return input.custom.trim().slice(0, MAX_HABIT_TARGET_UNIT_LENGTH) || null;
+  if (option === PRESERVE_EXISTING_HABIT_TARGET_UNIT) {
+    return input.legacy?.trim().slice(0, MAX_HABIT_TARGET_UNIT_LENGTH) || null;
   }
-  return input.legacy?.trim().slice(0, MAX_HABIT_TARGET_UNIT_LENGTH) || null;
+  return null;
 }
 
 export function parseHabitCountValue(raw: string | null | undefined): number | null {
