@@ -94,12 +94,13 @@ Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-cont
   Habits**, the current created/assigned Habit management surface. Direct Habit
   creation does not require a Task or Entry first.
 - **Habit Library** is reserved for a future predefined organized
-  catalog/template surface. It may eventually allow users to copy predefined
-  Habits to themselves and authorized staff to assign templates, but that
-  catalog is not implemented.
-- Habit check-ins are stored as `HabitCompletion` records and corresponding
-  `HabitActivity` history. They do not create Tasks or separate All Entries
-  rows.
+  catalog/template list. It may eventually allow users to add known templates
+  to My Habits and authorized staff to assign templates, but that catalog is
+  not implemented.
+- Habit recurrence is stored in `HabitSchedule`. Habit check-ins are stored as
+  `HabitCompletion` records; successful check-ins write `HabitActivity` and
+  update `lastCompletedAt`. Check-ins do not create Tasks, Entries, or separate
+  All Entries rows.
 - Active Habit definitions appear in All Entries by default. Archived Habit
   definitions are hidden by default and appear through explicit archived
   filters; restore returns them to active/default views with history intact.
@@ -109,17 +110,21 @@ Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-cont
   fan-out.
 - Guardian Habit access remains linked-athlete summary access under the
   existing Habit policy; it does not grant check-in/edit/archive permission.
-- Athlete self-service Habit creation is self-only and cannot set a team
-  assignment. Existing Coach/Admin assignment capability remains separate and
-  does not imply team fan-out.
+- Athletes can create or add Habits only for themselves and cannot set a team
+  assignment. Authorized Coach/Admin users may assign Habits to others under
+  existing policy; assignment does not imply team fan-out.
 - Normal user-facing Habit lifecycle is Active, Paused, and Archived.
   `COMPLETED` remains a legacy/internal enum state, not a normal lifecycle
-  action. Target met, cadence end date, streaks, total check-ins, and last
-  check-in are progress/schedule signals, not lifecycle statuses.
-- Tracking units use controlled choices. Existing legacy free-text values are
-  preserved until an authorized editor selects a controlled replacement.
+  option. Target met, streak, completion count, last check-in, cadence, and end
+  date are progress/schedule signals, not lifecycle statuses.
+- Tracking units use controlled selections rather than unrestricted free text.
+  The agreed selection set is Done, Reps, Sets, Minutes, Hours, Sessions,
+  Rounds, Miles, Yards, Meters, Ounces, Glasses, Pages, Entries, and Custom.
+  Existing legacy free-text values are preserved until an authorized editor
+  selects a controlled replacement.
 - Cadence frequency and weekly-day inputs use controlled selections.
-- Habit Context/List support is desired future work; team assignment is not
+- Habit Context/List support is desired future work and does not exist in the
+  current Habit model. The existing `assignedToTeamId` field is assignment, not
   Context/List.
 - Team recurring Habit assignment/fan-out, compliance dashboards, and advanced
   streak analytics remain future roadmap work.
