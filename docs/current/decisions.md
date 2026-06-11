@@ -91,8 +91,10 @@ Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-cont
 ## Habits In EntryOps
 
 - Habit definitions are stored as separate `Habit` records and appear in **My
-  Habits**, the current created/assigned Habit management surface. Direct Habit
-  creation does not require a Task or Entry first.
+  Habits**, the current actor-subject Habit management surface. My Habits shows
+  Habits whose subject/assignee is the current actor, not every Habit the actor
+  is authorized to manage. Direct Habit creation does not require a Task or
+  Entry first.
 - **Habit Library** is a future template catalog. It may eventually allow
   users to add known templates to My Habits and authorized staff to assign
   templates, but that catalog is not implemented.
@@ -107,11 +109,14 @@ Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-cont
   visibility fields. The existing `assignedToTeamId` field is an assignment
   field, not Program/Team Context/List placement, and must not be described as
   fan-out.
-- Guardian Habit access remains linked-athlete summary access under the
-  existing Habit policy; it does not grant check-in/edit/archive permission.
+- Guardian Habit access derives from the Athlete-Guardian relationship and
+  remains linked-athlete summary access under the existing Habit policy. It
+  does not require a separate Guardian RoleAssignment or grant
+  check-in/edit/archive permission.
 - Athletes can create or add Habits only for themselves and cannot set a team
-  assignment. Authorized Coach/Admin users may assign Habits to others under
-  existing policy; assignment does not imply team fan-out.
+  assignment. Authorized Coach/Admin users may create Habits for themselves
+  and assign Habits to others under existing policy; assignment does not imply
+  team fan-out.
 - Normal user-facing Habit lifecycle is Active, Paused, and Archived.
   `COMPLETED` remains a legacy/internal enum state, not a normal lifecycle
   option. Target met, streak, completion count, last check-in, cadence, and end

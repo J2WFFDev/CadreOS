@@ -83,14 +83,6 @@ test("linked guardian can see readable habit without a check-in button", () => {
     [buildActionableHabitRow({ athletePersonId: "athlete-1" })],
     buildContext({
       actorPersonId: "guardian-1",
-      assignments: [
-        {
-          roleType: RoleType.PARENT_GUARDIAN,
-          scopeType: ScopeType.ORGANIZATION,
-          teamId: null,
-          programId: null,
-        },
-      ],
       linkedGuardianAthleteIds: new Set(["athlete-1"]),
     }),
     NOW,

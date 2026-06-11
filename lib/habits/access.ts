@@ -70,16 +70,13 @@ export async function resolveHabitAccessContext(input: {
     },
   });
 
-  const isGuardian = assignments.some((a) => a.roleType === RoleType.PARENT_GUARDIAN);
-  const guardianRelationships = isGuardian
-    ? await db.athleteGuardianRelationship.findMany({
-        where: {
-          organizationId: input.organizationId,
-          guardianPersonId: input.actorPersonId,
-        },
-        select: { athletePersonId: true },
-      })
-    : [];
+  const guardianRelationships = await db.athleteGuardianRelationship.findMany({
+    where: {
+      organizationId: input.organizationId,
+      guardianPersonId: input.actorPersonId,
+    },
+    select: { athletePersonId: true },
+  });
 
   return {
     actorPersonId: input.actorPersonId,
@@ -131,6 +128,11 @@ export function isHabitAssignmentAllowed(
   if (!context.actorPersonId || !assignment.athletePersonId) return false;
   if (canAssignHabitToOthers(context)) return true;
   return assignment.athletePersonId === context.actorPersonId && assignment.assignedToTeamId === null;
+}
+
+/** My Habits contains only definitions whose subject is the current actor. */
+export function isHabitInMyHabits(context: HabitAccessContext, habit: Pick<HabitRecord, "athletePersonId">): boolean {
+  return Boolean(context.actorPersonId && habit.athletePersonId === context.actorPersonId);
 }
 
 /**

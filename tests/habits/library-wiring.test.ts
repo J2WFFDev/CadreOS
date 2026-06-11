@@ -10,6 +10,7 @@ function source(path: string): string {
 const libraryPage = source("../../app/(dashboard)/habits/page.tsx");
 const createPage = source("../../app/(dashboard)/habits/create/page.tsx");
 const createRoute = source("../../app/(dashboard)/habits/create/save/route.ts");
+const accessPolicy = source("../../lib/habits/access.ts");
 const detailPage = source("../../app/(dashboard)/habits/[habitId]/page.tsx");
 const editPage = source("../../app/(dashboard)/habits/[habitId]/edit/page.tsx");
 const editRoute = source("../../app/(dashboard)/habits/[habitId]/edit/update/route.ts");
@@ -21,6 +22,8 @@ const schema = source("../../prisma/schema.prisma");
 test("My Habits defaults to active definitions and reserves Habit Library terminology", () => {
   assert.match(libraryPage, /title="My Habits"/);
   assert.doesNotMatch(libraryPage, /Habit Library/);
+  assert.match(libraryPage, /athletePersonId: scope\.auth\.personId/);
+  assert.match(libraryPage, /isHabitInMyHabits/);
   assert.match(libraryPage, /return "active"/);
   assert.match(libraryPage, /status: HabitStatus\.ACTIVE/);
   assert.match(libraryPage, /href="\/habits\/create"/);
@@ -38,8 +41,15 @@ test("direct Habit creation uses the Habit model and does not create a Task or E
   assert.match(createRoute, /db\.habit\.create/);
   assert.match(createRoute, /isHabitAssignmentAllowed/);
   assert.match(createPage, /canAssignOthers \?/);
+  assert.match(createPage, /id: scope\.auth\.personId/);
+  assert.match(createPage, /defaultValue=\{scope\.auth\.personId/);
   assert.match(createPage, /Athlete self-service Habits are created for yourself/);
   assert.doesNotMatch(createRoute, /db\.entry\.create|EntryType\.TASK|db\.task/);
+});
+
+test("Guardian Habit access derives linked athletes from relationships without a fake role assignment", () => {
+  assert.match(accessPolicy, /db\.athleteGuardianRelationship\.findMany/);
+  assert.doesNotMatch(accessPolicy, /const isGuardian = assignments\.some/);
 });
 
 test("Habit editability keeps assignment conservative and uses controlled units", () => {

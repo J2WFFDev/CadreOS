@@ -6,7 +6,7 @@ import { ErrorMessage } from "@/components/dashboard/error-message";
 import { FilterTabs } from "@/components/dashboard/filter-tabs";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatusBadge } from "@/components/dashboard/status-badge";
-import { canCreateHabit, canReadHabit, resolveHabitAccessContext } from "@/lib/habits/access";
+import { canCreateHabit, canReadHabit, isHabitInMyHabits, resolveHabitAccessContext } from "@/lib/habits/access";
 import { habitAccessErrorMessage } from "@/lib/habits/access-feedback";
 import { badgeVariantForHabitStatus, labelForHabitCadence, labelForHabitStatus } from "@/lib/habits/policy";
 import { formatShortDateTime } from "@/lib/format-date";
@@ -83,7 +83,11 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
     });
 
     habits = await db.habit.findMany({
-      where: { organizationId: scope.organizationId, ...whereStatus },
+      where: {
+        organizationId: scope.organizationId,
+        athletePersonId: scope.auth.personId ?? "__no_actor__",
+        ...whereStatus,
+      },
       orderBy: [{ updatedAt: "desc" }],
       select: {
         id: true,
@@ -125,16 +129,17 @@ export default async function HabitsPage({ searchParams }: { searchParams: Promi
     );
   }
 
-  const visibleHabits = habits.filter((h) =>
-    canReadHabit(accessContext, {
+  const visibleHabits = habits.filter((h) => {
+    const habitRecord = {
       id: h.id,
       athletePersonId: h.athletePersonId,
       assignedToTeamId: h.assignedToTeamId,
       createdByPersonId: h.createdByPersonId,
       status: h.status,
       teamProgramId: h.assignedToTeam?.programId ?? null,
-    }),
-  );
+    };
+    return isHabitInMyHabits(accessContext, habitRecord) && canReadHabit(accessContext, habitRecord);
+  });
 
   const canCreate = canCreateHabit(accessContext);
 
