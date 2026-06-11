@@ -5,7 +5,6 @@ import { EntryStatus, HabitFrequency, HabitStatus } from "@prisma/client";
 
 import {
   badgeVariantForHabitStatus,
-  CUSTOM_HABIT_TARGET_UNIT,
   computeCompletionCount,
   computeCurrentStreak,
   descriptionForHabitStatus,
@@ -23,6 +22,7 @@ import {
   normalizeHabitScheduleDays,
   normalizeHabitTargetUnit,
   normalizeTrackingMode,
+  PRESERVE_EXISTING_HABIT_TARGET_UNIT,
   parseHabitCountValue,
   resolveAllEntriesHabitStatus,
   resolveLatestHabitCheckIn,
@@ -299,12 +299,12 @@ test("badgeVariantForHabitStatus returns completed for COMPLETED", () => {
   assert.equal(badgeVariantForHabitStatus("COMPLETED"), "completed");
 });
 
-test("controlled Habit units preserve known and custom existing values", () => {
-  assert.deepEqual(resolveHabitTargetUnitSelection("minutes"), { option: "minutes", custom: "" });
-  assert.deepEqual(resolveHabitTargetUnitSelection("laps"), { option: CUSTOM_HABIT_TARGET_UNIT, custom: "laps" });
-  assert.equal(normalizeHabitTargetUnit({ option: "reps", custom: "" }), "reps");
-  assert.equal(normalizeHabitTargetUnit({ option: CUSTOM_HABIT_TARGET_UNIT, custom: " bottles " }), "bottles");
-  assert.equal(normalizeHabitTargetUnit({ option: "", custom: "", legacy: "laps" }), "laps");
+test("controlled Habit units preserve existing legacy values without accepting new free text", () => {
+  assert.deepEqual(resolveHabitTargetUnitSelection("minutes"), { option: "minutes", existing: "" });
+  assert.deepEqual(resolveHabitTargetUnitSelection("laps"), { option: PRESERVE_EXISTING_HABIT_TARGET_UNIT, existing: "laps" });
+  assert.equal(normalizeHabitTargetUnit({ option: "reps" }), "reps");
+  assert.equal(normalizeHabitTargetUnit({ option: PRESERVE_EXISTING_HABIT_TARGET_UNIT, legacy: "laps" }), "laps");
+  assert.equal(normalizeHabitTargetUnit({ option: "", legacy: "laps" }), null);
 });
 
 // ── Arc 24D.8: deriveSafeHabitActivityText with habitTitle ────────────────────

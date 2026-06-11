@@ -52,15 +52,13 @@ export function normalizeHabitCreateFormInput(formData: FormData): HabitCreateFo
   const athletePersonId = String(formData.get("athletePersonId") ?? "").trim();
   const assignedToTeamId = String(formData.get("assignedToTeamId") ?? "").trim() || null;
   const frequency = normalizeHabitFrequency(String(formData.get("frequency") ?? "").trim());
-  const daysOfWeek = normalizeHabitScheduleDays(String(formData.get("daysOfWeek") ?? ""));
+  const daysOfWeek = normalizeHabitScheduleDays(formData.getAll("daysOfWeek").map(String).join(","));
   const startDateRaw = String(formData.get("startDate") ?? "").trim();
   const endDateRaw = String(formData.get("endDate") ?? "").trim();
   const trackingMode = normalizeTrackingMode(String(formData.get("trackingMode") ?? "").trim());
   const targetCount = parsePositiveInt(String(formData.get("targetCount") ?? "").trim());
   const targetUnit = normalizeHabitTargetUnit({
     option: String(formData.get("targetUnitOption") ?? ""),
-    custom: String(formData.get("targetUnitCustom") ?? ""),
-    legacy: String(formData.get("targetUnit") ?? ""),
   });
   const interval = parsePositiveInt(String(formData.get("interval") ?? "").trim());
 

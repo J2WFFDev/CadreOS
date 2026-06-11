@@ -116,8 +116,9 @@ Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-cont
   `COMPLETED` remains a legacy/internal enum state, not a normal lifecycle
   action. Target met, cadence end date, streaks, total check-ins, and last
   check-in are progress/schedule signals, not lifecycle statuses.
-- Tracking units use controlled choices with Custom preserving existing or
-  specialized labels.
+- Tracking units use controlled choices. Existing legacy free-text values are
+  preserved until an authorized editor selects a controlled replacement.
+- Cadence frequency and weekly-day inputs use controlled selections.
 - Habit Context/List support is desired future work; team assignment is not
   Context/List.
 - Team recurring Habit assignment/fan-out, compliance dashboards, and advanced

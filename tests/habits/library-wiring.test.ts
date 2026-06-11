@@ -51,6 +51,13 @@ test("Habit editability keeps assignment conservative and uses controlled units"
   assert.match(createPage, /name="targetUnitOption"/);
   assert.match(editPage, /name="targetUnitOption"/);
   assert.match(editPage, /resolveHabitTargetUnitSelection/);
+  assert.doesNotMatch(createPage, /targetUnitCustom|Custom unit/);
+  assert.doesNotMatch(editPage, /targetUnitCustom|Custom unit/);
+  assert.match(createPage, /type="checkbox" name="daysOfWeek"/);
+  assert.match(editPage, /type="checkbox" name="daysOfWeek"/);
+  assert.doesNotMatch(createPage, /name="daysOfWeek"\s+type="text"/);
+  assert.doesNotMatch(editPage, /name="daysOfWeek"\s+type="text"/);
+  assert.match(editRoute, /legacy: habit\.targetUnit/);
 });
 
 test("normal Habit lifecycle UI exposes Active, Paused, and Archived without a completion action", () => {
