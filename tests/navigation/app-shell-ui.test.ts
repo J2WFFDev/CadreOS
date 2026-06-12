@@ -18,6 +18,17 @@ test("desktop app shell keeps header stationary with independent sidebar and mai
   assert.match(sidebar, /md:h-full[^"]*md:flex-col[^"]*md:overflow-y-auto/);
 });
 
+test("account header shows the current linked person name with a safe fallback", () => {
+  const layout = source("../../app/(dashboard)/layout.tsx");
+
+  assert.match(layout, /scope\.auth\.personId \|\| currentUser\?\.isDevPersona/);
+  assert.match(layout, /const accountLabel = accountDisplayName \|\| "Account"/);
+  assert.match(layout, /title=\{accountDisplayName \? `Account: \$\{accountDisplayName\}` : "Account"\}/);
+  assert.match(layout, /className="[^"]*max-w-32[^"]*truncate[^"]*sm:max-w-48/);
+  assert.match(layout, /\{accountLabel\}/);
+  assert.match(layout, /<UserButton \/>/);
+});
+
 test("sidebar group controls remain accessible, persistent, and mobile-safe", () => {
   const sidebar = source("../../components/nav-sidebar.tsx");
 

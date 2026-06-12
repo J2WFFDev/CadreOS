@@ -29,6 +29,9 @@ export default async function DashboardLayout({
     devFeatureStatus.enabled && currentUser?.isDevPersona
       ? getDevPersonaById(currentUser.id)
       : null;
+  const accountDisplayName =
+    scope.auth.personId || currentUser?.isDevPersona ? currentUser?.name.trim() : "";
+  const accountLabel = accountDisplayName || "Account";
 
   // Show a diagnostic when NEXT_PUBLIC_ENABLE_DEV_PERSONAS is set but the
   // switcher is blocked by the production guard. This helps diagnose Vercel
@@ -63,9 +66,10 @@ export default async function DashboardLayout({
           <BuildMetadataBadge />
           <Link
             href="/account"
-            className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+            className="max-w-32 truncate text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 sm:max-w-48"
+            title={accountDisplayName ? `Account: ${accountDisplayName}` : "Account"}
           >
-            Account
+            {accountLabel}
           </Link>
           <UserButton />
         </div>
