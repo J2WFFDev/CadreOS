@@ -21,7 +21,10 @@ test("desktop app shell keeps header stationary with independent sidebar and mai
 test("account header shows the current linked person name with a safe fallback", () => {
   const layout = source("../../app/(dashboard)/layout.tsx");
 
-  assert.match(layout, /scope\.auth\.personId \|\| currentUser\?\.isDevPersona/);
+  assert.match(layout, /const resolvedAccountName = currentUser\?\.name\.trim\(\) \?\? ""/);
+  assert.match(layout, /const canShowAccountName = Boolean\(scope\.auth\.personId\) \|\| currentUser\?\.isDevPersona === true/);
+  assert.match(layout, /const isPlaceholderAccountName = resolvedAccountName\.toLowerCase\(\) === "clerk user"/);
+  assert.match(layout, /canShowAccountName && resolvedAccountName && !isPlaceholderAccountName/);
   assert.match(layout, /const accountLabel = accountDisplayName \|\| "Account"/);
   assert.match(layout, /title=\{accountDisplayName \? `Account: \$\{accountDisplayName\}` : "Account"\}/);
   assert.match(layout, /className="[^"]*max-w-32[^"]*truncate[^"]*sm:max-w-48/);

@@ -29,8 +29,13 @@ export default async function DashboardLayout({
     devFeatureStatus.enabled && currentUser?.isDevPersona
       ? getDevPersonaById(currentUser.id)
       : null;
+  const resolvedAccountName = currentUser?.name.trim() ?? "";
+  const canShowAccountName = Boolean(scope.auth.personId) || currentUser?.isDevPersona === true;
+  const isPlaceholderAccountName = resolvedAccountName.toLowerCase() === "clerk user";
   const accountDisplayName =
-    scope.auth.personId || currentUser?.isDevPersona ? currentUser?.name.trim() : "";
+    canShowAccountName && resolvedAccountName && !isPlaceholderAccountName
+      ? resolvedAccountName
+      : "";
   const accountLabel = accountDisplayName || "Account";
 
   // Show a diagnostic when NEXT_PUBLIC_ENABLE_DEV_PERSONAS is set but the
