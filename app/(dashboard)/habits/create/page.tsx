@@ -52,7 +52,10 @@ export default async function CreateHabitPage({ searchParams }: { searchParams: 
     canAssignOthers ? db.person.findMany({
       where: {
         organizationId: scope.organizationId,
-        roles: { some: { roleType: "ATHLETE", organizationId: scope.organizationId } },
+        OR: [
+          { id: scope.auth.personId ?? "__no_actor__" },
+          { roles: { some: { roleType: "ATHLETE", organizationId: scope.organizationId } } },
+        ],
       },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       select: { id: true, firstName: true, lastName: true },
@@ -108,7 +111,7 @@ export default async function CreateHabitPage({ searchParams }: { searchParams: 
           <>
             <div className="space-y-1">
               <label htmlFor="athletePersonId" className="block text-sm font-medium">Assigned Athlete <span className="text-red-500">*</span></label>
-              <select id="athletePersonId" name="athletePersonId" required className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800">
+              <select id="athletePersonId" name="athletePersonId" required defaultValue={scope.auth.personId ?? ""} className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:border-zinc-700 dark:bg-zinc-800">
                 <option value="">— Select athlete —</option>
                 {athletes.map((athlete) => <option key={athlete.id} value={athlete.id}>{athlete.firstName} {athlete.lastName}</option>)}
               </select>

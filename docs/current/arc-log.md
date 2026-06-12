@@ -19,6 +19,7 @@
 | Arc 24D.8S-B owner/creator Entry archive and restore | Completed / pending merge | [`Arc 24D.8S-B`](../planning/arc-24d-8s-b-owner-lifecycle-actions.md) |
 | Arc 24D.8T Habit management foundation | Completed / merged | [`Arc 24D.8T`](../planning/arc-24d-8t-habit-library-foundation.md) |
 | Arc 24D.8T-A Habit terminology, ownership, editability, and status cleanup | Completed / merged | [PR #374](https://github.com/J2WFFDev/CadreOS/pull/374) |
+| Arc 24D.8T-B My Habits ownership scope and authorized Habit visibility | Completed / pending merge | My Habits actor-subject scoping, Coach/Admin self-creation, and relationship-derived Guardian Habit summary visibility |
 | Arc 24D.10.4, 24D.11, 24D.12 | Marked complete | [`planning/README.md`](../../planning/README.md) |
 | Arc 25F GearOps role/approval validation | Delivered | [`planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md`](../../planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md) |
 | GearOps CSV `asset_id` baseline | Fixed / merged | PR #366 |
@@ -59,15 +60,18 @@ Implemented current behavior includes:
   Entries, or separate All Entries rows.
 - My Habits is the current created/assigned Habit management surface. Habit
   Library is a future template catalog where users can add known templates.
-  Athlete self-service creation is self-only; authorized Coach/Admin users
-  retain assignment capability.
+  My Habits shows Habits whose subject is the current actor, not every Habit
+  the actor is authorized to manage. Athlete self-service creation is
+  self-only; authorized Coach/Admin users can create for themselves and retain
+  assignment capability.
 - Normal user-facing Habit lifecycle is Active, Paused, and Archived.
   Completed is not a normal user-facing lifecycle option. Target met, streak,
   completion count, last check-in, cadence, and end date remain
   progress/schedule signals.
-- Guardian Habit access remains summary-only. Habit Context/List does not
-  exist in the current model, and `assignedToTeamId` is assignment rather than
-  Context/List.
+- Guardian Habit access derives from the Athlete-Guardian relationship and
+  remains summary-only; it does not require a fake direct Guardian role
+  assignment. Habit Context/List does not exist in the current model, and
+  `assignedToTeamId` is assignment rather than Context/List.
 
 The newest detailed planning audit found is Arc 24D.9A Entry Relationships
 Foundation Audit, which recommends 24D.9B. The next priority **needs

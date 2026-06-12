@@ -34,8 +34,15 @@ and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.m
 - Habit Context/List remains desired future work. Program/Team placement must
   not imply visibility, assignment, or fan-out when it is designed.
 - Habit Library is a future template catalog; My Habits is the current
-  created/assigned Habit management surface. A future library may offer known
+  actor-subject Habit management surface. Broader authorized Coach/Admin
+  oversight belongs outside My Habits. A future library may offer known
   templates that users can add and authorized staff can assign.
+- Guardian Habit visibility derives from the Athlete-Guardian relationship and
+  remains summary-only; it must not depend on a fake direct Guardian role
+  assignment or expose private completion notes.
+- A future lifecycle concept may be needed for routines or goals that are
+  achieved or no longer need tracking. This is not implemented; Active,
+  Paused, and Archived remain the normal user-facing Habit lifecycle states.
 - Tracking units should remain controlled selections rather than unrestricted
   free text. Custom is an explicit selection in the agreed product vocabulary.
 - Team recurring Habit assignment/fan-out, Habit compliance dashboards, and

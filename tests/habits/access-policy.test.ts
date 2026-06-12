@@ -16,6 +16,7 @@ import {
   canReadHabit,
   canRestoreHabit,
   hasHabitAdminAccess,
+  isHabitInMyHabits,
   isHabitAssignmentAllowed,
 } from "../../lib/habits/access";
 
@@ -129,6 +130,16 @@ test("Coach and Admin retain existing Habit assignment capability", () => {
     }),
     true,
   );
+});
+
+test("My Habits includes only the current actor as Habit subject regardless of admin access", () => {
+  const adminContext = buildContext({ assignments: [adminAssignment] });
+  const coachContext = buildContext({ assignments: [coachAssignment] });
+
+  assert.equal(isHabitInMyHabits(adminContext, buildHabit({ athletePersonId: "actor-1" })), true);
+  assert.equal(isHabitInMyHabits(adminContext, buildHabit({ athletePersonId: "other-athlete" })), false);
+  assert.equal(isHabitInMyHabits(coachContext, buildHabit({ athletePersonId: "actor-1" })), true);
+  assert.equal(isHabitInMyHabits(coachContext, buildHabit({ athletePersonId: "other-athlete" })), false);
 });
 
 // ── canReadHabit ─────────────────────────────────────────────────────────────
