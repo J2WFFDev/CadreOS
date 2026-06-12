@@ -5,10 +5,11 @@
 CadreOS has an implemented operational foundation spanning organization,
 programs, seasons, teams, people, roles, events, attendance, EntryOps,
 FieldOps/ResourceOps, GearOps, reporting/review foundations, and role-aware
-access. Recent repository work is concentrated in the Arc 24D EntryOps family,
-including actor-scoped Inbox, All Entries, personal and Guardian-visible Lists,
-Quick Capture, habits, Guardian-derived context, and Journal workflow/access
-improvements.
+access. Recent repository work includes actor-scoped Inbox, All Entries,
+personal and Guardian-visible Lists, Quick Capture, habits, Guardian-derived
+context, Journal workflow/access improvements, and app-shell usability work.
+Historical Arc 24D/25/26 labels remain useful references, while new work uses
+the simplified `ARC-[DOMAIN]-[NN]` naming scheme.
 
 This summary is intentionally conservative. Detailed capability status should
 be verified against the linked arc documents and current code before scope is
@@ -38,28 +39,31 @@ committed.
 - Arc 24D.8S EntryOps lifecycle cleanup is complete, normalizing non-archived
   working views and generic Entry archive/restore while preserving existing
   permissions and Journal/Habit policy.
-- Arc 24D.8T Habit management foundation is complete, clarifying the separate
-  Habit definition/check-in model, active and archived management behavior,
-  direct creation, detail/history, and All Entries lifecycle alignment.
-- Arc 24D.8T-A Habit terminology, ownership, editability, and status cleanup is
-  complete, establishing My Habits, Athlete self-service assignment limits,
-  simplified lifecycle presentation, and controlled tracking units.
-- The GearOps CSV `asset_id` baseline fix and UI.1 collapsible
-  sidebar/independent scrolling work are complete.
+- ARC-HABIT-01 / Arc 24D.8T Habit Management Foundation is complete,
+  clarifying the separate Habit definition/check-in model, active and archived
+  management behavior, direct creation, detail/history, and All Entries
+  lifecycle alignment.
+- ARC-HABIT-02 / Arc 24D.8T-A Habit Terminology, Ownership, and Lifecycle
+  Cleanup is complete, establishing My Habits, Athlete self-service assignment
+  limits, simplified lifecycle presentation, and controlled tracking units.
+- ARC-HABIT-03 / Arc 24D.8T-B My Habits Scope and Guardian Summary is
+  complete, establishing actor-subject My Habits scope, Coach/Admin
+  self-creation, and relationship-derived Guardian summary visibility.
+- ARC-UI-01 / UI.0-A Header Account Name Display and ARC-UI-02 / UI.1
+  Collapsible Sidebar and Independent Scrolling are complete.
+- The GearOps CSV `asset_id` baseline fix is complete.
 
 See [`arc-log.md`](./arc-log.md) for conflicts and detailed links.
 
-## Active / Next Arc Area
+## Current / Next Arc Area
 
-The latest merged EntryOps implementation work on `main` includes Arc
-24D.8Q-C, Arc 24D.8Q-D, Arc 24D.8R, and Arc 24D.8T-A. The latest merged
-cross-module work also fixes the GearOps CSV `asset_id` baseline and completes
-UI.1 collapsible sidebar and independent content/sidebar scrolling.
+The current documentation cleanup arc is **ARC-DOCS-01 — Roadmap and Arc
+Naming Reconciliation**. It establishes simplified forward arc naming while
+preserving historical identifiers for traceability.
 
-The next EntryOps slice after Arc 24D.8T-A is **needs product-owner
-confirmation**. Current candidates include:
-
-- Arc 24D.9B: normalize relationship labels and direction semantics.
+The next recommended product arc is **ARC-ENTRY-07 — Relationship Labels and
+Direction Semantics**, following the Arc 24D.9A Entry Relationships Foundation
+Audit and replacing the formerly proposed Arc 24D.9B label for forward work.
 
 ## Future Roadmap
 
@@ -72,6 +76,9 @@ confirmation**. Current candidates include:
 - Habit Context/List placement remains future work. The current
   `assignedToTeamId` assignment field is not Context/List, and future
   Program/Team placement must not imply visibility, assignment, or fan-out.
+- A mature Habit lifecycle concept for achieved routines or goals remains
+  future work; Active, Paused, and Archived remain the current user-facing
+  lifecycle.
 - Treat additional Today redesign/integration as future roadmap work; current
   EntryOps/List work must not imply generated Habit check-in Entries or a new
   Today model.
@@ -94,6 +101,10 @@ confirmation**. Current candidates include:
 - Bulk import and other high-risk mass mutation tooling.
 
 ## Historical Roadmap References
+
+Old Arc 24D/25/26 and UI labels remain valid historical references in these
+documents. See [`arc-log.md`](./arc-log.md) for the recent old-to-new
+crosswalk.
 
 - [`planning/README.md`](../../planning/README.md)
 - [`planning/ROADMAP.md`](../../planning/ROADMAP.md)
