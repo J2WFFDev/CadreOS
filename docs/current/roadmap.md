@@ -9,7 +9,7 @@ access. Recent repository work includes actor-scoped Inbox, All Entries,
 personal and Guardian-visible Lists, Quick Capture, habits, Guardian-derived
 context, Journal workflow/access improvements, and app-shell usability work.
 Historical Arc 24D/25/26 labels remain useful references, while new work uses
-the simplified `ARC-[DOMAIN]-[NN]` naming scheme.
+the simplified `ARC-[DOMAIN]-[NN] — Title` naming scheme.
 
 This summary is intentionally conservative. Detailed capability status should
 be verified against the linked arc documents and current code before scope is
@@ -39,18 +39,20 @@ committed.
 - Arc 24D.8S EntryOps lifecycle cleanup is complete, normalizing non-archived
   working views and generic Entry archive/restore while preserving existing
   permissions and Journal/Habit policy.
-- ARC-HABIT-01 / Arc 24D.8T Habit Management Foundation is complete,
+- ARC-HABIT-01 — Habit Management Foundation (historical: Arc 24D.8T) is complete,
   clarifying the separate Habit definition/check-in model, active and archived
   management behavior, direct creation, detail/history, and All Entries
   lifecycle alignment.
-- ARC-HABIT-02 / Arc 24D.8T-A Habit Terminology, Ownership, and Lifecycle
-  Cleanup is complete, establishing My Habits, Athlete self-service assignment
-  limits, simplified lifecycle presentation, and controlled tracking units.
-- ARC-HABIT-03 / Arc 24D.8T-B My Habits Scope and Guardian Summary is
+- ARC-HABIT-02 — Habit Terminology, Ownership, and Lifecycle Cleanup
+  (historical: Arc 24D.8T-A) is complete, establishing My Habits, Athlete
+  self-service assignment limits, simplified lifecycle presentation, and
+  controlled tracking units.
+- ARC-HABIT-03 — My Habits Scope and Guardian Summary (historical: Arc 24D.8T-B) is
   complete, establishing actor-subject My Habits scope, Coach/Admin
   self-creation, and relationship-derived Guardian summary visibility.
-- ARC-UI-01 / UI.0-A Header Account Name Display and ARC-UI-02 / UI.1
-  Collapsible Sidebar and Independent Scrolling are complete.
+- ARC-UI-01 — Header Account Name Display (historical: UI.0-A) and
+  ARC-UI-02 — Collapsible Sidebar and Independent Scrolling (historical: UI.1)
+  are complete.
 - The GearOps CSV `asset_id` baseline fix is complete.
 
 See [`arc-log.md`](./arc-log.md) for conflicts and detailed links.
