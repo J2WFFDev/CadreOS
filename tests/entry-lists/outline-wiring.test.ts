@@ -43,7 +43,7 @@ test("Inbox is protected and its sidebar route uses the personal Inbox working v
   assert.match(updateRoute, /if \(list\.isInbox\)/);
 });
 
-test("Lists page separates Guardian-linked athlete lists into Related Athletes groups", () => {
+test("Lists page separates related athlete lists into Related Athletes groups", () => {
   const page = source("../../app/(dashboard)/lists/page.tsx");
 
   assert.match(page, />Related Athletes<\/h2>/);

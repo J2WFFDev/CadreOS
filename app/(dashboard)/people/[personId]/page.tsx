@@ -2079,14 +2079,14 @@ export default async function PersonDetailsPage({
       <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
         <h3 className="mb-3 text-lg font-medium">Guardian / athlete relationships</h3>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-          Household foundation is represented through linked guardian/athlete records. Relationship type and guardian role
+          Household foundation is represented through Guardian and related athlete records. Relationship type and guardian role
           are shown for each link.
         </p>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
           Guardian portal visibility, messaging, notifications, and communications remain deferred.
         </p>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-          Household snapshot: as athlete/member {pluralize(person.athleteLinks.length, "linked guardian")} · as guardian {pluralize(person.guardianLinks.length, "linked athlete")}.
+          Household snapshot: as athlete/member {pluralize(person.athleteLinks.length, "Guardian relationship")} · as guardian {pluralize(person.guardianLinks.length, "related athlete")}.
         </p>
         {canEditGuardianLinkageWhereSupported ? (
           <Link
@@ -2122,7 +2122,7 @@ export default async function PersonDetailsPage({
           <div className="space-y-3 text-sm">
             {person.guardianLinks.length > 0 ? (
               <div>
-                <p className="font-medium">As guardian: linked athletes</p>
+                <p className="font-medium">As Guardian: related athletes</p>
                 <ul className="mt-1 list-disc pl-5">
                   {person.guardianLinks.map((link) => (
                     <li key={link.id}>
@@ -2145,7 +2145,7 @@ export default async function PersonDetailsPage({
 
             {person.athleteLinks.length > 0 ? (
               <div>
-                <p className="font-medium">As athlete/member: linked guardians</p>
+                <p className="font-medium">As athlete/member: Guardians</p>
                 <ul className="mt-1 list-disc pl-5">
                   {person.athleteLinks.map((link) => (
                     <li key={link.id}>

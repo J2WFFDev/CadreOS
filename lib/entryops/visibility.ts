@@ -210,7 +210,7 @@ export function resolveEntryOpsAllWorkDefaultVisibility(
       visiblePersonIds: unique([actorPersonId, ...context.linkedGuardianAthleteIds]),
       teamIds: [],
       programIds: [],
-      reason: "Guardian default includes own work and linked dependent athletes.",
+      reason: "Guardian default includes own work and related athletes.",
     };
   }
 

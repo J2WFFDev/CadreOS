@@ -40,7 +40,7 @@ Source: [`CURRENT_PRODUCT_DECISIONS.md`](../product/CURRENT_PRODUCT_DECISIONS.md
 - All Work Items is named **All Entries**. All Entries is the authorized
   oversight/browse surface and displays each Entry's list/context placement.
 - Inbox is always actor-scoped, including for organization admins.
-- Quick Capture is actor-scoped and does not provide dependent-Athlete
+- Quick Capture is actor-scoped and does not provide related-athlete
   assignment. Low-context captures route to the actor's Inbox under current
   routing policy.
 
@@ -54,7 +54,7 @@ Sources: [`Sidebar Taxonomy`](../navigation/sidebar-taxonomy.md),
   unrelated athlete/member data must remain denied.
 - Guardians may see linked Athlete personal list context, but list visibility
   does not grant visibility to every Entry in that list.
-- Linked Guardians may read Final/Done Guardian-visible dependent Journals.
+- Guardians may read Final/Done Guardian-visible Journals for related athletes.
   Draft, Private, and staff-only Journals remain hidden. Reopen behavior must
   preserve these visibility boundaries.
 - Navigation exposure does not grant mutation rights.
@@ -96,6 +96,13 @@ Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-cont
 - Organization-admin cross-user oversight belongs in All Entries/Admin views,
   not in another person's Inbox.
 - Program/Team context placement does not share or assign work.
+- Guardian-derived access should use **Related athlete** for the athlete
+  connected to a Guardian by an active Guardian relationship. The Guardian is
+  not assigned to, owner of, or direct role-assigned to the athlete by this
+  relationship.
+- Guardian-visible Journal language must preserve privacy boundaries: Guardians
+  may see only Final/Done Guardian-visible Journals for related athletes under
+  valid relationship scope.
 
 ## Habits In EntryOps
 

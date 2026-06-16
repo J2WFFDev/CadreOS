@@ -326,7 +326,7 @@ export default async function PersonGuardiansPage({
         <>
           <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Relationship type and guardian role are modeled for each linked athlete/guardian record.
+              Relationship type and guardian role are modeled for each Guardian and related athlete record.
             </p>
             {canEditGuardianLinkageWhereSupported ? (
               <Link
@@ -343,9 +343,9 @@ export default async function PersonGuardiansPage({
           </div>
 
           <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-            <h3 className="mb-2 text-lg font-medium">As athlete/member: linked guardians</h3>
+            <h3 className="mb-2 text-lg font-medium">As athlete/member: Guardians</h3>
             {visibleAthleteLinks.length === 0 ? (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">No guardian relationships are linked to this person as an athlete/member.</p>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">No Guardian relationships are connected to this person as an athlete/member.</p>
             ) : (
               <ul className="space-y-3 text-sm">
                 {visibleAthleteLinks.map((link) => (
@@ -375,9 +375,9 @@ export default async function PersonGuardiansPage({
           </div>
 
           <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-            <h3 className="mb-2 text-lg font-medium">As guardian: linked athletes</h3>
+            <h3 className="mb-2 text-lg font-medium">As Guardian: related athletes</h3>
             {visibleGuardianLinks.length === 0 ? (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">No athlete relationships are linked to this person as a guardian.</p>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">No related athlete relationships are connected to this person as a Guardian.</p>
             ) : (
               <ul className="space-y-3 text-sm">
                 {visibleGuardianLinks.map((link) => (

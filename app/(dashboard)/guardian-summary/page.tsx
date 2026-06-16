@@ -4,13 +4,13 @@
  * Guardian Summary Page — /guardian-summary
  *
  * Shows a guardian-scoped view of journal submissions and habit summaries
- * for each linked athlete. No journal body text is shown. No completion
+ * for each related athlete. No journal body text is shown. No completion
  * notes are shown. Only metadata safe for guardian display is rendered.
  *
  * Access rules:
  * - Requires an AthleteGuardianRelationship in the organization.
- * - Only athletes linked via AthleteGuardianRelationship are shown.
- * - Unlinked athletes are never visible through this view.
+ * - Only related athletes connected via AthleteGuardianRelationship are shown.
+ * - Unrelated athletes are never visible through this view.
  */
 
 import Link from "next/link";
@@ -133,7 +133,7 @@ export default async function GuardianSummaryPage() {
       <section className="space-y-4">
         <PageHeader
           title="Athlete Summary"
-          description="Guardian-safe view of journal and habit activity for linked athletes."
+          description="Guardian-safe view of journal and habit activity for related athletes."
         />
         <ErrorMessage message={scope.errorMessage ?? "Unable to load guardian summary right now."} />
       </section>
@@ -148,14 +148,14 @@ export default async function GuardianSummaryPage() {
       <section className="space-y-4">
         <PageHeader
           title="Athlete Summary"
-          description="Guardian-safe view of journal and habit activity for linked athletes."
+          description="Guardian-safe view of journal and habit activity for related athletes."
         />
         <ErrorMessage message="You must be signed in to view this page." />
       </section>
     );
   }
 
-  // Load linked athlete relationships
+  // Load related athlete relationships
   const relationships = await db.athleteGuardianRelationship.findMany({
     where: {
       organizationId,
@@ -173,10 +173,10 @@ export default async function GuardianSummaryPage() {
       <section className="space-y-4">
         <PageHeader
           title="Athlete Summary"
-          description="Guardian-safe view of journal and habit activity for linked athletes."
+          description="Guardian-safe view of journal and habit activity for related athletes."
         />
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          No athletes are currently linked to your guardian account. Contact your organization admin.
+          No related athletes are currently connected to your Guardian account. Contact your organization admin.
         </p>
       </section>
     );
@@ -262,7 +262,7 @@ export default async function GuardianSummaryPage() {
     <section className="space-y-4">
       <PageHeader
         title="Athlete Summary"
-        description="Guardian-safe view of journal and habit activity for your linked athletes. Journal content is not shown."
+        description="Guardian-safe view of journal and habit activity for your related athletes. Journal content is not shown."
       />
 
       <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">

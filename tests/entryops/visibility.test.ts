@@ -41,7 +41,7 @@ test("org admin All Entries default is organization-wide", () => {
   assert.deepEqual(buildEntryOpsAllWorkDefaultWhere(visibility), {});
 });
 
-test("guardian All Entries default includes own and dependent athletes", () => {
+test("guardian All Entries default includes own work and related athletes", () => {
   const visibility = resolveEntryOpsAllWorkDefaultVisibility({
     actorPersonId: "guardian-1",
     assignments: [assignment({ roleType: RoleType.PARENT_GUARDIAN })],
@@ -75,7 +75,7 @@ test("guardian All Entries default includes own and dependent athletes", () => {
   });
 });
 
-test("guardian dependent Entry visibility is workflow-state agnostic and includes dependent personal lists", () => {
+test("guardian related athlete Entry visibility is workflow-state agnostic and includes related athlete personal lists", () => {
   const visibility = resolveEntryOpsAllWorkDefaultVisibility({
     actorPersonId: "guardian-1",
     assignments: [],
@@ -225,7 +225,7 @@ test("entry detail visibility blocks unrelated limited or no-role users", () => 
   );
 });
 
-test("entry detail visibility allows guardian access to dependent athlete entries", () => {
+test("entry detail visibility allows Guardian access to related athlete entries", () => {
   const visibility = resolveEntryOpsAllWorkDefaultVisibility({
     actorPersonId: "guardian-1",
     assignments: [assignment({ roleType: RoleType.PARENT_GUARDIAN })],
@@ -431,7 +431,7 @@ test("entry self-edit blocks unrelated athlete and revoked assignment participan
   );
 });
 
-test("entry self-edit does not grant guardian dependent edit access", () => {
+test("entry self-edit does not grant Guardian related athlete edit access", () => {
   assert.equal(
     canSelfEditEntryOpsEntry(
       { actorPersonId: "guardian-1" },
@@ -521,7 +521,7 @@ test("entry access decision reports owner and assignee access", () => {
   );
 });
 
-test("entry access decision reports guardian dependent and org admin access", () => {
+test("entry access decision reports Guardian related athlete and org admin access", () => {
   const guardianContext = {
     actorPersonId: "guardian-1",
     assignments: [assignment({ roleType: RoleType.PARENT_GUARDIAN })],

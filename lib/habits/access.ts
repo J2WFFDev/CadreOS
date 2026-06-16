@@ -8,7 +8,7 @@
  * - ORGANIZATION_ADMIN / PROGRAM_DIRECTOR: full habit management
  * - COACH / ASSISTANT_COACH: can create and manage habits for athletes in their scope
  * - ATHLETE: can create and manage their own habits, and check in on any habit assigned to them
- * - PARENT_GUARDIAN: can view habit summaries (count/streak) for linked athletes only
+ * - PARENT_GUARDIAN: can view habit summaries (count/streak) for related athletes only
  */
 
 import { HabitStatus, RoleType, ScopeType } from "@prisma/client";
@@ -158,7 +158,7 @@ export function canReadHabit(context: HabitAccessContext, habit: HabitRecord): b
     return true;
   }
 
-  // Guardians can view habit summary for linked athletes
+  // Guardians can view habit summary for related athletes
   if (context.linkedGuardianAthleteIds.has(habit.athletePersonId)) return true;
 
   return false;

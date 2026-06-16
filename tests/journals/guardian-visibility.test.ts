@@ -52,7 +52,7 @@ function buildHabit(input?: Partial<GuardianHabitRecord>): GuardianHabitRecord {
 
 // ── isJournalVisibleToGuardian ────────────────────────────────────────────────
 
-test("submitted ORGANIZATION_SCOPED journal is visible to linked guardian", () => {
+test("submitted ORGANIZATION_SCOPED journal is visible to the related athlete's Guardian", () => {
   const journal = buildJournal();
   const linkedIds = new Set(["athlete-1"]);
   assert.equal(isJournalVisibleToGuardian(journal, linkedIds), true);
@@ -82,7 +82,7 @@ test("submitted TEAM_STAFF journal is not visible to guardian", () => {
   assert.equal(isJournalVisibleToGuardian(journal, linkedIds), false);
 });
 
-test("unrelated guardian cannot see ORGANIZATION_SCOPED submitted journal of unlinked athlete", () => {
+test("unrelated Guardian cannot see ORGANIZATION_SCOPED submitted journal of unrelated athlete", () => {
   const journal = buildJournal({ createdByPersonId: "athlete-2" });
   const linkedIds = new Set(["athlete-1"]); // guardian is NOT linked to athlete-2
   assert.equal(isJournalVisibleToGuardian(journal, linkedIds), false);
@@ -143,7 +143,7 @@ test("toGuardianSafeHabitSummary labels ARCHIVED status correctly", () => {
 
 // ── deriveGuardianAthleteJournalHabitSummary ──────────────────────────────────
 
-test("summary includes visible journals and habit summaries for linked athlete", () => {
+test("summary includes visible journals and habit summaries for related athlete", () => {
   const journals = [
     buildJournal({ id: "j1", status: EntryStatus.DONE, visibility: EntryVisibility.ORGANIZATION_SCOPED }),
     buildJournal({ id: "j2", status: EntryStatus.DONE, visibility: EntryVisibility.ORGANIZATION_SCOPED }),
@@ -185,7 +185,7 @@ test("summary excludes STAFF_ONLY journals even when submitted", () => {
   assert.equal(summary.recentJournals.length, 0);
 });
 
-test("unlinked athlete returns empty summary — guardian cannot access unrelated athletes", () => {
+test("unrelated athlete returns empty summary because Guardian access is relationship-scoped", () => {
   const journals = [buildJournal({ createdByPersonId: "athlete-2" })];
   const habits = [buildHabit({ athletePersonId: "athlete-2" })];
   const linkedIds = new Set(["athlete-1"]); // NOT linked to athlete-2

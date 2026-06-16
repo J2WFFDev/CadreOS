@@ -27,8 +27,8 @@ committed.
 - Arc 24D.10.4 Entry Type Consistency, 24D.11 EntryOps Navigation, and 24D.12
   Role Experience/Permission Alignment are marked complete.
 - Arc 24D.8Q-C All Entries, Guardian Lists, and movement validation is complete.
-  It established actor-scoped Inbox, All Entries oversight, Guardian-linked
-  Athlete list visibility, and role-safe list movement boundaries.
+  It established actor-scoped Inbox, All Entries oversight, related Athlete
+  list visibility for Guardians, and role-safe list movement boundaries.
 - Arc 24D.8Q-D Guardian grouping, context labels, destinations, and active
   Habits is complete.
 - Arc 24D.8R Journal workflow/access UX is complete, including Final/Done
@@ -59,13 +59,13 @@ See [`arc-log.md`](./arc-log.md) for conflicts and detailed links.
 
 ## Current / Next Arc Area
 
-The current documentation cleanup arc is **ARC-DOCS-01 — Roadmap and Arc
-Naming Reconciliation**. It establishes simplified forward arc naming while
-preserving historical identifiers for traceability.
+The current product arc is **ARC-ENTRY-07 — Relationship Labels and Direction
+Semantics**. It normalizes user-facing relationship, visibility, assignment,
+authorship, and Context/List language without changing permissions, roles,
+routes, schema, or lifecycle behavior.
 
-The next recommended product arc is **ARC-ENTRY-07 — Relationship Labels and
-Direction Semantics**, following the Arc 24D.9A Entry Relationships Foundation
-Audit and replacing the formerly proposed Arc 24D.9B label for forward work.
+The next recommended product arc after ARC-ENTRY-07 needs product-owner
+confirmation.
 
 ## Future Roadmap
 

@@ -26,8 +26,8 @@ only when an old-to-new mapping is useful for traceability.
 | ARC-HABIT-03 — My Habits Scope and Guardian Summary | Arc 24D.8T-B | Completed / merged |
 | ARC-UI-01 — Header Account Name Display | UI.0-A | Completed / merged |
 | ARC-UI-02 — Collapsible Sidebar and Independent Scrolling | UI.1 | Completed / merged |
-| ARC-ENTRY-07 — Relationship Labels and Direction Semantics | Recommended follow-up to Arc 24D.9A; formerly proposed as Arc 24D.9B | Next recommended product arc |
-| ARC-DOCS-01 — Roadmap and Arc Naming Reconciliation | No historical label | Current documentation cleanup arc |
+| ARC-ENTRY-07 — Relationship Labels and Direction Semantics | Recommended follow-up to Arc 24D.9A; formerly proposed as Arc 24D.9B | Current product arc |
+| ARC-DOCS-01 — Roadmap and Arc Naming Reconciliation | No historical label | Completed / merged |
 
 Recent historical arcs without an assigned simplified identifier keep their
 old labels until a future documentation reconciliation assigns one.
@@ -71,19 +71,24 @@ ARC-UI-01 — Header Account Name Display (historical: UI.0-A), and
 ARC-UI-02 — Collapsible Sidebar and Independent Scrolling (historical: UI.1)
 are also merged.
 
+ARC-DOCS-01 — Roadmap and Arc Naming Reconciliation is merged. The current
+product arc is ARC-ENTRY-07 — Relationship Labels and Direction Semantics.
+It standardizes relationship-derived Guardian language around related athletes,
+Guardians, Created by, Journal author, Assigned to, Context/List, and
+Visibility without changing access policy or relationship graph behavior.
+
 Implemented current behavior includes:
 
 - App context can derive Guardian access from active Guardian relationships
   without requiring a fake direct Guardian role assignment.
-- Quick Capture is actor-scoped and does not assign work to a dependent
-  Athlete.
+- Quick Capture is actor-scoped and does not assign work to a related Athlete.
 - Inbox is actor-scoped; organization-wide oversight belongs in All Entries or
   Admin views.
 - All Work Items is named All Entries and displays list/context placement.
-- Guardian-visible linked Athlete personal list context does not broaden Entry
-  or Journal visibility.
+- Guardian-visible related Athlete personal list context does not broaden
+  Entry or Journal visibility.
 - Journal Draft/Private/staff-only content remains hidden from Guardians;
-  linked Guardians may read Final/Done Guardian-visible dependent Journals.
+  Guardians may read Final/Done Guardian-visible Journals for related athletes.
 - Creator/Created by, Journal Author, task Assignee, Context/List, and
   Visibility now use distinct user-facing terminology; Owner transfer remains
   unsupported.
@@ -110,10 +115,8 @@ Implemented current behavior includes:
   `assignedToTeamId` is assignment rather than Context/List.
 
 The newest detailed planning audit found is Arc 24D.9A Entry Relationships
-Foundation Audit. Its recommended product follow-up is now labeled
-**ARC-ENTRY-07 — Relationship Labels and Direction Semantics**. The current
-documentation cleanup arc is **ARC-DOCS-01 — Roadmap and Arc Naming
-Reconciliation**.
+Foundation Audit. Its recommended product follow-up is now the current product
+arc, **ARC-ENTRY-07 — Relationship Labels and Direction Semantics**.
 
 ## Conflicting Or Unclear Status
 

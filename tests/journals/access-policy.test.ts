@@ -72,7 +72,7 @@ test("guardian can read linked submitted journal only when guardian visibility p
   assert.equal(canReadJournalEntry(context, submittedPrivate), false);
 });
 
-test("relationship-linked guardian can read final Guardian-visible journal without a direct role assignment", () => {
+test("Guardian relationship permits final Guardian-visible journal access without a direct role assignment", () => {
   const context = buildContext({
     actorPersonId: "guardian-1",
     assignments: [],
@@ -197,7 +197,7 @@ test("reopen is limited to the final journal author or org admin", () => {
   assert.equal(canReopenJournal(buildContext(), buildEntry({ status: EntryStatus.OPEN })), false);
 });
 
-test("reopened Guardian-visible journal becomes hidden from its linked guardian", () => {
+test("reopened Guardian-visible journal becomes hidden from the related athlete's Guardian", () => {
   const guardianContext = buildContext({
     actorPersonId: "guardian-1",
     linkedGuardianAthleteIds: new Set(["athlete-1"]),

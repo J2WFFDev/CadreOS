@@ -416,7 +416,7 @@ export default async function NotesPage({
   if (canViewGuardianRelationshipDetails && guardianContextFilter) {
     const labelByFilter: Record<string, string> = {
       missing_guardian_linkage: "Guardian context: athlete missing guardian linkage",
-      guardian_linked: "Guardian context: guardian-linked athlete",
+      guardian_linked: "Guardian context: related athlete",
       inactive_guardian_account: "Guardian context: inactive guardian account signal",
     };
     activeFilterLabels.push(labelByFilter[guardianContextFilter] ?? guardianContextFilter);
@@ -667,7 +667,7 @@ export default async function NotesPage({
                 className="w-52 rounded-md border px-2 py-1.5 text-sm"
               >
                 <option value="">All guardian contexts</option>
-                <option value="guardian_linked">Guardian-linked athlete</option>
+                <option value="guardian_linked">Related athlete</option>
                 <option value="missing_guardian_linkage">Athlete missing guardian linkage</option>
                 <option value="inactive_guardian_account">Inactive guardian account signal</option>
               </select>

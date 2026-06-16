@@ -178,7 +178,7 @@ test("coach from different team cannot read habit", () => {
   assert.equal(canReadHabit(buildContext({ assignments: [coachAssignment] }), habit), false);
 });
 
-test("guardian can read habit of linked athlete", () => {
+test("Guardian can read habit of related athlete", () => {
   const habit = buildHabit({ athletePersonId: "athlete-1" });
   const ctx = buildContext({
     actorPersonId: "guardian-1",
@@ -188,7 +188,7 @@ test("guardian can read habit of linked athlete", () => {
   assert.equal(canReadHabit(ctx, habit), true);
 });
 
-test("guardian cannot read habit of unlinked athlete", () => {
+test("Guardian cannot read habit of unrelated athlete", () => {
   const habit = buildHabit({ athletePersonId: "other-athlete", createdByPersonId: "other-creator" });
   const ctx = buildContext({
     actorPersonId: "guardian-1",

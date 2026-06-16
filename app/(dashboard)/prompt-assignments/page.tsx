@@ -106,7 +106,7 @@ export default async function PromptAssignmentsPage({
           ).map((r) => r.teamId)
         : [];
 
-      // Guardian-linked athlete IDs
+      // Related athlete IDs from Guardian relationships
       const guardianAthleteIds = Array.from(accessContext.linkedGuardianAthleteIds);
 
       assignments = await db.journalAssignment.findMany({
@@ -129,7 +129,7 @@ export default async function PromptAssignmentsPage({
                   ...(athleteTeamIds.length > 0
                     ? [{ assignedToTeamId: { in: athleteTeamIds } }]
                     : []),
-                  // Guardian: see assignments for linked athletes
+                  // Guardian: see assignments for related athletes
                   ...(guardianAthleteIds.length > 0
                     ? [{ assignedToAthletePersonId: { in: guardianAthleteIds } }]
                     : []),

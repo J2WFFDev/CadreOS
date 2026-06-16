@@ -144,13 +144,13 @@ export function formatAthleteGuardianReadinessLabel(
     case "guardian_account_inactive_signal":
       return "Guardian account inactive signal";
     case "guardian_ready":
-      return "Guardian-linked and ready";
+      return "Guardian relationship ready";
   }
 }
 
 /**
  * Returns true if the readiness state indicates the guardian relationship
- * requires staff attention before guardian-dependent workflows can proceed.
+ * requires staff attention before Guardian relationship workflows can proceed.
  */
 export function isGuardianReadinessActionRequired(
   state: AthleteGuardianReadinessState,

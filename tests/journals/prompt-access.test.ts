@@ -186,7 +186,7 @@ test("athlete cannot read another athlete's assignment", () => {
   assert.equal(canReadAssignment(context, assignment), false);
 });
 
-test("guardian can read assignment for linked athlete", () => {
+test("Guardian can read assignment for related athlete", () => {
   const context = buildContext({
     actorPersonId: "guardian-1",
     linkedGuardianAthleteIds: new Set(["athlete-1"]),
