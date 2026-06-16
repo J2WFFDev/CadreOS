@@ -52,18 +52,37 @@ and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.m
 
 ## MemberOps
 
-- Arc 24C documents role taxonomy, athlete-role hard-block, scope-driven role
-  picker, guardian-derived visibility, duplicate athlete/program control, and
-  model-aligned view gaps.
-- Arc 26A documents partial or missing applicant/member naming, household and
-  emergency-contact handling, volunteer/program-admin naming, qualifications,
-  and dedicated lifecycle/report routes.
-- Later Arc 26E claims validation/delivery for several of these areas, so the
-  remaining MemberOps issue list **needs product-owner confirmation**.
+- ARC-MEMBER-01 resolved the broad Arc 26A / Arc 26E status conflict into the
+  current validation matrix. MemberOps foundations are present, while the
+  confirmed remaining gaps below still require product-owner selection before
+  implementation.
+- Dedicated MemberOps lifecycle and Member Reports routes remain planned, not
+  active.
+- Volunteer remains a staffing role, not a standalone auth persona.
+- General Manager and specialty MemberOps role taxonomy remain out of current
+  scope.
+- Pairwise Guardian relationships remain the household model; no household
+  aggregate exists.
+- Emergency Contact exists as a Guardian relationship role, not a separate
+  emergency-contact entity/workflow.
+- Program-to-team outline selection, multi-select assignment, first-class
+  program participation, and consolidated joining/transfer/departure/offboarding
+  workflows remain future work.
+- Duplicate athlete/program protections are partial and route-level, not a
+  complete model-wide policy.
+- The app-role access helper and backend scoped permission matrix disagree for
+  selected Program Manager and Coach MemberOps actions, especially
+  qualification/certification workflows. Reproduction scope: compare
+  `lib/auth/access-control.ts` app-role action allowances with
+  `lib/permissions/index.ts` scoped backend staff action sets for Program
+  Manager / Program Director and Coach. Expected behavior is one aligned policy
+  for production role authority; actual behavior differs between helper-level
+  and backend scoped checks.
 
 Sources: [`Arc 24C.1`](../planning/arc-24c-memberops-scoped-assignment-model.md),
 [`Arc 26A`](../../planning/ARC_26A_MEMBEROPS_RC1_GAP_ASSESSMENT_AND_CAPABILITY_AUDIT.md),
-and [`Arc 26E`](../../planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md).
+[`Arc 26E`](../../planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md),
+and [`ARC-MEMBER-01`](./memberops-validation.md).
 
 ## GearOps And Platform Limits
 

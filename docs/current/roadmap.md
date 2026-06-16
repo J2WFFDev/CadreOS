@@ -58,6 +58,10 @@ committed.
   Guardian relationship wording, clarified Journal Guardian visibility copy,
   and preserved permissions, roles, auth, schema, routes, lifecycle,
   archive/restore, Journal privacy, Habit behavior, and Dev Persona behavior.
+- ARC-MEMBER-01 — MemberOps Gap Reconciliation and Role Testing is complete
+  pending merge. It reconciled Arc 26A and Arc 26E current-state claims,
+  confirmed implemented MemberOps foundations, and moved remaining MemberOps
+  gaps to a concrete validation matrix without adding product scope.
 - The GearOps CSV `asset_id` baseline fix is complete.
 
 See [`arc-log.md`](./arc-log.md) for conflicts and detailed links.
@@ -87,7 +91,8 @@ promoting any one option to committed scope here.
 - Treat additional Today redesign/integration as future roadmap work; current
   EntryOps/List work must not imply generated Habit check-in Entries or a new
   Today model.
-- Reconcile MemberOps RC1 capability audits with later Arc 26 validation docs.
+- Continue confirmed MemberOps gaps only after product-owner selection of a
+  specific next arc; see [`memberops-validation.md`](./memberops-validation.md).
 - Continue operational reporting/review only where role-safe scope and source
   data are reliable.
 - Keep communications delivery, AI/automation, and broad cross-module

@@ -24,6 +24,11 @@ When it conflicts with a newer explicit decision, update this file.
   `/field-ops` routes still contain ResourceOps infrastructure.
 - GearOps remains its own module.
 - Programs and Seasons belong under MemberOps, not AdminOps.
+- Volunteer is a MemberOps staffing category/default staffing role, not a
+  standalone auth persona.
+- The current household model is pairwise Guardian relationships. Do not infer
+  a separate household aggregate entity from Guardian or emergency-contact
+  language.
 
 Source: [`CURRENT_PRODUCT_DECISIONS.md`](../product/CURRENT_PRODUCT_DECISIONS.md).
 
