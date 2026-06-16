@@ -1,12 +1,13 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import { GuardianRelationshipRole, MemberLifecycleStatus } from "@prisma/client";
+import { GuardianRelationshipRole, MemberLifecycleStatus, RoleType } from "@prisma/client";
 
 import { canAccessModule, canPerformAction } from "../../lib/auth/access-control";
 import type { AppRole, CurrentUser } from "../../lib/auth/current-user-types";
 import { canGuardianSeeAthleteFromLinks } from "../../lib/guardian-athlete-access";
 import { DEFAULT_STAFFING_ROLE_DEFINITIONS } from "../../lib/member-ops-staffing";
+import { actionRequiresBackendScope, canRoleTypePerformBackendAction } from "../../lib/permissions";
 
 function buildUser(role: AppRole): CurrentUser {
   return {
@@ -62,6 +63,67 @@ test("Arc 26E permission validation: coach is scoped for operational actions but
   ["program.create", "qualificationDefinition.create", "booking.approve"].forEach((action) => {
     assert.equal(canPerformAction(coach, action), false, `Coach should not be able to ${action}`);
   });
+});
+
+test("ARC-MEMBER-02: app-role helper and backend matrix align for member qualification assignments", () => {
+  const assignmentActions = [
+    "personQualification.create",
+    "personQualification.update",
+    "personCertification.create",
+    "personCertification.update",
+  ];
+  const alignedRoles: Array<[AppRole, RoleType]> = [
+    ["ADMIN", RoleType.ORGANIZATION_ADMIN],
+    ["PROGRAM_MANAGER", RoleType.PROGRAM_DIRECTOR],
+    ["COACH", RoleType.COACH],
+    ["GUARDIAN", RoleType.PARENT_GUARDIAN],
+    ["ATHLETE", RoleType.ATHLETE],
+  ];
+
+  for (const [appRole, backendRole] of alignedRoles) {
+    const user = buildUser(appRole);
+    for (const action of assignmentActions) {
+      assert.equal(
+        canPerformAction(user, action),
+        canRoleTypePerformBackendAction(backendRole, action),
+        `${appRole} helper and ${backendRole} backend policy should agree for ${action}`,
+      );
+    }
+  }
+
+  const limitedViewer = buildUser("LIMITED_VIEWER");
+  for (const action of assignmentActions) {
+    assert.equal(canPerformAction(limitedViewer, action), false, `LIMITED_VIEWER should not be able to ${action}`);
+  }
+});
+
+test("ARC-MEMBER-02: qualification assignment mutations are scoped backend actions", () => {
+  const assignmentActions = [
+    "personQualification.create",
+    "personQualification.update",
+    "personCertification.create",
+    "personCertification.update",
+  ];
+
+  for (const action of assignmentActions) {
+    assert.equal(actionRequiresBackendScope(action), true, `${action} should require resolved program/team scope`);
+  }
+
+  assert.equal(
+    canRoleTypePerformBackendAction(RoleType.COACH, "qualificationDefinition.create"),
+    false,
+    "Coach should not create qualification definitions",
+  );
+  assert.equal(
+    canRoleTypePerformBackendAction(RoleType.PARENT_GUARDIAN, "personQualification.create"),
+    false,
+    "Guardian should not mutate person qualifications",
+  );
+  assert.equal(
+    canRoleTypePerformBackendAction(RoleType.ATHLETE, "personCertification.update"),
+    false,
+    "Athlete should not mutate person certifications",
+  );
 });
 
 test("Arc 26E permission validation: program and organization admins retain required memberops authority", () => {

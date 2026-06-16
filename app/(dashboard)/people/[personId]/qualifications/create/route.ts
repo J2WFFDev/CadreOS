@@ -71,6 +71,7 @@ export async function POST(
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
       action: "personQualification.create",
+      personId,
     });
 
     const [person, qualification] = await Promise.all([

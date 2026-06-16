@@ -85,6 +85,8 @@ type PermissionReason =
 type PermissionScope = {
   programId: string | null;
   teamId: string | null;
+  programIds: string[];
+  teamIds: string[];
 };
 
 const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
@@ -221,6 +223,10 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "person.activate",
     "person.deactivate",
     "person.archive",
+    "personQualification.create",
+    "personQualification.update",
+    "personCertification.create",
+    "personCertification.update",
     "rosterMembership.create",
     "rosterMembership.delete",
     "event.create",
@@ -272,6 +278,10 @@ const SCOPED_ACTIONS = new Set<SupportedAction>([
   "season.update",
   "season.rollover",
   "person.move",
+  "personQualification.create",
+  "personQualification.update",
+  "personCertification.create",
+  "personCertification.update",
   "guardianRelationship.create",
   "guardianRelationship.update",
   "team.create",
@@ -366,6 +376,7 @@ export type PermissionCheckInput = {
   eventId?: string | null;
   noteId?: string | null;
   taskId?: string | null;
+  personId?: string | null;
   roleAssignmentId?: string | null;
 };
 
@@ -389,9 +400,31 @@ function isSupportedAction(action: string): action is SupportedAction {
   return SUPPORTED_ACTIONS.has(action as SupportedAction);
 }
 
+export function canRoleTypePerformBackendAction(roleType: RoleType, action: string): boolean {
+  if (!isSupportedAction(action)) {
+    return false;
+  }
+
+  return STAFF_ACTIONS_BY_ROLE[roleType].has(action);
+}
+
+export function actionRequiresBackendScope(action: string): boolean {
+  return isSupportedAction(action) && SCOPED_ACTIONS.has(action);
+}
+
 async function resolvePermissionScope(input: PermissionCheckInput): Promise<PermissionScope> {
   let programId = input.programId ?? null;
   let teamId = input.teamId ?? null;
+  const programIds = new Set<string>();
+  const teamIds = new Set<string>();
+
+  if (programId) {
+    programIds.add(programId);
+  }
+
+  if (teamId) {
+    teamIds.add(teamId);
+  }
 
   if (input.seasonId && !programId) {
     const season = await db.season.findFirst({
@@ -399,6 +432,9 @@ async function resolvePermissionScope(input: PermissionCheckInput): Promise<Perm
       select: { programId: true },
     });
     programId = season?.programId ?? null;
+    if (programId) {
+      programIds.add(programId);
+    }
   }
 
   if (input.eventId) {
@@ -411,6 +447,12 @@ async function resolvePermissionScope(input: PermissionCheckInput): Promise<Perm
     }
     if (!teamId) {
       teamId = event?.teamId ?? null;
+    }
+    if (event?.programId) {
+      programIds.add(event.programId);
+    }
+    if (event?.teamId) {
+      teamIds.add(event.teamId);
     }
   }
 
@@ -427,6 +469,15 @@ async function resolvePermissionScope(input: PermissionCheckInput): Promise<Perm
     }
     if (!programId) {
       programId = note?.event?.programId ?? null;
+    }
+    if (note?.teamId) {
+      teamIds.add(note.teamId);
+    }
+    if (note?.event?.teamId) {
+      teamIds.add(note.event.teamId);
+    }
+    if (note?.event?.programId) {
+      programIds.add(note.event.programId);
     }
   }
 
@@ -450,6 +501,17 @@ async function resolvePermissionScope(input: PermissionCheckInput): Promise<Perm
     if (!programId) {
       programId = task?.sourceEvent?.programId ?? task?.sourceNote?.event?.programId ?? null;
     }
+    const taskTeamIds = [
+      task?.sourceEvent?.teamId,
+      task?.sourceNote?.teamId,
+      task?.sourceNote?.event?.teamId,
+    ].filter((id): id is string => Boolean(id));
+    const taskProgramIds = [
+      task?.sourceEvent?.programId,
+      task?.sourceNote?.event?.programId,
+    ].filter((id): id is string => Boolean(id));
+    taskTeamIds.forEach((id) => teamIds.add(id));
+    taskProgramIds.forEach((id) => programIds.add(id));
   }
 
   if (input.roleAssignmentId) {
@@ -463,6 +525,61 @@ async function resolvePermissionScope(input: PermissionCheckInput): Promise<Perm
     if (!programId) {
       programId = roleAssignment?.programId ?? null;
     }
+    if (roleAssignment?.teamId) {
+      teamIds.add(roleAssignment.teamId);
+    }
+    if (roleAssignment?.programId) {
+      programIds.add(roleAssignment.programId);
+    }
+  }
+
+  if (input.personId && (!programId || !teamId)) {
+    const person = await db.person.findFirst({
+      where: { id: input.personId, organizationId: input.organizationId },
+      select: {
+        roster: {
+          select: {
+            teamId: true,
+            team: { select: { programId: true } },
+          },
+        },
+        roles: {
+          select: {
+            programId: true,
+            teamId: true,
+            team: { select: { programId: true } },
+          },
+        },
+      },
+    });
+
+    person?.roster.forEach((membership) => {
+      if (membership.teamId) {
+        teamIds.add(membership.teamId);
+      }
+      if (membership.team?.programId) {
+        programIds.add(membership.team.programId);
+      }
+    });
+    person?.roles.forEach((assignment) => {
+      if (assignment.teamId) {
+        teamIds.add(assignment.teamId);
+      }
+      if (assignment.programId) {
+        programIds.add(assignment.programId);
+      }
+      if (assignment.team?.programId) {
+        programIds.add(assignment.team.programId);
+      }
+    });
+
+    if (!teamId) {
+      teamId = [...teamIds][0] ?? null;
+    }
+
+    if (!programId) {
+      programId = [...programIds][0] ?? null;
+    }
   }
 
   if (teamId && !programId) {
@@ -471,9 +588,17 @@ async function resolvePermissionScope(input: PermissionCheckInput): Promise<Perm
       select: { programId: true },
     });
     programId = team?.programId ?? null;
+    if (programId) {
+      programIds.add(programId);
+    }
   }
 
-  return { programId, teamId };
+  return {
+    programId,
+    teamId,
+    programIds: [...programIds],
+    teamIds: [...teamIds],
+  };
 }
 
 function roleScopeMatches(
@@ -489,10 +614,16 @@ function roleScopeMatches(
   }
 
   if (assignment.scopeType === ScopeType.PROGRAM) {
-    return Boolean(scope.programId && assignment.programId && scope.programId === assignment.programId);
+    return Boolean(
+      assignment.programId &&
+        (scope.programId === assignment.programId || scope.programIds.includes(assignment.programId)),
+    );
   }
 
-  return Boolean(scope.teamId && assignment.teamId && scope.teamId === assignment.teamId);
+  return Boolean(
+    assignment.teamId &&
+      (scope.teamId === assignment.teamId || scope.teamIds.includes(assignment.teamId)),
+  );
 }
 
 async function resolvePermissionDecision(input: PermissionCheckInput): Promise<PermissionDecision> {

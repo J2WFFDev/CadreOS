@@ -70,14 +70,9 @@ and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.m
   workflows remain future work.
 - Duplicate athlete/program protections are partial and route-level, not a
   complete model-wide policy.
-- The app-role access helper and backend scoped permission matrix disagree for
-  selected Program Manager and Coach MemberOps actions, especially
-  qualification/certification workflows. Reproduction scope: compare
-  `lib/auth/access-control.ts` app-role action allowances with
-  `lib/permissions/index.ts` scoped backend staff action sets for Program
-  Manager / Program Director and Coach. Expected behavior is one aligned policy
-  for production role authority; actual behavior differs between helper-level
-  and backend scoped checks.
+- ARC-MEMBER-02 resolved the confirmed app-role helper / backend scoped
+  permission mismatch for person qualification/certification assignment and
+  update actions.
 
 Sources: [`Arc 24C.1`](../planning/arc-24c-memberops-scoped-assignment-model.md),
 [`Arc 26A`](../../planning/ARC_26A_MEMBEROPS_RC1_GAP_ASSESSMENT_AND_CAPABILITY_AUDIT.md),
