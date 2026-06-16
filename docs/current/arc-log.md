@@ -29,7 +29,8 @@ only when an old-to-new mapping is useful for traceability.
 | ARC-ENTRY-07 — Relationship Labels and Direction Semantics | Recommended follow-up to Arc 24D.9A; formerly proposed as Arc 24D.9B | Completed / merged |
 | ARC-DOCS-01 — Roadmap and Arc Naming Reconciliation | No historical label | Completed / merged |
 | ARC-MEMBER-01 — MemberOps Gap Reconciliation and Role Testing | Reconciles Arc 26A and Arc 26E MemberOps status | Completed / merged |
-| ARC-MEMBER-02 — Align MemberOps Role Permission Policy | Follow-up to ARC-MEMBER-01 confirmed permission mismatch | Completed / pending merge |
+| ARC-MEMBER-02 — Align MemberOps Role Permission Policy | Follow-up to ARC-MEMBER-01 confirmed permission mismatch | Completed / merged |
+| ARC-MEMBER-03 — MemberOps Duplicate Athlete/Program Guardrails | Follow-up to ARC-MEMBER-01 duplicate athlete/program gap | Completed / pending merge |
 
 Recent historical arcs without an assigned simplified identifier keep their
 old labels until a future documentation reconciliation assigns one.
@@ -59,7 +60,8 @@ old labels until a future documentation reconciliation assigns one.
 | GearOps CSV `asset_id` baseline | Fixed / merged | PR #366 |
 | Arc 26E MemberOps role/permission validation | Delivered | [`planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md`](../../planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md) |
 | ARC-MEMBER-01 — MemberOps Gap Reconciliation and Role Testing | Completed / merged | [PR #382](https://github.com/J2WFFDev/CadreOS/pull/382), merge `dbf3f35babeb3790bcc8072a5b2b729515b40e0d` |
-| ARC-MEMBER-02 — Align MemberOps Role Permission Policy | Completed / pending merge | Aligns app-role helper and backend scoped permission policy for person qualification/certification actions |
+| ARC-MEMBER-02 — Align MemberOps Role Permission Policy | Completed / merged | [PR #383](https://github.com/J2WFFDev/CadreOS/pull/383), merge `7bcc89e64703c6f2b90060e5b21659b82647c41d` |
+| ARC-MEMBER-03 — MemberOps Duplicate Athlete/Program Guardrails | Completed / pending merge | Consolidates duplicate roster add/move guardrails and focused tests |
 | ARC-UI-01 — Header Account Name Display (historical: UI.0-A) | Completed / merged | [PR #378](https://github.com/J2WFFDev/CadreOS/pull/378) |
 | ARC-UI-02 — Collapsible Sidebar and Independent Scrolling (historical: UI.1) | Completed / merged | PR #368 |
 | ARC-ENTRY-07 — Relationship Labels and Direction Semantics | Completed / merged | [PR #380](https://github.com/J2WFFDev/CadreOS/pull/380), merge `d831fe09e31ec6f5168b5ef8144eb498100c82c6` |
@@ -109,12 +111,19 @@ ARC-MEMBER-01 validation reported by the PR:
 - `git diff --check` passed.
 - No build required for documentation-only changes.
 
-ARC-MEMBER-02 — Align MemberOps Role Permission Policy is complete pending
-merge. It makes backend scoped permission checks the aligned production
-authority for person qualification/certification assignment and update actions,
-while keeping app-role helper behavior consistent for Program Manager, Coach,
-Guardian, Athlete, and limited viewer cases. Guardian and Athlete mutation
-authority remains denied, and MemberOps navigation visibility is unchanged.
+ARC-MEMBER-02 — Align MemberOps Role Permission Policy is merged in PR #383 at
+merge `7bcc89e64703c6f2b90060e5b21659b82647c41d`. It makes backend scoped
+permission checks the aligned production authority for person
+qualification/certification assignment and update actions, while keeping
+app-role helper behavior consistent for Program Manager, Coach, Guardian,
+Athlete, and limited viewer cases. Guardian and Athlete mutation authority
+remains denied, and MemberOps navigation visibility is unchanged.
+
+ARC-MEMBER-03 — MemberOps Duplicate Athlete/Program Guardrails is complete
+pending merge. It consolidates duplicate roster guardrails into shared
+MemberOps policy code, blocks exact team/season roster duplicates, blocks
+Athlete same-program/same-season duplicates across team roster add/move paths,
+and preserves valid same-season source membership transitions.
 
 Implemented current behavior includes:
 

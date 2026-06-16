@@ -2,6 +2,7 @@ import { Prisma, RoleType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { findRosterMembershipDuplicate } from "@/lib/member-ops-duplicate-guardrails";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
   getStringField,
@@ -312,68 +313,64 @@ export async function POST(
       );
     }
 
-    const existingTargetMembership = await db.rosterMembership.findFirst({
+    const existingSeasonMemberships = await db.rosterMembership.findMany({
       where: {
         organizationId: organizationId,
         personId: person.id,
-        teamId: team.id,
         seasonId: season.id,
       },
       select: {
         id: true,
+        personId: true,
+        teamId: true,
+        seasonId: true,
+        rosterRole: true,
+        team: {
+          select: {
+            name: true,
+            programId: true,
+          },
+        },
       },
     });
+    const duplicateMembership = findRosterMembershipDuplicate({
+      existingMemberships: existingSeasonMemberships,
+      target: {
+        personId: person.id,
+        teamId: team.id,
+        seasonId: season.id,
+        rosterRole: parsed.data.rosterRole,
+        programId: program.id,
+        seasonName: season.name,
+      },
+      sourceMembershipId: sourceMembership?.id ?? null,
+      programSeasonDuplicateRoles: [
+        RoleType.ATHLETE,
+        RoleType.COACH,
+        RoleType.ASSISTANT_COACH,
+        RoleType.PARENT_GUARDIAN,
+      ],
+    });
 
-    if (
-      existingTargetMembership &&
-      (!sourceMembership || existingTargetMembership.id !== sourceMembership.id)
-    ) {
+    if (duplicateMembership.duplicate) {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, personId, {
           values,
-          error: "This person already has that team/season roster membership.",
+          fieldErrors:
+            duplicateMembership.kind === "PROGRAM_SEASON"
+              ? {
+                  sourceMembershipId:
+                    "Select the existing current-season membership to transition in place for this program.",
+                }
+              : undefined,
+          error: duplicateMembership.message,
         }),
         303,
       );
     }
 
-    if (!sourceMembership || sourceMembership.seasonId !== season.id) {
-      const sameProgramSeasonMembership = await db.rosterMembership.findFirst({
-        where: {
-          organizationId: organizationId,
-          personId: person.id,
-          seasonId: season.id,
-          team: {
-            programId: program.id,
-          },
-        },
-        select: {
-          id: true,
-          team: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      });
-
-      if (sameProgramSeasonMembership) {
-        return NextResponse.redirect(
-          buildErrorRedirectUrl(request.url, personId, {
-            values,
-            fieldErrors: {
-              sourceMembershipId:
-                "Select the existing current-season membership to transition in place for this program.",
-            },
-            error:
-              parsed.data.rosterRole === RoleType.ATHLETE
-                ? `Athlete duplicate blocked: this person already has a ${season.name} team membership in this program (${sameProgramSeasonMembership.team.name}).`
-                : `This person already has a ${season.name} membership in this program (${sameProgramSeasonMembership.team.name}).`,
-          }),
-          303,
-        );
-      }
-    }
+    const existingTargetMembership =
+      existingSeasonMemberships.find((membership) => membership.teamId === team.id) ?? null;
 
     let successMessage = "Member moved to the new team/program context.";
 

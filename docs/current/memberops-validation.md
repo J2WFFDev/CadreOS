@@ -33,7 +33,7 @@ Sources reviewed:
 | Dedicated MemberOps lifecycle route | Missing/planned | `/member-ops/lifecycle` is represented as a planned navigation target, not an active route. |
 | Dedicated MemberOps reports route | Missing/planned | `/member-ops/reports` is represented as a planned navigation target. The generic reporting surface remains separate. |
 | Guardian-derived team visibility | Partial foundation | Guardian-derived scope helpers exist and tests cover active athlete relationship scope. Product-owner confirmation is still needed before broadening MemberOps visibility. |
-| Duplicate athlete-in-program control | Partial | Current routes prevent several duplicate assignment cases, but a full model-wide duplicate athlete/program policy remains future work. |
+| Duplicate athlete-in-program control | Implemented route/service guardrail with future model-wide limits | ARC-MEMBER-03 consolidates duplicate roster checks into a shared guardrail. Exact team/season duplicates are blocked, and Athlete same-program/same-season duplicates across teams are blocked in current roster add/move paths. Full first-class program participation remains future work. |
 | First-class program participation | Missing/planned | Program participation independent of team membership or role assignment remains future work. |
 
 ## Role Validation Matrix
@@ -57,7 +57,7 @@ Sources reviewed:
 - Emergency Contact exists as a Guardian relationship role, not a separate emergency-contact entity/workflow.
 - Program-to-team outline selection, multi-select assignment, and first-class program participation remain future work.
 - Joining, transfer, departure, and offboarding flows are not yet consolidated into a single lifecycle workflow.
-- Duplicate athlete/program protections are partial and route-level, not a complete model-wide policy.
+- Full model-wide program participation remains future work. Current roster add/move paths enforce duplicate team/season membership protection and Athlete same-program/same-season duplicate protection.
 
 ## Validation Notes
 
@@ -73,3 +73,5 @@ Existing focused tests cover the current MemberOps foundations:
 ARC-MEMBER-01 did not add product scope or broaden permissions. Confirmed gaps are documentation outcomes for product-owner decision, not committed implementation work.
 
 ARC-MEMBER-02 aligned the confirmed qualification/certification permission-policy mismatch. Backend scoped permission checks remain production authority, and Dev Persona helper behavior is not proof of production authorization by itself.
+
+ARC-MEMBER-03 consolidated duplicate roster membership guardrails. It did not create first-class program participation, lifecycle routes, reports routes, new permissions, or navigation changes.

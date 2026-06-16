@@ -68,8 +68,9 @@ and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.m
 - Program-to-team outline selection, multi-select assignment, first-class
   program participation, and consolidated joining/transfer/departure/offboarding
   workflows remain future work.
-- Duplicate athlete/program protections are partial and route-level, not a
-  complete model-wide policy.
+- ARC-MEMBER-03 consolidated duplicate roster guardrails for current add/move
+  paths. Full first-class program participation and model-wide participation
+  policy remain future work.
 - ARC-MEMBER-02 resolved the confirmed app-role helper / backend scoped
   permission mismatch for person qualification/certification assignment and
   update actions.

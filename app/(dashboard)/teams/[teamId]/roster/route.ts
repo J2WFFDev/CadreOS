@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { findRosterMembershipDuplicate } from "@/lib/member-ops-duplicate-guardrails";
 import { isRosterRoleType } from "@/lib/member-ops";
 import { getOrganizationScope } from "@/lib/organization-context";
 import {
@@ -183,24 +184,43 @@ export async function POST(
       );
     }
 
-    const existingMembership = await db.rosterMembership.findUnique({
+    const existingMemberships = await db.rosterMembership.findMany({
       where: {
-        teamId_seasonId_personId: {
-          teamId: team.id,
-          seasonId: selectedSeason.id,
-          personId: person.id,
-        },
+        organizationId,
+        personId: person.id,
+        seasonId: selectedSeason.id,
       },
       select: {
         id: true,
+        personId: true,
+        teamId: true,
+        seasonId: true,
+        rosterRole: true,
+        team: {
+          select: {
+            name: true,
+            programId: true,
+          },
+        },
+      },
+    });
+    const duplicateMembership = findRosterMembershipDuplicate({
+      existingMemberships,
+      target: {
+        personId: person.id,
+        teamId: team.id,
+        seasonId: selectedSeason.id,
+        rosterRole: parsed.data.rosterRole,
+        programId: team.programId,
+        seasonName: selectedSeason.name,
       },
     });
 
-    if (existingMembership) {
+    if (duplicateMembership.duplicate) {
       return NextResponse.redirect(
         buildErrorRedirectUrl(request.url, teamId, {
           values,
-          error: `That person already has a ${selectedSeason.name} roster membership on this team.`,
+          error: duplicateMembership.message,
         }),
         303,
       );
