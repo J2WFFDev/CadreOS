@@ -111,12 +111,11 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
         href: "/member-ops/lifecycle",
         moduleKey: "memberOps",
       }),
-      plannedItem({
+      activeItem({
         key: "MEMBER_REPORTS",
         label: "Member Reports",
         href: "/member-ops/reports",
         moduleKey: "memberOps",
-        plannedReason: "Dedicated member reports route is not implemented yet.",
       }),
     ],
   },

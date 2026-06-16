@@ -70,11 +70,16 @@ committed.
   and merged in PR #384. It consolidates duplicate roster add/move guardrails
   without adding first-class program participation, lifecycle routes, reports
   routes, permissions, or navigation changes.
-- ARC-MEMBER-04 — MemberOps Lifecycle Route Foundation is complete pending
-  merge. It activates `/member-ops/lifecycle` as a staff-scoped, read-only
-  lifecycle overview using existing person, role, and roster data without
-  adding lifecycle statuses, workflow automation, Guardian/Athlete visibility,
-  permission changes, or route-structure broadening.
+- ARC-MEMBER-04 — MemberOps Lifecycle Route Foundation is complete and merged
+  in PR #385. It activates `/member-ops/lifecycle` as a staff-scoped,
+  read-only lifecycle overview using existing person, role, and roster data
+  without adding lifecycle statuses, workflow automation, Guardian/Athlete
+  visibility, permission changes, or route-structure broadening.
+- ARC-MEMBER-05 — MemberOps Reports Foundation is complete pending merge. It
+  activates `/member-ops/reports` as a staff-scoped, read-only reporting
+  overview using existing people, lifecycle, role, roster, program, team,
+  qualification, and certification data without adding exports, advanced
+  analytics, BI, schema, workflow automation, or broader access.
 - The GearOps CSV `asset_id` baseline fix is complete.
 
 See [`arc-log.md`](./arc-log.md) for conflicts and detailed links.
@@ -106,9 +111,9 @@ promoting any one option to committed scope here.
   Today model.
 - Continue confirmed MemberOps gaps only after product-owner selection of a
   specific next arc; see [`memberops-validation.md`](./memberops-validation.md).
-  Remaining MemberOps product candidates include reports, consolidated
-  joining/transfer/departure/offboarding workflows, first-class program
-  participation, and other explicitly documented gaps.
+  Remaining MemberOps product candidates include advanced reports/exports,
+  consolidated joining/transfer/departure/offboarding workflows, first-class
+  program participation, and other explicitly documented gaps.
 - Continue operational reporting/review only where role-safe scope and source
   data are reliable.
 - Keep communications delivery, AI/automation, and broad cross-module

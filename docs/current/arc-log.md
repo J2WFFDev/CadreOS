@@ -31,7 +31,8 @@ only when an old-to-new mapping is useful for traceability.
 | ARC-MEMBER-01 — MemberOps Gap Reconciliation and Role Testing | Reconciles Arc 26A and Arc 26E MemberOps status | Completed / merged |
 | ARC-MEMBER-02 — Align MemberOps Role Permission Policy | Follow-up to ARC-MEMBER-01 confirmed permission mismatch | Completed / merged |
 | ARC-MEMBER-03 — MemberOps Duplicate Athlete/Program Guardrails | Follow-up to ARC-MEMBER-01 duplicate athlete/program gap | Completed / merged |
-| ARC-MEMBER-04 — MemberOps Lifecycle Route Foundation | Follow-up to ARC-MEMBER-01 dedicated lifecycle route gap | Completed / pending merge |
+| ARC-MEMBER-04 — MemberOps Lifecycle Route Foundation | Follow-up to ARC-MEMBER-01 dedicated lifecycle route gap | Completed / merged |
+| ARC-MEMBER-05 — MemberOps Reports Foundation | Follow-up to ARC-MEMBER-01 dedicated reports route gap | Completed / pending merge |
 
 Recent historical arcs without an assigned simplified identifier keep their
 old labels until a future documentation reconciliation assigns one.
@@ -63,7 +64,8 @@ old labels until a future documentation reconciliation assigns one.
 | ARC-MEMBER-01 — MemberOps Gap Reconciliation and Role Testing | Completed / merged | [PR #382](https://github.com/J2WFFDev/CadreOS/pull/382), merge `dbf3f35babeb3790bcc8072a5b2b729515b40e0d` |
 | ARC-MEMBER-02 — Align MemberOps Role Permission Policy | Completed / merged | [PR #383](https://github.com/J2WFFDev/CadreOS/pull/383), merge `7bcc89e64703c6f2b90060e5b21659b82647c41d` |
 | ARC-MEMBER-03 — MemberOps Duplicate Athlete/Program Guardrails | Completed / merged | [PR #384](https://github.com/J2WFFDev/CadreOS/pull/384), merge `ba09a69ff5d94d30055f7948aed639f782df8d3e` |
-| ARC-MEMBER-04 — MemberOps Lifecycle Route Foundation | Completed / pending merge | Activates `/member-ops/lifecycle` as a staff-scoped, read-only lifecycle overview using existing person, role, and roster data |
+| ARC-MEMBER-04 — MemberOps Lifecycle Route Foundation | Completed / merged | [PR #385](https://github.com/J2WFFDev/CadreOS/pull/385), merge `43f5f41d272f73e5049135c837921a4ca19705b7` |
+| ARC-MEMBER-05 — MemberOps Reports Foundation | Completed / pending merge | Activates `/member-ops/reports` as a staff-scoped, read-only reporting foundation using existing MemberOps data |
 | ARC-UI-01 — Header Account Name Display (historical: UI.0-A) | Completed / merged | [PR #378](https://github.com/J2WFFDev/CadreOS/pull/378) |
 | ARC-UI-02 — Collapsible Sidebar and Independent Scrolling (historical: UI.1) | Completed / merged | PR #368 |
 | ARC-ENTRY-07 — Relationship Labels and Direction Semantics | Completed / merged | [PR #380](https://github.com/J2WFFDev/CadreOS/pull/380), merge `d831fe09e31ec6f5168b5ef8144eb498100c82c6` |
@@ -128,14 +130,25 @@ team/season roster duplicates, blocks Athlete same-program/same-season
 duplicates across team roster add/move paths, and preserves valid same-season
 source membership transitions.
 
-ARC-MEMBER-04 — MemberOps Lifecycle Route Foundation is complete pending merge.
-It activates `/member-ops/lifecycle` as a staff-scoped, read-only lifecycle
-overview using existing person lifecycle statuses, role assignments, roster
-memberships, and scoped staff visibility. It adds summary counts, status
-filtering, useful lifecycle table columns, and links to existing person detail.
-It does not add lifecycle statuses, full workflow automation,
-Guardian/Athlete/limited access, permission broadening, role taxonomy changes,
-first-class program participation, household aggregation, or reports scope.
+ARC-MEMBER-04 — MemberOps Lifecycle Route Foundation is merged in PR #385 at
+merge `43f5f41d272f73e5049135c837921a4ca19705b7`. It activates
+`/member-ops/lifecycle` as a staff-scoped, read-only lifecycle overview using
+existing person lifecycle statuses, role assignments, roster memberships, and
+scoped staff visibility. It adds summary counts, status filtering, useful
+lifecycle table columns, and links to existing person detail. It does not add
+lifecycle statuses, full workflow automation, Guardian/Athlete/limited access,
+permission broadening, role taxonomy changes, first-class program
+participation, household aggregation, or reports scope.
+
+ARC-MEMBER-05 — MemberOps Reports Foundation is complete pending merge. It
+activates `/member-ops/reports` as a staff-scoped, read-only reporting overview
+using existing people, lifecycle, role, roster, program, team, qualification,
+and certification data. It adds summary cards, compact count tables, source
+links to existing MemberOps pages, and optional qualification/certification
+summaries where schema is available. It does not add exports, advanced
+analytics, BI, schema, workflow automation, lifecycle behavior changes,
+permission broadening, Guardian/Athlete/limited access, household aggregation,
+or first-class program participation.
 
 Implemented current behavior includes:
 
