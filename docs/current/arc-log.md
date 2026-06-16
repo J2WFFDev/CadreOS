@@ -26,7 +26,7 @@ only when an old-to-new mapping is useful for traceability.
 | ARC-HABIT-03 — My Habits Scope and Guardian Summary | Arc 24D.8T-B | Completed / merged |
 | ARC-UI-01 — Header Account Name Display | UI.0-A | Completed / merged |
 | ARC-UI-02 — Collapsible Sidebar and Independent Scrolling | UI.1 | Completed / merged |
-| ARC-ENTRY-07 — Relationship Labels and Direction Semantics | Recommended follow-up to Arc 24D.9A; formerly proposed as Arc 24D.9B | Current product arc |
+| ARC-ENTRY-07 — Relationship Labels and Direction Semantics | Recommended follow-up to Arc 24D.9A; formerly proposed as Arc 24D.9B | Completed / merged |
 | ARC-DOCS-01 — Roadmap and Arc Naming Reconciliation | No historical label | Completed / merged |
 
 Recent historical arcs without an assigned simplified identifier keep their
@@ -58,6 +58,7 @@ old labels until a future documentation reconciliation assigns one.
 | Arc 26E MemberOps role/permission validation | Delivered | [`planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md`](../../planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md) |
 | ARC-UI-01 — Header Account Name Display (historical: UI.0-A) | Completed / merged | [PR #378](https://github.com/J2WFFDev/CadreOS/pull/378) |
 | ARC-UI-02 — Collapsible Sidebar and Independent Scrolling (historical: UI.1) | Completed / merged | PR #368 |
+| ARC-ENTRY-07 — Relationship Labels and Direction Semantics | Completed / merged | [PR #380](https://github.com/J2WFFDev/CadreOS/pull/380), merge `d831fe09e31ec6f5168b5ef8144eb498100c82c6` |
 
 ## Latest Known Work
 
@@ -71,11 +72,23 @@ ARC-UI-01 — Header Account Name Display (historical: UI.0-A), and
 ARC-UI-02 — Collapsible Sidebar and Independent Scrolling (historical: UI.1)
 are also merged.
 
-ARC-DOCS-01 — Roadmap and Arc Naming Reconciliation is merged. The current
-product arc is ARC-ENTRY-07 — Relationship Labels and Direction Semantics.
-It standardizes relationship-derived Guardian language around related athletes,
-Guardians, Created by, Journal author, Assigned to, Context/List, and
-Visibility without changing access policy or relationship graph behavior.
+ARC-DOCS-01 — Roadmap and Arc Naming Reconciliation is merged.
+
+ARC-ENTRY-07 — Relationship Labels and Direction Semantics is merged in PR
+#380 at merge `d831fe09e31ec6f5168b5ef8144eb498100c82c6`. It standardized
+relationship-derived Guardian language around related athletes, Guardians,
+Created by, Journal author, Assigned to, Context/List, and Visibility. It
+clarified Journal Guardian visibility copy without broadening Journal privacy
+and aligned Guardian Summary, Notes, People, prompt assignment comments,
+readiness labels, and focused tests with relationship direction semantics.
+Permissions, roles, auth, schema, routes, lifecycle, archive/restore, Journal
+privacy, Habit behavior, and Dev Persona behavior were preserved.
+
+ARC-ENTRY-07 validation reported by the PR:
+
+- Targeted tests passed, 220 tests.
+- `npm run typecheck` passed.
+- `git diff --check` passed.
 
 Implemented current behavior includes:
 
@@ -114,9 +127,9 @@ Implemented current behavior includes:
   assignment. Habit Context/List does not exist in the current model, and
   `assignedToTeamId` is assignment rather than Context/List.
 
-The newest detailed planning audit found is Arc 24D.9A Entry Relationships
-Foundation Audit. Its recommended product follow-up is now the current product
-arc, **ARC-ENTRY-07 — Relationship Labels and Direction Semantics**.
+The newest completed product follow-up to Arc 24D.9A Entry Relationships
+Foundation Audit is **ARC-ENTRY-07 — Relationship Labels and Direction
+Semantics**. The next product arc requires product-owner confirmation.
 
 ## Conflicting Or Unclear Status
 
