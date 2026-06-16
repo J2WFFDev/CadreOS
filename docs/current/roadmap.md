@@ -53,19 +53,22 @@ committed.
 - ARC-UI-01 — Header Account Name Display (historical: UI.0-A) and
   ARC-UI-02 — Collapsible Sidebar and Independent Scrolling (historical: UI.1)
   are complete.
+- ARC-ENTRY-07 — Relationship Labels and Direction Semantics is complete. It
+  normalized Guardian-derived user-facing language to related athlete /
+  Guardian relationship wording, clarified Journal Guardian visibility copy,
+  and preserved permissions, roles, auth, schema, routes, lifecycle,
+  archive/restore, Journal privacy, Habit behavior, and Dev Persona behavior.
 - The GearOps CSV `asset_id` baseline fix is complete.
 
 See [`arc-log.md`](./arc-log.md) for conflicts and detailed links.
 
 ## Current / Next Arc Area
 
-The current product arc is **ARC-ENTRY-07 — Relationship Labels and Direction
-Semantics**. It normalizes user-facing relationship, visibility, assignment,
-authorship, and Context/List language without changing permissions, roles,
-routes, schema, or lifecycle behavior.
+No active product arc is currently committed in `docs/current/`.
 
-The next recommended product arc after ARC-ENTRY-07 needs product-owner
-confirmation.
+The next product decision point requires product-owner confirmation. Candidate
+areas should be selected from documented unresolved or future work without
+promoting any one option to committed scope here.
 
 ## Future Roadmap
 
