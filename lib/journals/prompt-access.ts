@@ -8,7 +8,7 @@
  * - ORGANIZATION_ADMIN / PROGRAM_DIRECTOR: full prompt management + assignment
  * - COACH / ASSISTANT_COACH: can assign prompts (within org scope); cannot create/edit/archive
  * - ATHLETE: can read active prompts and respond to their assignments
- * - PARENT_GUARDIAN: can see assignment status/completion for linked athletes only
+ * - PARENT_GUARDIAN: can see assignment status/completion for related athletes only
  */
 
 import { JournalAssignmentStatus, RoleType } from "@prisma/client";
@@ -59,7 +59,7 @@ export function canAssignPrompt(context: JournalAccessContext): boolean {
 /**
  * Athletes can see their own assignments.
  * Staff can see all assignments in scope.
- * Guardians can see assignments for their linked athletes only.
+ * Guardians can see assignments for their related athletes only.
  */
 export function canReadAssignment(
   context: JournalAccessContext,
@@ -78,7 +78,7 @@ export function canReadAssignment(
     return true;
   }
 
-  // Guardian can see assignments for their linked athletes
+  // Guardian can see assignments for their related athletes
   if (
     assignment.assignedToAthletePersonId &&
     context.linkedGuardianAthleteIds.has(assignment.assignedToAthletePersonId)

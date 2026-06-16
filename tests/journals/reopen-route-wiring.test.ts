@@ -41,7 +41,7 @@ test("Journal UI distinguishes workflow status from generic Entry status", () =>
   assert.match(journalsPage, />Entry Status</);
   assert.match(journalDetailPage, /Done maps to Final/);
   assert.match(journalDetailPage, /Final is a completed workflow state, not an archive state/);
-  assert.match(journalDetailPage, /Guardian visibility\s+begins only when a Guardian-visible Journal is Final/);
+  assert.match(journalDetailPage, /Guardian visibility\s+begins only when a Guardian-visible Journal for a related athlete is Final/);
 });
 
 test("Journal list, detail, and actions use the same Journal visibility predicate", () => {

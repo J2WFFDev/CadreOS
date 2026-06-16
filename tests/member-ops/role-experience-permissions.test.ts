@@ -83,7 +83,7 @@ test("Arc 26E permission validation: program and organization admins retain requ
   }
 });
 
-test("Arc 26E household validation: guardians are limited to linked athletes and support multi-guardian relationships", () => {
+test("Arc 26E household validation: Guardians are limited to related athletes and support multi-guardian relationships", () => {
   const links = [
     { guardianPersonId: "guardian-1", athletePersonId: "athlete-1" },
     { guardianPersonId: "guardian-2", athletePersonId: "athlete-1" },

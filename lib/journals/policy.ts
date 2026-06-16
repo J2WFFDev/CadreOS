@@ -51,7 +51,7 @@ export function hintForJournalVisibility(visibility: EntryVisibility): string {
   }
 
   if (visibility === EntryVisibility.ORGANIZATION_SCOPED) {
-    return "Final journals can be read by linked guardians only when relationship scope is valid.";
+    return "Final journals can be read by Guardians for the related athlete only when relationship scope is valid.";
   }
 
   return "Journal stays private to the author by default.";
@@ -86,7 +86,7 @@ export function hintForJournalPayloadVisibility(visibility: JournalPayloadVisibi
     case "PRIVATE":
       return "Only visible to the journal author.";
     case "GUARDIAN":
-      return "Visible to linked guardians once the journal is Final.";
+      return "Visible to Guardians for the related athlete once the Journal is Final.";
     case "TEAM_STAFF":
       return "Visible to team staff (coaches) in the assigned team scope.";
     case "PROGRAM_STAFF":

@@ -52,7 +52,7 @@ export function formatGuardianOperationalIndicator(context: GuardianOperationalC
     return "Guardian relationship incomplete";
   }
 
-  return "Guardian-linked athlete";
+  return "Related athlete";
 }
 
 export function formatGuardianFollowUpDependency(context: GuardianOperationalContext): string {

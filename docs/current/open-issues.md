@@ -10,8 +10,8 @@ not a claim that every issue is reproducible in current code.
 - Relationship semantics can duplicate or drift across `EntryLink`,
   `EntryObjectLink`, `OperationalRelationship`, parent links, and follow-up
   relationships.
-- Relationship direction labels and generic graph read visibility need
-  normalization and stronger test coverage.
+- Generic graph read visibility needs stronger test coverage after
+  ARC-ENTRY-07 normalized user-facing relationship direction labels.
 Sources: [`Arc 24D.8S`](../planning/arc-24d-8s-entryops-lifecycle-validation.md),
 [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-controls.md),
 [`Arc 24D.8X-O`](../planning/arc-24d-8x-o-fix-inbox-lists-owner-visibility.md),

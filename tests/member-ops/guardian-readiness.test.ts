@@ -246,7 +246,7 @@ test("deriveGuardianOperationalContext flags hasNoGuardianOnFile for empty relat
   assert.equal(ctx.linkedGuardianCount, 0);
 });
 
-test("deriveGuardianOperationalContext counts linked guardians correctly", () => {
+test("deriveGuardianOperationalContext counts Guardians correctly", () => {
   const relationships = [
     { guardian: { _count: { userAccounts: 1 }, roles: [{ id: "role-1" }] } },
     { guardian: { _count: { userAccounts: 1 }, roles: [{ id: "role-2" }] } },
@@ -291,14 +291,14 @@ test("formatGuardianOperationalIndicator returns no guardian label for empty con
   assert.match(label, /No guardian on file/i);
 });
 
-test("formatGuardianOperationalIndicator returns Guardian-linked athlete for fully ready context", () => {
+test("formatGuardianOperationalIndicator returns Related athlete for fully ready context", () => {
   const relationships = [
     { guardian: { _count: { userAccounts: 1 }, roles: [{ id: "role-1" }] } },
   ];
   const ctx = deriveGuardianOperationalContext(relationships);
   const label = formatGuardianOperationalIndicator(ctx);
 
-  assert.match(label, /Guardian-linked athlete/i);
+  assert.match(label, /Related athlete/i);
 });
 
 // ── formatGuardianFollowUpDependency ─────────────────────────────────────────

@@ -47,7 +47,7 @@ test("direct Habit creation uses the Habit model and does not create a Task or E
   assert.doesNotMatch(createRoute, /db\.entry\.create|EntryType\.TASK|db\.task/);
 });
 
-test("Guardian Habit access derives linked athletes from relationships without a fake role assignment", () => {
+test("Guardian Habit access derives related athletes from relationships without a fake role assignment", () => {
   assert.match(accessPolicy, /db\.athleteGuardianRelationship\.findMany/);
   assert.doesNotMatch(accessPolicy, /const isGuardian = assignments\.some/);
 });

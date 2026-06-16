@@ -78,7 +78,7 @@ test("authorized athlete sees actionable habit with check-in enabled", () => {
   assert.equal(items[0]?.canCheckIn, true);
 });
 
-test("linked guardian can see readable habit without a check-in button", () => {
+test("Guardian can see readable related athlete habit without a check-in button", () => {
   const items = buildActionableHabitsTodayItems(
     [buildActionableHabitRow({ athletePersonId: "athlete-1" })],
     buildContext({

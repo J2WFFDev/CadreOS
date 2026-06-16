@@ -9,7 +9,7 @@
  * Privacy policy:
  * - Journal body text (Entry.content) must never appear in guardian summary output.
  * - Only metadata (title, status, date, count) is safe for guardian display.
- * - Guardian access is always relationship-scoped — only linked athlete data is returned.
+ * - Guardian access is always relationship-scoped — only related athlete data is returned.
  * - DRAFT journals are hidden from guardian summaries regardless of visibility policy.
  * - SUBMITTED journals are shown only if Entry.visibility = ORGANIZATION_SCOPED.
  * - Habit completion notes are hidden; only count and streak are shown to guardians.
@@ -79,13 +79,13 @@ export type GuardianHabitSummary = {
 // ── Pure helpers ──────────────────────────────────────────────────────────────
 
 /**
- * Returns true if a guardian with the given linked athlete IDs may see this
+ * Returns true if a Guardian with the given related athlete IDs may see this
  * submitted journal.
  *
  * Rules:
  * - Only SUBMITTED (DONE) journals are visible to guardians.
  * - The visibility policy must be ORGANIZATION_SCOPED.
- * - The journal's author must be one of the guardian's linked athletes.
+ * - The journal's author must be one of the Guardian's related athletes.
  */
 export function isJournalVisibleToGuardian(
   journal: Pick<GuardianJournalRecord, "status" | "visibility" | "createdByPersonId">,
@@ -133,7 +133,7 @@ export function toGuardianSafeHabitSummary(habit: GuardianHabitRecord): Guardian
  * @param athletePersonId  The athlete being summarized.
  * @param journals         All journal records for this athlete (pre-fetched, NOT body content).
  * @param habits           All habit records for this athlete (pre-fetched).
- * @param linkedAthleteIds The guardian's set of linked athlete IDs (for safety re-check).
+ * @param linkedAthleteIds The Guardian's set of related athlete IDs (for safety re-check).
  * @returns                A safe summary object with no private content.
  */
 export function deriveGuardianAthleteJournalHabitSummary(

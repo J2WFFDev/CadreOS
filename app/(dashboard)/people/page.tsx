@@ -793,7 +793,7 @@ export default async function PeoplePage({
               <select id="guardianFilter" name="guardianFilter" defaultValue={guardianFilter} className="w-full rounded-md border px-2 py-1 text-sm">
                 <option value="all">All guardian states</option>
                 <option value="missing_guardian">Missing guardian</option>
-                <option value="guardian_linked">Guardian linked</option>
+                <option value="guardian_linked">Guardian relationship active</option>
                 <option value="not_applicable">Not athlete / no guardian requirement</option>
               </select>
             </div>
