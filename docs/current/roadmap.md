@@ -59,9 +59,13 @@ committed.
   and preserved permissions, roles, auth, schema, routes, lifecycle,
   archive/restore, Journal privacy, Habit behavior, and Dev Persona behavior.
 - ARC-MEMBER-01 — MemberOps Gap Reconciliation and Role Testing is complete
-  pending merge. It reconciled Arc 26A and Arc 26E current-state claims,
-  confirmed implemented MemberOps foundations, and moved remaining MemberOps
-  gaps to a concrete validation matrix without adding product scope.
+  and merged in PR #382. It reconciled Arc 26A and Arc 26E current-state
+  claims, confirmed implemented MemberOps foundations, and moved remaining
+  MemberOps gaps to a concrete validation matrix without adding product scope.
+- ARC-MEMBER-02 — Align MemberOps Role Permission Policy is complete pending
+  merge. It aligned app-role helper behavior with backend scoped permission
+  checks for Program Manager / Program Director and Coach person
+  qualification/certification assignment and update actions.
 - The GearOps CSV `asset_id` baseline fix is complete.
 
 See [`arc-log.md`](./arc-log.md) for conflicts and detailed links.

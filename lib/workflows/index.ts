@@ -1660,6 +1660,7 @@ export async function requirePhase1CMutationPermission(input: {
   eventId?: string | null;
   noteId?: string | null;
   taskId?: string | null;
+  personId?: string | null;
   roleAssignmentId?: string | null;
 }): Promise<void> {
   const authContext = await requireAuthContext();
@@ -1674,6 +1675,7 @@ export async function requirePhase1CMutationPermission(input: {
     eventId: input.eventId,
     noteId: input.noteId,
     taskId: input.taskId,
+    personId: input.personId,
     roleAssignmentId: input.roleAssignmentId,
   });
 }

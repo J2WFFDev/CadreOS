@@ -57,6 +57,9 @@ Sources: [`Sidebar Taxonomy`](../navigation/sidebar-taxonomy.md),
 
 - Guardian app visibility is derived from active Guardian relationships;
   unrelated athlete/member data must remain denied.
+- Backend scoped permission checks are the production authority for MemberOps
+  mutations. App-role helpers and Dev Persona behavior must align with that
+  policy but do not replace backend authorization.
 - Guardians may see linked Athlete personal list context, but list visibility
   does not grant visibility to every Entry in that list.
 - Guardians may read Final/Done Guardian-visible Journals for related athletes.

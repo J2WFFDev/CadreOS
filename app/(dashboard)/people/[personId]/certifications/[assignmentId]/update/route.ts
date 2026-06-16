@@ -67,6 +67,7 @@ export async function POST(
     await requirePhase1CMutationPermission({
       organizationId: scope.organizationId,
       action: "personCertification.update",
+      personId,
     });
 
     const existing = await db.personCertification.findFirst({

@@ -2,7 +2,7 @@
 
 ## ARC-MEMBER-01 — MemberOps Gap Reconciliation and Role Testing
 
-Status: completed validation pass; pending merge.
+Status: completed validation pass; merged in PR #382.
 
 ARC-MEMBER-01 reconciles the older Arc 26A RC1 gap assessment with the later Arc 26E role-experience validation. The current state is that MemberOps foundations are present, but several full workflow surfaces remain future work.
 
@@ -27,7 +27,7 @@ Sources reviewed:
 | MemberOps navigation | Implemented current surface; planned routes remain | MemberOps navigation is staff-only for Admin, Program Manager, and Coach. Active entries are Programs, Members, and Teams. Dedicated Lifecycle and Member Reports entries remain planned/disabled. |
 | Guardian and household model | Partial | Guardian relationships are pairwise and can represent emergency contacts. There is no separate household aggregate entity. Guardian access must remain derived from related athlete relationships and active scope. |
 | Emergency contacts | Implemented as relationship role | Emergency Contact exists as a Guardian relationship role, not as a separate emergency-contact domain. |
-| Qualifications, certifications, eligibility | Implemented foundation with permission follow-up | Current routes and tests cover definitions and person-level records. The app-role helper and backend scoped permission matrix currently disagree on selected Program Manager and Coach qualification actions; this is tracked as a confirmed follow-up. |
+| Qualifications, certifications, eligibility | Implemented foundation with aligned scoped person-record policy | Current routes and tests cover definitions and person-level records. ARC-MEMBER-02 aligned app-role helper and backend scoped permission policy for person qualification/certification assignment and update actions. |
 | Staffing and Volunteer | Implemented foundation | Volunteer is represented as a staffing category/default staffing role. It is not a login/auth role. |
 | Joining, transfers, departures, offboarding | Partial | Current member creation, lifecycle update, roster, and move routes cover pieces of the workflow. A consolidated operational lifecycle workflow remains future work. |
 | Dedicated MemberOps lifecycle route | Missing/planned | `/member-ops/lifecycle` is represented as a planned navigation target, not an active route. |
@@ -41,8 +41,8 @@ Sources reviewed:
 | Role / persona | MemberOps nav | Read MemberOps surfaces | Mutate people/lifecycle/roles | Guardian relationship scope | Qualification/staffing scope | Current conclusion |
 | --- | --- | --- | --- | --- | --- | --- |
 | Organization Admin | Visible | Organization-wide | Allowed broadly | Organization-wide | Allowed broadly | Current intended admin authority. |
-| Program Manager / Program Director | Visible | Program-scoped | Intended program authority | Program-scoped | Permission matrix follow-up needed for selected actions | Current product role exists, but app-role and backend scoped policies need alignment. |
-| Coach | Visible | Team/program-scoped | Limited operational actions | Team/program-scoped | Permission matrix follow-up needed for qualification actions | Navigation visibility is separate from action authority. |
+| Program Manager / Program Director | Visible | Program-scoped | Intended program authority | Program-scoped | Person qualification/certification assignment and update allowed in resolved scope | Current product role exists; backend enforcement remains scoped production authority. |
+| Coach | Visible | Team/program-scoped | Limited operational actions | Team/program-scoped | Person qualification/certification assignment and update allowed in resolved scope | Navigation visibility is separate from action authority. |
 | Guardian | Hidden | Derived related-athlete access only | Blocked from MemberOps mutations | Derived from related athlete relationship | Not allowed | No broad Guardian MemberOps visibility. |
 | Athlete | Hidden | Self/athlete-facing access only | Blocked from MemberOps mutations and elevated staff assignment | Not applicable | Not allowed | Athlete elevated-role hard-block is implemented. |
 | Limited viewer / unauthenticated | Hidden | Not allowed | Not allowed | Not applicable | Not allowed | No MemberOps authority. |
@@ -58,7 +58,6 @@ Sources reviewed:
 - Program-to-team outline selection, multi-select assignment, and first-class program participation remain future work.
 - Joining, transfer, departure, and offboarding flows are not yet consolidated into a single lifecycle workflow.
 - Duplicate athlete/program protections are partial and route-level, not a complete model-wide policy.
-- The app-role access helper and backend scoped permission matrix disagree for selected Program Manager and Coach MemberOps actions, especially qualification/certification workflows. This should be resolved before treating those actions as validated production role behavior.
 
 ## Validation Notes
 
@@ -72,3 +71,5 @@ Existing focused tests cover the current MemberOps foundations:
 - `tests/navigation/nav-sidebar.test.ts`
 
 ARC-MEMBER-01 did not add product scope or broaden permissions. Confirmed gaps are documentation outcomes for product-owner decision, not committed implementation work.
+
+ARC-MEMBER-02 aligned the confirmed qualification/certification permission-policy mismatch. Backend scoped permission checks remain production authority, and Dev Persona helper behavior is not proof of production authorization by itself.
