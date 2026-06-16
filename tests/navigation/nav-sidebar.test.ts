@@ -74,6 +74,28 @@ test("planned items stay non-clickable and preserve their future routes", () => 
   }
 });
 
+test("MemberOps lifecycle route is active for staff navigation only", () => {
+  const memberOpsGroup = CADREOS_NAV_GROUPS.find((group) => group.key === "MEMBEROPS");
+  assert.ok(memberOpsGroup);
+  const lifecycleItem = memberOpsGroup.items.find((item) => item.key === "MEMBERSHIP_LIFECYCLE");
+
+  assert.ok(lifecycleItem);
+  assert.equal(lifecycleItem.status, "active");
+  assert.equal(lifecycleItem.disabled, false);
+  assert.equal(lifecycleItem.href, "/member-ops/lifecycle");
+
+  for (const role of ["ADMIN", "PROGRAM_MANAGER", "COACH"] as const) {
+    const visibleGroup = getNavSidebarGroupsForUser(buildUser(role)).find((group) => group.key === "MEMBEROPS");
+    assert.ok(visibleGroup);
+    assert.equal(visibleGroup.items.some((item) => item.href === "/member-ops/lifecycle"), true);
+  }
+
+  for (const role of ["GUARDIAN", "ATHLETE", "LIMITED_VIEWER"] as const) {
+    const visibleGroup = getNavSidebarGroupsForUser(buildUser(role)).find((group) => group.key === "MEMBEROPS");
+    assert.equal(visibleGroup, undefined);
+  }
+});
+
 test("entry inbox route does not activate all entries root link", () => {
   assert.equal(isNavSidebarLinkActive("/entries/inbox", "/entries/inbox"), true);
   assert.equal(isNavSidebarLinkActive("/entries/inbox", "/entries"), false);

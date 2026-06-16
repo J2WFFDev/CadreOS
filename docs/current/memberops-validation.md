@@ -24,13 +24,13 @@ Sources reviewed:
 | Programs, teams, seasons, rosters | Implemented foundation | Current routes and tests cover core Program, Team, Season, and roster surfaces. |
 | Role taxonomy | Partial | Organization Admin, Program Director, Coach, Assistant Coach, Parent/Guardian, and Athlete exist in the model. Volunteer is a staffing role, not a standalone auth persona. Program Manager is the app-role label for program-admin experience. General Manager and specialty roles remain out of current scope. |
 | Role assignment guardrails | Implemented foundation | Current role assignment routes enforce role/scope compatibility and block athletes from elevated staff roles. Organization-scope assignments remain outside the person workflow. Program-to-team outline selection and multi-select assignment workflows remain future work. |
-| MemberOps navigation | Implemented current surface; planned routes remain | MemberOps navigation is staff-only for Admin, Program Manager, and Coach. Active entries are Programs, Members, and Teams. Dedicated Lifecycle and Member Reports entries remain planned/disabled. |
+| MemberOps navigation | Implemented current surface; reports route remains planned | MemberOps navigation is staff-only for Admin, Program Manager, and Coach. Active entries are Programs, Members, Teams, and Membership Lifecycle. Member Reports remains planned/disabled. |
 | Guardian and household model | Partial | Guardian relationships are pairwise and can represent emergency contacts. There is no separate household aggregate entity. Guardian access must remain derived from related athlete relationships and active scope. |
 | Emergency contacts | Implemented as relationship role | Emergency Contact exists as a Guardian relationship role, not as a separate emergency-contact domain. |
 | Qualifications, certifications, eligibility | Implemented foundation with aligned scoped person-record policy | Current routes and tests cover definitions and person-level records. ARC-MEMBER-02 aligned app-role helper and backend scoped permission policy for person qualification/certification assignment and update actions. |
 | Staffing and Volunteer | Implemented foundation | Volunteer is represented as a staffing category/default staffing role. It is not a login/auth role. |
 | Joining, transfers, departures, offboarding | Partial | Current member creation, lifecycle update, roster, and move routes cover pieces of the workflow. A consolidated operational lifecycle workflow remains future work. |
-| Dedicated MemberOps lifecycle route | Missing/planned | `/member-ops/lifecycle` is represented as a planned navigation target, not an active route. |
+| Dedicated MemberOps lifecycle route | Implemented read-only foundation | `/member-ops/lifecycle` is active for staff-scoped MemberOps users and shows existing lifecycle status counts, status filtering, role/roster context, timestamps, and links to existing person detail. It does not automate joining, transfer, departure, or offboarding workflows. |
 | Dedicated MemberOps reports route | Missing/planned | `/member-ops/reports` is represented as a planned navigation target. The generic reporting surface remains separate. |
 | Guardian-derived team visibility | Partial foundation | Guardian-derived scope helpers exist and tests cover active athlete relationship scope. Product-owner confirmation is still needed before broadening MemberOps visibility. |
 | Duplicate athlete-in-program control | Implemented route/service guardrail with future model-wide limits | ARC-MEMBER-03 consolidates duplicate roster checks into a shared guardrail. Exact team/season duplicates are blocked, and Athlete same-program/same-season duplicates across teams are blocked in current roster add/move paths. Full first-class program participation remains future work. |
@@ -50,7 +50,7 @@ Sources reviewed:
 
 ## Confirmed Remaining Gaps
 
-- Dedicated MemberOps lifecycle and Member Reports routes remain planned, not active.
+- Member Reports remains planned, not active. The dedicated MemberOps lifecycle route is an active read-only foundation, not a consolidated workflow automation surface.
 - Volunteer remains a staffing role, not a standalone auth persona.
 - General Manager and specialty MemberOps role taxonomy remain out of current scope.
 - Pairwise Guardian relationships remain the household model; no household aggregate exists.
@@ -75,3 +75,5 @@ ARC-MEMBER-01 did not add product scope or broaden permissions. Confirmed gaps a
 ARC-MEMBER-02 aligned the confirmed qualification/certification permission-policy mismatch. Backend scoped permission checks remain production authority, and Dev Persona helper behavior is not proof of production authorization by itself.
 
 ARC-MEMBER-03 consolidated duplicate roster membership guardrails. It did not create first-class program participation, lifecycle routes, reports routes, new permissions, or navigation changes.
+
+ARC-MEMBER-04 activates the dedicated MemberOps lifecycle route as a read-only foundation. It reuses existing lifecycle statuses, scoped staff visibility, person detail links, and role/roster context. It does not create full joining, transfer, departure, offboarding, reports, household, or program participation workflows.
