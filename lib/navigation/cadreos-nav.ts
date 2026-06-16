@@ -105,12 +105,11 @@ export const CADREOS_NAV_GROUPS: readonly CanonicalNavGroup[] = [
         href: "/teams",
         moduleKey: "memberOps",
       }),
-      plannedItem({
+      activeItem({
         key: "MEMBERSHIP_LIFECYCLE",
         label: "Membership Lifecycle",
         href: "/member-ops/lifecycle",
         moduleKey: "memberOps",
-        plannedReason: "Dedicated membership lifecycle route is not implemented yet.",
       }),
       plannedItem({
         key: "MEMBER_REPORTS",
