@@ -56,9 +56,8 @@ and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.m
   current validation matrix. MemberOps foundations are present, while the
   confirmed remaining gaps below still require product-owner selection before
   implementation.
-- Member Reports remains planned, not active. The dedicated MemberOps lifecycle
-  route now has a read-only foundation, but lifecycle automation remains
-  future work.
+- Member Reports and Membership Lifecycle now have read-only foundations, but
+  advanced reports/exports/BI and lifecycle automation remain future work.
 - Volunteer remains a staffing role, not a standalone auth persona.
 - General Manager and specialty MemberOps role taxonomy remain out of current
   scope.
