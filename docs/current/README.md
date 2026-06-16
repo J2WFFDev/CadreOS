@@ -9,15 +9,17 @@ links to detailed source documents without replacing planning history.
 1. [`roadmap.md`](./roadmap.md) - current build state, sequencing, and deferred work.
 2. [`arc-log.md`](./arc-log.md) - concise arc completion and active-work record.
 3. [`open-issues.md`](./open-issues.md) - explicitly documented unresolved issues.
-4. [`decisions.md`](./decisions.md) - current product, naming, visibility, and taxonomy decisions.
-5. [`known-issue-patterns.md`](./known-issue-patterns.md) - recurring implementation and validation risks.
-6. [`../product/CURRENT_PRODUCT_DECISIONS.md`](../product/CURRENT_PRODUCT_DECISIONS.md) - canonical active product decisions.
+4. [`memberops-validation.md`](./memberops-validation.md) - current MemberOps reconciliation and role validation matrix.
+5. [`decisions.md`](./decisions.md) - current product, naming, visibility, and taxonomy decisions.
+6. [`known-issue-patterns.md`](./known-issue-patterns.md) - recurring implementation and validation risks.
+7. [`../product/CURRENT_PRODUCT_DECISIONS.md`](../product/CURRENT_PRODUCT_DECISIONS.md) - canonical active product decisions.
 
 ## File Purposes
 
 - `roadmap.md`: the current high-level implementation roadmap.
 - `arc-log.md`: the shortest reliable answer to "what has completed and what is active?"
 - `open-issues.md`: confirmed gaps and deferred decisions found in repository docs.
+- `memberops-validation.md`: MemberOps Arc 26A/26E reconciliation, current role matrix, and confirmed remaining gaps.
 - `known-issue-patterns.md`: recurring categories to check during planning and review.
 - `decisions.md`: consolidated current decisions with links to their source documents.
 

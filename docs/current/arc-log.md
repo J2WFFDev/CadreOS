@@ -28,6 +28,7 @@ only when an old-to-new mapping is useful for traceability.
 | ARC-UI-02 — Collapsible Sidebar and Independent Scrolling | UI.1 | Completed / merged |
 | ARC-ENTRY-07 — Relationship Labels and Direction Semantics | Recommended follow-up to Arc 24D.9A; formerly proposed as Arc 24D.9B | Completed / merged |
 | ARC-DOCS-01 — Roadmap and Arc Naming Reconciliation | No historical label | Completed / merged |
+| ARC-MEMBER-01 — MemberOps Gap Reconciliation and Role Testing | Reconciles Arc 26A and Arc 26E MemberOps status | Completed / pending merge |
 
 Recent historical arcs without an assigned simplified identifier keep their
 old labels until a future documentation reconciliation assigns one.
@@ -56,6 +57,7 @@ old labels until a future documentation reconciliation assigns one.
 | Arc 25F GearOps role/approval validation | Delivered | [`planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md`](../../planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md) |
 | GearOps CSV `asset_id` baseline | Fixed / merged | PR #366 |
 | Arc 26E MemberOps role/permission validation | Delivered | [`planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md`](../../planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md) |
+| ARC-MEMBER-01 — MemberOps Gap Reconciliation and Role Testing | Completed / pending merge | [`memberops-validation.md`](./memberops-validation.md) |
 | ARC-UI-01 — Header Account Name Display (historical: UI.0-A) | Completed / merged | [PR #378](https://github.com/J2WFFDev/CadreOS/pull/378) |
 | ARC-UI-02 — Collapsible Sidebar and Independent Scrolling (historical: UI.1) | Completed / merged | PR #368 |
 | ARC-ENTRY-07 — Relationship Labels and Direction Semantics | Completed / merged | [PR #380](https://github.com/J2WFFDev/CadreOS/pull/380), merge `d831fe09e31ec6f5168b5ef8144eb498100c82c6` |
@@ -89,6 +91,20 @@ ARC-ENTRY-07 validation reported by the PR:
 - Targeted tests passed, 220 tests.
 - `npm run typecheck` passed.
 - `git diff --check` passed.
+
+ARC-MEMBER-01 — MemberOps Gap Reconciliation and Role Testing is complete
+pending merge. It reconciles Arc 26A and Arc 26E by confirming implemented
+MemberOps foundations and documenting the remaining gaps in
+[`memberops-validation.md`](./memberops-validation.md). It preserves the
+current navigation/action-permission separation, does not broaden Guardian
+visibility, and does not add permissions, routes, role taxonomy, or product
+scope.
+
+ARC-MEMBER-01 validation reported by the PR:
+
+- Focused MemberOps and navigation tests passed.
+- `git diff --check` passed.
+- No build required for documentation-only changes.
 
 Implemented current behavior includes:
 
@@ -140,6 +156,6 @@ Semantics**. The next product arc requires product-owner confirmation.
 - Historical arc numbering is not chronological across all workstreams;
   higher-numbered Arc 25/26 docs predate some recent Arc 24D work. These
   labels remain historical references rather than the forward naming scheme.
-- Arc 26A lists missing/partial MemberOps capabilities that Arc 26E later
-  describes as validated. The remaining gap set **needs product-owner
-  confirmation**.
+- Arc 26A listed missing/partial MemberOps capabilities that Arc 26E later
+  described as validated. ARC-MEMBER-01 reconciled this into confirmed current
+  state and remaining gaps in [`memberops-validation.md`](./memberops-validation.md).
