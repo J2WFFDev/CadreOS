@@ -1,5 +1,37 @@
 # Current Arc Log
 
+## Arc Naming Convention Going Forward
+
+New work uses the simplified naming pattern:
+
+`ARC-[DOMAIN]-[NN] — Title`
+
+Examples include `ARC-ENTRY-07`, `ARC-HABIT-03`, `ARC-UI-01`, and
+`ARC-DOCS-01`. Domain identifiers describe the primary work area, and the
+two-digit number provides a readable sequence within that domain.
+Current domain vocabulary includes CORE, MEMBER, ENTRY, JOURNAL, HABIT, GEAR,
+FIELD, RESOURCE, ADMIN, LIVE, UI, DOCS, and TEST.
+
+Older labels such as Arc 24D, Arc 25, Arc 26, UI.0-A, and UI.1 remain valid
+historical implementation references for prior PRs and planning documents.
+They are not the forward naming scheme. New prompts should include both labels
+only when an old-to-new mapping is useful for traceability.
+
+### Recent Old-To-New Crosswalk
+
+| Simplified arc | Historical reference | Current status |
+| --- | --- | --- |
+| ARC-HABIT-01 — Habit Management Foundation | Arc 24D.8T | Completed / merged |
+| ARC-HABIT-02 — Habit Terminology, Ownership, and Lifecycle Cleanup | Arc 24D.8T-A | Completed / merged |
+| ARC-HABIT-03 — My Habits Scope and Guardian Summary | Arc 24D.8T-B | Completed / merged |
+| ARC-UI-01 — Header Account Name Display | UI.0-A | Completed / merged |
+| ARC-UI-02 — Collapsible Sidebar and Independent Scrolling | UI.1 | Completed / merged |
+| ARC-ENTRY-07 — Relationship Labels and Direction Semantics | Recommended follow-up to Arc 24D.9A; formerly proposed as Arc 24D.9B | Next recommended product arc |
+| ARC-DOCS-01 — Roadmap and Arc Naming Reconciliation | No historical label | Current documentation cleanup arc |
+
+Recent historical arcs without an assigned simplified identifier keep their
+old labels until a future documentation reconciliation assigns one.
+
 ## Concise Completed Arc Summary
 
 | Arc area | Current documented status | Detail |
@@ -17,23 +49,27 @@
 | Arc 24D.8S EntryOps archive, restore, active state, and lifecycle cleanup | Completed / merged | [`Arc 24D.8S`](../planning/arc-24d-8s-entryops-lifecycle-validation.md) |
 | Arc 24D.8S-A discoverable Entry archive and restore actions | Completed / merged | [`Arc 24D.8S-A`](../planning/arc-24d-8s-a-discoverable-lifecycle-actions.md) |
 | Arc 24D.8S-B owner/creator Entry archive and restore | Completed / pending merge | [`Arc 24D.8S-B`](../planning/arc-24d-8s-b-owner-lifecycle-actions.md) |
-| Arc 24D.8T Habit management foundation | Completed / merged | [`Arc 24D.8T`](../planning/arc-24d-8t-habit-library-foundation.md) |
-| Arc 24D.8T-A Habit terminology, ownership, editability, and status cleanup | Completed / merged | [PR #374](https://github.com/J2WFFDev/CadreOS/pull/374) |
-| Arc 24D.8T-B My Habits ownership scope and authorized Habit visibility | Completed / pending merge | My Habits actor-subject scoping, Coach/Admin self-creation, and relationship-derived Guardian Habit summary visibility |
+| ARC-HABIT-01 — Habit Management Foundation (historical: Arc 24D.8T) | Completed / merged | [`Arc 24D.8T`](../planning/arc-24d-8t-habit-library-foundation.md) |
+| ARC-HABIT-02 — Habit Terminology, Ownership, and Lifecycle Cleanup (historical: Arc 24D.8T-A) | Completed / merged | [PR #374](https://github.com/J2WFFDev/CadreOS/pull/374) |
+| ARC-HABIT-03 — My Habits Scope and Guardian Summary (historical: Arc 24D.8T-B) | Completed / merged | My Habits actor-subject scoping, Coach/Admin self-creation, and relationship-derived Guardian Habit summary visibility |
 | Arc 24D.10.4, 24D.11, 24D.12 | Marked complete | [`planning/README.md`](../../planning/README.md) |
 | Arc 25F GearOps role/approval validation | Delivered | [`planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md`](../../planning/ARC_25F_GEAROPS_ROLE_EXPERIENCE_APPROVALS_OPERATIONAL_VALIDATION.md) |
 | GearOps CSV `asset_id` baseline | Fixed / merged | PR #366 |
 | Arc 26E MemberOps role/permission validation | Delivered | [`planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md`](../../planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md) |
-| UI.1 collapsible sidebar and independent scrolling | Completed / merged | PR #368 |
+| ARC-UI-01 — Header Account Name Display (historical: UI.0-A) | Completed / merged | [PR #378](https://github.com/J2WFFDev/CadreOS/pull/378) |
+| ARC-UI-02 — Collapsible Sidebar and Independent Scrolling (historical: UI.1) | Completed / merged | PR #368 |
 
 ## Latest Known Work
 
 The latest merged EntryOps work on `main` includes Arc 24D.8Q-C All Entries,
 Guardian Lists, and movement validation; Arc 24D.8R Journal workflow/access
 UX; Arc 24D.8Q-D Guardian grouping, context labels, destinations, and active
-Habits; and Arc 24D.8T-A Habit terminology and lifecycle cleanup. The GearOps
-CSV `asset_id` baseline fix and UI.1 collapsible sidebar/independent scrolling
-work are also merged.
+Habits; ARC-HABIT-02 — Habit Terminology, Ownership, and Lifecycle Cleanup
+(historical: Arc 24D.8T-A); and ARC-HABIT-03 — My Habits Scope and Guardian
+Summary (historical: Arc 24D.8T-B). The GearOps CSV `asset_id` baseline fix,
+ARC-UI-01 — Header Account Name Display (historical: UI.0-A), and
+ARC-UI-02 — Collapsible Sidebar and Independent Scrolling (historical: UI.1)
+are also merged.
 
 Implemented current behavior includes:
 
@@ -74,8 +110,10 @@ Implemented current behavior includes:
   `assignedToTeamId` is assignment rather than Context/List.
 
 The newest detailed planning audit found is Arc 24D.9A Entry Relationships
-Foundation Audit, which recommends 24D.9B. The next priority **needs
-product-owner confirmation**.
+Foundation Audit. Its recommended product follow-up is now labeled
+**ARC-ENTRY-07 — Relationship Labels and Direction Semantics**. The current
+documentation cleanup arc is **ARC-DOCS-01 — Roadmap and Arc Naming
+Reconciliation**.
 
 ## Conflicting Or Unclear Status
 
@@ -83,8 +121,9 @@ product-owner confirmation**.
   unbuilt or deferred, but later arc docs and code show substantial delivery.
 - `planning/README.md` names Arc 23F as next, while newer Arc 24D, 25, and 26
   work exists. Arc 23F priority/status **needs product-owner confirmation**.
-- Arc numbering is not chronological across all workstreams; higher-numbered
-  Arc 25/26 docs predate some recent Arc 24D work.
+- Historical arc numbering is not chronological across all workstreams;
+  higher-numbered Arc 25/26 docs predate some recent Arc 24D work. These
+  labels remain historical references rather than the forward naming scheme.
 - Arc 26A lists missing/partial MemberOps capabilities that Arc 26E later
   describes as validated. The remaining gap set **needs product-owner
   confirmation**.

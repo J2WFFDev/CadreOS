@@ -3,6 +3,15 @@
 This file consolidates active decisions and points back to their source docs.
 When it conflicts with a newer explicit decision, update this file.
 
+## Arc Naming
+
+- New work uses `ARC-[DOMAIN]-[NN] — Title` identifiers.
+- Older Arc 24D/25/26, UI, and other legacy labels remain valid historical
+  references for prior PRs and planning documents.
+- New prompts should include both the simplified and historical labels only
+  when an old-to-new mapping is useful for traceability.
+- `docs/current/arc-log.md` maintains the current recent-arc crosswalk.
+
 ## Product And Module Naming
 
 - CadreOS is an Athlete Program Operating System.
