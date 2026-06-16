@@ -10,9 +10,11 @@ import {
 import {
   buildMemberOpsLifecycleReportRows,
   buildMemberOpsProgramCoverageRows,
+  buildMemberOpsReportRelationFilters,
   buildMemberOpsRoleReportRows,
   buildMemberOpsTeamCoverageRows,
   countExpiringSoonMemberOpsRecords,
+  formatMemberOpsExpiringSoonSummary,
   summarizeMemberOpsCertificationRecords,
   summarizeMemberOpsQualificationRecords,
   type MemberOpsReportPerson,
@@ -120,5 +122,69 @@ test("ARC-MEMBER-05: qualification and certification report summaries resolve ex
   assert.equal(
     countExpiringSoonMemberOpsRecords([{ expirationDate: new Date("2026-06-20T12:00:00Z") }], now),
     1,
+  );
+});
+
+test("ARC-MEMBER-05 review: scoped relation filters constrain nested role and roster rows", () => {
+  assert.deepEqual(
+    buildMemberOpsReportRelationFilters({
+      organizationId: "org-1",
+      staffScopeResolution: {
+        allowAllStaffScope: false,
+        allowedTeamIds: ["team-1"],
+        allowedProgramIds: ["program-1"],
+      },
+    }),
+    {
+      rolesWhere: {
+        organizationId: "org-1",
+        OR: [
+          { teamId: { in: ["team-1"] } },
+          { programId: { in: ["program-1"] } },
+          { team: { is: { programId: { in: ["program-1"] } } } },
+        ],
+      },
+      rosterWhere: {
+        organizationId: "org-1",
+        OR: [
+          { teamId: { in: ["team-1"] } },
+          { team: { is: { programId: { in: ["program-1"] } } } },
+        ],
+      },
+    },
+  );
+
+  assert.deepEqual(
+    buildMemberOpsReportRelationFilters({
+      organizationId: "org-1",
+      staffScopeResolution: {
+        allowAllStaffScope: true,
+        allowedTeamIds: [],
+        allowedProgramIds: [],
+      },
+    }),
+    {
+      rolesWhere: { organizationId: "org-1" },
+      rosterWhere: { organizationId: "org-1" },
+    },
+  );
+});
+
+test("ARC-MEMBER-05 review: unavailable qualification and certification summaries do not imply zero expiring records", () => {
+  assert.equal(
+    formatMemberOpsExpiringSoonSummary({
+      unavailable: true,
+      windowDays: 30,
+      count: 0,
+    }),
+    "Expiration counts are unavailable.",
+  );
+  assert.equal(
+    formatMemberOpsExpiringSoonSummary({
+      unavailable: false,
+      windowDays: 30,
+      count: 0,
+    }),
+    "Expiring in the next 30 days: 0.",
   );
 });

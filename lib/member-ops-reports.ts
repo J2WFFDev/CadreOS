@@ -1,6 +1,7 @@
 import {
   CertificationVerificationStatus,
   MemberLifecycleStatus,
+  type Prisma,
   QualificationAssignmentStatus,
 } from "@prisma/client";
 
@@ -42,6 +43,60 @@ export type CertificationReportRecord = {
   verificationStatus: CertificationVerificationStatus;
   expirationDate: Date | null;
 };
+
+export type MemberOpsReportStaffScope = {
+  allowAllStaffScope: boolean;
+  allowedTeamIds: readonly string[];
+  allowedProgramIds: readonly string[];
+};
+
+export function buildMemberOpsReportRelationFilters(input: {
+  organizationId: string;
+  staffScopeResolution: MemberOpsReportStaffScope;
+}): {
+  rolesWhere: Prisma.RoleAssignmentWhereInput;
+  rosterWhere: Prisma.RosterMembershipWhereInput;
+} {
+  const { organizationId, staffScopeResolution } = input;
+
+  if (staffScopeResolution.allowAllStaffScope) {
+    return {
+      rolesWhere: { organizationId },
+      rosterWhere: { organizationId },
+    };
+  }
+
+  const roleScopeFilters: Prisma.RoleAssignmentWhereInput[] = [
+    ...(staffScopeResolution.allowedTeamIds.length > 0
+      ? [{ teamId: { in: [...staffScopeResolution.allowedTeamIds] } }]
+      : []),
+    ...(staffScopeResolution.allowedProgramIds.length > 0
+      ? [{ programId: { in: [...staffScopeResolution.allowedProgramIds] } }]
+      : []),
+    ...(staffScopeResolution.allowedProgramIds.length > 0
+      ? [{ team: { is: { programId: { in: [...staffScopeResolution.allowedProgramIds] } } } }]
+      : []),
+  ];
+  const rosterScopeFilters: Prisma.RosterMembershipWhereInput[] = [
+    ...(staffScopeResolution.allowedTeamIds.length > 0
+      ? [{ teamId: { in: [...staffScopeResolution.allowedTeamIds] } }]
+      : []),
+    ...(staffScopeResolution.allowedProgramIds.length > 0
+      ? [{ team: { is: { programId: { in: [...staffScopeResolution.allowedProgramIds] } } } }]
+      : []),
+  ];
+
+  return {
+    rolesWhere: {
+      organizationId,
+      OR: roleScopeFilters,
+    },
+    rosterWhere: {
+      organizationId,
+      OR: rosterScopeFilters,
+    },
+  };
+}
 
 export function formatMemberOpsReportRoleLabel(roleType: string): string {
   return roleType
@@ -182,4 +237,16 @@ export function countExpiringSoonMemberOpsRecords(
   now: Date = new Date(),
 ): number {
   return records.filter((record) => getExpirationState(record.expirationDate, now) === "expiringSoon").length;
+}
+
+export function formatMemberOpsExpiringSoonSummary(input: {
+  unavailable: boolean;
+  windowDays: number;
+  count: number;
+}): string {
+  if (input.unavailable) {
+    return "Expiration counts are unavailable.";
+  }
+
+  return `Expiring in the next ${input.windowDays} days: ${input.count}.`;
 }

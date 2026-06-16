@@ -18,10 +18,12 @@ import {
 import { db } from "@/lib/db";
 import {
   buildMemberOpsLifecycleReportRows,
+  buildMemberOpsReportRelationFilters,
   buildMemberOpsProgramCoverageRows,
   buildMemberOpsRoleReportRows,
   buildMemberOpsTeamCoverageRows,
   countExpiringSoonMemberOpsRecords,
+  formatMemberOpsExpiringSoonSummary,
   summarizeMemberOpsCertificationRecords,
   summarizeMemberOpsQualificationRecords,
 } from "@/lib/member-ops-reports";
@@ -222,6 +224,11 @@ export default async function MemberOpsReportsPage() {
   let peopleLoadErrorMessage: string | null = null;
 
   try {
+    const relationFilters = buildMemberOpsReportRelationFilters({
+      organizationId: scope.organizationId,
+      staffScopeResolution,
+    });
+
     people = await db.person.findMany({
       where: {
         organizationId: scope.organizationId,
@@ -251,6 +258,7 @@ export default async function MemberOpsReportsPage() {
         id: true,
         lifecycleStatus: true,
         roles: {
+          where: relationFilters.rolesWhere,
           select: {
             roleType: true,
             program: { select: { id: true, name: true } },
@@ -264,6 +272,7 @@ export default async function MemberOpsReportsPage() {
           },
         },
         roster: {
+          where: relationFilters.rosterWhere,
           select: {
             rosterRole: true,
             team: {
@@ -454,8 +463,12 @@ export default async function MemberOpsReportsPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-base font-medium">Qualifications</h3>
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    Expiring in the next {EXPIRING_SOON_WINDOW_DAYS} days: {expiringSoonQualificationCount}.
+                  <p className={`mt-1 text-sm ${qualificationSummaryMessage ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}`}>
+                    {formatMemberOpsExpiringSoonSummary({
+                      unavailable: Boolean(qualificationSummaryMessage),
+                      windowDays: EXPIRING_SOON_WINDOW_DAYS,
+                      count: expiringSoonQualificationCount,
+                    })}
                   </p>
                 </div>
                 <Link href="/people/qualifications" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
@@ -476,8 +489,12 @@ export default async function MemberOpsReportsPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-base font-medium">Certifications</h3>
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    Expiring in the next {EXPIRING_SOON_WINDOW_DAYS} days: {expiringSoonCertificationCount}.
+                  <p className={`mt-1 text-sm ${qualificationSummaryMessage ? "text-amber-700 dark:text-amber-300" : "text-zinc-600 dark:text-zinc-400"}`}>
+                    {formatMemberOpsExpiringSoonSummary({
+                      unavailable: Boolean(qualificationSummaryMessage),
+                      windowDays: EXPIRING_SOON_WINDOW_DAYS,
+                      count: expiringSoonCertificationCount,
+                    })}
                   </p>
                 </div>
                 <Link href="/people/qualifications" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
