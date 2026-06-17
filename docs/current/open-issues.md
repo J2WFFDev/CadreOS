@@ -67,7 +67,9 @@ and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.m
   emergency-contact entity/workflow.
 - Program-to-team outline selection, multi-select assignment, first-class
   program participation, and consolidated joining/transfer/departure/offboarding
-  workflows remain future work.
+  workflows remain future work. ARC-MEMBER-06 clarifies that current program
+  participation is role/roster-derived and recommends a product-owner-confirmed
+  Program Participation Model Foundation as the next implementation arc.
 - ARC-MEMBER-03 consolidated duplicate roster guardrails for current add/move
   paths. Full first-class program participation and model-wide participation
   policy remain future work.
@@ -78,7 +80,8 @@ and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.m
 Sources: [`Arc 24C.1`](../planning/arc-24c-memberops-scoped-assignment-model.md),
 [`Arc 26A`](../../planning/ARC_26A_MEMBEROPS_RC1_GAP_ASSESSMENT_AND_CAPABILITY_AUDIT.md),
 [`Arc 26E`](../../planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md),
-and [`ARC-MEMBER-01`](./memberops-validation.md).
+[`ARC-MEMBER-01`](./memberops-validation.md), and
+[`ARC-MEMBER-06`](./memberops-program-participation-policy.md).
 
 ## GearOps And Platform Limits
 

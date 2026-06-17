@@ -34,7 +34,7 @@ Sources reviewed:
 | Dedicated MemberOps reports route | Implemented read-only foundation | `/member-ops/reports` is active for staff-scoped MemberOps users and shows existing member totals, lifecycle counts, role/person-type counts, roster/program/team coverage, and qualification/certification summaries where safely available. Advanced analytics, exports, BI, and automation remain future work. |
 | Guardian-derived team visibility | Partial foundation | Guardian-derived scope helpers exist and tests cover active athlete relationship scope. Product-owner confirmation is still needed before broadening MemberOps visibility. |
 | Duplicate athlete-in-program control | Implemented route/service guardrail with future model-wide limits | ARC-MEMBER-03 consolidates duplicate roster checks into a shared guardrail. Exact team/season duplicates are blocked, and Athlete same-program/same-season duplicates across teams are blocked in current roster add/move paths. Full first-class program participation remains future work. |
-| First-class program participation | Missing/planned | Program participation independent of team membership or role assignment remains future work. |
+| First-class program participation | Missing/recommended next foundation | Program participation independent of team membership or role assignment does not exist today. ARC-MEMBER-06 recommends a product-owner-confirmed Program Participation Model Foundation as the next implementation arc before lifecycle automation, report expansion, duplicate-guardrail migration, or Guardian visibility changes. |
 
 ## Role Validation Matrix
 
@@ -79,3 +79,13 @@ ARC-MEMBER-03 consolidated duplicate roster membership guardrails. It did not cr
 ARC-MEMBER-04 activates the dedicated MemberOps lifecycle route as a read-only foundation. It reuses existing lifecycle statuses, scoped staff visibility, person detail links, and role/roster context. It does not create full joining, transfer, departure, offboarding, reports, household, or program participation workflows.
 
 ARC-MEMBER-05 activates the dedicated MemberOps reports route as a read-only foundation. It reuses existing MemberOps data and scoped staff visibility. It does not create advanced analytics, exports, BI, schema, workflow automation, household, or program participation workflows.
+
+ARC-MEMBER-06 documents the first-class program participation policy decision.
+Current program participation is inferred from `RoleAssignment` program/team
+scope and `RosterMembership` team program context. It is not first-class today:
+there is no dedicated participation model, status, lifecycle date, source, or
+model-wide uniqueness policy independent of role and roster records. See
+[`memberops-program-participation-policy.md`](./memberops-program-participation-policy.md)
+for the current behavior, options, tradeoffs, and recommendation. The
+recommended next implementation arc is `ARC-MEMBER-07 — Program Participation
+Model Foundation`, subject to product-owner confirmation.
