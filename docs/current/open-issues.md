@@ -66,12 +66,14 @@ and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.m
 - Emergency Contact exists as a Guardian relationship role, not a separate
   emergency-contact entity/workflow.
 - Program-to-team outline selection, multi-select assignment, program
-  participation mutation/backfill execution, and consolidated
+  participation mutation UI/service surfaces and backfill execution, and consolidated
   joining/transfer/departure/offboarding workflows remain future work.
   ARC-MEMBER-07 adds the first-class ProgramParticipation foundation, and
   ARC-MEMBER-08 adds a read-only participation review route plus non-writing
-  backfill preview helpers. Create/update mutation policy, automatic backfill
-  writes, and lifecycle automation remain future work.
+  backfill preview helpers. ARC-MEMBER-09 adds backend permission actions for
+  ProgramParticipation create/update/status-change. Mutation UI/service
+  surfaces, automatic backfill writes, and lifecycle automation remain future
+  work.
 - ARC-MEMBER-03 consolidated duplicate roster guardrails for current add/move
   paths. Model-wide duplicate guardrail migration to first-class program
   participation remains future work.

@@ -15,7 +15,12 @@ import {
   hasProgramParticipationInScope,
   mergeExplicitAndDerivedProgramParticipation,
 } from "../../lib/member-ops-program-participation";
-import { canRoleTypePerformBackendAction } from "../../lib/permissions";
+import {
+  actionRequiresBackendScope,
+  actionRequiresProgramBackendScope,
+  backendRoleScopeMatchesAction,
+  canRoleTypePerformBackendAction,
+} from "../../lib/permissions";
 
 test("ARC-MEMBER-07: explicit participation coexists with role and roster-derived context", () => {
   const contexts = mergeExplicitAndDerivedProgramParticipation({
@@ -314,11 +319,83 @@ test("ARC-MEMBER-08: participation review uses existing staff-only route access"
   assert.equal(unlinkedDecision.allowed, false);
 });
 
-test("ARC-MEMBER-08: participation mutation remains policy-blocked", () => {
-  for (const roleType of [RoleType.ORGANIZATION_ADMIN, RoleType.PROGRAM_DIRECTOR, RoleType.COACH]) {
-    assert.equal(canRoleTypePerformBackendAction(roleType, "programParticipation.create"), false);
-    assert.equal(canRoleTypePerformBackendAction(roleType, "programParticipation.update"), false);
+test("ARC-MEMBER-09: participation mutation actions are explicit program-scoped backend actions", () => {
+  const mutationActions = [
+    "programParticipation.create",
+    "programParticipation.update",
+    "programParticipation.status.update",
+  ];
+
+  for (const action of mutationActions) {
+    assert.equal(actionRequiresBackendScope(action), true, `${action} should require backend scope`);
+    assert.equal(actionRequiresProgramBackendScope(action), true, `${action} should require program scope`);
   }
+});
+
+test("ARC-MEMBER-09: admin and program director can mutate participation while coach and non-staff cannot", () => {
+  const mutationActions = [
+    "programParticipation.create",
+    "programParticipation.update",
+    "programParticipation.status.update",
+  ];
+
+  for (const action of mutationActions) {
+    assert.equal(
+      canRoleTypePerformBackendAction(RoleType.ORGANIZATION_ADMIN, action),
+      true,
+      `Organization Admin should be able to ${action}`,
+    );
+    assert.equal(
+      canRoleTypePerformBackendAction(RoleType.PROGRAM_DIRECTOR, action),
+      true,
+      `Program Director should be able to ${action}`,
+    );
+    assert.equal(canRoleTypePerformBackendAction(RoleType.COACH, action), false, `Coach should not be able to ${action}`);
+    assert.equal(
+      canRoleTypePerformBackendAction(RoleType.PARENT_GUARDIAN, action),
+      false,
+      `Guardian should not be able to ${action}`,
+    );
+    assert.equal(canRoleTypePerformBackendAction(RoleType.ATHLETE, action), false, `Athlete should not be able to ${action}`);
+  }
+});
+
+test("ARC-MEMBER-09: participation mutation scope requires matching program scope", () => {
+  const programAssignment = {
+    scopeType: ScopeType.PROGRAM,
+    programId: "program-1",
+    teamId: null,
+  };
+  const teamAssignment = {
+    scopeType: ScopeType.TEAM,
+    programId: null,
+    teamId: "team-1",
+  };
+
+  assert.equal(
+    backendRoleScopeMatchesAction({
+      action: "programParticipation.create",
+      assignment: programAssignment,
+      scope: { programId: "program-1", teamId: null },
+    }),
+    true,
+  );
+  assert.equal(
+    backendRoleScopeMatchesAction({
+      action: "programParticipation.update",
+      assignment: programAssignment,
+      scope: { programId: "program-2", teamId: null },
+    }),
+    false,
+  );
+  assert.equal(
+    backendRoleScopeMatchesAction({
+      action: "programParticipation.status.update",
+      assignment: teamAssignment,
+      scope: { programId: "program-1", teamId: "team-1" },
+    }),
+    false,
+  );
 });
 
 test("ARC-MEMBER-08: backfill preview derives roster and role candidates without writing rows", () => {

@@ -24,6 +24,9 @@ type SupportedAction =
   | "personQualification.update"
   | "personCertification.create"
   | "personCertification.update"
+  | "programParticipation.create"
+  | "programParticipation.update"
+  | "programParticipation.status.update"
   | "guardianRelationship.create"
   | "guardianRelationship.update"
   | "team.create"
@@ -89,6 +92,21 @@ type PermissionScope = {
   teamIds: string[];
 };
 
+type RoleScopeMatchInput = {
+  action: string;
+  assignment: {
+    scopeType: ScopeType;
+    programId: string | null;
+    teamId: string | null;
+  };
+  scope: {
+    programId: string | null;
+    teamId: string | null;
+    programIds?: string[];
+    teamIds?: string[];
+  };
+};
+
 const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
   [RoleType.ORGANIZATION_ADMIN]: new Set<SupportedAction>([
     "program.create",
@@ -109,6 +127,9 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "personQualification.update",
     "personCertification.create",
     "personCertification.update",
+    "programParticipation.create",
+    "programParticipation.update",
+    "programParticipation.status.update",
     "guardianRelationship.create",
     "guardianRelationship.update",
     "team.create",
@@ -174,6 +195,9 @@ const STAFF_ACTIONS_BY_ROLE: Record<RoleType, Set<SupportedAction>> = {
     "personQualification.update",
     "personCertification.create",
     "personCertification.update",
+    "programParticipation.create",
+    "programParticipation.update",
+    "programParticipation.status.update",
     "guardianRelationship.create",
     "guardianRelationship.update",
     "rosterMembership.create",
@@ -282,6 +306,9 @@ const SCOPED_ACTIONS = new Set<SupportedAction>([
   "personQualification.update",
   "personCertification.create",
   "personCertification.update",
+  "programParticipation.create",
+  "programParticipation.update",
+  "programParticipation.status.update",
   "guardianRelationship.create",
   "guardianRelationship.update",
   "team.create",
@@ -300,6 +327,12 @@ const SCOPED_ACTIONS = new Set<SupportedAction>([
   "booking.deny",
   "entry.create",
   "entry.update",
+]);
+
+const PROGRAM_SCOPED_ACTIONS = new Set<SupportedAction>([
+  "programParticipation.create",
+  "programParticipation.update",
+  "programParticipation.status.update",
 ]);
 
 const SUPPORTED_ACTIONS = new Set<SupportedAction>([
@@ -321,6 +354,9 @@ const SUPPORTED_ACTIONS = new Set<SupportedAction>([
   "personQualification.update",
   "personCertification.create",
   "personCertification.update",
+  "programParticipation.create",
+  "programParticipation.update",
+  "programParticipation.status.update",
   "guardianRelationship.create",
   "guardianRelationship.update",
   "team.create",
@@ -410,6 +446,10 @@ export function canRoleTypePerformBackendAction(roleType: RoleType, action: stri
 
 export function actionRequiresBackendScope(action: string): boolean {
   return isSupportedAction(action) && SCOPED_ACTIONS.has(action);
+}
+
+export function actionRequiresProgramBackendScope(action: string): boolean {
+  return isSupportedAction(action) && PROGRAM_SCOPED_ACTIONS.has(action);
 }
 
 async function resolvePermissionScope(input: PermissionCheckInput): Promise<PermissionScope> {
@@ -602,6 +642,7 @@ async function resolvePermissionScope(input: PermissionCheckInput): Promise<Perm
 }
 
 function roleScopeMatches(
+  action: SupportedAction,
   assignment: {
     scopeType: ScopeType;
     programId: string | null;
@@ -620,10 +661,27 @@ function roleScopeMatches(
     );
   }
 
+  if (PROGRAM_SCOPED_ACTIONS.has(action)) {
+    return false;
+  }
+
   return Boolean(
     assignment.teamId &&
       (scope.teamId === assignment.teamId || scope.teamIds.includes(assignment.teamId)),
   );
+}
+
+export function backendRoleScopeMatchesAction(input: RoleScopeMatchInput): boolean {
+  if (!isSupportedAction(input.action)) {
+    return false;
+  }
+
+  return roleScopeMatches(input.action, input.assignment, {
+    programId: input.scope.programId,
+    teamId: input.scope.teamId,
+    programIds: input.scope.programIds ?? [],
+    teamIds: input.scope.teamIds ?? [],
+  });
 }
 
 async function resolvePermissionDecision(input: PermissionCheckInput): Promise<PermissionDecision> {
@@ -743,6 +801,15 @@ async function resolvePermissionDecision(input: PermissionCheckInput): Promise<P
     return STAFF_ACTIONS_BY_ROLE[assignment.roleType].has(action);
   });
 
+  if (PROGRAM_SCOPED_ACTIONS.has(action) && !input.programId && !hasOrganizationAdminOverride) {
+    return {
+      allowed: false,
+      reason: "INSUFFICIENT_ROLE",
+      message:
+        "This action requires explicit program-scoped staff access, and no programId was provided for the request.",
+    };
+  }
+
   if (requiresScope && !scope.programId && !scope.teamId && !hasOrganizationAdminOverride) {
     return {
       allowed: false,
@@ -763,7 +830,7 @@ async function resolvePermissionDecision(input: PermissionCheckInput): Promise<P
       return assignment.scopeType === ScopeType.ORGANIZATION;
     }
 
-    return roleScopeMatches(assignment, scope);
+    return roleScopeMatches(action, assignment, scope);
   });
 
   if (!isAllowed) {

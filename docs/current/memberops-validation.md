@@ -34,7 +34,7 @@ Sources reviewed:
 | Dedicated MemberOps reports route | Implemented read-only foundation | `/member-ops/reports` is active for staff-scoped MemberOps users and shows existing member totals, lifecycle counts, role/person-type counts, roster/program/team coverage, and qualification/certification summaries where safely available. Advanced analytics, exports, BI, and automation remain future work. |
 | Guardian-derived team visibility | Partial foundation | Guardian-derived scope helpers exist and tests cover active athlete relationship scope. Product-owner confirmation is still needed before broadening MemberOps visibility. |
 | Duplicate athlete-in-program control | Implemented route/service guardrail with future model-wide limits | ARC-MEMBER-03 consolidates duplicate roster checks into a shared guardrail. Exact team/season duplicates are blocked, and Athlete same-program/same-season duplicates across teams are blocked in current roster add/move paths. Full first-class program participation remains future work. |
-| First-class program participation | Implemented read-only management foundation with future mutation/workflow limits | ARC-MEMBER-07 adds a minimal first-class ProgramParticipation model, helper coverage, and read-only reports/lifecycle inclusion. ARC-MEMBER-08 adds a staff-scoped read-only participation review route and non-writing backfill preview helpers. It does not add create/update mutations, automatic backfill writes, lifecycle automation, duplicate-guardrail migration, Guardian visibility changes, or role permission changes. |
+| First-class program participation | Implemented backend mutation policy foundation with future UI/workflow limits | ARC-MEMBER-07 adds a minimal first-class ProgramParticipation model, helper coverage, and read-only reports/lifecycle inclusion. ARC-MEMBER-08 adds a staff-scoped read-only participation review route and non-writing backfill preview helpers. ARC-MEMBER-09 adds explicit backend mutation permission actions for authorized Organization Admin and Program Manager / Program Director use. It does not add mutation UI, automatic backfill writes, lifecycle automation, duplicate-guardrail migration, Guardian visibility changes, or Coach mutation authority. |
 
 ## Role Validation Matrix
 
@@ -57,7 +57,7 @@ Sources reviewed:
 - Emergency Contact exists as a Guardian relationship role, not a separate emergency-contact entity/workflow.
 - Program-to-team outline selection and multi-select assignment remain future work.
 - Joining, transfer, departure, and offboarding flows are not yet consolidated into a single lifecycle workflow.
-- Program participation mutation policy, automatic backfill execution from roles/rosters, model-wide duplicate guardrail migration, and operational workflow integration remain future work. ARC-MEMBER-08 provides read-only participation review and non-writing candidate preview helpers only. Current roster add/move paths continue enforcing duplicate team/season membership protection and Athlete same-program/same-season duplicate protection.
+- Program participation mutation UI/service surfaces, automatic backfill execution from roles/rosters, model-wide duplicate guardrail migration, and operational workflow integration remain future work. ARC-MEMBER-08 provides read-only participation review and non-writing candidate preview helpers. ARC-MEMBER-09 provides backend permission actions only. Current roster add/move paths continue enforcing duplicate team/season membership protection and Athlete same-program/same-season duplicate protection.
 
 ## Validation Notes
 
@@ -108,3 +108,14 @@ policy-blocked because the backend permission registry has no
 `programParticipation.create` or `programParticipation.update` action. It does
 not broaden Guardian/Athlete access, add role permission policy, run automatic
 backfill, change roster duplicate guardrails, or add lifecycle automation.
+
+ARC-MEMBER-09 implements the Program Participation Mutation Policy foundation.
+It adds backend permission actions for `programParticipation.create`,
+`programParticipation.update`, and `programParticipation.status.update`.
+Organization Admin and Program Manager / Program Director can perform these
+actions under scoped backend authorization; Coach, Guardian, Athlete, Assistant
+Coach, and Limited/basic viewer cannot. ProgramParticipation mutation actions
+require explicit program backend scope and team-only scope does not imply
+program-wide mutation authority. ARC-MEMBER-09 does not add mutation UI,
+automatic backfill writes, delete behavior, duplicate guardrail migration,
+Guardian visibility changes, or lifecycle automation.

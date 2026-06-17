@@ -290,7 +290,7 @@ Suggested boundaries for the next arc:
 
 ## ARC-MEMBER-08 — Program Participation Management and Backfill Policy
 
-Status: implemented read-only management and preview policy; pending merge.
+Status: completed read-only management and preview policy; merged in PR #389.
 
 ARC-MEMBER-08 adds the next safe layer on the ARC-MEMBER-07 foundation without
 changing role permissions, Guardian visibility, roster behavior, lifecycle
@@ -365,3 +365,67 @@ Suggested boundaries for that arc:
 - keep automatic backfill execution separate unless product-owner approved
 - preserve Guardian relationship-derived visibility and current role/roster
   behavior
+
+## ARC-MEMBER-09 — Program Participation Mutation Policy
+
+Status: implemented backend permission foundation; pending merge.
+
+ARC-MEMBER-09 adds the smallest backend permission policy foundation for
+ProgramParticipation mutations. It does not add mutation UI, automatic backfill
+writes, lifecycle automation, Guardian visibility changes, role/roster
+behavior changes, duplicate guardrail migration, or bulk operations.
+
+Implemented:
+
+- `programParticipation.create`
+- `programParticipation.update`
+- `programParticipation.status.update`
+- backend scoped permission registration for the new actions
+- app-role helper alignment for Dev Persona and navigation-adjacent checks
+- focused tests proving role authority, non-staff denial, scoped action
+  classification, and program-scope-only behavior
+
+Mutation authority:
+
+- Organization Admin can create, update, and status-change
+  ProgramParticipation within the organization.
+- Program Manager / Program Director can create, update, and status-change
+  ProgramParticipation only with explicit program-scoped authorization.
+- Coach, Assistant Coach, Guardian, Athlete, Limited/basic viewer, unlinked,
+  and unauthenticated actors have no ProgramParticipation mutation authority.
+- Team-only scope does not imply program-wide mutation authority.
+
+Scoped authorization policy:
+
+- ProgramParticipation mutation actions are scoped backend actions.
+- ProgramParticipation mutation actions require explicit program backend scope.
+- `seasonId` may identify a season for a future mutation surface, but it does
+  not replace explicit program scope for authorization.
+- Exact duplicate participation remains protected by the ARC-MEMBER-07 helper
+  and database uniqueness foundation; mutation surfaces must still call the
+  helper or handle the database constraint clearly.
+
+Deferred:
+
+- create/edit/status-change UI forms
+- delete behavior; status change to `INACTIVE` remains the preferred lifecycle
+  direction
+- automatic backfill write execution
+- duplicate guardrail migration from roster paths
+- lifecycle automation and joining/transfer/departure/offboarding workflows
+- Guardian visibility use of program participation
+
+Recommended next arc:
+
+`ARC-MEMBER-10 — Program Participation Mutation Surface`
+
+Suggested boundaries for that arc:
+
+- add a minimal create/update/status-change service or route surface using the
+  ARC-MEMBER-09 permission actions
+- enforce explicit `organizationId` and `programId`
+- block exact duplicate participation before write or with clear constraint
+  handling
+- prefer status change to `INACTIVE` over delete
+- keep automatic backfill writes, lifecycle automation, Guardian visibility,
+  and duplicate guardrail migration out of scope unless separately selected

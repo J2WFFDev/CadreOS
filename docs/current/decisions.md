@@ -98,9 +98,15 @@ Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-cont
   read-only context alongside role/roster-derived context.
 - `/member-ops/program-participation` is a staff-scoped read-only review route
   for explicit participation records. It is not a create/update workflow.
-- Program participation mutation remains deferred until a future decision adds
-  explicit backend actions such as `programParticipation.create` and
-  `programParticipation.update` with scoped role tests.
+- Program participation mutation has an explicit backend permission foundation:
+  `programParticipation.create`, `programParticipation.update`, and
+  `programParticipation.status.update`.
+- Organization Admin and Program Manager / Program Director may use those
+  actions under scoped backend authorization; Coach, Guardian, Athlete,
+  Assistant Coach, and Limited/basic viewer may not mutate program
+  participation.
+- Program participation mutation requires explicit program backend scope.
+  Team-only scope does not imply program-wide mutation authority.
 - Backfill from roles/rosters must remain preview-only and non-writing until a
   future implementation arc approves execution, audit behavior, rollback, and
   duplicate handling.
