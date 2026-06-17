@@ -326,14 +326,15 @@ export type ProgramParticipationBackfillCandidate = {
 function isCurrentBackfillSource(input: {
   status?: ProgramParticipationStatus | null;
   isHistorical?: boolean;
+  includeInactive: boolean;
   includeHistorical: boolean;
 }): boolean {
-  if (input.status === ProgramParticipationStatus.INACTIVE) {
-    return input.includeHistorical;
+  if (input.status === ProgramParticipationStatus.INACTIVE && !input.includeInactive) {
+    return false;
   }
 
-  if (input.isHistorical) {
-    return input.includeHistorical;
+  if (input.isHistorical && !input.includeHistorical) {
+    return false;
   }
 
   return true;
@@ -379,14 +380,16 @@ function addBackfillCandidate(
 export function buildProgramParticipationBackfillCandidates(input: {
   rosterMemberships: readonly ProgramParticipationBackfillRosterMembership[];
   roleAssignments: readonly ProgramParticipationBackfillRoleAssignment[];
+  includeInactive?: boolean;
   includeHistorical?: boolean;
 }): ProgramParticipationBackfillCandidate[] {
+  const includeInactive = input.includeInactive ?? false;
   const includeHistorical = input.includeHistorical ?? false;
   const candidates = new Map<string, ProgramParticipationBackfillCandidate>();
 
   for (const membership of input.rosterMemberships) {
     const program = membership.team.program;
-    if (!program || !isCurrentBackfillSource({ ...membership, includeHistorical })) {
+    if (!program || !isCurrentBackfillSource({ ...membership, includeInactive, includeHistorical })) {
       continue;
     }
 
@@ -404,7 +407,7 @@ export function buildProgramParticipationBackfillCandidates(input: {
   }
 
   for (const assignment of input.roleAssignments) {
-    if (!isCurrentBackfillSource({ ...assignment, includeHistorical })) {
+    if (!isCurrentBackfillSource({ ...assignment, includeInactive, includeHistorical })) {
       continue;
     }
 

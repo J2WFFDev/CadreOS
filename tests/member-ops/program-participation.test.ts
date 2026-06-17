@@ -390,7 +390,7 @@ test("ARC-MEMBER-08: backfill preview merges duplicate exact candidates", () => 
 });
 
 test("ARC-MEMBER-08: backfill preview excludes inactive and historical sources by default", () => {
-  const inactiveCandidates = buildProgramParticipationBackfillCandidates({
+  const candidates = buildProgramParticipationBackfillCandidates({
     rosterMemberships: [
       {
         id: "roster-inactive",
@@ -418,23 +418,72 @@ test("ARC-MEMBER-08: backfill preview excludes inactive and historical sources b
     ],
   });
 
-  assert.deepEqual(inactiveCandidates, []);
+  assert.deepEqual(candidates, []);
+});
 
-  const historicalCandidates = buildProgramParticipationBackfillCandidates({
+test("ARC-MEMBER-08 review: backfill preview includes inactive sources only with inactive flag", () => {
+  const inactiveCandidates = buildProgramParticipationBackfillCandidates({
     rosterMemberships: [
       {
-        id: "roster-historical",
+        id: "roster-inactive",
         personId: "person-1",
         rosterRole: RoleType.ATHLETE,
+        status: ProgramParticipationStatus.INACTIVE,
+        team: { id: "team-1", name: "Precision", program: { id: "program-1", name: "SASP" } },
+      },
+    ],
+    roleAssignments: [],
+    includeInactive: true,
+  });
+
+  assert.equal(inactiveCandidates.length, 1);
+  assert.equal(inactiveCandidates[0].personId, "person-1");
+});
+
+test("ARC-MEMBER-08 review: backfill preview includes historical sources only with historical flag", () => {
+  const historicalCandidates = buildProgramParticipationBackfillCandidates({
+    rosterMemberships: [],
+    roleAssignments: [
+      {
+        id: "role-historical",
+        personId: "person-1",
+        roleType: RoleType.COACH,
+        isHistorical: true,
+        program: { id: "program-1", name: "SASP" },
+      },
+    ],
+    includeHistorical: true,
+  });
+
+  assert.equal(historicalCandidates.length, 1);
+  assert.equal(historicalCandidates[0].personId, "person-1");
+});
+
+test("ARC-MEMBER-08 review: inactive historical sources require both explicit flags", () => {
+  const input = {
+    rosterMemberships: [
+      {
+        id: "roster-inactive-historical",
+        personId: "person-1",
+        rosterRole: RoleType.ATHLETE,
+        status: ProgramParticipationStatus.INACTIVE,
         isHistorical: true,
         team: { id: "team-1", name: "Precision", program: { id: "program-1", name: "SASP" } },
       },
     ],
     roleAssignments: [],
-    includeHistorical: true,
-  });
+  };
 
-  assert.equal(historicalCandidates.length, 1);
+  assert.deepEqual(buildProgramParticipationBackfillCandidates({ ...input, includeInactive: true }), []);
+  assert.deepEqual(buildProgramParticipationBackfillCandidates({ ...input, includeHistorical: true }), []);
+  assert.equal(
+    buildProgramParticipationBackfillCandidates({
+      ...input,
+      includeInactive: true,
+      includeHistorical: true,
+    }).length,
+    1,
+  );
 });
 
 test("ARC-MEMBER-08: backfill preview has no Guardian-derived source path", () => {
