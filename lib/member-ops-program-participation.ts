@@ -329,12 +329,19 @@ function isCurrentBackfillSource(input: {
   includeInactive: boolean;
   includeHistorical: boolean;
 }): boolean {
-  if (input.status === ProgramParticipationStatus.INACTIVE && !input.includeInactive) {
-    return false;
+  const isInactive = input.status === ProgramParticipationStatus.INACTIVE;
+  const isHistorical = Boolean(input.isHistorical);
+
+  if (isInactive && isHistorical) {
+    return input.includeInactive || input.includeHistorical;
   }
 
-  if (input.isHistorical && !input.includeHistorical) {
-    return false;
+  if (isInactive) {
+    return input.includeInactive;
+  }
+
+  if (isHistorical) {
+    return input.includeHistorical;
   }
 
   return true;

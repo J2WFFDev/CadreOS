@@ -459,7 +459,7 @@ test("ARC-MEMBER-08 review: backfill preview includes historical sources only wi
   assert.equal(historicalCandidates[0].personId, "person-1");
 });
 
-test("ARC-MEMBER-08 review: inactive historical sources require both explicit flags", () => {
+test("ARC-MEMBER-08 review: inactive historical sources are included by either explicit category flag", () => {
   const input = {
     rosterMemberships: [
       {
@@ -474,8 +474,9 @@ test("ARC-MEMBER-08 review: inactive historical sources require both explicit fl
     roleAssignments: [],
   };
 
-  assert.deepEqual(buildProgramParticipationBackfillCandidates({ ...input, includeInactive: true }), []);
-  assert.deepEqual(buildProgramParticipationBackfillCandidates({ ...input, includeHistorical: true }), []);
+  assert.deepEqual(buildProgramParticipationBackfillCandidates(input), []);
+  assert.equal(buildProgramParticipationBackfillCandidates({ ...input, includeInactive: true }).length, 1);
+  assert.equal(buildProgramParticipationBackfillCandidates({ ...input, includeHistorical: true }).length, 1);
   assert.equal(
     buildProgramParticipationBackfillCandidates({
       ...input,
