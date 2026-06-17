@@ -34,7 +34,7 @@ Sources reviewed:
 | Dedicated MemberOps reports route | Implemented read-only foundation | `/member-ops/reports` is active for staff-scoped MemberOps users and shows existing member totals, lifecycle counts, role/person-type counts, roster/program/team coverage, and qualification/certification summaries where safely available. Advanced analytics, exports, BI, and automation remain future work. |
 | Guardian-derived team visibility | Partial foundation | Guardian-derived scope helpers exist and tests cover active athlete relationship scope. Product-owner confirmation is still needed before broadening MemberOps visibility. |
 | Duplicate athlete-in-program control | Implemented route/service guardrail with future model-wide limits | ARC-MEMBER-03 consolidates duplicate roster checks into a shared guardrail. Exact team/season duplicates are blocked, and Athlete same-program/same-season duplicates across teams are blocked in current roster add/move paths. Full first-class program participation remains future work. |
-| First-class program participation | Missing/recommended next foundation | Program participation independent of team membership or role assignment does not exist today. ARC-MEMBER-06 recommends a product-owner-confirmed Program Participation Model Foundation as the next implementation arc before lifecycle automation, report expansion, duplicate-guardrail migration, or Guardian visibility changes. |
+| First-class program participation | Implemented foundation with future workflow limits | ARC-MEMBER-07 adds a minimal first-class ProgramParticipation model, helper coverage, and read-only reports/lifecycle inclusion. It does not add management UI, automatic backfill, lifecycle automation, duplicate-guardrail migration, Guardian visibility changes, or role permission changes. |
 
 ## Role Validation Matrix
 
@@ -55,9 +55,9 @@ Sources reviewed:
 - General Manager and specialty MemberOps role taxonomy remain out of current scope.
 - Pairwise Guardian relationships remain the household model; no household aggregate exists.
 - Emergency Contact exists as a Guardian relationship role, not a separate emergency-contact entity/workflow.
-- Program-to-team outline selection, multi-select assignment, and first-class program participation remain future work.
+- Program-to-team outline selection and multi-select assignment remain future work.
 - Joining, transfer, departure, and offboarding flows are not yet consolidated into a single lifecycle workflow.
-- Full model-wide program participation remains future work. Current roster add/move paths enforce duplicate team/season membership protection and Athlete same-program/same-season duplicate protection.
+- Program participation management UI, safe backfill from roles/rosters, model-wide duplicate guardrail migration, and operational workflow integration remain future work. Current roster add/move paths continue enforcing duplicate team/season membership protection and Athlete same-program/same-season duplicate protection.
 
 ## Validation Notes
 
@@ -89,3 +89,12 @@ model-wide uniqueness policy independent of role and roster records. See
 for the current behavior, options, tradeoffs, and recommendation. The
 recommended next implementation arc is `ARC-MEMBER-07 — Program Participation
 Model Foundation`, subject to product-owner confirmation.
+
+ARC-MEMBER-07 implements the Program Participation Model Foundation. It adds a
+minimal `ProgramParticipation` model with optional season support, partial
+unique indexes for evergreen and season-bound exact duplicate protection,
+shared pure helpers, focused tests, and low-risk read-only inclusion in
+MemberOps reports and lifecycle context. It does not run backfill, create
+management UI, broaden Guardian visibility, broaden Athlete permissions, change
+role permission policy, migrate duplicate guardrails, or add lifecycle
+automation.

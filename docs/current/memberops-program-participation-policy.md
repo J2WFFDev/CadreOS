@@ -2,7 +2,7 @@
 
 ## ARC-MEMBER-06 — First-Class Program Participation Policy Decision
 
-Status: completed recommendation; pending merge.
+Status: completed recommendation; merged in PR #387.
 
 ARC-MEMBER-06 reviewed the current MemberOps implementation and documents the
 policy recommendation for first-class program participation before any schema,
@@ -220,3 +220,70 @@ joining, transfer, departure, offboarding, report expansion, import/export, and
 any Guardian visibility use of program participation. Release 2 work should
 continue to hold bulk import, advanced analytics, BI, and automation-heavy
 orchestration unless explicitly reprioritized.
+
+## ARC-MEMBER-07 — Program Participation Model Foundation
+
+Status: implemented foundation; pending merge.
+
+ARC-MEMBER-07 implements the selected Option B foundation. First-class program
+participation now has a minimal schema foundation that coexists with existing
+role and roster behavior.
+
+Implemented:
+
+- `ProgramParticipationStatus` with Active and Inactive foundation states.
+- `ProgramParticipation` linking organization, person, program, and optional
+  season.
+- Partial unique database indexes that distinguish evergreen participation
+  from season-bound participation so nullable `seasonId` does not allow exact
+  duplicate rows.
+- Pure helper coverage for deriving program participation candidates from
+  roles/rosters, merging explicit and derived context, detecting exact
+  duplicate participation, and checking program scope overlap.
+- Read-only reports/lifecycle inclusion for explicit program participation
+  where it is already visible through staff program scope.
+
+Not implemented:
+
+- Program participation management UI.
+- Automatic backfill from existing roles or rosters.
+- Lifecycle workflow automation.
+- Joining, transfer, departure, or offboarding workflows.
+- Duplicate guardrail migration from roster paths to participation paths.
+- Guardian visibility broadening.
+- Athlete permission broadening.
+- Reports/export/BI expansion beyond existing read-only report coverage.
+
+Current read behavior:
+
+- Existing role and roster-derived context remains valid.
+- Explicit program participation is additive and does not replace roles or
+  rosters.
+- Reports count distinct people per represented program across explicit,
+  role-derived, and roster-derived context without double-counting one person
+  in the same program.
+- Lifecycle context can display explicit participation alongside existing role
+  and roster context.
+
+Backfill/migration handling:
+
+- No destructive backfill is run in ARC-MEMBER-07.
+- Existing role and roster records remain the current operational source for
+  current workflows until a future migration/backfill arc is explicitly scoped.
+- Future backfill should derive candidate participation rows from
+  `RoleAssignment.programId`, `RoleAssignment.team.programId`, and
+  `RosterMembership.team.programId`, then review season semantics before
+  writing rows.
+
+Recommended next arc:
+
+`ARC-MEMBER-08 — Program Participation Management and Backfill Policy`
+
+Suggested boundaries for the next arc:
+
+- define authorized create/update/archive behavior for explicit participation
+- decide and implement safe backfill rules from current role/roster data
+- add a narrow management surface only if product-owner approved
+- keep Guardian visibility relationship-derived unless separately decided
+- keep lifecycle automation and full joining/transfer/departure/offboarding
+  workflows future roadmap work

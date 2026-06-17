@@ -2,10 +2,12 @@ import {
   CertificationVerificationStatus,
   MemberLifecycleStatus,
   type Prisma,
+  ProgramParticipationStatus,
   QualificationAssignmentStatus,
 } from "@prisma/client";
 
 import { MEMBER_LIFECYCLE_STATUS_LABELS } from "@/lib/member-ops";
+import { mergeExplicitAndDerivedProgramParticipation } from "@/lib/member-ops-program-participation";
 import {
   CERTIFICATION_VERIFICATION_STATUS_LABELS,
   getExpirationState,
@@ -31,6 +33,12 @@ export type MemberOpsReportPerson = {
   roster: Array<{
     rosterRole: string;
     team: { id: string; name: string; program: { id: string; name: string } };
+  }>;
+  programParticipations: Array<{
+    id: string;
+    status: ProgramParticipationStatus;
+    program: { id: string; name: string };
+    season: { id: string; name: string } | null;
   }>;
 };
 
@@ -140,21 +148,17 @@ export function buildMemberOpsProgramCoverageRows(people: readonly MemberOpsRepo
   const programPeople = new Map<string, { label: string; personIds: Set<string> }>();
 
   for (const person of people) {
-    for (const membership of person.roster) {
-      const program = membership.team.program;
-      const row = programPeople.get(program.id) ?? { label: program.name, personIds: new Set<string>() };
-      row.personIds.add(person.id);
-      programPeople.set(program.id, row);
-    }
+    const contexts = mergeExplicitAndDerivedProgramParticipation({
+      personId: person.id,
+      participations: person.programParticipations,
+      roles: person.roles,
+      roster: person.roster,
+    });
 
-    for (const role of person.roles) {
-      const program = role.program ?? role.team?.program ?? null;
-      if (!program) {
-        continue;
-      }
-      const row = programPeople.get(program.id) ?? { label: program.name, personIds: new Set<string>() };
+    for (const context of contexts) {
+      const row = programPeople.get(context.programId) ?? { label: context.programName, personIds: new Set<string>() };
       row.personIds.add(person.id);
-      programPeople.set(program.id, row);
+      programPeople.set(context.programId, row);
     }
   }
 

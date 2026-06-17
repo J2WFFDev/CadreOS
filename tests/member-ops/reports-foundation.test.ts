@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   CertificationVerificationStatus,
   MemberLifecycleStatus,
+  ProgramParticipationStatus,
   QualificationAssignmentStatus,
   RoleType,
 } from "@prisma/client";
@@ -26,6 +27,7 @@ function reportPerson(overrides: Partial<MemberOpsReportPerson> = {}): MemberOps
     lifecycleStatus: overrides.lifecycleStatus ?? MemberLifecycleStatus.ACTIVE,
     roles: overrides.roles ?? [],
     roster: overrides.roster ?? [],
+    programParticipations: overrides.programParticipations ?? [],
   };
 }
 
@@ -96,6 +98,48 @@ test("ARC-MEMBER-05: program and team coverage count distinct visible people", (
   assert.deepEqual(buildMemberOpsTeamCoverageRows(people), [
     { key: "team-1", label: "SASP · Precision", count: 2 },
   ]);
+});
+
+test("ARC-MEMBER-07: program coverage includes explicit participation without double-counting derived context", () => {
+  const rows = buildMemberOpsProgramCoverageRows([
+    reportPerson({
+      id: "person-1",
+      programParticipations: [
+        {
+          id: "participation-1",
+          status: ProgramParticipationStatus.ACTIVE,
+          program: { id: "program-1", name: "SASP" },
+          season: null,
+        },
+      ],
+      roles: [
+        {
+          roleType: RoleType.ATHLETE,
+          program: { id: "program-1", name: "SASP" },
+          team: null,
+        },
+      ],
+      roster: [
+        {
+          rosterRole: RoleType.ATHLETE,
+          team: { id: "team-1", name: "Precision", program: { id: "program-1", name: "SASP" } },
+        },
+      ],
+    }),
+    reportPerson({
+      id: "person-2",
+      programParticipations: [
+        {
+          id: "participation-2",
+          status: ProgramParticipationStatus.ACTIVE,
+          program: { id: "program-1", name: "SASP" },
+          season: null,
+        },
+      ],
+    }),
+  ]);
+
+  assert.deepEqual(rows, [{ key: "program-1", label: "SASP", count: 2 }]);
 });
 
 test("ARC-MEMBER-05: qualification and certification report summaries resolve expiration state", () => {

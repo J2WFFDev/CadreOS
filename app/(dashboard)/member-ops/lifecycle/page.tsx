@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MemberLifecycleStatus } from "@prisma/client";
+import { MemberLifecycleStatus, ProgramParticipationStatus } from "@prisma/client";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ErrorMessage } from "@/components/dashboard/error-message";
@@ -13,6 +13,7 @@ import {
 } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { MEMBER_LIFECYCLE_STATUS_LABELS } from "@/lib/member-ops";
+import { mergeExplicitAndDerivedProgramParticipation } from "@/lib/member-ops-program-participation";
 import {
   buildMemberLifecycleStatusCounts,
   formatLifecycleStatusSummary,
@@ -66,13 +67,33 @@ function formatRoleSummary(roleTypes: readonly string[]) {
 
 function formatProgramTeamSummary(
   memberships: Array<{
-    team: { name: string; program: { name: string } };
+    team: { id: string; name: string; program: { id: string; name: string } };
   }>,
   roles: Array<{
-    program: { name: string } | null;
-    team: { name: string; program: { name: string } | null } | null;
+    roleType: string;
+    program: { id: string; name: string } | null;
+    team: { id: string; name: string; program: { id: string; name: string } | null } | null;
+  }>,
+  participations: Array<{
+    id: string;
+    status: ProgramParticipationStatus;
+    program: { id: string; name: string };
+    season: { id: string; name: string } | null;
   }>,
 ) {
+  const participationSummaries = mergeExplicitAndDerivedProgramParticipation({
+    personId: "display-only",
+    participations,
+    roles,
+    roster: memberships.map((membership) => ({
+      rosterRole: "ROSTER",
+      team: {
+        id: membership.team.id,
+        name: membership.team.name,
+        program: membership.team.program,
+      },
+    })),
+  }).map((context) => (context.seasonName ? `${context.programName} (${context.seasonName})` : context.programName));
   const rosterSummaries = memberships.map((membership) => `${membership.team.program.name} · ${membership.team.name}`);
   const roleSummaries = roles.map((role) => {
     if (role.team?.program?.name) {
@@ -83,7 +104,7 @@ function formatProgramTeamSummary(
     }
     return null;
   });
-  const summaries = [...rosterSummaries, ...roleSummaries].filter((value): value is string => Boolean(value));
+  const summaries = [...participationSummaries, ...rosterSummaries, ...roleSummaries].filter((value): value is string => Boolean(value));
 
   return summaries.length > 0 ? [...new Set(summaries)].join(", ") : "No program/team context";
 }
@@ -204,6 +225,12 @@ export default async function MemberOpsLifecyclePage({
           rosterRole: string;
           team: { id: string; name: string; program: { id: string; name: string } };
         }>;
+        programParticipations: Array<{
+          id: string;
+          status: ProgramParticipationStatus;
+          program: { id: string; name: string };
+          season: { id: string; name: string } | null;
+        }>;
       }>
     | null = null;
   let peopleLoadErrorMessage: string | null = null;
@@ -230,6 +257,9 @@ export default async function MemberOpsLifecyclePage({
                   : []),
                 ...(staffScopeResolution.allowedProgramIds.length > 0
                   ? [{ roles: { some: { organizationId: scope.organizationId, team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
+                  : []),
+                ...(staffScopeResolution.allowedProgramIds.length > 0
+                  ? [{ programParticipations: { some: { organizationId: scope.organizationId, programId: { in: staffScopeResolution.allowedProgramIds } } } }]
                   : []),
               ],
             }),
@@ -266,6 +296,20 @@ export default async function MemberOpsLifecyclePage({
             },
           },
         },
+        programParticipations: {
+          where: {
+            organizationId: scope.organizationId,
+            ...(staffScopeResolution.allowAllStaffScope
+              ? {}
+              : { programId: { in: staffScopeResolution.allowedProgramIds } }),
+          },
+          select: {
+            id: true,
+            status: true,
+            program: { select: { id: true, name: true } },
+            season: { select: { id: true, name: true } },
+          },
+        },
       },
       orderBy: [{ lifecycleStatus: "asc" }, { lastName: "asc" }, { firstName: "asc" }],
     });
@@ -283,6 +327,13 @@ export default async function MemberOpsLifecyclePage({
           staffScopeResolution,
           membership.team.id,
           membership.team.program.id,
+        ),
+      ),
+      programParticipations: person.programParticipations.filter((participation) =>
+        matchesScopedTeamOrProgram(
+          staffScopeResolution,
+          null,
+          participation.program.id,
         ),
       ),
     }));
@@ -340,7 +391,7 @@ export default async function MemberOpsLifecyclePage({
               Status mix in current scope: {formatLifecycleStatusSummary(lifecycleCounts)}.
             </p>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              This route is read-only and uses existing person, role, and roster data. Joining, transfer, departure, and offboarding automation remain future work.
+              This route is read-only and uses existing person, role, roster, and program participation data. Joining, transfer, departure, and offboarding automation remain future work.
             </p>
           </div>
 
@@ -398,7 +449,7 @@ export default async function MemberOpsLifecyclePage({
                         {MEMBER_LIFECYCLE_STATUS_LABELS[person.lifecycleStatus]}
                       </td>
                       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                        {formatProgramTeamSummary(person.roster, person.roles)}
+                        {formatProgramTeamSummary(person.roster, person.roles, person.programParticipations)}
                       </td>
                       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                         {formatRoleSummary(roleTypes)}

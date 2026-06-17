@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   CertificationVerificationStatus,
   MemberLifecycleStatus,
+  ProgramParticipationStatus,
   QualificationAssignmentStatus,
 } from "@prisma/client";
 
@@ -219,6 +220,12 @@ export default async function MemberOpsReportsPage() {
           rosterRole: string;
           team: { id: string; name: string; program: { id: string; name: string } };
         }>;
+        programParticipations: Array<{
+          id: string;
+          status: ProgramParticipationStatus;
+          program: { id: string; name: string };
+          season: { id: string; name: string } | null;
+        }>;
       }>
     | null = null;
   let peopleLoadErrorMessage: string | null = null;
@@ -250,6 +257,9 @@ export default async function MemberOpsReportsPage() {
                   : []),
                 ...(staffScopeResolution.allowedProgramIds.length > 0
                   ? [{ roles: { some: { organizationId: scope.organizationId, team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
+                  : []),
+                ...(staffScopeResolution.allowedProgramIds.length > 0
+                  ? [{ programParticipations: { some: { organizationId: scope.organizationId, programId: { in: staffScopeResolution.allowedProgramIds } } } }]
                   : []),
               ],
             }),
@@ -284,6 +294,20 @@ export default async function MemberOpsReportsPage() {
             },
           },
         },
+        programParticipations: {
+          where: {
+            organizationId: scope.organizationId,
+            ...(staffScopeResolution.allowAllStaffScope
+              ? {}
+              : { programId: { in: staffScopeResolution.allowedProgramIds } }),
+          },
+          select: {
+            id: true,
+            status: true,
+            program: { select: { id: true, name: true } },
+            season: { select: { id: true, name: true } },
+          },
+        },
       },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     });
@@ -301,6 +325,13 @@ export default async function MemberOpsReportsPage() {
           staffScopeResolution,
           membership.team.id,
           membership.team.program.id,
+        ),
+      ),
+      programParticipations: person.programParticipations.filter((participation) =>
+        matchesScopedTeamOrProgram(
+          staffScopeResolution,
+          null,
+          participation.program.id,
         ),
       ),
     }));
@@ -391,6 +422,10 @@ export default async function MemberOpsReportsPage() {
   const certificationRows = summarizeMemberOpsCertificationRecords(certificationRecords);
   const rosterMembershipCount = people.reduce((count, person) => count + person.roster.length, 0);
   const roleAssignmentCount = people.reduce((count, person) => count + person.roles.length, 0);
+  const explicitProgramParticipationCount = people.reduce(
+    (count, person) => count + person.programParticipations.length,
+    0,
+  );
   const expiringSoonQualificationCount = countExpiringSoonMemberOpsRecords(qualificationRecords);
   const expiringSoonCertificationCount = countExpiringSoonMemberOpsRecords(certificationRecords);
 
@@ -432,6 +467,7 @@ export default async function MemberOpsReportsPage() {
             <SummaryCard label="Visible members" value={people.length} href="/people" />
             <SummaryCard label="Roster memberships" value={rosterMembershipCount} href="/teams" />
             <SummaryCard label="Scoped role assignments" value={roleAssignmentCount} href="/people" />
+            <SummaryCard label="Program participations" value={explicitProgramParticipationCount} href="/programs" />
             <SummaryCard label="Programs represented" value={programRows.length} href="/programs" />
           </div>
 

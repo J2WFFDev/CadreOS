@@ -22,6 +22,11 @@ enum MemberLifecycleStatus {
   ALUMNI
 }
 
+enum ProgramParticipationStatus {
+  ACTIVE
+  INACTIVE
+}
+
 enum RoleType {
   ORGANIZATION_ADMIN
   PROGRAM_DIRECTOR
@@ -844,6 +849,7 @@ model Organization {
   roleAssignments              RoleAssignment[]
   athleteGuardianRelationships AthleteGuardianRelationship[]
   rosterMemberships            RosterMembership[]
+  programParticipations        ProgramParticipation[]
   observationNotes             ObservationNote[]
   events                       Event[]
   rsvps                        RSVP[]
@@ -939,6 +945,7 @@ model Program {
   teams            Team[]
   seasons          Season[]
   roles            RoleAssignment[]
+  participations   ProgramParticipation[]
   events           Event[]
   auditEvents      AuditEvent[]
   eligibilityDefinitions EligibilityDefinition[]
@@ -998,6 +1005,7 @@ model Season {
   organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   program      Program            @relation(fields: [programId], references: [id], onDelete: Restrict)
   roster       RosterMembership[]
+  programParticipations ProgramParticipation[]
 
   @@unique([programId, name])
   @@index([organizationId, programId])
@@ -1034,6 +1042,7 @@ model Person {
   userAccounts                         UserAccount[]
   roles                                RoleAssignment[]
   roster                               RosterMembership[]
+  programParticipations                ProgramParticipation[]
   authoredNotes                        ObservationNote[]             @relation("NoteAuthor")
   athleteNotes                         ObservationNote[]             @relation("NoteAthlete")
   eventRsvps                           RSVP[]
@@ -1335,6 +1344,26 @@ model StaffingAssignmentCoverage {
 
   @@unique([staffingAssignmentId, coverageType])
   @@index([organizationId, coverageType])
+}
+
+model ProgramParticipation {
+  id             String                     @id @default(cuid())
+  organizationId String
+  personId       String
+  programId      String
+  seasonId       String?
+  status         ProgramParticipationStatus @default(ACTIVE)
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  person       Person       @relation(fields: [personId], references: [id], onDelete: Cascade)
+  program      Program      @relation(fields: [programId], references: [id], onDelete: Restrict)
+  season       Season?      @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, personId, status])
+  @@index([organizationId, programId, status])
+  @@index([organizationId, seasonId])
 }
 
 model AthleteGuardianRelationship {

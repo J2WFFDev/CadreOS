@@ -65,14 +65,14 @@ and [`Arc 24D.9A`](../planning/arc-24d-9a-entry-relationships-foundation-audit.m
   aggregate exists.
 - Emergency Contact exists as a Guardian relationship role, not a separate
   emergency-contact entity/workflow.
-- Program-to-team outline selection, multi-select assignment, first-class
-  program participation, and consolidated joining/transfer/departure/offboarding
-  workflows remain future work. ARC-MEMBER-06 clarifies that current program
-  participation is role/roster-derived and recommends a product-owner-confirmed
-  Program Participation Model Foundation as the next implementation arc.
+- Program-to-team outline selection, multi-select assignment, program
+  participation management/backfill, and consolidated
+  joining/transfer/departure/offboarding workflows remain future work.
+  ARC-MEMBER-07 adds the first-class ProgramParticipation foundation, but does
+  not add a management UI, automatic backfill, or lifecycle automation.
 - ARC-MEMBER-03 consolidated duplicate roster guardrails for current add/move
-  paths. Full first-class program participation and model-wide participation
-  policy remain future work.
+  paths. Model-wide duplicate guardrail migration to first-class program
+  participation remains future work.
 - ARC-MEMBER-02 resolved the confirmed app-role helper / backend scoped
   permission mismatch for person qualification/certification assignment and
   update actions.
