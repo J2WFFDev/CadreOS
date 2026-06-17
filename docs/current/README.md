@@ -10,9 +10,10 @@ links to detailed source documents without replacing planning history.
 2. [`arc-log.md`](./arc-log.md) - concise arc completion and active-work record.
 3. [`open-issues.md`](./open-issues.md) - explicitly documented unresolved issues.
 4. [`memberops-validation.md`](./memberops-validation.md) - current MemberOps reconciliation and role validation matrix.
-5. [`decisions.md`](./decisions.md) - current product, naming, visibility, and taxonomy decisions.
-6. [`known-issue-patterns.md`](./known-issue-patterns.md) - recurring implementation and validation risks.
-7. [`../product/CURRENT_PRODUCT_DECISIONS.md`](../product/CURRENT_PRODUCT_DECISIONS.md) - canonical active product decisions.
+5. [`memberops-program-participation-policy.md`](./memberops-program-participation-policy.md) - current first-class program participation recommendation.
+6. [`decisions.md`](./decisions.md) - current product, naming, visibility, and taxonomy decisions.
+7. [`known-issue-patterns.md`](./known-issue-patterns.md) - recurring implementation and validation risks.
+8. [`../product/CURRENT_PRODUCT_DECISIONS.md`](../product/CURRENT_PRODUCT_DECISIONS.md) - canonical active product decisions.
 
 ## File Purposes
 
@@ -20,6 +21,7 @@ links to detailed source documents without replacing planning history.
 - `arc-log.md`: the shortest reliable answer to "what has completed and what is active?"
 - `open-issues.md`: confirmed gaps and deferred decisions found in repository docs.
 - `memberops-validation.md`: MemberOps Arc 26A/26E reconciliation, current role matrix, and confirmed remaining gaps.
+- `memberops-program-participation-policy.md`: ARC-MEMBER-06 current behavior, options, and recommendation for first-class program participation.
 - `known-issue-patterns.md`: recurring categories to check during planning and review.
 - `decisions.md`: consolidated current decisions with links to their source documents.
 

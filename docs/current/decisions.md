@@ -85,6 +85,27 @@ Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-cont
 [`Arc 24D.8S`](../planning/arc-24d-8s-entryops-lifecycle-validation.md), and
 [`Arc 26E`](../../planning/ARC_26E_MEMBEROPS_ROLE_EXPERIENCE_PERMISSIONS_AND_OPERATIONAL_VALIDATION.md).
 
+## MemberOps Program Participation
+
+- Program participation is not first-class in the current build. Current
+  MemberOps behavior derives program context from role assignments and team
+  roster memberships.
+- Current roster add/move duplicate guardrails protect Athlete
+  same-program/same-season duplicates in implemented roster paths by comparing
+  roster team program and season context.
+- Reports and lifecycle views should describe current program/team context as
+  role/roster-derived until a first-class participation model exists.
+- Guardian visibility must not be broadened by inferred program participation.
+  Guardian app access remains derived from active Guardian relationships.
+- Recommendation: add first-class program participation later through a
+  product-owner-confirmed Program Participation Model Foundation arc. Do not
+  add schema, migrations, lifecycle automation, reports behavior changes,
+  duplicate guardrail migration, role permission changes, or Guardian
+  visibility changes as part of ARC-MEMBER-06.
+
+Source:
+[`memberops-program-participation-policy.md`](./memberops-program-participation-policy.md).
+
 ## Entry Organization, Visibility, And Responsibility
 
 - **Creator** is system history and is shown as **Created by**. Reassignment,
