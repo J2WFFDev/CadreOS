@@ -96,6 +96,14 @@ Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-cont
   roster team program and season context.
 - Reports and lifecycle views may include explicit program participation as
   read-only context alongside role/roster-derived context.
+- `/member-ops/program-participation` is a staff-scoped read-only review route
+  for explicit participation records. It is not a create/update workflow.
+- Program participation mutation remains deferred until a future decision adds
+  explicit backend actions such as `programParticipation.create` and
+  `programParticipation.update` with scoped role tests.
+- Backfill from roles/rosters must remain preview-only and non-writing until a
+  future implementation arc approves execution, audit behavior, rollback, and
+  duplicate handling.
 - Explicit program participation is additive. It does not replace
   `RoleAssignment`, `RosterMembership`, person lifecycle status, Guardian
   relationships, or scoped backend permission checks.

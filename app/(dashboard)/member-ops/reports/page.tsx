@@ -454,6 +454,9 @@ export default async function MemberOpsReportsPage() {
             <Link href="/member-ops/lifecycle" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
               Lifecycle
             </Link>
+            <Link href="/member-ops/program-participation" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Program Participation
+            </Link>
           </div>
         }
       />
@@ -473,7 +476,7 @@ export default async function MemberOpsReportsPage() {
             <SummaryCard label="Visible members" value={people.length} href="/people" />
             <SummaryCard label="Roster memberships" value={rosterMembershipCount} href="/teams" />
             <SummaryCard label="Scoped role assignments" value={roleAssignmentCount} href="/people" />
-            <SummaryCard label="Program participations" value={explicitProgramParticipationCount} href="/programs" />
+            <SummaryCard label="Program participations" value={explicitProgramParticipationCount} href="/member-ops/program-participation" />
             <SummaryCard label="Programs represented" value={programRows.length} href="/programs" />
           </div>
 

@@ -223,7 +223,7 @@ orchestration unless explicitly reprioritized.
 
 ## ARC-MEMBER-07 — Program Participation Model Foundation
 
-Status: implemented foundation; pending merge.
+Status: completed foundation; merged in PR #388.
 
 ARC-MEMBER-07 implements the selected Option B foundation. First-class program
 participation now has a minimal schema foundation that coexists with existing
@@ -287,3 +287,81 @@ Suggested boundaries for the next arc:
 - keep Guardian visibility relationship-derived unless separately decided
 - keep lifecycle automation and full joining/transfer/departure/offboarding
   workflows future roadmap work
+
+## ARC-MEMBER-08 — Program Participation Management and Backfill Policy
+
+Status: implemented read-only management and preview policy; pending merge.
+
+ARC-MEMBER-08 adds the next safe layer on the ARC-MEMBER-07 foundation without
+changing role permissions, Guardian visibility, roster behavior, lifecycle
+automation, duplicate guardrails, or bulk migration behavior.
+
+Implemented:
+
+- Staff-scoped read-only Program Participation review route at
+  `/member-ops/program-participation`.
+- Explicit `ProgramParticipation` record display with member, program, optional
+  season, status, created date, updated date, and links to existing member and
+  program detail routes.
+- Scoped review query helper that lets organization-wide staff see all
+  participation records and program-scoped staff see only allowed program
+  records.
+- Non-writing backfill preview helpers that derive candidate participation rows
+  from roster memberships, program-scoped role assignments, and team-scoped
+  role assignments through `team.programId`.
+- Duplicate preview handling that merges exact person/program/season candidates
+  and preserves source IDs and labels for manual review.
+
+Management route access:
+
+- Organization Admin can review all explicit participation records in the
+  organization.
+- Program Manager / Program Director can review records inside resolved program
+  scope.
+- Coach can access the staff-only route under existing MemberOps read policy,
+  but sees only records covered by resolved program scope. Team-only scope does
+  not expand into program-wide participation review.
+- Guardian, Athlete, limited viewer, unlinked, and unauthenticated access
+  remains blocked.
+
+Mutation policy:
+
+- Program participation create/update/delete is deferred.
+- Current backend permission policy has no `programParticipation.create` or
+  `programParticipation.update` action, and adding one would be a role
+  permission policy change.
+- The management surface is therefore read-only until a follow-up arc defines
+  scoped mutation authority for Organization Admin, Program Manager / Program
+  Director, Coach, and non-staff roles.
+
+Backfill policy:
+
+- No automatic backfill runs in ARC-MEMBER-08.
+- Candidate sources are roster memberships, program-scoped role assignments,
+  and team-scoped role assignments through `team.programId`.
+- Guardian relationship-only access, Emergency Contact relationships,
+  non-member contacts, and records without program context are not candidate
+  sources.
+- Inactive or historical inputs are excluded by default and must be explicitly
+  selected for preview.
+- Roster-derived candidates may be season-bound when a roster season is present;
+  role-derived candidates remain evergreen until a future policy chooses
+  otherwise.
+- Future write execution should remain manual-review or preview-first until
+  duplicate handling, permission checks, audit behavior, and rollback behavior
+  are fully tested.
+
+Recommended next arc:
+
+`ARC-MEMBER-09 — Program Participation Mutation Policy`
+
+Suggested boundaries for that arc:
+
+- define explicit backend actions for participation create/update if approved
+- decide whether Program Manager / Program Director may mutate only in program
+  scope and whether Coach remains read-only
+- decide whether status changes, season changes, and archive/delete behavior are
+  allowed
+- keep automatic backfill execution separate unless product-owner approved
+- preserve Guardian relationship-derived visibility and current role/roster
+  behavior

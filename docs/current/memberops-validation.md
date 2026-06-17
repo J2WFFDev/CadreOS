@@ -34,7 +34,7 @@ Sources reviewed:
 | Dedicated MemberOps reports route | Implemented read-only foundation | `/member-ops/reports` is active for staff-scoped MemberOps users and shows existing member totals, lifecycle counts, role/person-type counts, roster/program/team coverage, and qualification/certification summaries where safely available. Advanced analytics, exports, BI, and automation remain future work. |
 | Guardian-derived team visibility | Partial foundation | Guardian-derived scope helpers exist and tests cover active athlete relationship scope. Product-owner confirmation is still needed before broadening MemberOps visibility. |
 | Duplicate athlete-in-program control | Implemented route/service guardrail with future model-wide limits | ARC-MEMBER-03 consolidates duplicate roster checks into a shared guardrail. Exact team/season duplicates are blocked, and Athlete same-program/same-season duplicates across teams are blocked in current roster add/move paths. Full first-class program participation remains future work. |
-| First-class program participation | Implemented foundation with future workflow limits | ARC-MEMBER-07 adds a minimal first-class ProgramParticipation model, helper coverage, and read-only reports/lifecycle inclusion. It does not add management UI, automatic backfill, lifecycle automation, duplicate-guardrail migration, Guardian visibility changes, or role permission changes. |
+| First-class program participation | Implemented read-only management foundation with future mutation/workflow limits | ARC-MEMBER-07 adds a minimal first-class ProgramParticipation model, helper coverage, and read-only reports/lifecycle inclusion. ARC-MEMBER-08 adds a staff-scoped read-only participation review route and non-writing backfill preview helpers. It does not add create/update mutations, automatic backfill writes, lifecycle automation, duplicate-guardrail migration, Guardian visibility changes, or role permission changes. |
 
 ## Role Validation Matrix
 
@@ -57,7 +57,7 @@ Sources reviewed:
 - Emergency Contact exists as a Guardian relationship role, not a separate emergency-contact entity/workflow.
 - Program-to-team outline selection and multi-select assignment remain future work.
 - Joining, transfer, departure, and offboarding flows are not yet consolidated into a single lifecycle workflow.
-- Program participation management UI, safe backfill from roles/rosters, model-wide duplicate guardrail migration, and operational workflow integration remain future work. Current roster add/move paths continue enforcing duplicate team/season membership protection and Athlete same-program/same-season duplicate protection.
+- Program participation mutation policy, automatic backfill execution from roles/rosters, model-wide duplicate guardrail migration, and operational workflow integration remain future work. ARC-MEMBER-08 provides read-only participation review and non-writing candidate preview helpers only. Current roster add/move paths continue enforcing duplicate team/season membership protection and Athlete same-program/same-season duplicate protection.
 
 ## Validation Notes
 
@@ -98,3 +98,13 @@ MemberOps reports and lifecycle context. It does not run backfill, create
 management UI, broaden Guardian visibility, broaden Athlete permissions, change
 role permission policy, migrate duplicate guardrails, or add lifecycle
 automation.
+
+ARC-MEMBER-08 implements the Program Participation Management and Backfill
+Policy foundation. It adds `/member-ops/program-participation` as a
+staff-scoped read-only review route for explicit participation records and pure
+backfill preview helpers that derive non-writing candidates from roster
+memberships and program/team-scoped role assignments. It documents mutation as
+policy-blocked because the backend permission registry has no
+`programParticipation.create` or `programParticipation.update` action. It does
+not broaden Guardian/Athlete access, add role permission policy, run automatic
+backfill, change roster duplicate guardrails, or add lifecycle automation.
