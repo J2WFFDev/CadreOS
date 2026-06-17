@@ -33,7 +33,8 @@ only when an old-to-new mapping is useful for traceability.
 | ARC-MEMBER-03 — MemberOps Duplicate Athlete/Program Guardrails | Follow-up to ARC-MEMBER-01 duplicate athlete/program gap | Completed / merged |
 | ARC-MEMBER-04 — MemberOps Lifecycle Route Foundation | Follow-up to ARC-MEMBER-01 dedicated lifecycle route gap | Completed / merged |
 | ARC-MEMBER-05 — MemberOps Reports Foundation | Follow-up to ARC-MEMBER-01 dedicated reports route gap | Completed / merged |
-| ARC-MEMBER-06 — First-Class Program Participation Policy Decision | Follow-up to MemberOps first-class program participation gap | Completed / pending merge |
+| ARC-MEMBER-06 — First-Class Program Participation Policy Decision | Follow-up to MemberOps first-class program participation gap | Completed / merged |
+| ARC-MEMBER-07 — Program Participation Model Foundation | Follow-up to ARC-MEMBER-06 selected recommendation | Completed / pending merge |
 
 Recent historical arcs without an assigned simplified identifier keep their
 old labels until a future documentation reconciliation assigns one.
@@ -67,7 +68,8 @@ old labels until a future documentation reconciliation assigns one.
 | ARC-MEMBER-03 — MemberOps Duplicate Athlete/Program Guardrails | Completed / merged | [PR #384](https://github.com/J2WFFDev/CadreOS/pull/384), merge `ba09a69ff5d94d30055f7948aed639f782df8d3e` |
 | ARC-MEMBER-04 — MemberOps Lifecycle Route Foundation | Completed / merged | [PR #385](https://github.com/J2WFFDev/CadreOS/pull/385), merge `43f5f41d272f73e5049135c837921a4ca19705b7` |
 | ARC-MEMBER-05 — MemberOps Reports Foundation | Completed / merged | [PR #386](https://github.com/J2WFFDev/CadreOS/pull/386), merge `f62d36df0f9090741734ab465cb508ae4ef72d15` |
-| ARC-MEMBER-06 — First-Class Program Participation Policy Decision | Completed / pending merge | Documents current role/roster-derived program participation, options, and recommended next implementation arc |
+| ARC-MEMBER-06 — First-Class Program Participation Policy Decision | Completed / merged | [PR #387](https://github.com/J2WFFDev/CadreOS/pull/387), merge `e1b148f9f4263302ec7ffd479a77e101c1153ff4` |
+| ARC-MEMBER-07 — Program Participation Model Foundation | Completed / pending merge | Adds minimal ProgramParticipation foundation, helper coverage, and read-only reports/lifecycle inclusion |
 | ARC-UI-01 — Header Account Name Display (historical: UI.0-A) | Completed / merged | [PR #378](https://github.com/J2WFFDev/CadreOS/pull/378) |
 | ARC-UI-02 — Collapsible Sidebar and Independent Scrolling (historical: UI.1) | Completed / merged | PR #368 |
 | ARC-ENTRY-07 — Relationship Labels and Direction Semantics | Completed / merged | [PR #380](https://github.com/J2WFFDev/CadreOS/pull/380), merge `d831fe09e31ec6f5168b5ef8144eb498100c82c6` |
@@ -153,8 +155,9 @@ analytics, BI, schema, workflow automation, lifecycle behavior changes,
 permission broadening, Guardian/Athlete/limited access, household aggregation,
 or first-class program participation.
 
-ARC-MEMBER-06 — First-Class Program Participation Policy Decision is complete
-pending merge. It documents that current program participation is derived from
+ARC-MEMBER-06 — First-Class Program Participation Policy Decision is merged in
+PR #387 at merge `e1b148f9f4263302ec7ffd479a77e101c1153ff4`. It documents that
+current program participation is derived from
 role assignment program/team scope and roster membership team program context,
 not a first-class participation model. It compares continuing the derived
 policy, adding first-class participation later, and adding it now. The
@@ -163,6 +166,16 @@ product-owner-confirmed Program Participation Model Foundation arc, while the
 current build continues to preserve existing reports, lifecycle route,
 duplicate guardrails, Guardian visibility, role permissions, schema, and
 workflow behavior.
+
+ARC-MEMBER-07 — Program Participation Model Foundation is complete pending
+merge. It adds the minimal `ProgramParticipation` schema foundation with
+optional season support, partial unique indexes for evergreen and season-bound
+exact duplicate protection, shared helper coverage, and low-risk read-only
+reports/lifecycle inclusion. It preserves existing role, roster, Guardian,
+lifecycle, reports, duplicate guardrail, and permission behavior. It does not
+add management UI, automatic backfill, lifecycle automation,
+joining/transfer/departure/offboarding workflows, exports, BI, broad reports,
+Guardian approval workflows, household aggregates, or bulk mutation tooling.
 
 Implemented current behavior includes:
 

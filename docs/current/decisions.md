@@ -87,21 +87,23 @@ Sources: [`Arc 24D.8X-N`](../planning/arc-24d-8x-n-owner-assignee-lifecycle-cont
 
 ## MemberOps Program Participation
 
-- Program participation is not first-class in the current build. Current
-  MemberOps behavior derives program context from role assignments and team
-  roster memberships.
+- Program participation now has a minimal first-class foundation through
+  `ProgramParticipation`. Current operational behavior still preserves and
+  continues to derive program context from role assignments and team roster
+  memberships where those records are the source of existing workflows.
 - Current roster add/move duplicate guardrails protect Athlete
   same-program/same-season duplicates in implemented roster paths by comparing
   roster team program and season context.
-- Reports and lifecycle views should describe current program/team context as
-  role/roster-derived until a first-class participation model exists.
-- Guardian visibility must not be broadened by inferred program participation.
-  Guardian app access remains derived from active Guardian relationships.
-- Recommendation: add first-class program participation later through a
-  product-owner-confirmed Program Participation Model Foundation arc. Do not
-  add schema, migrations, lifecycle automation, reports behavior changes,
-  duplicate guardrail migration, role permission changes, or Guardian
-  visibility changes as part of ARC-MEMBER-06.
+- Reports and lifecycle views may include explicit program participation as
+  read-only context alongside role/roster-derived context.
+- Explicit program participation is additive. It does not replace
+  `RoleAssignment`, `RosterMembership`, person lifecycle status, Guardian
+  relationships, or scoped backend permission checks.
+- Guardian visibility must not be broadened by program participation. Guardian
+  app access remains derived from active Guardian relationships.
+- Program participation management UI, automatic backfill, duplicate guardrail
+  migration, lifecycle automation, joining/transfer/departure/offboarding
+  workflows, and any Guardian visibility use remain future product decisions.
 
 Source:
 [`memberops-program-participation-policy.md`](./memberops-program-participation-policy.md).

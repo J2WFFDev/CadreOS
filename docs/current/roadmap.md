@@ -82,10 +82,15 @@ committed.
   qualification, and certification data without adding exports, advanced
   analytics, BI, schema, workflow automation, or broader access.
 - ARC-MEMBER-06 — First-Class Program Participation Policy Decision is complete
-  pending merge. It documents that current program participation is derived
+  and merged in PR #387. It documents that current program participation is derived
   from role assignments and roster memberships, compares policy options, and
   recommends a product-owner-confirmed Program Participation Model Foundation
   as the next implementation arc without changing schema or behavior.
+- ARC-MEMBER-07 — Program Participation Model Foundation is complete pending
+  merge. It adds a minimal first-class ProgramParticipation schema foundation,
+  helper coverage, and read-only reports/lifecycle inclusion while preserving
+  existing role, roster, Guardian, lifecycle, reports, duplicate guardrail, and
+  permission behavior.
 - The GearOps CSV `asset_id` baseline fix is complete.
 
 See [`arc-log.md`](./arc-log.md) for conflicts and detailed links.
@@ -94,9 +99,9 @@ See [`arc-log.md`](./arc-log.md) for conflicts and detailed links.
 
 No active product arc is currently committed in `docs/current/`.
 
-The next product decision point requires product-owner confirmation.
-ARC-MEMBER-06 recommends `ARC-MEMBER-07 — Program Participation Model
-Foundation` as the next implementation arc, but it is not committed until the
+The next product decision point requires product-owner confirmation. The
+recommended next MemberOps arc is `ARC-MEMBER-08 — Program Participation
+Management and Backfill Policy`, but it is not committed until the
 product-owner explicitly selects it.
 
 ## Future Roadmap
@@ -119,11 +124,11 @@ product-owner explicitly selects it.
 - Continue confirmed MemberOps gaps only after product-owner selection of a
   specific next arc; see [`memberops-validation.md`](./memberops-validation.md).
   Remaining MemberOps product candidates include advanced reports/exports,
-  consolidated joining/transfer/departure/offboarding workflows, first-class
-  program participation, and other explicitly documented gaps.
-- First-class program participation should proceed through a focused Program
-  Participation Model Foundation before lifecycle automation, report expansion,
-  duplicate-guardrail migration, or Guardian visibility changes; see
+  consolidated joining/transfer/departure/offboarding workflows, program
+  participation management/backfill, and other explicitly documented gaps.
+- Program participation management UI, automatic backfill, duplicate-guardrail
+  migration, and workflow integration remain future work after the
+  ARC-MEMBER-07 foundation; see
   [`memberops-program-participation-policy.md`](./memberops-program-participation-policy.md).
 - Continue operational reporting/review only where role-safe scope and source
   data are reliable.
