@@ -97,7 +97,7 @@ No active product arc is currently committed in `docs/current/`.
 The next product decision point requires product-owner confirmation.
 ARC-MEMBER-06 recommends `ARC-MEMBER-07 — Program Participation Model
 Foundation` as the next implementation arc, but it is not committed until the
-product owner explicitly selects it.
+product-owner explicitly selects it.
 
 ## Future Roadmap
 
