@@ -258,6 +258,18 @@ export function buildActiveProgramParticipationWhere(input: {
   };
 }
 
+export function buildProgramParticipationReviewWhere(input: {
+  organizationId: string;
+  staffScopeResolution: ProgramParticipationStaffScope;
+}): Prisma.ProgramParticipationWhereInput {
+  return {
+    organizationId: input.organizationId,
+    ...(input.staffScopeResolution.allowAllStaffScope
+      ? {}
+      : { programId: { in: [...input.staffScopeResolution.allowedProgramIds] } }),
+  };
+}
+
 export function buildActiveProgramParticipationPersonVisibilityFilters(input: {
   organizationId: string;
   staffScopeResolution: ProgramParticipationStaffScope;
@@ -273,4 +285,158 @@ export function buildActiveProgramParticipationPersonVisibilityFilters(input: {
       },
     },
   ];
+}
+
+export type ProgramParticipationBackfillRosterMembership = {
+  id: string;
+  personId: string;
+  rosterRole: string;
+  status?: ProgramParticipationStatus | null;
+  isHistorical?: boolean;
+  team: {
+    id: string;
+    name: string;
+    program: ProgramParticipationProgram | null;
+  };
+  season?: ProgramParticipationSeason | null;
+};
+
+export type ProgramParticipationBackfillRoleAssignment = {
+  id: string;
+  personId: string;
+  roleType: string;
+  status?: ProgramParticipationStatus | null;
+  isHistorical?: boolean;
+  program?: ProgramParticipationProgram | null;
+  team?: ProgramParticipationTeam | null;
+};
+
+export type ProgramParticipationBackfillCandidate = {
+  personId: string;
+  programId: string;
+  programName: string;
+  seasonId: string | null;
+  seasonName: string | null;
+  proposedStatus: ProgramParticipationStatus;
+  sources: Array<"ROSTER" | "ROLE_PROGRAM" | "ROLE_TEAM">;
+  sourceIds: string[];
+  sourceLabels: string[];
+};
+
+function isCurrentBackfillSource(input: {
+  status?: ProgramParticipationStatus | null;
+  isHistorical?: boolean;
+  includeHistorical: boolean;
+}): boolean {
+  if (input.status === ProgramParticipationStatus.INACTIVE) {
+    return input.includeHistorical;
+  }
+
+  if (input.isHistorical) {
+    return input.includeHistorical;
+  }
+
+  return true;
+}
+
+function addBackfillCandidate(
+  candidates: Map<string, ProgramParticipationBackfillCandidate>,
+  candidate: Omit<ProgramParticipationBackfillCandidate, "sources" | "sourceIds" | "sourceLabels"> & {
+    source: ProgramParticipationBackfillCandidate["sources"][number];
+    sourceId: string;
+    sourceLabel: string;
+  },
+): void {
+  const key = buildProgramParticipationKey(candidate);
+  const existing = candidates.get(key);
+
+  if (!existing) {
+    candidates.set(key, {
+      personId: candidate.personId,
+      programId: candidate.programId,
+      programName: candidate.programName,
+      seasonId: candidate.seasonId,
+      seasonName: candidate.seasonName,
+      proposedStatus: candidate.proposedStatus,
+      sources: [candidate.source],
+      sourceIds: [candidate.sourceId],
+      sourceLabels: [candidate.sourceLabel],
+    });
+    return;
+  }
+
+  if (!existing.sources.includes(candidate.source)) {
+    existing.sources.push(candidate.source);
+  }
+  if (!existing.sourceIds.includes(candidate.sourceId)) {
+    existing.sourceIds.push(candidate.sourceId);
+  }
+  if (!existing.sourceLabels.includes(candidate.sourceLabel)) {
+    existing.sourceLabels.push(candidate.sourceLabel);
+  }
+}
+
+export function buildProgramParticipationBackfillCandidates(input: {
+  rosterMemberships: readonly ProgramParticipationBackfillRosterMembership[];
+  roleAssignments: readonly ProgramParticipationBackfillRoleAssignment[];
+  includeHistorical?: boolean;
+}): ProgramParticipationBackfillCandidate[] {
+  const includeHistorical = input.includeHistorical ?? false;
+  const candidates = new Map<string, ProgramParticipationBackfillCandidate>();
+
+  for (const membership of input.rosterMemberships) {
+    const program = membership.team.program;
+    if (!program || !isCurrentBackfillSource({ ...membership, includeHistorical })) {
+      continue;
+    }
+
+    addBackfillCandidate(candidates, {
+      personId: membership.personId,
+      programId: program.id,
+      programName: program.name,
+      seasonId: membership.season?.id ?? null,
+      seasonName: membership.season?.name ?? null,
+      proposedStatus: ProgramParticipationStatus.ACTIVE,
+      source: "ROSTER",
+      sourceId: membership.id,
+      sourceLabel: membership.team.name,
+    });
+  }
+
+  for (const assignment of input.roleAssignments) {
+    if (!isCurrentBackfillSource({ ...assignment, includeHistorical })) {
+      continue;
+    }
+
+    const program = assignment.program ?? assignment.team?.program ?? null;
+    if (!program) {
+      continue;
+    }
+
+    addBackfillCandidate(candidates, {
+      personId: assignment.personId,
+      programId: program.id,
+      programName: program.name,
+      seasonId: null,
+      seasonName: null,
+      proposedStatus: ProgramParticipationStatus.ACTIVE,
+      source: assignment.program ? "ROLE_PROGRAM" : "ROLE_TEAM",
+      sourceId: assignment.id,
+      sourceLabel: assignment.roleType,
+    });
+  }
+
+  return [...candidates.values()].sort((left, right) => {
+    const personComparison = left.personId.localeCompare(right.personId);
+    if (personComparison !== 0) {
+      return personComparison;
+    }
+
+    const programComparison = left.programName.localeCompare(right.programName);
+    if (programComparison !== 0) {
+      return programComparison;
+    }
+
+    return (left.seasonName ?? "").localeCompare(right.seasonName ?? "");
+  });
 }

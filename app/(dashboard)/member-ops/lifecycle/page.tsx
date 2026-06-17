@@ -337,9 +337,14 @@ export default async function MemberOpsLifecyclePage({
         title="Membership Lifecycle"
         description="Review lifecycle status coverage across scoped MemberOps people records."
         actions={
-          <Link href="/people" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-            Open Members
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/people" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Open Members
+            </Link>
+            <Link href="/member-ops/program-participation" className="rounded-md border px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              Program Participation
+            </Link>
+          </div>
         }
       />
 

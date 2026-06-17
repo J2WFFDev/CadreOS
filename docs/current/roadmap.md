@@ -86,11 +86,16 @@ committed.
   from role assignments and roster memberships, compares policy options, and
   recommends a product-owner-confirmed Program Participation Model Foundation
   as the next implementation arc without changing schema or behavior.
-- ARC-MEMBER-07 — Program Participation Model Foundation is complete pending
-  merge. It adds a minimal first-class ProgramParticipation schema foundation,
-  helper coverage, and read-only reports/lifecycle inclusion while preserving
-  existing role, roster, Guardian, lifecycle, reports, duplicate guardrail, and
-  permission behavior.
+- ARC-MEMBER-07 — Program Participation Model Foundation is complete and
+  merged in PR #388. It adds a minimal first-class ProgramParticipation schema
+  foundation, helper coverage, and read-only reports/lifecycle inclusion while
+  preserving existing role, roster, Guardian, lifecycle, reports, duplicate
+  guardrail, and permission behavior.
+- ARC-MEMBER-08 — Program Participation Management and Backfill Policy is
+  complete pending merge. It adds a staff-scoped read-only review route for
+  explicit ProgramParticipation records and non-writing backfill preview
+  helpers while preserving role permissions, Guardian/Athlete access, roster
+  duplicate guardrails, lifecycle automation, and automatic backfill execution.
 - The GearOps CSV `asset_id` baseline fix is complete.
 
 See [`arc-log.md`](./arc-log.md) for conflicts and detailed links.
@@ -100,9 +105,9 @@ See [`arc-log.md`](./arc-log.md) for conflicts and detailed links.
 No active product arc is currently committed in `docs/current/`.
 
 The next product decision point requires product-owner confirmation. The
-recommended next MemberOps arc is `ARC-MEMBER-08 — Program Participation
-Management and Backfill Policy`, but it is not committed until the
-product-owner explicitly selects it.
+recommended next MemberOps arc is `ARC-MEMBER-09 — Program Participation
+Mutation Policy`, but it is not committed until the product-owner explicitly
+selects it.
 
 ## Future Roadmap
 
@@ -126,9 +131,9 @@ product-owner explicitly selects it.
   Remaining MemberOps product candidates include advanced reports/exports,
   consolidated joining/transfer/departure/offboarding workflows, program
   participation management/backfill, and other explicitly documented gaps.
-- Program participation management UI, automatic backfill, duplicate-guardrail
-  migration, and workflow integration remain future work after the
-  ARC-MEMBER-07 foundation; see
+- Program participation create/update mutations, automatic backfill execution,
+  duplicate-guardrail migration, and workflow integration remain future work
+  after the ARC-MEMBER-08 read-only management foundation; see
   [`memberops-program-participation-policy.md`](./memberops-program-participation-policy.md).
 - Continue operational reporting/review only where role-safe scope and source
   data are reliable.
