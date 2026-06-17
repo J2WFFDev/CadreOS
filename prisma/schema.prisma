@@ -945,7 +945,7 @@ model Program {
   teams            Team[]
   seasons          Season[]
   roles            RoleAssignment[]
-  participations   ProgramParticipation[]
+  programParticipations ProgramParticipation[]
   events           Event[]
   auditEvents      AuditEvent[]
   eligibilityDefinitions EligibilityDefinition[]

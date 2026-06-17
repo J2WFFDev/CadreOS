@@ -6,6 +6,9 @@ import { ProgramParticipationStatus, RoleType } from "@prisma/client";
 import {
   deriveProgramParticipationCandidates,
   findExactProgramParticipationDuplicate,
+  buildActiveProgramParticipationPersonVisibilityFilters,
+  buildActiveProgramParticipationWhere,
+  hasActiveExplicitProgramParticipationInScope,
   hasProgramParticipationInScope,
   mergeExplicitAndDerivedProgramParticipation,
 } from "../../lib/member-ops-program-participation";
@@ -155,5 +158,91 @@ test("ARC-MEMBER-07: explicit participation does not grant unrelated program sco
       allowedProgramIds: ["program-1"],
     }),
     true,
+  );
+});
+
+test("ARC-MEMBER-07 review: inactive explicit participation is not current scope", () => {
+  const activeParticipation = {
+    id: "participation-active",
+    status: ProgramParticipationStatus.ACTIVE,
+    program: { id: "program-1", name: "SASP" },
+    season: null,
+  };
+  const inactiveParticipation = {
+    id: "participation-inactive",
+    status: ProgramParticipationStatus.INACTIVE,
+    program: { id: "program-1", name: "SASP" },
+    season: null,
+  };
+
+  assert.equal(
+    hasActiveExplicitProgramParticipationInScope({
+      participations: [inactiveParticipation],
+      allowAllStaffScope: false,
+      allowedProgramIds: ["program-1"],
+    }),
+    false,
+  );
+  assert.equal(
+    hasActiveExplicitProgramParticipationInScope({
+      participations: [activeParticipation],
+      allowAllStaffScope: false,
+      allowedProgramIds: ["program-1"],
+    }),
+    true,
+  );
+});
+
+test("ARC-MEMBER-07 review: helper merge ignores inactive explicit participation", () => {
+  const contexts = mergeExplicitAndDerivedProgramParticipation({
+    personId: "person-1",
+    participations: [
+      {
+        id: "participation-inactive",
+        status: ProgramParticipationStatus.INACTIVE,
+        program: { id: "program-1", name: "SASP" },
+        season: null,
+      },
+    ],
+    roles: [],
+    roster: [],
+  });
+
+  assert.deepEqual(contexts, []);
+});
+
+test("ARC-MEMBER-07 review: scoped participation visibility filters require active rows", () => {
+  const staffScopeResolution = {
+    allowAllStaffScope: false,
+    allowedProgramIds: ["program-1"],
+  };
+
+  assert.deepEqual(
+    buildActiveProgramParticipationWhere({
+      organizationId: "org-1",
+      staffScopeResolution,
+    }),
+    {
+      organizationId: "org-1",
+      status: ProgramParticipationStatus.ACTIVE,
+      programId: { in: ["program-1"] },
+    },
+  );
+  assert.deepEqual(
+    buildActiveProgramParticipationPersonVisibilityFilters({
+      organizationId: "org-1",
+      staffScopeResolution,
+    }),
+    [
+      {
+        programParticipations: {
+          some: {
+            organizationId: "org-1",
+            status: ProgramParticipationStatus.ACTIVE,
+            programId: { in: ["program-1"] },
+          },
+        },
+      },
+    ],
   );
 });

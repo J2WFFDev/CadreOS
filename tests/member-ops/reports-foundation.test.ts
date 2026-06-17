@@ -142,6 +142,24 @@ test("ARC-MEMBER-07: program coverage includes explicit participation without do
   assert.deepEqual(rows, [{ key: "program-1", label: "SASP", count: 2 }]);
 });
 
+test("ARC-MEMBER-07 review: inactive program participation does not count as current report coverage", () => {
+  const rows = buildMemberOpsProgramCoverageRows([
+    reportPerson({
+      id: "person-1",
+      programParticipations: [
+        {
+          id: "participation-inactive",
+          status: ProgramParticipationStatus.INACTIVE,
+          program: { id: "program-1", name: "SASP" },
+          season: null,
+        },
+      ],
+    }),
+  ]);
+
+  assert.deepEqual(rows, []);
+});
+
 test("ARC-MEMBER-05: qualification and certification report summaries resolve expiration state", () => {
   const now = new Date("2026-06-16T12:00:00Z");
   const qualificationRows = summarizeMemberOpsQualificationRecords(

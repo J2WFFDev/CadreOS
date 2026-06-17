@@ -1,4 +1,4 @@
-import { ProgramParticipationStatus } from "@prisma/client";
+import { ProgramParticipationStatus, type Prisma } from "@prisma/client";
 
 export type ProgramParticipationProgram = {
   id: string;
@@ -123,16 +123,18 @@ export function explicitProgramParticipationCandidates(input: {
   personId: string;
   participations: readonly ExplicitProgramParticipation[];
 }): ProgramParticipationCandidate[] {
-  return input.participations.map((participation) => ({
-    personId: input.personId,
-    programId: participation.program.id,
-    programName: participation.program.name,
-    seasonId: participation.season?.id ?? null,
-    seasonName: participation.season?.name ?? null,
-    source: "EXPLICIT",
-    sourceLabel: "Program participation",
-    status: participation.status,
-  }));
+  return input.participations
+    .filter((participation) => participation.status === ProgramParticipationStatus.ACTIVE)
+    .map((participation) => ({
+      personId: input.personId,
+      programId: participation.program.id,
+      programName: participation.program.name,
+      seasonId: participation.season?.id ?? null,
+      seasonName: participation.season?.name ?? null,
+      source: "EXPLICIT",
+      sourceLabel: "Program participation",
+      status: participation.status,
+    }));
 }
 
 export function mergeProgramParticipationCandidates(
@@ -224,4 +226,51 @@ export function hasProgramParticipationInScope(input: {
   }
 
   return input.contexts.some((context) => input.allowedProgramIds.includes(context.programId));
+}
+
+export function hasActiveExplicitProgramParticipationInScope(input: {
+  participations: readonly ExplicitProgramParticipation[];
+  allowedProgramIds: readonly string[];
+  allowAllStaffScope: boolean;
+}): boolean {
+  return input.participations.some(
+    (participation) =>
+      participation.status === ProgramParticipationStatus.ACTIVE &&
+      (input.allowAllStaffScope || input.allowedProgramIds.includes(participation.program.id)),
+  );
+}
+
+export type ProgramParticipationStaffScope = {
+  allowAllStaffScope: boolean;
+  allowedProgramIds: readonly string[];
+};
+
+export function buildActiveProgramParticipationWhere(input: {
+  organizationId: string;
+  staffScopeResolution: ProgramParticipationStaffScope;
+}): Prisma.ProgramParticipationWhereInput {
+  return {
+    organizationId: input.organizationId,
+    status: ProgramParticipationStatus.ACTIVE,
+    ...(input.staffScopeResolution.allowAllStaffScope
+      ? {}
+      : { programId: { in: [...input.staffScopeResolution.allowedProgramIds] } }),
+  };
+}
+
+export function buildActiveProgramParticipationPersonVisibilityFilters(input: {
+  organizationId: string;
+  staffScopeResolution: ProgramParticipationStaffScope;
+}): Prisma.PersonWhereInput[] {
+  if (input.staffScopeResolution.allowAllStaffScope || input.staffScopeResolution.allowedProgramIds.length === 0) {
+    return [];
+  }
+
+  return [
+    {
+      programParticipations: {
+        some: buildActiveProgramParticipationWhere(input),
+      },
+    },
+  ];
 }

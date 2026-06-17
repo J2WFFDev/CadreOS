@@ -1,11 +1,12 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { MemberLifecycleStatus } from "@prisma/client";
+import { MemberLifecycleStatus, ProgramParticipationStatus } from "@prisma/client";
 
 import { MEMBER_LIFECYCLE_STATUS_LABELS } from "../../lib/member-ops";
 import {
   buildMemberLifecycleStatusCounts,
   formatLifecycleStatusSummary,
+  formatMemberOpsProgramTeamSummary,
   MEMBER_LIFECYCLE_STATUS_ORDER,
   resolveMemberLifecycleFilter,
 } from "../../lib/member-ops-lifecycle";
@@ -60,4 +61,44 @@ test("ARC-MEMBER-04: lifecycle summary is read-only overview text", () => {
     formatLifecycleStatusSummary(counts),
     "Prospect 0 · Applicant 1 · Active Member 1 · Inactive Member 0 · Former Member 0 · Former Member (Archived) 0 · Alumni 0",
   );
+});
+
+test("ARC-MEMBER-07 review: lifecycle context avoids redundant program-only labels for derived team context", () => {
+  const summary = formatMemberOpsProgramTeamSummary(
+    [
+      {
+        team: { name: "Precision", program: { name: "SASP" } },
+      },
+    ],
+    [
+      {
+        program: null,
+        team: { name: "Precision", program: { name: "SASP" } },
+      },
+    ],
+    [],
+  );
+
+  assert.equal(summary, "SASP · Precision");
+});
+
+test("ARC-MEMBER-07 review: lifecycle context shows active explicit participation and ignores inactive rows", () => {
+  const summary = formatMemberOpsProgramTeamSummary(
+    [],
+    [],
+    [
+      {
+        status: ProgramParticipationStatus.INACTIVE,
+        program: { name: "Inactive Program" },
+        season: null,
+      },
+      {
+        status: ProgramParticipationStatus.ACTIVE,
+        program: { name: "SASP" },
+        season: { name: "Spring 2026" },
+      },
+    ],
+  );
+
+  assert.equal(summary, "SASP (Spring 2026)");
 });

@@ -18,6 +18,10 @@ import {
 } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import {
+  buildActiveProgramParticipationPersonVisibilityFilters,
+  buildActiveProgramParticipationWhere,
+} from "@/lib/member-ops-program-participation";
+import {
   buildMemberOpsLifecycleReportRows,
   buildMemberOpsReportRelationFilters,
   buildMemberOpsProgramCoverageRows,
@@ -259,7 +263,10 @@ export default async function MemberOpsReportsPage() {
                   ? [{ roles: { some: { organizationId: scope.organizationId, team: { is: { programId: { in: staffScopeResolution.allowedProgramIds } } } } } }]
                   : []),
                 ...(staffScopeResolution.allowedProgramIds.length > 0
-                  ? [{ programParticipations: { some: { organizationId: scope.organizationId, programId: { in: staffScopeResolution.allowedProgramIds } } } }]
+                  ? buildActiveProgramParticipationPersonVisibilityFilters({
+                      organizationId: scope.organizationId,
+                      staffScopeResolution,
+                    })
                   : []),
               ],
             }),
@@ -295,12 +302,10 @@ export default async function MemberOpsReportsPage() {
           },
         },
         programParticipations: {
-          where: {
+          where: buildActiveProgramParticipationWhere({
             organizationId: scope.organizationId,
-            ...(staffScopeResolution.allowAllStaffScope
-              ? {}
-              : { programId: { in: staffScopeResolution.allowedProgramIds } }),
-          },
+            staffScopeResolution,
+          }),
           select: {
             id: true,
             status: true,
@@ -328,6 +333,7 @@ export default async function MemberOpsReportsPage() {
         ),
       ),
       programParticipations: person.programParticipations.filter((participation) =>
+        participation.status === ProgramParticipationStatus.ACTIVE &&
         matchesScopedTeamOrProgram(
           staffScopeResolution,
           null,
