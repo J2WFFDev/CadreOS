@@ -35,7 +35,8 @@ only when an old-to-new mapping is useful for traceability.
 | ARC-MEMBER-05 — MemberOps Reports Foundation | Follow-up to ARC-MEMBER-01 dedicated reports route gap | Completed / merged |
 | ARC-MEMBER-06 — First-Class Program Participation Policy Decision | Follow-up to MemberOps first-class program participation gap | Completed / merged |
 | ARC-MEMBER-07 — Program Participation Model Foundation | Follow-up to ARC-MEMBER-06 selected recommendation | Completed / merged |
-| ARC-MEMBER-08 — Program Participation Management and Backfill Policy | Follow-up to ARC-MEMBER-07 foundation gaps | Completed / pending merge |
+| ARC-MEMBER-08 — Program Participation Management and Backfill Policy | Follow-up to ARC-MEMBER-07 foundation gaps | Completed / merged |
+| ARC-MEMBER-09 — Program Participation Mutation Policy | Follow-up to ARC-MEMBER-08 mutation policy gap | Completed / pending merge |
 
 Recent historical arcs without an assigned simplified identifier keep their
 old labels until a future documentation reconciliation assigns one.
@@ -71,7 +72,8 @@ old labels until a future documentation reconciliation assigns one.
 | ARC-MEMBER-05 — MemberOps Reports Foundation | Completed / merged | [PR #386](https://github.com/J2WFFDev/CadreOS/pull/386), merge `f62d36df0f9090741734ab465cb508ae4ef72d15` |
 | ARC-MEMBER-06 — First-Class Program Participation Policy Decision | Completed / merged | [PR #387](https://github.com/J2WFFDev/CadreOS/pull/387), merge `e1b148f9f4263302ec7ffd479a77e101c1153ff4` |
 | ARC-MEMBER-07 — Program Participation Model Foundation | Completed / merged | [PR #388](https://github.com/J2WFFDev/CadreOS/pull/388), merge `74c3f6f4060817e57bbf9eeffed4d92115b71991` |
-| ARC-MEMBER-08 — Program Participation Management and Backfill Policy | Completed / pending merge | Adds staff-scoped read-only participation review and non-writing backfill preview helpers |
+| ARC-MEMBER-08 — Program Participation Management and Backfill Policy | Completed / merged | [PR #389](https://github.com/J2WFFDev/CadreOS/pull/389), merge `fe002b43908756c431ac7a296edb43cd4d76cca4` |
+| ARC-MEMBER-09 — Program Participation Mutation Policy | Completed / pending merge | Adds backend permission actions for ProgramParticipation create/update/status-change |
 | ARC-UI-01 — Header Account Name Display (historical: UI.0-A) | Completed / merged | [PR #378](https://github.com/J2WFFDev/CadreOS/pull/378) |
 | ARC-UI-02 — Collapsible Sidebar and Independent Scrolling (historical: UI.1) | Completed / merged | PR #368 |
 | ARC-ENTRY-07 — Relationship Labels and Direction Semantics | Completed / merged | [PR #380](https://github.com/J2WFFDev/CadreOS/pull/380), merge `d831fe09e31ec6f5168b5ef8144eb498100c82c6` |
@@ -180,15 +182,27 @@ backfill, lifecycle automation, joining/transfer/departure/offboarding
 workflows, exports, BI, broad reports, Guardian approval workflows, household
 aggregates, or bulk mutation tooling.
 
-ARC-MEMBER-08 — Program Participation Management and Backfill Policy is
-complete pending merge. It adds `/member-ops/program-participation` as a
-staff-scoped read-only review route for explicit participation records and
-adds pure non-writing backfill preview helpers for roster, program-role, and
-team-role derived candidates. It documents mutation as policy-blocked because
-the backend permission registry does not yet define
-`programParticipation.create` or `programParticipation.update`. It does not
-broaden Guardian/Athlete access, change role permissions, run automatic
-backfill, change roster duplicate guardrails, or add lifecycle automation.
+ARC-MEMBER-08 — Program Participation Management and Backfill Policy is merged
+in PR #389 at merge `fe002b43908756c431ac7a296edb43cd4d76cca4`. It adds
+`/member-ops/program-participation` as a staff-scoped read-only review route
+for explicit participation records and adds pure non-writing backfill preview
+helpers for roster, program-role, and team-role derived candidates. It
+documents mutation as policy-blocked because the backend permission registry
+does not yet define `programParticipation.create` or
+`programParticipation.update`. It does not broaden Guardian/Athlete access,
+change role permissions, run automatic backfill, change roster duplicate
+guardrails, or add lifecycle automation.
+
+ARC-MEMBER-09 — Program Participation Mutation Policy is complete pending
+merge. It adds explicit backend permission actions for
+`programParticipation.create`, `programParticipation.update`, and
+`programParticipation.status.update`. Organization Admin and Program Manager /
+Program Director can perform those actions under scoped backend authorization;
+Coach, Guardian, Athlete, Assistant Coach, and Limited/basic viewer cannot.
+ProgramParticipation mutations require explicit program backend scope, and
+team-only scope does not imply program-wide mutation authority. It does not add
+mutation UI, automatic backfill writes, delete behavior, lifecycle automation,
+Guardian visibility changes, or duplicate guardrail migration.
 
 Implemented current behavior includes:
 

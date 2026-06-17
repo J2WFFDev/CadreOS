@@ -7,7 +7,11 @@ import { canAccessModule, canPerformAction } from "../../lib/auth/access-control
 import type { AppRole, CurrentUser } from "../../lib/auth/current-user-types";
 import { canGuardianSeeAthleteFromLinks } from "../../lib/guardian-athlete-access";
 import { DEFAULT_STAFFING_ROLE_DEFINITIONS } from "../../lib/member-ops-staffing";
-import { actionRequiresBackendScope, canRoleTypePerformBackendAction } from "../../lib/permissions";
+import {
+  actionRequiresBackendScope,
+  actionRequiresProgramBackendScope,
+  canRoleTypePerformBackendAction,
+} from "../../lib/permissions";
 
 function buildUser(role: AppRole): CurrentUser {
   return {
@@ -124,6 +128,42 @@ test("ARC-MEMBER-02: qualification assignment mutations are scoped backend actio
     false,
     "Athlete should not mutate person certifications",
   );
+});
+
+test("ARC-MEMBER-09: program participation mutation policy aligns app helper and backend matrix", () => {
+  const participationActions = [
+    "programParticipation.create",
+    "programParticipation.update",
+    "programParticipation.status.update",
+  ];
+  const alignedRoles: Array<[AppRole, RoleType]> = [
+    ["ADMIN", RoleType.ORGANIZATION_ADMIN],
+    ["PROGRAM_MANAGER", RoleType.PROGRAM_DIRECTOR],
+    ["COACH", RoleType.COACH],
+    ["GUARDIAN", RoleType.PARENT_GUARDIAN],
+    ["ATHLETE", RoleType.ATHLETE],
+  ];
+
+  for (const action of participationActions) {
+    assert.equal(actionRequiresBackendScope(action), true, `${action} should require scoped backend authorization`);
+    assert.equal(actionRequiresProgramBackendScope(action), true, `${action} should require explicit program scope`);
+  }
+
+  for (const [appRole, backendRole] of alignedRoles) {
+    const user = buildUser(appRole);
+    for (const action of participationActions) {
+      assert.equal(
+        canPerformAction(user, action),
+        canRoleTypePerformBackendAction(backendRole, action),
+        `${appRole} helper and ${backendRole} backend policy should agree for ${action}`,
+      );
+    }
+  }
+
+  const limitedViewer = buildUser("LIMITED_VIEWER");
+  for (const action of participationActions) {
+    assert.equal(canPerformAction(limitedViewer, action), false, `LIMITED_VIEWER should not be able to ${action}`);
+  }
 });
 
 test("Arc 26E permission validation: program and organization admins retain required memberops authority", () => {
